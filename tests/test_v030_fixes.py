@@ -11,7 +11,6 @@
 """
 from __future__ import annotations
 import logging
-import os
 import subprocess
 import threading
 import types
@@ -136,7 +135,7 @@ def test_play_file_uses_create_no_window_on_windows(monkeypatch):
         captured_kw.update(kw)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
 
     cfg = Config(mpv_path="mpv")
     p = MpvPlayer(cfg)
@@ -154,7 +153,7 @@ def test_play_file_no_creationflags_on_posix(monkeypatch):
         captured_kw.update(kw)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr(os, "name", "posix")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: False)
 
     cfg = Config(mpv_path="mpv")
     p = MpvPlayer(cfg)
@@ -178,7 +177,7 @@ def test_play_hidden_console_on_windows(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
 
     cfg = Config(mpv_path="mpv", audio_device="")
     p = MpvPlayer(cfg)
@@ -199,7 +198,7 @@ def test_play_no_creationflags_on_posix(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr(os, "name", "posix")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: False)
 
     cfg = Config(mpv_path="mpv", audio_device="")
     p = MpvPlayer(cfg)
@@ -232,7 +231,7 @@ def test_play_cmd_includes_no_window_flags(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
 
     cfg = Config(mpv_path="mpv", audio_device="")
     p = MpvPlayer(cfg)
