@@ -2,6 +2,7 @@
 and safe config.toml editing (backup, atomic write, TOML re-validation)."""
 from __future__ import annotations
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -55,8 +56,8 @@ def test_choose_input_excludes_the_view_control():
 # ------------------------------------------------------------ score_window ---
 def test_score_window_returns_found_when_view_and_input():
     rx = re.compile(Config().line_regex)
-    view = Ctl("Document", 0, "alice: hi\n", 0, 0, 100, 50, area=5000)
-    inp = Ctl("Edit", 0, "", 0, 520, 200, 40, area=8000)
+    view = Ctl("Document", 0, "not a chat line\n", 0, 0, 100, 50)
+    inp = Ctl("Edit", 0, "", 0, 520, 200, 560)
     f = score_window("My Room", [view, inp], rx)
     assert f is not None and f.web is False and f.matched == 0
 
@@ -81,7 +82,7 @@ def test_score_web_returns_none_when_no_panes(monkeypatch):
 def test_to_updates_web_and_text():
     rx = re.compile(Config().line_regex)
     web_f = Found("ZeaZDev: x", Ctl("Pane", 0), Ctl("Pane", 0), 5, web=True)
-    assert to_updates(web_f) == {"window_title_re": "ZeaZDev\\: x", "view_kind": "web"}
+    assert to_updates(web_f) == {"window_title_re": re.escape("ZeaZDev: x"), "view_kind": "web"}
 
     text_f = Found("My Room", Ctl("Document", 0, "", 0, 0, 100, 50),
                    Ctl("Edit", 0, "", 0, 520, 200, 40), 3)
@@ -94,14 +95,14 @@ def test_to_updates_web_and_text():
 def test_update_config_text_replaces_existing_key():
     text = 'bot_nick = "AutoDJ"\nlog_file = ""\n'
     new = update_config_text(text, {"log_file": "autodj.log"})
-    assert 'log_file = "autodj.log"' in new
-    assert 'bot_nick = "AutoDJ"' in new
+    assert tomllib.loads(new)["log_file"] == "autodj.log"
+    assert tomllib.loads(new)["bot_nick"] == "AutoDJ"
 
 
 def test_update_config_text_appends_missing_key():
     text = 'bot_nick = "AutoDJ"\n'
     new = update_config_text(text, {"playlist_file": "playlist.json"})
-    assert 'playlist_file = "playlist.json"' in new
+    assert tomllib.loads(new)["playlist_file"] == "playlist.json"
 
 
 def test_update_config_text_keeps_comment():
