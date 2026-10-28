@@ -12,6 +12,12 @@ from .library import find_ytdlp
 
 _ids = itertools.count()
 log = logging.getLogger("autodj")
+
+
+def _is_windows() -> bool:
+    return _is_windows()
+
+
 _WHY = ("error", "fail", "not found", "unable", "[ytdl_hook]", "cannot", "no such")
 
 
@@ -42,7 +48,7 @@ class MpvPlayer:
 
     def play(self, source: str, volume: int) -> bool:
         n = next(_ids)
-        ipc = (rf"\\.\pipe\camfrog-autodj-{os.getpid()}-{n}" if os.name == "nt"
+        ipc = (rf"\\.\pipe\camfrog-autodj-{os.getpid()}-{n}" if _is_windows()
                else os.path.join(tempfile.gettempdir(), f"camfrog-autodj-{os.getpid()}-{n}.sock"))
         logf = os.path.join(tempfile.gettempdir(), f"camfrog-autodj-mpv-{os.getpid()}-{n}.log")
         cmd = self._base() + ["--ytdl-format=bestaudio/best", f"--input-ipc-server={ipc}",
@@ -52,32 +58,39 @@ class MpvPlayer:
             cmd.append(f"--script-opts=ytdl_hook-ytdl_path={ytdlp}")
         cmd += ["--", source]
         kw: dict = {}
-        if os.name == "nt":
+        if _is_windows():
             kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
         with self._lock:
             self.skipped = False
             self._ipc = ipc
             self.proc = p = subprocess.Popen(cmd, **kw)
         try:
-            rc = p.wait(timeout=self.cfg.mpv_timeout or None)
-        except subprocess.TimeoutExpired:
-            log.warning("mpv hung after %ss for %s: terminating", self.cfg.mpv_timeout, source)
-            with self._lock:
-                self.skipped = True
-                p.terminate()
             try:
-                rc = p.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                log.warning("mpv did not exit after terminate; killing")
-                with self._lock:
-                    p.kill()
-                rc = p.wait()
-            ok = False
-        else:
-            with self._lock:
-                self.proc = None
-                self._ipc = None
+                rc = p.wait(timeout=self.cfg.mpv_timeout or None)
                 ok = rc == 0 or self.skipped
+            except subprocess.TimeoutExpired:
+                log.warning("mpv hung after %ss for %s: terminating", self.cfg.mpv_timeout, source)
+                with self._lock:
+                    self.skipped = True
+                    try:
+                        p.terminate()
+                    except OSError:
+                        pass
+                rc = p.poll()
+                if rc is None:
+                    try:
+                        rc = p.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        log.warning("mpv did not exit after terminate; killing")
+                        with self._lock:
+                            p.kill()
+                        rc = p.wait()
+                ok = False
+        finally:
+            with self._lock:
+                if self.proc is p:
+                    self.proc = None
+                    self._ipc = None
         self._report(ok, rc, source, logf)
         return ok
 
@@ -111,7 +124,7 @@ class MpvPlayer:
             return False
         data = (json.dumps({"command": list(cmd)}) + "\n").encode()
         try:
-            if os.name == "nt":
+            if _is_windows():
                 with open(ipc, "r+b", buffering=0) as f:
                     f.write(data)
             else:
@@ -131,6 +144,6 @@ class MpvPlayer:
 
     def play_file(self, path: str):
         kw: dict = {}
-        if os.name == "nt":
+        if _is_windows():
             kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
         subprocess.run(self._base() + ["--volume=100", "--", path], **kw)
