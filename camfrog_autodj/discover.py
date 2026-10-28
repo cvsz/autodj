@@ -48,7 +48,7 @@ def choose_view(ctls: list[Ctl], rx: re.Pattern) -> tuple[Ctl | None, int]:
         key = (matched, len(c.text), c.area, c.ctype == "Document")
         if best_key is None or key > best_key:
             best, best_key = c, key
-    if best is None or (best_key[0] == 0 and best_key[1] == 0 and best.ctype != "Document"):
+    if best is None or (best_key[0] == 0 and best.ctype != "Document"):
         return None, 0
     return best, best_key[0]
 
@@ -175,7 +175,13 @@ def _toml_value(v) -> str:
 
 def update_config_text(text: str, updates: dict) -> str:
     lines = text.splitlines()
+    try:
+        existing_values = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        existing_values = {}
     for key, val in updates.items():
+        if key in existing_values and existing_values[key] == val:
+            continue
         new = f"{key} = {_toml_value(val)}"
         rx = re.compile(rf"^(\s*){re.escape(key)}\s*=\s*(?:'[^']*'|\"(?:[^\"\\]|\\.)*\"|[^#\n]*?)(\s*#.*)?$")
         for i, ln in enumerate(lines):
