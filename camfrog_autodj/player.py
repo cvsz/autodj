@@ -15,7 +15,7 @@ log = logging.getLogger("autodj")
 
 
 def _is_windows() -> bool:
-    return _is_windows()
+    return os.name == "nt"
 
 
 _WHY = ("error", "fail", "not found", "unable", "[ytdl_hook]", "cannot", "no such")
