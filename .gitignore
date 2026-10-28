@@ -1,0 +1,30 @@
+# Python / tool caches
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.egg-info/
+
+# Build artifacts (Windows exe)
+build/
+dist/
+*.spec
+
+# Your local settings (copy config.example.toml to config.toml)
+config.toml
+config.toml.bak
+config.toml.tmp
+
+# User data / runtime state (never commit)
+playlist.json
+playlist.json.tmp
+*.log
+*.pfx
+*.cer
+cert/
+
+# Reverse-engineering reference (do not distribute)
+camfrog-re-report.md
+exec-next.md
+docs/camfrog-re-report.md
