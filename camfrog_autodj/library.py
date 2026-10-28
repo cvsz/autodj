@@ -54,6 +54,10 @@ def find_ytdlp(ytdlp_path: str = "", mpv_path: str = "") -> str:
         return ytdlp_path if (shutil.which(ytdlp_path) or Path(ytdlp_path).is_file()) else ""
     names = ("yt-dlp.exe", "yt-dlp") if os.name == "nt" else ("yt-dlp",)
     mpv = shutil.which(mpv_path) if mpv_path else None
+    if mpv is None and mpv_path:
+        configured_mpv = Path(mpv_path).expanduser()
+        if configured_mpv.is_file():
+            mpv = str(configured_mpv.resolve())
     if mpv:
         for n in names:
             cand = Path(mpv).resolve().parent / n
