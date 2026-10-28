@@ -362,9 +362,19 @@ def test_doctor_reports_missing_mpv_and_ok_dirs(monkeypatch, tmp_path):
     assert doctor.has_failures(res)
 
 
-def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path):
+def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path, monkeypatch):
     import os
+    from camfrog_autodj import library
     from camfrog_autodj.library import find_ytdlp
+
+    real_which = library.shutil.which
+
+    def isolated_which(command):
+        if command == "yt-dlp":
+            return None
+        return real_which(command)
+
+    monkeypatch.setattr(library.shutil, "which", isolated_which)
     nt = os.name == "nt"
     mpv = tmp_path / ("mpv.exe" if nt else "mpv")
     yt = tmp_path / ("yt-dlp.exe" if nt else "yt-dlp")
