@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- AutoDJ no longer terminates a track after the default 30-second wall-clock timeout. The default `mpv_timeout` is now `0`, so playback waits for mpv to finish the current track before advancing. Operators can configure a positive timeout to recover from a hung player.
+- The GUI now cancels scheduled Tk callbacks before shutting down the engine and destroying the Tk interpreter, reducing the chance of a Tcl/Tk teardown race during Windows process exit.
+
+### Validation
+- CI, CodeQL, Dependency Review, and the Ubuntu test matrix passed on an earlier exact head. Windows Python 3.12 previously failed after the pytest summary with `Tcl_AsyncDelete: async handler deleted by the wrong thread`; the GUI shutdown change requires a fresh full test matrix before approval or release.
+- Real Camfrog integration and actual audio playback have not yet been verified by the automated suite.
+
+
 ## 0.2.3
 `make` on plain Windows PowerShell/cmd.
 
