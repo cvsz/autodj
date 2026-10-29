@@ -69,7 +69,7 @@ class Config:
     playlist_file: str = "playlist.json"  # user-requested tracks (!play / GUI request / !load) are appended here
                               # (deduplicated) and join the autoplay pool (random); "" = disable persistence
     search_limit: int = 1        # YouTube text-search results fetched per non-admin !play (1 = first match only)
-    mpv_timeout: float = 30.0    # seconds to wait for one mpv track before treating it as hung (0 = no timeout)
+    mpv_timeout: float = 0.0     # seconds to wait for one mpv track before treating it as hung (0 = play until the track ends)
 
     @classmethod
     def load(cls, path: str | None) -> "Config":
