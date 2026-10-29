@@ -181,7 +181,8 @@ def test_play_hidden_console_on_windows(monkeypatch):
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
     monkeypatch.setattr(os, "name", "nt")
 
-    cfg = Config(mpv_path="mpv", audio_device="")
+    # Keep this test focused on process flags; avoid platform-dependent yt-dlp path discovery.
+    cfg = Config(mpv_path="mpv", ytdlp_path="D:/tools/yt-dlp.exe", audio_device="")
     p = MpvPlayer(cfg)
     assert p.play("https://youtu.be/x", 80) is True
 
@@ -235,7 +236,8 @@ def test_play_cmd_includes_no_window_flags(monkeypatch):
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
     monkeypatch.setattr(os, "name", "nt")
 
-    cfg = Config(mpv_path="mpv", audio_device="")
+    # Keep this test focused on window flags; yt-dlp discovery is covered separately.
+    cfg = Config(mpv_path="mpv", ytdlp_path="D:/tools/yt-dlp.exe", audio_device="")
     p = MpvPlayer(cfg)
     assert p.play("https://youtu.be/x", 80) is True
 
