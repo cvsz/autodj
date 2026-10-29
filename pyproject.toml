@@ -21,3 +21,7 @@ build-backend = "setuptools.build_meta"
 packages = ["camfrog_autodj", "camfrog_autodj.adapters"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
+# Workaround for pytest PosixPath issue on Windows
+# Set rootdir explicitly to avoid PosixPath instantiation on Windows
+addopts = "--rootdir=."
