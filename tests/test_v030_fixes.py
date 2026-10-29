@@ -203,7 +203,8 @@ def test_play_no_creationflags_on_posix(monkeypatch):
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
     monkeypatch.setattr(os, "name", "posix")
 
-    cfg = Config(mpv_path="mpv", audio_device="")
+    # Keep this test focused on POSIX flags; avoid platform-dependent yt-dlp path discovery.
+    cfg = Config(mpv_path="mpv", ytdlp_path="yt-dlp", audio_device="")
     p = MpvPlayer(cfg)
     assert p.play("some-local-track.mp3", 80) is True
 
