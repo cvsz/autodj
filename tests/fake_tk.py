@@ -130,13 +130,14 @@ class Misc:
         return f"after#{len(self._after)}"
 
     def after_cancel(self, i):
-        pass
+        self._after = [(ms, fn) for ms, fn in self._after if i != f"after#{len(self._after)}"]
 
     def update(self):
         pass
     update_idletasks = update
 
     def destroy(self):
+        self._after.clear()
         self.destroyed = True
 
 
