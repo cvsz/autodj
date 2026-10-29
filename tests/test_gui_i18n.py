@@ -100,9 +100,10 @@ def test_gui_smoke():
         app.update()
         assert app.b_pause.cget("text") == "หยุดชั่วคราว"
     finally:
-        # Use the application's normal shutdown path to stop polling/animation
-        # callbacks before the Tcl interpreter is destroyed.
+        # A real Tk interpreter must be created and destroyed on the main thread.
+        # Run the same deterministic shutdown path used by the WM_DELETE_WINDOW handler.
         app.close()
+        del app
 
 
 def test_window_pick():
