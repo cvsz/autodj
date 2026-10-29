@@ -13,5 +13,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install -e . "pytest==7.4.4"
-      - run: python -m pytest -q -p no:faulthandler -p no:cacheprovider   # disable cacheprovider to avoid cross-platform path issues on Py3.11
+      - name: Install dependencies
+        run: python -m pip install -e . "pytest==7.4.4"
+      - name: Run tests (Python 3.12)
+        if: matrix.python == '3.12'
+        run: python -m pytest -q -p no:faulthandler -p no:cacheprovider
+      - name: Run tests (Python 3.11 with minipytest)
+        if: matrix.python == '3.11'
+        run: python tools/minipytest.py tests
