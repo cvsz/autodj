@@ -54,7 +54,9 @@ def test_builds_and_shows_state(monkeypatch):
         assert app.v_title.cget("text") == "Nothing playing"
         assert app.b_pause.cget("text") == "Pause"
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        if "app" in locals():
+            app._closing = True
+            sys.modules.pop("camfrog_autodj.gui", None)
 
 
 def test_language_switch_relabels_everything(monkeypatch):
@@ -65,7 +67,9 @@ def test_language_switch_relabels_everything(monkeypatch):
         assert app.tabs["history"].cget("text") == "ประวัติ"
         assert app.b_lang["th"]._active and not app.b_lang["en"]._active
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        if "app" in locals():
+            app._closing = True
+            sys.modules.pop("camfrog_autodj.gui", None)
 
 
 def test_playing_state_drives_animation_and_progress(monkeypatch):
@@ -89,7 +93,9 @@ def test_playing_state_drives_animation_and_progress(monkeypatch):
         app._refresh()
         assert app._state == "paused" and app.b_pause.cget("text") == "Resume" and app.b_pause._icon == "▶"
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        if "app" in locals():
+            app._closing = True
+            sys.modules.pop("camfrog_autodj.gui", None)
 
 
 def test_buttons_do_what_they_say(monkeypatch):
@@ -116,7 +122,9 @@ def test_buttons_do_what_they_say(monkeypatch):
         app.vol._release(types.SimpleNamespace(x=450))       # drag the volume knob to the middle
         assert 40 <= e.volume <= 60
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        if "app" in locals():
+            app._closing = True
+            sys.modules.pop("camfrog_autodj.gui", None)
 
 
 def test_missing_mpv_shows_banner(monkeypatch):
@@ -125,7 +133,9 @@ def test_missing_mpv_shows_banner(monkeypatch):
         texts = [w.cget("text") for w, _k in app._labels]
         assert any("mpv not found" in t for t in texts)
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        if "app" in locals():
+            app._closing = True
+            sys.modules.pop("camfrog_autodj.gui", None)
 
 
 def test_refresh_survives_an_error_and_keeps_polling(monkeypatch):
@@ -136,4 +146,6 @@ def test_refresh_survives_an_error_and_keeps_polling(monkeypatch):
         app.refresh()
         assert len(app._after) == n + 1                        # rescheduled despite the exception
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        if "app" in locals():
+            app._closing = True
+            sys.modules.pop("camfrog_autodj.gui", None)
