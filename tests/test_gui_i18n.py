@@ -81,17 +81,22 @@ def test_gui_smoke():
     tk = pytest.importorskip("tkinter")
     from camfrog_autodj.gui import App
 
+    # Avoid a fake/silent shutdown: create and destroy the Tcl interpreter in
+    # this test's main thread, and ensure every Tk object is released before exit.
+    try:
+        root = tk.Tk()
+        root.withdraw()
+    except tk.TclError:
+        pytest.skip("no display")
+
     e = make()
     e.current = Track("s", "Midnight City", 243, "bob")
     e.started_at = __import__("time").monotonic() - 60
     e.queue.add_request(Track("q", "Queued song", 100, "amy"))
     e.say("hello")
+    app = None
     try:
         app = App(e)
-    except tk.TclError:
-        pytest.skip("no display")
-
-    try:
         app.update()
         assert app.v_title.cget("text") == "Midnight City"
         assert "Queued song" in app.lb.get(0)
@@ -100,11 +105,13 @@ def test_gui_smoke():
         app.update()
         assert app.b_pause.cget("text") == "หยุดชั่วคราว"
     finally:
-        # An explicit root check distinguishes a real display from missing Tk.
-        # Run normal shutdown on the main thread and release every Tk widget ref.
-        app.close()
+        if app is not None:
+            app.close()
         app = None
+        e.shutdown()
         e = None
+        root.destroy()
+        root = None
 
 
 def test_window_pick():
