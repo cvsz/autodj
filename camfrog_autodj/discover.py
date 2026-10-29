@@ -45,7 +45,8 @@ def choose_view(ctls: list[Ctl], rx: re.Pattern) -> tuple[Ctl | None, int]:
         if c.ctype not in VIEW_TYPES or not c.visible:
             continue
         matched = sum(1 for ln in c.text.splitlines() if rx.match(ln.strip()))
-        key = (matched, len(c.text), c.area, c.ctype == "Document")
+        # Prefer a Document on zero matches; a long unsent Edit draft is not chat history.
+        key = (matched, c.ctype == "Document", len(c.text), c.area)
         if best_key is None or key > best_key:
             best, best_key = c, key
     if best is None or (best_key[0] == 0 and best.ctype != "Document"):
