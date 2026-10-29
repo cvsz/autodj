@@ -1,6 +1,17 @@
 import sys
 import time
-import tkinter as tk
+from pathlib import Path
+
+# Executing this file by path sets sys.path[0] to tests/, not the repository root.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+try:
+    import tkinter as tk
+except ImportError as exc:
+    print(f"TK_UNAVAILABLE: {exc}", file=sys.stderr)
+    raise SystemExit(3)
 
 from camfrog_autodj.gui import App
 from camfrog_autodj.models import Track
