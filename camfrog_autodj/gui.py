@@ -781,7 +781,20 @@ class App(tk.Tk):
             self.ent_say.delete(0, "end")
 
     def close(self):
+        if self._closing:
+            return
         self._closing = True
+        # Cancel Tk callbacks before shutting down the engine or destroying Tcl.
+        # A callback scheduled from a background thread during teardown can leave
+        # a Tcl async handler alive and crash CPython on Windows at process exit.
+        for attr in ("_ref", "_anim"):
+            callback_id = getattr(self, attr, None)
+            if callback_id:
+                try:
+                    self.after_cancel(callback_id)
+                except tk.TclError:
+                    pass
+                setattr(self, attr, None)
         self.e.shutdown()
         self.destroy()
 
