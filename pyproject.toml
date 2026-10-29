@@ -21,4 +21,4 @@ build-backend = "setuptools.build_meta"
 packages = ["camfrog_autodj", "camfrog_autodj.adapters"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+# pythonpath = ["."]  # removed to avoid path resolution issues on CI
