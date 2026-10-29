@@ -15,9 +15,5 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install dependencies
         run: python -m pip install -e . "pytest==7.4.4"
-      - name: Run tests (Python 3.12)
-        if: matrix.python == '3.12'
+      - name: Run tests
         run: python -m pytest -q -p no:faulthandler -p no:cacheprovider
-      - name: Run tests (Python 3.11 with minipytest)
-        if: matrix.python == '3.11'
-        run: python tools/minipytest.py tests
