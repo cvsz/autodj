@@ -36,7 +36,6 @@ if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
                 else self.config.getoption("verbose", 0)
             )
             truncate_locals = verbosity <= 1
-            truncate_args = verbosity <= 2
 
             # FIX: Use os.path instead of pathlib.Path to avoid cross-platform issues
             # Always use abspath=True to avoid the problematic comparison
@@ -49,7 +48,6 @@ if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
                 style=style,
                 tbfilter=tbfilter,
                 truncate_locals=truncate_locals,
-                truncate_args=truncate_args,
             )
 
         _pytest.nodes.Node._repr_failure_py = patched_repr_failure_py
