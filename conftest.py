@@ -1,6 +1,5 @@
 """pytest configuration and monkey-patches for CI compatibility."""
 
-import os
 import sys
 
 # Monkey-patch pytest's _repr_failure_py at import time to handle cross-platform path issues on Py3.11
@@ -30,12 +29,14 @@ if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
                 if style == "auto":
                     style = "long"
 
-            if self.config.get_verbosity() > 1:
-                truncate_locals = False
-            else:
-                truncate_locals = True
-
-            truncate_args = False if self.config.get_verbosity() > 2 else True
+            get_verbosity = getattr(self.config, "get_verbosity", None)
+            verbosity = (
+                get_verbosity()
+                if callable(get_verbosity)
+                else self.config.getoption("verbose", 0)
+            )
+            truncate_locals = verbosity <= 1
+            truncate_args = verbosity <= 2
 
             # FIX: Use os.path instead of pathlib.Path to avoid cross-platform issues
             # Always use abspath=True to avoid the problematic comparison
