@@ -100,10 +100,12 @@ def test_gui_smoke():
         app.update()
         assert app.b_pause.cget("text") == "หยุดชั่วคราว"
     finally:
-        # A real Tk interpreter must be created and destroyed on the main thread.
-        # Run the same deterministic shutdown path used by the WM_DELETE_WINDOW handler.
+        # An explicit root check distinguishes a real display from missing Tk.
+        # Run normal shutdown on the main thread and release every Tk widget ref.
         app.close()
-        del app
+        for name in ("app", "e"):
+            if name in locals():
+                del locals()[name]
 
 
 def test_window_pick():
