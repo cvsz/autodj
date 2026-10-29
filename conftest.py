@@ -11,7 +11,7 @@ if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
         def patched_repr_failure_py(self, excinfo, style=None):
             # Completely replace the method to avoid Path() call that fails on cross-platform paths
             from _pytest.fixtures import FixtureLookupError
-            from _pytest import fail
+            from _pytest.outcomes import fail
 
             if isinstance(excinfo.value, _pytest.nodes.ConftestImportFailure):
                 excinfo = _pytest.ExceptionInfo.from_exception(excinfo.value.cause)
