@@ -34,6 +34,17 @@ def test_choose_view_returns_none_when_no_match():
     assert view is None and matched == 0
 
 
+def test_choose_view_prefers_document_when_edit_contains_only_unsent_draft():
+    rx = re.compile(Config().line_regex)
+    ctls = [
+        Ctl("Document", 0, "No parsed chat history", 0, 0, 120, 60),
+        Ctl("Edit", 0, "unsent draft " * 20, 0, 520, 300, 40),
+    ]
+    view, matched = choose_view(ctls, rx)
+    assert view is not None and view.ctype == "Document"
+    assert matched == 0
+
+
 # ------------------------------------------------------------ choose_input ---
 def test_choose_input_picks_lowest_widest_edit():
     view = Ctl("Document", 0, "alice: hi", 0, 0, 100, 50)
