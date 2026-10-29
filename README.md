@@ -62,7 +62,7 @@ Messages are split at the avatar images of the room's history pane, so date head
 - **Need a log to send to someone**: `AutoDJ.exe --log-file autodj.log` (or `log_file` in config).
 
 ## Caveats
-- No public Camfrog bot API. Chat read/send is UI Automation (`adapters/uia.py`): control indexes and `line_regex` must be tuned per Camfrog version.
-- Tested (78 tests, `python -m pytest`): queue, commands EN/TH, chat diff, parsing, launcher flow (mocked), config validation, failure/echo/limit regressions (`tests/test_hardening.py`), GUI logic against a strict fake Tk (`tests/test_gui_logic.py`), and an end-to-end run of the real CLI with a fake mpv.
-- Not tested: real Camfrog, mpv, yt-dlp, TTS (Thai voice must be installed in Windows), Windows launch/URI, how the new GUI actually looks on screen (the real-Tk smoke test `test_gui_smoke` runs wherever a display exists), `build.ps1`.
-- Check room rules and Camfrog terms before running a bot.
+
+- The automated suite covers queue and command behavior (EN/TH), chat parsing, launcher flow (mocked), configuration validation, player failure/timeout handling, GUI logic against a strict fake Tk, and a CLI run using a fake mpv. Run `python -m pytest -q` to verify the current checkout.
+- Real Camfrog room interaction, real mpv/yt-dlp playback and natural track completion, TTS voices, Windows launch/URI behavior, the rendered GUI on a real desktop, and the signed `AutoDJ.exe` build require validation on a Windows machine with those dependencies installed. Passing mock-based tests does not certify real audio playback.
+- `mpv_timeout = 0` is the default so a song is not stopped based on elapsed wall-clock time. A positive value may be configured as a recovery limit if mpv hangs; with zero, a hung mpv process must be stopped manually.
