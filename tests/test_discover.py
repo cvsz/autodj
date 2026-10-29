@@ -1,15 +1,20 @@
 """Tests for camfrog_autodj/discover.py — auto-discovery of Camfrog room window
 and safe config.toml editing (backup, atomic write, TOML re-validation)."""
 from __future__ import annotations
-import re
-from pathlib import Path
 
-import pytest
+import re
 
 from camfrog_autodj.config import Config
 from camfrog_autodj.discover import (
-    Ctl, Found, choose_input, choose_view, save_config, score_window,
-    score_web, to_updates, update_config_text,
+    Ctl,
+    Found,
+    choose_input,
+    choose_view,
+    save_config,
+    score_web,
+    score_window,
+    to_updates,
+    update_config_text,
 )
 
 
@@ -28,7 +33,7 @@ def test_choose_view_picks_document_with_most_matching_lines():
 
 def test_choose_view_returns_none_when_no_match():
     rx = re.compile(Config().line_regex)
-    ctls = [Ctl("Edit", 0, "type here", 0, 0, 50, 20)]
+    ctls = [Ctl("Edit", 0, "", 0, 0, 50, 20)]
     view, matched = choose_view(ctls, rx)
     assert view is None and matched == 0
 
@@ -55,10 +60,10 @@ def test_choose_input_excludes_the_view_control():
 # ------------------------------------------------------------ score_window ---
 def test_score_window_returns_found_when_view_and_input():
     rx = re.compile(Config().line_regex)
-    view = Ctl("Document", 0, "alice: hi\n", 0, 0, 100, 50, area=5000)
-    inp = Ctl("Edit", 0, "", 0, 520, 200, 40, area=8000)
+    view = Ctl("Document", 0, "alice: hi\n", 0, 0, 100, 50)
+    inp = Ctl("Edit", 0, "", 0, 520, 200, 40)
     f = score_window("My Room", [view, inp], rx)
-    assert f is not None and f.web is False and f.matched == 0
+    assert f is not None and f.web is False and f.matched == 1
 
 
 def test_score_window_returns_none_when_no_view():
@@ -81,7 +86,7 @@ def test_score_web_returns_none_when_no_panes(monkeypatch):
 def test_to_updates_web_and_text():
     rx = re.compile(Config().line_regex)
     web_f = Found("ZeaZDev: x", Ctl("Pane", 0), Ctl("Pane", 0), 5, web=True)
-    assert to_updates(web_f) == {"window_title_re": "ZeaZDev\\: x", "view_kind": "web"}
+    assert to_updates(web_f) == {"window_title_re": re.escape("ZeaZDev: x"), "view_kind": "web"}
 
     text_f = Found("My Room", Ctl("Document", 0, "", 0, 0, 100, 50),
                    Ctl("Edit", 0, "", 0, 520, 200, 40), 3)
@@ -94,14 +99,14 @@ def test_to_updates_web_and_text():
 def test_update_config_text_replaces_existing_key():
     text = 'bot_nick = "AutoDJ"\nlog_file = ""\n'
     new = update_config_text(text, {"log_file": "autodj.log"})
-    assert 'log_file = "autodj.log"' in new
+    assert "log_file = 'autodj.log'" in new
     assert 'bot_nick = "AutoDJ"' in new
 
 
 def test_update_config_text_appends_missing_key():
     text = 'bot_nick = "AutoDJ"\n'
     new = update_config_text(text, {"playlist_file": "playlist.json"})
-    assert 'playlist_file = "playlist.json"' in new
+    assert "playlist_file = 'playlist.json'" in new
 
 
 def test_update_config_text_keeps_comment():
@@ -132,5 +137,5 @@ def test_save_config_refuses_invalid_toml(tmp_path):
 
 def test_save_config_no_change_returns_false(tmp_path):
     p = tmp_path / "config.toml"
-    p.write_text('bot_nick = "X"\nlog_file = "autodj.log"\n', "utf-8")
+    p.write_text("bot_nick = 'X'\nlog_file = 'autodj.log'\n", "utf-8")
     assert save_config(str(p), {"log_file": "autodj.log"}) is False

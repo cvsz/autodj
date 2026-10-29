@@ -1,5 +1,6 @@
 """Item sequences shaped like a real Camfrog room dump (avatar = Image with empty name)."""
 import re
+
 from camfrog_autodj.adapters.base import parse_line
 from camfrog_autodj.config import Config
 from camfrog_autodj.webchat import items_to_lines

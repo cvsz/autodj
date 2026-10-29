@@ -1,15 +1,12 @@
-import os
-import subprocess
-import sys
 
 import pytest
+from test_core import make, out
 
 from camfrog_autodj import launcher
 from camfrog_autodj.adapters.base import ChatMessage
 from camfrog_autodj.config import Config
 from camfrog_autodj.messages import STR
 from camfrog_autodj.models import Track
-from test_core import FakeAdapter, FakePlayer, make, out
 
 
 def test_en_th_same_keys():
@@ -113,7 +110,14 @@ def test_window_pick():
 
 def test_discover_pick_and_config(tmp_path):
     import re
-    from camfrog_autodj.discover import Ctl, score_window, best_room, to_updates, save_config
+
+    from camfrog_autodj.discover import (
+        Ctl,
+        best_room,
+        save_config,
+        score_window,
+        to_updates,
+    )
     rx = re.compile(Config().line_regex)
     chat = Ctl("Document", 0, "alice: hi\nbob: yo\n", 0, 0, 800, 500)
     box = Ctl("Edit", 0, "", 0, 520, 800, 550)
@@ -146,8 +150,9 @@ def test_window_pick_by_process():
 
 def test_webchat_lines():
     import re
-    from camfrog_autodj.webchat import tokens_to_lines
+
     from camfrog_autodj.adapters.base import parse_line
+    from camfrog_autodj.webchat import tokens_to_lines
     toks = ["date header", "ZeazBot", "4:02", "Hello, user Omegaria!", "ZeazBot", "4:10", "Hello,\xa0user",
             "zdevz", "5:43", "!play", "Zeasa", "5:44", "multi", "part", "ZeazBot", "5:45", "Success is not: easy",
             "cut-off-nick-less", "6:00"]
@@ -162,6 +167,6 @@ def test_webchat_lines():
 
 
 def test_discover_web_updates():
-    from camfrog_autodj.discover import Found, Ctl, to_updates
+    from camfrog_autodj.discover import Ctl, Found, to_updates
     ups = to_updates(Found("ZeaZDev: x", Ctl("Pane", 0), Ctl("Pane", 0), 3, web=True))
     assert ups["view_kind"] == "web" and "window_title_re" in ups

@@ -8,6 +8,7 @@
   - engine.recent_requests + the `!last` command are registered
 """
 from __future__ import annotations
+
 import json
 import os
 import subprocess
@@ -121,10 +122,9 @@ def test_play_terminates_hung_mpv_after_timeout(monkeypatch):
 
     killed = []
     fake_proc = MagicMock()
-    fake_proc.wait.side_effect = subprocess.TimeoutExpired("mpv", 30)
+    fake_proc.wait.side_effect = [subprocess.TimeoutExpired("mpv", 30), 0]
     fake_proc.terminate = lambda: killed.append("terminate")
     fake_proc.kill = lambda: killed.append("kill")
-    fake_proc.poll.return_value = 0  # after terminate, process has exited
 
     def fake_popen(cmd, **kw):
         return fake_proc

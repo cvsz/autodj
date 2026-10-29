@@ -10,6 +10,7 @@
   - engine: _remote passes search_limit from config (N-eng-1)
 """
 from __future__ import annotations
+
 import logging
 import os
 import subprocess
@@ -20,8 +21,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from camfrog_autodj.config import Config, ConfigError
-from camfrog_autodj.library import remote_tracks, parse_ytdlp_info
-from camfrog_autodj.messages import STR, tr
+from camfrog_autodj.library import remote_tracks
+from camfrog_autodj.messages import tr
 from camfrog_autodj.models import Track
 from camfrog_autodj.player import MpvPlayer
 
