@@ -3,11 +3,9 @@
 import os
 import sys
 
-
-def pytest_configure(config):
-    """Monkey-patch pytest's _repr_failure_py to handle cross-platform path issues on Py3.11."""
-    if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
-        # Patch the problematic method in _pytest.nodes.Node
+# Monkey-patch pytest's _repr_failure_py at import time to handle cross-platform path issues on Py3.11
+if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
+    try:
         import _pytest.nodes
 
         def patched_repr_failure_py(self, excinfo, style=None):
@@ -54,6 +52,9 @@ def pytest_configure(config):
             )
 
         _pytest.nodes.Node._repr_failure_py = patched_repr_failure_py
+    except Exception:
+        # If patching fails, continue without it
+        pass
 
 
 def pytest_sessionfinish(session, exitstatus):
