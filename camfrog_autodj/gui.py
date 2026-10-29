@@ -784,9 +784,8 @@ class App(tk.Tk):
         if self._closing:
             return
         self._closing = True
-        # Tk APIs must stay on the main thread; stop worker callbacks before
-        # cancelling scheduled Tcl events and destroying the interpreter.
-        self.e.shutdown()
+        # Cancel scheduled callbacks on the Tk-owning thread first.
+        # Tk may already be in teardown; cancellation errors are non-fatal.
         for attr in ("_ref", "_anim"):
             callback_id = getattr(self, attr, None)
             if callback_id:
@@ -795,7 +794,10 @@ class App(tk.Tk):
                 except tk.TclError:
                     log.debug("Tk callback already gone during shutdown: %s", attr, exc_info=True)
                 setattr(self, attr, None)
-        self.destroy()
+        try:
+            self.e.shutdown()
+        finally:
+            self.destroy()
 
     # ---- polling -------------------------------------------------------------
     def refresh(self):
