@@ -19,11 +19,24 @@ def pytest_configure(config):
                 if "cannot instantiate" in str(e) and ("WindowsPath" in str(e) or "PosixPath" in str(e)):
                     # Workaround: the original method failed due to cross-platform path issue
                     # Replicate the logic but use os.path instead of pathlib.Path
-                    from _pytest.fixtures import FixtureLookupError
-                    from _pytest import fail
+                    try:
+                        from _pytest.fixtures import FixtureLookupError
+                    except ImportError:
+                        FixtureLookupError = type("FixtureLookupError", (Exception,), {})
+                    
+                    try:
+                        from _pytest import fail
+                    except ImportError:
+                        class fail:
+                            class Exception(Exception):
+                                pytrace = True
 
-                    if isinstance(excinfo.value, _pytest.nodes.ConftestImportFailure):
-                        excinfo = _pytest.ExceptionInfo.from_exception(excinfo.value.cause)
+                    # Handle ConftestImportFailure
+                    if hasattr(_pytest.nodes, "ConftestImportFailure"):
+                        ConftestImportFailure = _pytest.nodes.ConftestImportFailure
+                        if isinstance(excinfo.value, ConftestImportFailure):
+                            excinfo = _pytest.ExceptionInfo.from_exception(excinfo.value.cause)
+                    
                     if isinstance(excinfo.value, fail.Exception):
                         if not excinfo.value.pytrace:
                             style = "value"
