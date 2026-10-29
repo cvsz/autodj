@@ -36,7 +36,25 @@ def _app(monkeypatch, available=True):
     e.history.appendleft(Track("/m/h.mp3", "Old hit", 200, "bob"))
     e.say("hello room")
     app = gui.App(e)
+    app._test_engine = e
     return gui, e, app
+
+
+def _cleanup_app(app):
+    """Cancel all fake-Tk callbacks and shut down the fixture engine."""
+    if app is None:
+        return
+    app._closing = True
+    for name in ("_ref", "_anim"):
+        callback_id = getattr(app, name, None)
+        if callback_id:
+            app.after_cancel(callback_id)
+            setattr(app, name, None)
+    engine = getattr(app, "_test_engine", None)
+    if engine is not None:
+        engine.shutdown()
+        app._test_engine = None
+    app.destroy()
 
 
 def _click(btn):
@@ -55,9 +73,7 @@ def test_builds_and_shows_state(monkeypatch):
         assert app.b_pause.cget("text") == "Pause"
     finally:
         if "app" in locals():
-            # Fake Tk has no real Tcl interpreter, but mark closing so callbacks
-            # are not rescheduled between test phases.
-            app._closing = True
+            _cleanup_app(app)
         sys.modules.pop("camfrog_autodj.gui", None)
 
 
@@ -70,9 +86,7 @@ def test_language_switch_relabels_everything(monkeypatch):
         assert app.b_lang["th"]._active and not app.b_lang["en"]._active
     finally:
         if "app" in locals():
-            # Fake Tk has no real Tcl interpreter, but mark closing so callbacks
-            # are not rescheduled between test phases.
-            app._closing = True
+            _cleanup_app(app)
         sys.modules.pop("camfrog_autodj.gui", None)
 
 
@@ -98,9 +112,7 @@ def test_playing_state_drives_animation_and_progress(monkeypatch):
         assert app._state == "paused" and app.b_pause.cget("text") == "Resume" and app.b_pause._icon == "▶"
     finally:
         if "app" in locals():
-            # Fake Tk has no real Tcl interpreter, but mark closing so callbacks
-            # are not rescheduled between test phases.
-            app._closing = True
+            _cleanup_app(app)
         sys.modules.pop("camfrog_autodj.gui", None)
 
 
@@ -129,9 +141,7 @@ def test_buttons_do_what_they_say(monkeypatch):
         assert 40 <= e.volume <= 60
     finally:
         if "app" in locals():
-            # Fake Tk has no real Tcl interpreter, but mark closing so callbacks
-            # are not rescheduled between test phases.
-            app._closing = True
+            _cleanup_app(app)
         sys.modules.pop("camfrog_autodj.gui", None)
 
 
@@ -142,9 +152,7 @@ def test_missing_mpv_shows_banner(monkeypatch):
         assert any("mpv not found" in t for t in texts)
     finally:
         if "app" in locals():
-            # Fake Tk has no real Tcl interpreter, but mark closing so callbacks
-            # are not rescheduled between test phases.
-            app._closing = True
+            _cleanup_app(app)
         sys.modules.pop("camfrog_autodj.gui", None)
 
 
@@ -157,7 +165,5 @@ def test_refresh_survives_an_error_and_keeps_polling(monkeypatch):
         assert len(app._after) == n + 1                        # rescheduled despite the exception
     finally:
         if "app" in locals():
-            # Fake Tk has no real Tcl interpreter, but mark closing so callbacks
-            # are not rescheduled between test phases.
-            app._closing = True
+            _cleanup_app(app)
         sys.modules.pop("camfrog_autodj.gui", None)
