@@ -126,11 +126,12 @@ class Misc:
         pass
 
     def after(self, ms, fn=None, *a):
-        self._after.append((ms, fn))
-        return f"after#{len(self._after)}"
+        callback_id = f"after#{next(self._ids)}"
+        self._after.append((callback_id, ms, fn))
+        return callback_id
 
-    def after_cancel(self, i):
-        self._after = [(ms, fn) for ms, fn in self._after if i != f"after#{len(self._after)}"]
+    def after_cancel(self, callback_id):
+        self._after = [(i, ms, fn) for i, ms, fn in self._after if i != callback_id]
 
     def update(self):
         pass
