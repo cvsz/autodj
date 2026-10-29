@@ -1,6 +1,9 @@
 """pytest configuration and monkey-patches for CI compatibility."""
 
+import os
 import sys
+
+_HOST_OS_NAME = os.name
 
 # Monkey-patch pytest's _repr_failure_py at import time to handle cross-platform path issues on Py3.11
 if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
@@ -41,14 +44,21 @@ if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
             # Always use abspath=True to avoid the problematic comparison
             abspath = True
 
-            return excinfo.getrepr(
-                funcargs=True,
-                abspath=abspath,
-                showlocals=self.config.getoption("showlocals", False),
-                style=style,
-                tbfilter=tbfilter,
-                truncate_locals=truncate_locals,
-            )
+            previous_os_name = os.name
+            try:
+                # Tests may temporarily simulate Windows by patching os.name. Restore
+                # the host platform while pytest resolves traceback paths.
+                os.name = _HOST_OS_NAME
+                return excinfo.getrepr(
+                    funcargs=True,
+                    abspath=abspath,
+                    showlocals=self.config.getoption("showlocals", False),
+                    style=style,
+                    tbfilter=tbfilter,
+                    truncate_locals=truncate_locals,
+                )
+            finally:
+                os.name = previous_os_name
 
         _pytest.nodes.Node._repr_failure_py = patched_repr_failure_py
     except Exception:
