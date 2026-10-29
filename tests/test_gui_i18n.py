@@ -103,9 +103,8 @@ def test_gui_smoke():
         # An explicit root check distinguishes a real display from missing Tk.
         # Run normal shutdown on the main thread and release every Tk widget ref.
         app.close()
-        for name in ("app", "e"):
-            if name in locals():
-                del locals()[name]
+        app = None
+        e = None
 
 
 def test_window_pick():
