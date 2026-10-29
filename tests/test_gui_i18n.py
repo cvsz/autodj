@@ -78,41 +78,21 @@ def test_launcher_requires_template(monkeypatch):
 
 
 def test_gui_smoke():
-    tk = pytest.importorskip("tkinter")
-    from camfrog_autodj.gui import App
-
-    # Avoid a fake/silent shutdown: create and destroy the Tcl interpreter in
-    # this test's main thread, and ensure every Tk object is released before exit.
-    try:
-        root = tk.Tk()
-        root.withdraw()
-    except tk.TclError:
-        pytest.skip("no display")
-
-    e = make()
-    e.current = Track("s", "Midnight City", 243, "bob")
-    e.started_at = __import__("time").monotonic() - 60
-    e.queue.add_request(Track("q", "Queued song", 100, "amy"))
-    e.say("hello")
-    app = None
-    try:
-        app = App(e)
-        app.update()
-        assert app.v_title.cget("text") == "Midnight City"
-        assert "Queued song" in app.lb.get(0)
-        assert "hello" in app.chat.get("1.0", "end")
-        app.set_lang("th")
-        app.update()
-        assert app.b_pause.cget("text") == "หยุดชั่วคราว"
-    finally:
-        if app is not None:
-            app.close()
-        app = None
-        e.shutdown()
-        e = None
-        root.destroy()
-        root = None
-
+    """Run real Tk in an isolated process so Tcl finalizers cannot leak into pytest."""
+    script = os.path.join(os.path.dirname(__file__), "gui_smoke_subprocess.py")
+    result = subprocess.run(
+        [sys.executable, script],
+        cwd=os.path.dirname(os.path.dirname(__file__)),
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if result.returncode == 3 and "TK_UNAVAILABLE:" in result.stderr:
+        pytest.skip(result.stderr.strip())
+    assert result.returncode == 0, (
+        f"Tk smoke process exited {result.returncode}.\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
 
 def test_window_pick():
     from camfrog_autodj.windows import Cand, pick
