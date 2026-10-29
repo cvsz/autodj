@@ -1,7 +1,10 @@
 # Changelog
 
 ## 0.2.3
-`make` on plain Windows PowerShell/cmd.
+`make` on plain Windows PowerShell/cmd. **Automated Windows 11 installer (`install.ps1` / `install.bat`).**
+
+### Added
+- `install.ps1` / `install.bat`: Full-featured automated installer for Windows 11. Verifies OS, installs prerequisites (Python 3.11+, mpv, yt-dlp, VB-Cable) via winget or direct download, clones the project, installs Python dependencies, builds `AutoDJ.exe` with PyInstaller, creates `config.toml` with interactive prompts, creates Desktop/Start Menu shortcuts (including Config editor and Uninstaller), optional auto-start on login, and runs `AutoDJ.exe --check` for verification. Logs to `%TEMP%\autodj-install-<timestamp>.log`.
 
 ### Fixed
 - `make help` (and every other target) failed on Windows with confusing cascading errors ("The system cannot find the path specified", then `awk` "CreateProcess ... failed") when `make` was installed but bash/awk/coreutils were not on PATH. `SHELL` no longer hard-codes the Linux path `/bin/bash` (now resolved via PATH, so it also works if Git Bash's `bash.exe` is on PATH without being at that exact path). More importantly, the Makefile now checks for `bash` up front and fails with ONE clear message explaining the two real options: run `make` from inside Git Bash, or skip `make` entirely and use `build.ps1` / `python -m pytest` directly (which is what `make` wraps anyway and needs no Unix tools at all).

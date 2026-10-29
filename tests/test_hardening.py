@@ -5,6 +5,7 @@ import threading
 import time
 
 import pytest
+from test_core import FakeAdapter, FakePlayer, make, out
 
 from camfrog_autodj import __version__
 from camfrog_autodj.adapters.base import ChatMessage
@@ -13,7 +14,6 @@ from camfrog_autodj.config import Config, ConfigError
 from camfrog_autodj.messages import STR
 from camfrog_autodj.models import Track
 from camfrog_autodj.playqueue import PlayQueue
-from test_core import FakeAdapter, FakePlayer, make, out
 
 
 def T(n, u="AutoDJ", d=60):
@@ -293,6 +293,7 @@ def test_parse_ytdlp_info_playlist_and_single():
 def test_remote_tracks_falls_back_to_exe_when_module_missing(monkeypatch, tmp_path):
     import builtins
     import subprocess
+
     from camfrog_autodj import library
 
     real_import = builtins.__import__
@@ -319,6 +320,7 @@ def test_remote_tracks_falls_back_to_exe_when_module_missing(monkeypatch, tmp_pa
 
 def test_remote_tracks_clear_error_when_nothing_available(monkeypatch):
     import builtins
+
     from camfrog_autodj import library
     from camfrog_autodj.models import UserError
     real_import = builtins.__import__
@@ -364,6 +366,7 @@ def test_doctor_reports_missing_mpv_and_ok_dirs(monkeypatch, tmp_path):
 
 def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path):
     import os
+
     from camfrog_autodj.library import find_ytdlp
     nt = os.name == "nt"
     mpv = tmp_path / ("mpv.exe" if nt else "mpv")
@@ -380,6 +383,7 @@ def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path):
 def test_remote_tracks_uses_module_when_no_exe(monkeypatch):
     import sys
     import types
+
     from camfrog_autodj import library
 
     class FakeYDL:
@@ -426,7 +430,13 @@ def test_equaliser_is_bounded_and_quiet_when_paused():
 
 
 def test_aurora_and_particles_and_confetti_are_stable_and_bounded():
-    from camfrog_autodj.visuals import aurora_offset, confetti_pos, confetti_burst, make_particles, particle_pos
+    from camfrog_autodj.visuals import (
+        aurora_offset,
+        confetti_burst,
+        confetti_pos,
+        make_particles,
+        particle_pos,
+    )
     for t in (0.0, 5.0, 123.4):
         for i in range(4):
             v = aurora_offset(t, i, 4)
@@ -456,7 +466,6 @@ def test_vinyl_and_pulse_and_roundrect():
 def test_build_env_checker_lists_what_is_missing():
     import importlib.util
     import pathlib
-    import sys
     spec = importlib.util.spec_from_file_location(
         "check_build_env", pathlib.Path(__file__).resolve().parent.parent / "tools" / "check_build_env.py")
     mod = importlib.util.module_from_spec(spec)

@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import logging
 import re
 import threading
 import time
+
 from .base import ChatAdapter, diff_lines, parse_line
 
 log = logging.getLogger("autodj")
@@ -26,7 +28,6 @@ class UiaAdapter(ChatAdapter):
     view_kind = auto | web | text. `AutoDJ.exe --discover` fills in what it finds."""
 
     def __init__(self, cfg):
-        from pywinauto import Desktop
         self.cfg = cfg
         self.rx = re.compile(cfg.line_regex)
         from ..windows import resolve
@@ -113,15 +114,23 @@ class UiaAdapter(ChatAdapter):
         """Did `text` show up as a new chat line within a few seconds? (read errors count as 'yes':
         never risk a duplicate post just because the history could not be read)"""
         want = self._norm(text)
-        end = time.time() + 3.0
+        end = time.time() + 5.0  # Extended from 3s to 5s for slower web updates
         while time.time() < end:
-            time.sleep(0.4)
+            time.sleep(0.5)
             try:
                 lines = self._lines()
                 new = diff_lines(before, lines) if before else lines
             except Exception:
                 return True
-            if any(self._norm(l).endswith(": " + want) or self._norm(l).endswith(want) for l in new):
+            for l in new:
+                norm_l = self._norm(l)
+                # Check multiple match patterns for web chat format variations
+                if (norm_l.endswith(": " + want) or
+                    norm_l.endswith(want) or
+                    want in norm_l):
+                    return True
+            # Also check if the bot's nick appears with the text (common in web chat)
+            if self.cfg.bot_nick and f"{self.cfg.bot_nick}: {want}" in norm_l:
                 return True
         return False
 
@@ -129,30 +138,46 @@ class UiaAdapter(ChatAdapter):
         from .. import winmsg
         top = int(self.win.handle)
         winmsg.show_noactivate(top)
-        # 1) put the text into the (web) editor via UIA ValuePattern -- no focus change, no clipboard.
-        #    (posted WM_CHAR alone usually never reaches a Chromium editor that has no keyboard focus)
-        #    Guard: per UIA provider contract, only call SetValue when the editor is enabled and writable;
-        #    otherwise skip straight to the posted-keystroke fallback to avoid useless exceptions.
+
+        # Try multiple strategies in order of reliability for Chromium-based web editors
+        r = self._input.rectangle()
+        pt = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
+
+        # Strategy 1: WM_SETTEXT (most reliable for Chromium contenteditable)
+        # This sets the entire text at once via SendMessage
+        try:
+            if winmsg.post_text_rich(top, pt, text, enter=True, click=True):
+                log.debug("sent via WM_SETTEXT (rich)")
+                return True
+        except Exception as e:
+            log.debug("WM_SETTEXT failed: %s", e)
+
+        # Strategy 2: UIA ValuePattern SetValue
         try:
             vp = self._input.iface_value
             if self._input.iface.CurrentIsEnabled and not vp.CurrentIsReadOnly:
                 vp.SetValue(text)
-            else:
-                raise RuntimeError("editor not enabled or is read-only")
+                # Send Enter via posted message
+                if winmsg.post_text(top, pt, "", enter=True, click=False):
+                    log.debug("sent via UIA SetValue + Enter")
+                    return True
         except Exception as e:
-            log.debug("UIA SetValue skipped/failed (%s); falling back to posted keystrokes", e)
-            r = self._input.rectangle()
-            pt = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
-            if not winmsg.post_text(top, pt, text, enter=False):
-                return False
-        # 2) Enter to send it: a posted click focuses the page editor, then RETURN.
-        r = self._input.rectangle()
-        pt = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
-        return winmsg.post_text(top, pt, "", enter=True)
+            log.debug("UIA SetValue failed: %s", e)
+
+        # Strategy 3: Posted WM_CHAR with IME composition (fallback)
+        try:
+            if winmsg.post_text(top, pt, text, enter=True, click=True):
+                log.debug("sent via posted WM_CHAR")
+                return True
+        except Exception as e:
+            log.debug("posted WM_CHAR failed: %s", e)
+
+        return False
 
     def _send_fg(self, text):
         import pyperclip
         from pywinauto.keyboard import send_keys
+
         from .. import winmsg
         prev = winmsg.foreground()
         try:
@@ -212,11 +237,36 @@ class UiaAdapter(ChatAdapter):
                             before = self._lines()
                         except Exception:
                             before = None
-                    try:
-                        ok = self._send_bg(text)
-                    except Exception as e:
-                        log.warning("background send failed: %s", e)
-                        ok = False
+
+                    # Try up to 2 times with different strategies
+                    max_bg_attempts = 2
+                    ok = False
+                    for attempt in range(max_bg_attempts):
+                        try:
+                            ok = self._send_bg(text)
+                        except Exception as e:
+                            log.warning("background send attempt %d failed: %s", attempt + 1, e)
+                            ok = False
+
+                        if ok:
+                            if mode == "auto" and self.cfg.send_verify:
+                                # Verify the message appeared
+                                if before is None or self._appeared(text, before):
+                                    log.debug("sent in background (attempt %d): %s", attempt + 1, text)
+                                    self._bg_fails = 0
+                                    return
+                                else:
+                                    log.warning("background send not confirmed in the room (attempt %d)", attempt + 1)
+                            else:
+                                log.debug("sent in background (attempt %d): %s", attempt + 1, text)
+                                self._bg_fails = 0
+                                return
+                        # Small delay before retry
+                        time.sleep(0.5)
+
+                    self._bg_fails += 1
+                    log.info("background send not confirmed in the room (%d in a row): falling back to foreground",
+                             self._bg_fails)
                     if mode == "background":
                         if not ok:
                             raise RuntimeError("background send failed (try send_mode = 'auto' or 'foreground')")

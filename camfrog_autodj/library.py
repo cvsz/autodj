@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 import logging
 import os
@@ -6,6 +7,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
+
 from .models import Track, YtdlpMissing
 
 log = logging.getLogger("autodj")
@@ -53,13 +55,26 @@ def find_ytdlp(ytdlp_path: str = "", mpv_path: str = "") -> str:
     if ytdlp_path:
         return ytdlp_path if (shutil.which(ytdlp_path) or Path(ytdlp_path).is_file()) else ""
     names = ("yt-dlp.exe", "yt-dlp") if os.name == "nt" else ("yt-dlp",)
-    mpv = shutil.which(mpv_path) if mpv_path else None
-    if mpv:
+    # If mpv_path is given and points to an actual file, use its parent directory
+    mpv_candidate = None
+    if mpv_path:
+        p = Path(mpv_path)
+        if p.is_file():
+            mpv_candidate = p.resolve()
+        else:
+            # Fallback: try to resolve via PATH
+            resolved = shutil.which(mpv_path)
+            if resolved:
+                mpv_candidate = Path(resolved).resolve()
+    if mpv_candidate:
         for n in names:
-            cand = Path(mpv).resolve().parent / n
+            cand = mpv_candidate.parent / n
             if cand.is_file():
                 return str(cand)
-    return shutil.which("yt-dlp") or ""
+    # Only fall back to system PATH if mpv_path was NOT explicitly provided
+    if not mpv_path:
+        return shutil.which("yt-dlp") or ""
+    return ""
 
 
 def parse_ytdlp_info(info: dict, requester: str = "AutoDJ") -> list[Track]:

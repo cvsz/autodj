@@ -49,6 +49,40 @@ It first verifies that every package the exe must contain (yt-dlp, mutagen, pytt
 - The exe is built without UPX (fewer antivirus false positives) and started once with `--version` as a smoke test. `AutoDJ.spec` mirrors the options in `build.ps1`; edit `build.ps1`, not the spec.
 - Close `AutoDJ.exe` before building (it cannot be rebuilt or signed while running). `camfrog_autodj/__init__.py` must contain only `__version__`.
 
+## Automated Windows 11 Installer (one click)
+**New in 0.2.3**: `install.ps1` / `install.bat` — a full-featured automated installer for Windows 11.
+It handles the entire setup end-to-end:
+1. **Verifies Windows 11** (Build 22000+)
+2. **Installs prerequisites** via winget (or direct download):
+   - Python 3.11+
+   - mpv player
+   - yt-dlp
+   - VB-Cable virtual audio driver (optional, with guided download)
+3. **Clones the project** from GitHub (or uses existing directory)
+4. **Installs Python dependencies** (editable mode with dev/build extras)
+5. **Builds `AutoDJ.exe`** with PyInstaller (optionally signed)
+6. **Creates `config.toml`** from template with interactive prompts for bot nick, admin, music folder
+7. **Creates shortcuts**: Desktop, Start Menu, Config editor, Uninstaller
+8. **Optional auto-start** on login (`-AutoStart`)
+9. **Runs verification** (`AutoDJ.exe --check`)
+
+**Usage:**
+```powershell
+# Full interactive install (run from project folder or after cloning)
+.\install.ps1
+
+# Custom directory, auto-start, verbose
+.\install.ps1 -ProjectDir "D:\AutoDJ" -AutoStart -Verbose
+
+# Skip build (use pre-built), force reinstall deps
+.\install.ps1 -NoBuild -Force
+
+# Or double-click install.bat (passes args through)
+```
+**Requirements:** Windows 11, PowerShell 5.1+, Administrator rights for VB-Cable install.  
+**Log file:** `%TEMP%\autodj-install-<timestamp>.log`  
+**Uninstall:** Start Menu → Camfrog AutoDJ → Uninstall, or run `uninstall.ps1` in the project folder.
+
 ## Chat reader (web view)
 Messages are split at the avatar images of the room's history pane, so date headers, system lines and bodies that look like a time ("10:30") no longer corrupt parsing. `web_strict_body = false` restores joining of adjacent text. Regression test: `tests/test_webchat_dump.py` (shaped after a real room dump).
 

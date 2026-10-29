@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import difflib
 import re
 import tomllib
@@ -72,7 +73,7 @@ class Config:
     mpv_timeout: float = 30.0    # seconds to wait for one mpv track before treating it as hung (0 = no timeout)
 
     @classmethod
-    def load(cls, path: str | None) -> "Config":
+    def load(cls, path: str | None) -> Config:
         p = Path(path) if path else None
         data: dict = {}
         if p and p.exists():
@@ -133,7 +134,7 @@ def _type_name(v) -> str:
     return {str: "text", int: "a whole number", float: "a number", bool: "true/false", list: "a list"}.get(type(v), type(v).__name__)
 
 
-def _validate(cfg: "Config", data: dict, where: str) -> None:
+def _validate(cfg: Config, data: dict, where: str) -> None:
     defaults = Config()
     for f in fields(Config):
         if f.name not in data:

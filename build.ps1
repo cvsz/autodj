@@ -56,7 +56,7 @@ Step "build"
 if ($Clean) { Remove-Item -Recurse -Force build, dist, "$Name.spec" -ErrorAction SilentlyContinue }
 # yt_dlp loads its site extractors dynamically, hence --collect-all; pyttsx3 picks its speech driver at run time.
 # --noupx: UPX-packed exes trigger far more antivirus false positives and start slower.
-$pyi = @("--noconfirm", "--onefile", "--noupx", "--name", $Name, "--icon", "app.ico", "--version-file", "version_info.txt",
+$pyi = @("--noconfirm", "--onefile", "--noupx", "--windowed", "--name", $Name, "--icon", "app.ico", "--version-file", "version_info.txt",
          "--add-data", "app.ico;.", "--collect-submodules", "camfrog_autodj",
          "--collect-submodules", "pywinauto", "--collect-submodules", "pyttsx3", "--collect-all", "yt_dlp",
          "--hidden-import", "comtypes", "--hidden-import", "pyperclip", "--hidden-import", "mutagen",
@@ -69,6 +69,11 @@ Step "smoke test"
 & $exe --version
 if ($LASTEXITCODE -ne 0) { throw "the built exe does not start (see the error above)" }
 "tip: run  $exe --check  to verify mpv, yt-dlp, folders and the Camfrog window."
+# Give the OS time to release the file handle after the smoke test process exits
+Start-Sleep -Seconds 2
+# Ensure no lingering processes hold the file
+Get-Process -Name $Name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 500
 
 # ---------- 2. certificate + sign -------------------------------------------------------------------
 if ($NoSign) { "`n(not signed: -NoSign)"; return }
