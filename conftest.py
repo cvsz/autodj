@@ -1,7 +1,6 @@
 """pytest configuration and monkey-patches for CI compatibility."""
 
 import os
-import pathlib
 import sys
 
 
@@ -14,29 +13,58 @@ def pytest_configure(config):
         original_repr_failure_py = _pytest.nodes.Node._repr_failure_py
 
         def patched_repr_failure_py(self, excinfo, style=None):
+            from _pytest.fixtures import FixtureLookupError
+            from _pytest._code import TerminalRepr
+            from _pytest import fail
+
+            if isinstance(excinfo.value, _pytest.nodes.ConftestImportFailure):
+                excinfo = _pytest.ExceptionInfo.from_exception(excinfo.value.cause)
+            if isinstance(excinfo.value, fail.Exception):
+                if not excinfo.value.pytrace:
+                    style = "value"
+            if isinstance(excinfo.value, FixtureLookupError):
+                return excinfo.value.formatrepr()
+
+            tbfilter = None
+            if self.config.getoption("fulltrace", False):
+                style = "long"
+                tbfilter = False
+            else:
+                tbfilter = self._traceback_filter
+                if style == "auto":
+                    style = "long"
+
+            if self.config.get_verbosity() > 1:
+                truncate_locals = False
+            else:
+                truncate_locals = True
+
+            truncate_args = False if self.config.get_verbosity() > 2 else True
+
+            # FIX: Use os.path instead of pathlib.Path to avoid cross-platform issues
             try:
-                return original_repr_failure_py(self, excinfo, style)
-            except NotImplementedError as e:
-                if "cannot instantiate" in str(e) and ("WindowsPath" in str(e) or "PosixPath" in str(e)):
-                    # Workaround: use os.path for comparison instead of pathlib.Path
-                    cwd = os.getcwd()
-                    inv_dir = self.config.invocation_params.dir
-                    # Normalize both paths for comparison
-                    abspath = os.path.normcase(os.path.abspath(cwd)) != os.path.normcase(os.path.abspath(inv_dir))
-                    # Call the original method but with our workaround
-                    # We need to replicate the logic but avoid the Path() call
-                    from _pytest.nodes import Item
-                    if isinstance(self, Item):
-                        return self._repr_failure_py_impl(excinfo, style, abspath)
-                raise
+                cwd = os.getcwd()
+                inv_dir = self.config.invocation_params.dir
+                # Normalize both paths for comparison
+                abspath = os.path.normcase(os.path.abspath(cwd)) != os.path.normcase(os.path.abspath(inv_dir))
+            except OSError:
+                abspath = True
+
+            return excinfo.getrepr(
+                funcargs=True,
+                abspath=abspath,
+                showlocals=self.config.getoption("showlocals", False),
+                style=style,
+                tbfilter=tbfilter,
+                truncate_locals=truncate_locals,
+                truncate_args=truncate_args,
+            )
 
         _pytest.nodes.Node._repr_failure_py = patched_repr_failure_py
 
 
-# Also patch the cache provider to avoid WindowsPath/PosixPath issues
 def pytest_sessionfinish(session, exitstatus):
     """Disable cache provider on Python 3.11 to avoid cross-platform path issues."""
     if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
         # The cache provider is already disabled via -p no:cacheprovider
-        # but we can also clear any cached data that might have cross-platform paths
         pass
