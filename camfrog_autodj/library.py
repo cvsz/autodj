@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -15,6 +16,7 @@ log = logging.getLogger("autodj")
 AUDIO = {".mp3", ".m4a", ".wav", ".flac", ".ogg", ".opus", ".aac"}
 VIDEO = {".mp4", ".mkv", ".webm", ".avi", ".mov"}
 MEDIA = AUDIO | VIDEO
+SEARCH_PREFIX = re.compile(r"^ytsearch\d*:", re.I)
 
 
 def is_url(s: str) -> bool:
@@ -31,6 +33,7 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
     title, dur = p.stem, None
     try:
         import mutagen
+
         f = mutagen.File(p, easy=True)
         if f is not None:
             dur = getattr(f.info, "length", None)
@@ -44,7 +47,9 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
 
 
 def scan_folder(folder, requester: str = "AutoDJ") -> list[Track]:
-    files = sorted(p for p in Path(folder).rglob("*") if p.is_file() and p.suffix.lower() in MEDIA)
+    files = sorted(
+        p for p in Path(folder).rglob("*") if p.is_file() and p.suffix.lower() in MEDIA
+    )
     return [local_track(p, requester) for p in files]
 
 
@@ -53,7 +58,11 @@ def find_ytdlp(ytdlp_path: str = "", mpv_path: str = "") -> str:
     mpv plays YouTube through that same executable, so looking up titles with it keeps both in step
     (and `yt-dlp -U` fixes both when YouTube changes)."""
     if ytdlp_path:
-        return ytdlp_path if (shutil.which(ytdlp_path) or Path(ytdlp_path).is_file()) else ""
+        return (
+            ytdlp_path
+            if (shutil.which(ytdlp_path) or Path(ytdlp_path).is_file())
+            else ""
+        )
     names = ("yt-dlp.exe", "yt-dlp") if os.name == "nt" else ("yt-dlp",)
     # If mpv_path is given and points to an actual file, use its parent directory
     mpv_candidate = None
@@ -71,16 +80,15 @@ def find_ytdlp(ytdlp_path: str = "", mpv_path: str = "") -> str:
             cand = mpv_candidate.parent / n
             if cand.is_file():
                 return str(cand)
-    # Only fall back to system PATH if mpv_path was NOT explicitly provided
-    if not mpv_path:
-        return shutil.which("yt-dlp") or ""
-    return ""
+    # Not next to mpv: PATH, which is also where mpv's own youtube hook looks. (The default mpv_path is "mpv",
+    # i.e. always "provided": refusing PATH here made lookups ignore a perfectly good yt-dlp on PATH.)
+    return shutil.which("yt-dlp") or ""
 
 
 def parse_ytdlp_info(info: dict, requester: str = "AutoDJ") -> list[Track]:
     """yt-dlp's info dict (single video, playlist or search result) -> tracks."""
     out = []
-    for e in (info.get("entries") or [info]):
+    for e in info.get("entries") or [info]:
         if not e:
             continue
         url = e.get("webpage_url") or e.get("url") or ""
@@ -93,29 +101,64 @@ def parse_ytdlp_info(info: dict, requester: str = "AutoDJ") -> list[Track]:
 
 
 def _extract_exe(exe: str, target: str, playlist: bool, limit: int) -> dict:
-    cmd = [exe, "--dump-single-json", "--flat-playlist", "--no-warnings", "--skip-download",
-           "--yes-playlist" if playlist else "--no-playlist", "--playlist-end", str(limit), target]
-    kw: dict = dict(capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=90)
+    cmd = [
+        exe,
+        "--dump-single-json",
+        "--flat-playlist",
+        "--no-warnings",
+        "--skip-download",
+        "--yes-playlist" if playlist else "--no-playlist",
+        "--playlist-end",
+        str(limit),
+        target,
+    ]
+    kw: dict = {
+        "capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace", "timeout": 90
+    }
     if os.name == "nt":
-        kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW: no console flash from the GUI build
-    r = subprocess.run(cmd, **kw)
+        kw["creationflags"] = (
+            0x08000000  # CREATE_NO_WINDOW: no console flash from the GUI build
+        )
+    try:
+        r = subprocess.run(cmd, check=False, **kw)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("yt-dlp timed out") from None
     if r.returncode != 0:
         tail = (r.stderr or "").strip().splitlines()
-        raise RuntimeError("yt-dlp failed: " + (tail[-1] if tail else f"exit code {r.returncode}"))
-    return json.loads(r.stdout)
+        raise RuntimeError(
+            "yt-dlp failed: " + (tail[-1] if tail else f"exit code {r.returncode}")
+        )
+    try:
+        return json.loads(r.stdout)
+    except ValueError:
+        raise RuntimeError("yt-dlp returned no usable result") from None
 
 
 def _extract_module(target: str, playlist: bool, limit: int) -> dict:
     import yt_dlp
-    opts = {"quiet": True, "no_warnings": True, "skip_download": True,
-            "extract_flat": "in_playlist", "noplaylist": not playlist, "playlistend": limit}
+
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "extract_flat": "in_playlist",
+        "noplaylist": not playlist,
+        "playlistend": limit,
+    }
     with yt_dlp.YoutubeDL(opts) as y:
-        return y.extract_info(target, download=False)
+        return y.extract_info(target, download=False) or {}
 
 
-def remote_tracks(query: str, requester: str = "AutoDJ", playlist: bool = False, limit: int = 200,
-                  ytdlp_path: str = "", mpv_path: str = "",
-                  search_limit: int = 1) -> list[Track]:
+def remote_tracks(
+    query: str,
+    requester: str = "AutoDJ",
+    playlist: bool = False,
+    limit: int = 200,
+    ytdlp_path: str = "",
+    mpv_path: str = "",
+    search_limit: int = 1,
+    raw_target: bool = False,
+) -> list[Track]:
     """YouTube URL, playlist URL, or plain search text -> tracks (metadata only).
     Uses the yt-dlp executable when there is one (see find_ytdlp), else the yt_dlp Python module.
 
@@ -124,7 +167,11 @@ def remote_tracks(query: str, requester: str = "AutoDJ", playlist: bool = False,
     playlist of search results.
     """
     n = max(1, int(search_limit))
-    target = query if is_url(query) else f"ytsearch{n}:{query}"
+    # raw_target: operator-supplied yt-dlp search such as "ytsearch20:mandopop" (autoplay_sources) is used as is
+    if is_url(query) or (raw_target and SEARCH_PREFIX.match(query)):
+        target = query
+    else:
+        target = f"ytsearch{n}:{query}"
     exe = find_ytdlp(ytdlp_path, mpv_path)
     info = None
     if exe:
@@ -139,7 +186,8 @@ def remote_tracks(query: str, requester: str = "AutoDJ", playlist: bool = False,
             raise YtdlpMissing(
                 "yt-dlp not found: there is no yt-dlp executable (next to mpv.exe or on PATH) and this build has no "
                 "yt_dlp Python module. Put yt-dlp.exe next to mpv.exe (or set ytdlp_path in config.toml), "
-                "or `pip install yt-dlp` and rebuild AutoDJ.exe.") from None
+                "or `pip install yt-dlp` and rebuild AutoDJ.exe."
+            ) from None
     return parse_ytdlp_info(info, requester)
 
 

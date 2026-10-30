@@ -40,7 +40,7 @@ Knock-on files fixed at the same time (all equivalent to the zip's intent):
 ## Result of the update
 
 - `make version` prints `0.2.3`; `make changelog-check` passes; `CHANGELOG.md` has the release entry.
-- `python3 -m pytest tests/ -q` → **94 passed** (this includes the fifteen v0.3.0 regression tests).
+- `python3 -m pytest tests/ -q -p no:faulthandler -p no:cacheprovider` → **130 passed, 1 skipped** (includes the fifteen v0.3.0 regression tests plus unreleased bug-fix coverage).
 - No stale `0.2.2` references remain in `pyproject.toml`, `version_info.txt`, `camfrog_autodj/`.
 
 ## Caveat / recommendation

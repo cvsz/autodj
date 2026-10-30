@@ -1,7 +1,9 @@
 """Find Camfrog top-level windows without tripping over pywinauto's ElementAmbiguousError.
 `.*Camfrog.*` normally matches several windows (main client, room window, hidden helper
 windows), so we enumerate, filter, and pick one deterministically."""
+
 from __future__ import annotations
+
 import logging
 import os
 import re
@@ -28,7 +30,8 @@ def exe_name(pid: int) -> str:
     try:
         import ctypes
         from ctypes import wintypes
-        k = ctypes.windll.kernel32
+
+        k = ctypes.windll.kernel32  # type: ignore[attr-defined]
         h = k.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
         if not h:
             return ""
@@ -44,8 +47,14 @@ def exe_name(pid: int) -> str:
     return ""
 
 
-def pick(cands: list[Cand], exclude_re: str = "", prefer: str = "", index: int = 0,
-         self_pid: int | None = None, exe_re: str = "") -> Cand | None:
+def pick(
+    cands: list[Cand],
+    exclude_re: str = "",
+    prefer: str = "",
+    index: int = 0,
+    self_pid: int | None = None,
+    exe_re: str = "",
+) -> Cand | None:
     """Pure selection logic. Drops our own process and anything matching exclude_re,
     puts titles containing `prefer` (e.g. the room name) first, then takes [index]."""
     out = [c for c in cands if c.pid != self_pid]
@@ -64,8 +73,10 @@ def pick(cands: list[Cand], exclude_re: str = "", prefer: str = "", index: int =
 
 def candidates(pattern: str, visible_only: bool = True, exe_re: str = "") -> list[Cand]:
     from pywinauto import findwindows
-    els = findwindows.find_elements(title_re=pattern, top_level_only=True,
-                                    backend="uia", visible_only=visible_only)
+
+    els = findwindows.find_elements(
+        title_re=pattern, top_level_only=True, backend="uia", visible_only=visible_only
+    )
     out = [Cand(e.handle, e.name or "", e.class_name or "", e.process_id) for e in els]
     for c in out:
         c.exe = exe_name(c.pid)
@@ -75,8 +86,14 @@ def candidates(pattern: str, visible_only: bool = True, exe_re: str = "") -> lis
     return out
 
 
-def resolve(pattern: str, exclude_re: str = "", prefer: str = "", index: int = 0,
-            timeout: float = 30, exe_re: str | None = None) -> Cand | None:
+def resolve(
+    pattern: str,
+    exclude_re: str = "",
+    prefer: str = "",
+    index: int = 0,
+    timeout: float = 30,
+    exe_re: str | None = None,
+) -> Cand | None:
     exe_re = DEFAULT_EXE_RE if exe_re is None else exe_re
     end = time.time() + timeout
     while True:
@@ -84,8 +101,14 @@ def resolve(pattern: str, exclude_re: str = "", prefer: str = "", index: int = 0
         c = pick(cs, exclude_re, prefer, index, os.getpid())
         if c:
             if len(cs) > 1:
-                log.info("%d windows match %r; using %r (pid %s). Others: %s", len(cs), pattern,
-                         c.title, c.pid, [x.title for x in cs if x is not c])
+                log.info(
+                    "%d windows match %r; using %r (pid %s). Others: %s",
+                    len(cs),
+                    pattern,
+                    c.title,
+                    c.pid,
+                    [x.title for x in cs if x is not c],
+                )
             return c
         if time.time() >= end:
             return None

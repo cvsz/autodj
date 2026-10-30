@@ -1,5 +1,7 @@
 """Small pure text helpers shared by the engine and the Windows chat sender."""
+
 from __future__ import annotations
+
 import re
 
 _CTRL = re.compile(r"[\x00-\x1f\x7f-\x9f]")

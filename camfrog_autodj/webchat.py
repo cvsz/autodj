@@ -6,7 +6,9 @@ a Hyperlink with an empty name). The avatar is the reliable message boundary, so
   - date headers / system lines that sit between a body and the next avatar are not glued onto that body
   - a body that merely looks like a time ("10:30") cannot start a new message
 and the message box = a Pane titled 'camfrog://wb-edit-data.inside/' (a web editor, not an Edit control)."""
+
 from __future__ import annotations
+
 import logging
 import re
 
@@ -24,7 +26,7 @@ def tokens_to_lines(tokens: list[str]) -> list[str]:
     for n, i in enumerate(idx):
         end = idx[n + 1] - 1 if n + 1 < len(idx) else len(toks)
         nick = toks[i - 1].replace(":", " ").strip()
-        body = " ".join(t for t in toks[i + 1:max(end, i + 1)] if t)
+        body = " ".join(t for t in toks[i + 1 : max(end, i + 1)] if t)
         if nick and body:
             out.append(f"{toks[i]} {nick}: {body}")
     return out
@@ -47,11 +49,16 @@ def items_to_lines(items: list[tuple[str, str]], strict: bool = True) -> list[st
     for g in groups:
         g = [(k, n.replace("\xa0", " ").strip()) for k, n in g]
         toks = [(k, n) for k, n in g if k != "emo" or n]  # keep emoticons as joiners
-        if len(toks) < 3 or toks[0][0] not in ("text", "link") or toks[1][0] != "text" \
-                or not TIME_RX.match(toks[1][1]):
+        if (
+            len(toks) < 3
+            or toks[0][0] not in ("text", "link")
+            or toks[1][0] != "text"
+            or not TIME_RX.match(toks[1][1])
+        ):
             continue
         nick = toks[0][1].replace(":", " ").strip()
-        body, prev = [], None
+        body: list[str] = []
+        prev: str | None = None
         for k, n in toks[2:]:
             if k == "emo":
                 prev = "emo"
@@ -85,14 +92,20 @@ def find_web_panes(win, view_title: str, input_title: str):
         elif inp is None and input_title and input_title in name:
             inp = p
     if view is None:
-        log.debug("web pane not found (view_title=%r): %d pane(s) checked; "
-                  "run AutoDJ.exe --discover to update config.toml", view_title, len(list(panes)) if hasattr(panes, '__len__') else -1)
+        log.debug(
+            "web pane not found (view_title=%r): %d pane(s) checked; "
+            "run AutoDJ.exe --discover to update config.toml",
+            view_title,
+            len(list(panes)) if hasattr(panes, "__len__") else -1,
+        )
     return view, inp
 
 
 def _history_children(view):
     node = view.element_info
-    for _ in range(8):  # unwrap single-child wrapper panes down to the flat message list
+    for _ in range(
+        8
+    ):  # unwrap single-child wrapper panes down to the flat message list
         kids = node.children()
         if len(kids) == 1 and kids[0].control_type == "Pane":
             node = kids[0]
@@ -103,7 +116,7 @@ def _history_children(view):
 
 def read_items(view, tail: int = 600) -> list[tuple[str, str]]:
     """Newest `tail` direct children as (kind, name): avatar | emo | text | link."""
-    node, kids = _history_children(view)
+    _node, kids = _history_children(view)
     items = []
     for k in kids[-tail:]:
         try:
@@ -128,4 +141,6 @@ def read_web(view, tail: int = 600, strict: bool = True) -> list[str]:
     items = read_items(view, tail)
     if any(k == "avatar" for k, _ in items):
         return items_to_lines(items, strict)
-    return tokens_to_lines([n for k, n in items if k in ("text", "link")])  # no avatars exposed: old heuristic
+    return tokens_to_lines(
+        [n for k, n in items if k in ("text", "link")]
+    )  # no avatars exposed: old heuristic

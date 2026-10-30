@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import random
 import threading
+
 from .models import Track
 
 

@@ -1,7 +1,9 @@
 """Optionally start the official Camfrog client and hand off to a room, then wait for its window.
 Windows only. This does not use the control-server API: if the control-server agent already
 launches/joins for you, leave auto_launch=false and AutoDJ just waits for the window."""
+
 from __future__ import annotations
+
 import logging
 import os
 import subprocess
@@ -12,6 +14,7 @@ log = logging.getLogger("autodj")
 
 def find_window(pattern: str, timeout: float) -> bool:
     from .windows import resolve
+
     return resolve(pattern, timeout=timeout) is not None
 
 

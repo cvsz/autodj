@@ -1,5 +1,7 @@
 """Pure helpers behind the GUI's look and animation (no tkinter import, so they are unit-tested headless)."""
+
 from __future__ import annotations
+
 import math
 
 
@@ -9,7 +11,7 @@ def hex_to_rgb(h: str) -> tuple[int, int, int]:
 
 
 def rgb_to_hex(r: float, g: float, b: float) -> str:
-    c = lambda v: max(0, min(255, int(round(v))))
+    c = lambda v: max(0, min(255, round(v)))
     return f"#{c(r):02x}{c(g):02x}{c(b):02x}"
 
 
@@ -38,10 +40,14 @@ def bar_heights(t: float, n: int, level: float) -> list[float]:
     out = []
     for i in range(n):
         x = i / max(n - 1, 1)
-        v = (0.5 + 0.5 * math.sin(t * 3.1 + i * 0.62)) * 0.55 \
-            + (0.5 + 0.5 * math.sin(t * 5.3 - i * 1.17 + 1.3)) * 0.30 \
+        v = (
+            (0.5 + 0.5 * math.sin(t * 3.1 + i * 0.62)) * 0.55
+            + (0.5 + 0.5 * math.sin(t * 5.3 - i * 1.17 + 1.3)) * 0.30
             + (0.5 + 0.5 * math.sin(t * 1.7 + x * 6.0)) * 0.15
-        shape = 0.55 + 0.45 * math.sin(math.pi * (0.12 + 0.76 * x))  # a little lower at both edges
+        )
+        shape = 0.55 + 0.45 * math.sin(
+            math.pi * (0.12 + 0.76 * x)
+        )  # a little lower at both edges
         out.append(max(0.03, min(1.0, v * shape * level + 0.03)))
     return out
 
@@ -74,13 +80,27 @@ def make_particles(n: int, seed: int = 0) -> list[dict]:
         rnd.append(x / 233280)
     out = []
     for i in range(n):
-        r0, r1, r2, r3 = rnd[(i * 4) % n], rnd[(i * 4 + 1) % n], rnd[(i * 4 + 2) % n], rnd[(i * 4 + 3) % n]
-        out.append({"phase": r0 * 6.283, "speed": 0.15 + r1 * 0.35, "orbit": 0.55 + r2 * 0.9, "size": 1.5 + r3 * 2.5,
-                    "tilt": r0 * 6.283})
+        r0, r1, r2, r3 = (
+            rnd[(i * 4) % n],
+            rnd[(i * 4 + 1) % n],
+            rnd[(i * 4 + 2) % n],
+            rnd[(i * 4 + 3) % n],
+        )
+        out.append(
+            {
+                "phase": r0 * 6.283,
+                "speed": 0.15 + r1 * 0.35,
+                "orbit": 0.55 + r2 * 0.9,
+                "size": 1.5 + r3 * 2.5,
+                "tilt": r0 * 6.283,
+            }
+        )
     return out
 
 
-def particle_pos(p: dict, t: float, cx: float, cy: float, base_r: float) -> tuple[float, float, float]:
+def particle_pos(
+    p: dict, t: float, cx: float, cy: float, base_r: float
+) -> tuple[float, float, float]:
     """x, y, alpha(0..1) for one particle at time t, drifting in a loose ellipse around (cx, cy)."""
     a = p["phase"] + t * p["speed"]
     rx = base_r * p["orbit"]
@@ -104,15 +124,27 @@ def confetti_burst(n: int, seed: int = 0) -> list[dict]:
     for i in range(n):
         ang = rnd[i * 3] * 6.283
         speed = 60 + rnd[i * 3 + 1] * 140
-        out.append({"angle": ang, "speed": speed, "spin": (rnd[i * 3 + 2] - 0.5) * 10, "size": 3 + rnd[i * 3] * 4})
+        out.append(
+            {
+                "angle": ang,
+                "speed": speed,
+                "spin": (rnd[i * 3 + 2] - 0.5) * 10,
+                "size": 3 + rnd[i * 3] * 4,
+            }
+        )
     return out
 
 
-def confetti_pos(c: dict, age: float, cx: float, cy: float) -> tuple[float, float, float, float]:
+def confetti_pos(
+    c: dict, age: float, cx: float, cy: float
+) -> tuple[float, float, float, float]:
     """x, y, rotation(deg), alpha(0..1) for one confetti piece `age` seconds after launch. Lasts ~1.4s."""
     life = 1.4
     k = min(age / life, 1.0)
-    vx, vy = math.cos(c["angle"]) * c["speed"], math.sin(c["angle"]) * c["speed"] - 40  # slight upward bias
+    vx, vy = (
+        math.cos(c["angle"]) * c["speed"],
+        math.sin(c["angle"]) * c["speed"] - 40,
+    )  # slight upward bias
     x = cx + vx * age
     y = cy + vy * age + 0.5 * 220 * age * age  # gravity
     rot = c["spin"] * age * 60
@@ -120,9 +152,50 @@ def confetti_pos(c: dict, age: float, cx: float, cy: float) -> tuple[float, floa
     return x, y, rot, alpha
 
 
-def round_rect_points(x1: float, y1: float, x2: float, y2: float, r: float) -> list[float]:
+def round_rect_points(
+    x1: float, y1: float, x2: float, y2: float, r: float
+) -> list[float]:
     """Polygon points for a rounded rectangle; draw with smooth=True."""
     r = max(0.0, min(r, (x2 - x1) / 2, (y2 - y1) / 2))
-    return [x1 + r, y1, x1 + r, y1, x2 - r, y1, x2 - r, y1, x2, y1, x2, y1 + r, x2, y1 + r,
-            x2, y2 - r, x2, y2 - r, x2, y2, x2 - r, y2, x2 - r, y2, x1 + r, y2, x1 + r, y2,
-            x1, y2, x1, y2 - r, x1, y2 - r, x1, y1 + r, x1, y1 + r, x1, y1]
+    return [
+        x1 + r,
+        y1,
+        x1 + r,
+        y1,
+        x2 - r,
+        y1,
+        x2 - r,
+        y1,
+        x2,
+        y1,
+        x2,
+        y1 + r,
+        x2,
+        y1 + r,
+        x2,
+        y2 - r,
+        x2,
+        y2 - r,
+        x2,
+        y2,
+        x2 - r,
+        y2,
+        x2 - r,
+        y2,
+        x1 + r,
+        y2,
+        x1 + r,
+        y2,
+        x1,
+        y2,
+        x1,
+        y2 - r,
+        x1,
+        y2 - r,
+        x1,
+        y1 + r,
+        x1,
+        y1 + r,
+        x1,
+        y1,
+    ]

@@ -11,7 +11,11 @@ log = logging.getLogger("autodj")
 
 
 def _read(ctrl) -> str:
-    for fn in (lambda: ctrl.iface_value.CurrentValue, ctrl.window_text, lambda: "\n".join(ctrl.texts())):
+    for fn in (
+        lambda: ctrl.iface_value.CurrentValue,
+        ctrl.window_text,
+        lambda: "\n".join(ctrl.texts()),
+    ):
         try:
             t = fn()
             if t:
@@ -31,16 +35,29 @@ class UiaAdapter(ChatAdapter):
         self.cfg = cfg
         self.rx = re.compile(cfg.line_regex)
         from ..windows import resolve
-        c = resolve(cfg.window_title_re, cfg.window_exclude_re, cfg.room, cfg.window_index, 30, cfg.process_re)
+
+        c = resolve(
+            cfg.window_title_re,
+            cfg.window_exclude_re,
+            cfg.room,
+            cfg.window_index,
+            30,
+            cfg.process_re,
+        )
         if c is None:
-            raise RuntimeError(f"no visible window matches {cfg.window_title_re!r} "
-                               f"(open the room window, or run AutoDJ.exe --windows)")
+            raise RuntimeError(
+                f"no visible window matches {cfg.window_title_re!r} "
+                f"(open the room window, or run AutoDJ.exe --windows)"
+            )
         log.info("attached to window %r (pid %s, class %s)", c.title, c.pid, c.cls)
         self.handle = c.handle
-        self.com_lock = threading.RLock()  # UIA/pywinauto is COM-based: readers and senders racing on it break it
+        self.com_lock = (
+            threading.RLock()
+        )  # UIA/pywinauto is COM-based: readers and senders racing on it break it
         self._view = self._input = None
         self._web = False
         self._bg_fails = 0  # consecutive unconfirmed background sends (auto mode only)
+        self._bg_fails_lock = threading.Lock()  # protects _bg_fails across reader/sender threads
         self._attach()
 
     def _attach(self):
@@ -48,6 +65,7 @@ class UiaAdapter(ChatAdapter):
         (every UIA call keeps failing with 'An event was unable to invoke any of the subscribers' until
         the bot is restarted); dropping it and re-attaching builds fresh COM connections instead."""
         from pywinauto import Desktop
+
         self.win = Desktop(backend="uia").window(handle=self.handle)
         self._view = self._input = None
         self._web = False
@@ -61,13 +79,21 @@ class UiaAdapter(ChatAdapter):
             self._attach()
         if self.cfg.view_kind in ("auto", "web"):
             from ..webchat import find_web_panes
-            view, inp = find_web_panes(self.win, self.cfg.web_view_title, self.cfg.web_input_title)
+
+            view, inp = find_web_panes(
+                self.win, self.cfg.web_view_title, self.cfg.web_input_title
+            )
             if view is not None:
                 self._web, self._view, self._input = True, view, inp
-                log.info("chat: web view found (message box %s)", "found" if inp is not None else "MISSING")
+                log.info(
+                    "chat: web view found (message box %s)",
+                    "found" if inp is not None else "MISSING",
+                )
                 return
             if self.cfg.view_kind == "web":
-                raise RuntimeError(f"no pane titled like {self.cfg.web_view_title!r} in the window")
+                raise RuntimeError(
+                    f"no pane titled like {self.cfg.web_view_title!r} in the window"
+                )
         self._web = False
         self._view = self._find(self.cfg.view_type, self.cfg.view_index)
         self._input = None
@@ -79,6 +105,7 @@ class UiaAdapter(ChatAdapter):
                 self._resolve()
             if self._web:
                 from ..webchat import read_web
+
                 return read_web(self._view, strict=self.cfg.web_strict_body)[-300:]
             return _read(self._view).splitlines()[-300:]
 
@@ -89,7 +116,8 @@ class UiaAdapter(ChatAdapter):
                 lines = self._lines()
             except Exception as e:
                 log.debug("chat read failed: %s", e)
-                self._view = self.win = None  # drop everything: the next poll re-attaches fresh
+                with self.com_lock:  # protect _view/win against reader/sender race
+                    self._view = self.win = None  # drop everything: the next poll re-attaches fresh
                 time.sleep(1)
                 continue
             if prev is not None:
@@ -99,6 +127,7 @@ class UiaAdapter(ChatAdapter):
                         yield m
             prev = lines  # first poll only sets the baseline: old history is never replayed
             time.sleep(self.cfg.poll_interval)
+
     def _ensure_controls(self):
         if self._view is None:
             self._resolve()
@@ -125,17 +154,17 @@ class UiaAdapter(ChatAdapter):
             for l in new:
                 norm_l = self._norm(l)
                 # Check multiple match patterns for web chat format variations
-                if (norm_l.endswith(": " + want) or
-                    norm_l.endswith(want) or
-                    want in norm_l):
+                if (
+                    norm_l.endswith((": " + want, want))
+                    or want in norm_l
+                    or (self.cfg.bot_nick and f"{self.cfg.bot_nick}: {want}" in norm_l)
+                ):
                     return True
-            # Also check if the bot's nick appears with the text (common in web chat)
-            if self.cfg.bot_nick and f"{self.cfg.bot_nick}: {want}" in norm_l:
-                return True
         return False
 
     def _send_bg(self, text) -> bool:
         from .. import winmsg
+
         top = int(self.win.handle)
         winmsg.show_noactivate(top)
 
@@ -179,6 +208,7 @@ class UiaAdapter(ChatAdapter):
         from pywinauto.keyboard import send_keys
 
         from .. import winmsg
+
         prev = winmsg.foreground()
         try:
             old_clip = pyperclip.paste()
@@ -217,7 +247,9 @@ class UiaAdapter(ChatAdapter):
             try:
                 self._do_send(text)
             except Exception:
-                self.win = self._view = self._input = None  # re-attach + re-resolve everything next time
+                self.win = self._view = self._input = (
+                    None  # re-attach + re-resolve everything next time
+                )
                 raise
 
     def _do_send(self, text):
@@ -229,7 +261,10 @@ class UiaAdapter(ChatAdapter):
             if mode in ("auto", "background"):
                 # after 2 unconfirmed background sends in a row, go straight to the foreground for a
                 # while: announcements must not stack seconds of verify+fallback latency every track
-                allow_bg = mode == "background" or (mode == "auto" and self._bg_fails < 2)
+                allow_bg = mode == "background"
+                if mode == "auto":
+                    with self._bg_fails_lock:
+                        allow_bg = self._bg_fails < 2
                 if allow_bg:
                     before = []
                     if mode == "auto" and self.cfg.send_verify:
@@ -245,43 +280,75 @@ class UiaAdapter(ChatAdapter):
                         try:
                             ok = self._send_bg(text)
                         except Exception as e:
-                            log.warning("background send attempt %d failed: %s", attempt + 1, e)
+                            log.warning(
+                                "background send attempt %d failed: %s", attempt + 1, e
+                            )
                             ok = False
 
                         if ok:
                             if mode == "auto" and self.cfg.send_verify:
                                 # Verify the message appeared
                                 if before is None or self._appeared(text, before):
-                                    log.debug("sent in background (attempt %d): %s", attempt + 1, text)
-                                    self._bg_fails = 0
+                                    log.debug(
+                                        "sent in background (attempt %d): %s",
+                                        attempt + 1,
+                                        text,
+                                    )
+                                    with self._bg_fails_lock:
+                                        self._bg_fails = 0
                                     return
                                 else:
-                                    log.warning("background send not confirmed in the room (attempt %d)", attempt + 1)
+                                    log.warning(
+                                        "background send not confirmed in the room (attempt %d)",
+                                        attempt + 1,
+                                    )
                             else:
-                                log.debug("sent in background (attempt %d): %s", attempt + 1, text)
-                                self._bg_fails = 0
+                                log.debug(
+                                    "sent in background (attempt %d): %s",
+                                    attempt + 1,
+                                    text,
+                                )
+                                with self._bg_fails_lock:
+                                    self._bg_fails = 0
                                 return
                         # Small delay before retry
                         time.sleep(0.5)
 
-                    self._bg_fails += 1
-                    log.info("background send not confirmed in the room (%d in a row): falling back to foreground",
-                             self._bg_fails)
+                    with self._bg_fails_lock:
+                        self._bg_fails += 1
+                        bg_fails = self._bg_fails
+                    log.info(
+                        "background send not confirmed in the room (%d in a row): falling back to foreground",
+                        bg_fails,
+                    )
                     if mode == "background":
                         if not ok:
-                            raise RuntimeError("background send failed (try send_mode = 'auto' or 'foreground')")
+                            raise RuntimeError(
+                                "background send failed (try send_mode = 'auto' or 'foreground')"
+                            )
                         return
-                    if ok and (not self.cfg.send_verify or before is None or self._appeared(text, before)):
+                    if ok and (
+                        not self.cfg.send_verify
+                        or before is None
+                        or self._appeared(text, before)
+                    ):
                         log.debug("sent in background: %s", text)
-                        self._bg_fails = 0
+                        with self._bg_fails_lock:
+                            self._bg_fails = 0
                         return
-                    self._bg_fails += 1
-                    log.info("background send not confirmed in the room (%d in a row): falling back to foreground",
-                             self._bg_fails)
+                    with self._bg_fails_lock:
+                        self._bg_fails += 1
+                        bg_fails = self._bg_fails
+                    log.info(
+                        "background send not confirmed in the room (%d in a row): falling back to foreground",
+                        bg_fails,
+                    )
                 self._send_fg(text)
                 if self.cfg.send_verify and not self._appeared(text, []):
-                    log.warning("sent via foreground paste but NOT seen in the room within 3s "
-                                "(the message box may not have received the paste/enter)")
+                    log.warning(
+                        "sent via foreground paste but NOT seen in the room within 3s "
+                        "(the message box may not have received the paste/enter)"
+                    )
                 log.debug("sent to Camfrog: %s", text)
         except Exception:
             self._view = self._input = None  # re-resolve the controls next time

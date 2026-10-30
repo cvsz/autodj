@@ -41,15 +41,11 @@ RequestExecutionLevel admin
 XPStyle on
 CRCCheck on
 
-; 64-bit installer
-InstallDir "$PROGRAMFILES64\Camfrog AutoDJ"
-
 ; -----------------------------------------------------------------------------
 ; Modern UI 2
 ; -----------------------------------------------------------------------------
-!define MUI_ICON "src\app.ico"
-!define MUI_UNICON "src\app.ico"
-!define MUI_WELCOMEFINISHPAGE_BITMAP "src\installer_banner.bmp"
+!define MUI_ICON "app.ico"
+!define MUI_UNICON "app.ico"
 !define MUI_WELCOMEPAGE_TITLE "Welcome to the ${APP_NAME} Setup Wizard"
 !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of ${APP_NAME} ${APP_VERSION}.\n\nClick Next to continue."
 !define MUI_FINISHPAGE_TITLE "Installation Complete"
@@ -73,11 +69,8 @@ InstallDir "$PROGRAMFILES64\Camfrog AutoDJ"
 !define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "Installation Complete"
 !define MUI_INSTFILESPAGE_FINISHTEXT "Click Finish to close the wizard."
 
-; Language
-!insertmacro MUI_LANGUAGE "English"
-
 ; License
-LicenseData "LICENSE.md"
+LicenseData "LICENSE"
 
 ; -----------------------------------------------------------------------------
 ; Components
@@ -86,21 +79,20 @@ Section "!MainProgram" SEC_MAIN
     SectionIn RO
     SetOutPath "$INSTDIR"
     File "dist\AutoDJ.exe"
-    File "src\app.ico"
+    File "app.ico"
     File "README.md"
     File "CHANGELOG.md"
-    File "LICENSE.md"
+    File "LICENSE"
     File "config.example.toml"
-    File "src\run_autodj.py"
-    ; Copy config.toml if exists (user may have customized)
-    IfFileExists "config.toml" 0 +2
-    File "config.toml"
+    File "run_autodj.py"
+    ; config.toml is created by install.ps1 on first run (interactive prompts)
+    ; do NOT bundle a machine-specific config.toml here
 SectionEnd
 
 Section "Documentation" SEC_DOCS
     SetOutPath "$INSTDIR\docs"
     File /r "docs\*.md"
-    File /r "docs\*.txt"
+    File /nonfatal /r "docs\*.txt"
 SectionEnd
 
 Section "Python Scripts (Source)" SEC_SRC
@@ -125,7 +117,6 @@ Section "Install Scripts" SEC_SCRIPTS
     SetOutPath "$INSTDIR"
     File "install.ps1"
     File "install.bat"
-    File "uninstall.ps1"
 SectionEnd
 
 ; -----------------------------------------------------------------------------
@@ -160,13 +151,13 @@ Section -Post
 
     ; Start Menu shortcuts
     CreateDirectory "$SMPROGRAMS\Camfrog AutoDJ"
-    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Camfrog AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 "Music bot for Camfrog rooms"
-    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\app.ico" 0 "Uninstall Camfrog AutoDJ"
-    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Edit Config.lnk" "notepad.exe" "$INSTDIR\config.toml" "" 0 "Edit configuration"
-    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "" 0 "Uninstall Camfrog AutoDJ"
+    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Camfrog AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
+    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Uninstall Camfrog AutoDJ"
+    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Edit Config.lnk" "notepad.exe" "$INSTDIR\config.toml" "" 0 SW_SHOWNORMAL "" "Edit configuration"
+    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "" 0 SW_SHOWNORMAL "" "Uninstall Camfrog AutoDJ"
 
     ; Desktop shortcut
-    CreateShortcut "$DESKTOP\Camfrog AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 "Music bot for Camfrog rooms"
+    CreateShortcut "$DESKTOP\Camfrog AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
 
     ; Registry entries for Add/Remove Programs
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayName" "Camfrog AutoDJ"
@@ -237,7 +228,6 @@ FunctionEnd
 ; Modern UI Pages
 ; -----------------------------------------------------------------------------
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
@@ -252,11 +242,12 @@ FunctionEnd
 ; Languages
 ; -----------------------------------------------------------------------------
 !insertmacro MUI_LANGUAGE "English"
+!insertmacro MUI_LANGUAGE "Thai"
 
-; -----------------------------------------------------------------------------
-; Reserve Files (for installer itself)
-; -----------------------------------------------------------------------------
-ReserveFile "installer.bmp"  ; Optional: banner bitmap
+; NOTE: To enable Thai language in the installer, copy thai.nlf to:
+;   C:\Program Files (x86)\NSIS\Contrib\Language\thai.nlf
+; on the Windows machine where you run makensis.
+; Without thai.nlf, the installer falls back to English only.
 
 ; -----------------------------------------------------------------------------
 ; Source Files (adjust paths as needed)

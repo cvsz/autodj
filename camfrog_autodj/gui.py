@@ -2,7 +2,9 @@
 glowing progress/volume bars and a tabbed queue / history / chat panel.
 Polls Engine.snapshot() twice a second (data) and animates at ~30 fps (looks only); all actions call engine methods.
 The equaliser is decorative: it moves while a track plays and settles when paused; it does not analyse the audio."""
+
 from __future__ import annotations
+
 import logging
 import math
 import os
@@ -13,14 +15,31 @@ from tkinter import font as tkfont
 
 from .clipkeys import clip_action
 from .library import MEDIA
-from .visuals import (aurora_offset, bar_heights, confetti_burst, confetti_pos, ease, gradient, lerp_color,
-                      make_particles, particle_pos, pulse, round_rect_points)
+from .visuals import (
+    aurora_offset,
+    bar_heights,
+    confetti_burst,
+    confetti_pos,
+    ease,
+    gradient,
+    lerp_color,
+    make_particles,
+    particle_pos,
+    pulse,
+    round_rect_points,
+)
 
 log = logging.getLogger("autodj")
 
 # palette
 BG, SURFACE, SURFACE2, BORDER = "#06070d", "#121628", "#1a2038", "#2a3256"
-AURORA = ["#1a0a2e", "#140a30", "#0a1a3a", "#0a2a2e", "#1a0a2e"]  # deep backdrop bands, drift slowly
+AURORA = [
+    "#1a0a2e",
+    "#140a30",
+    "#0a1a3a",
+    "#0a2a2e",
+    "#1a0a2e",
+]  # deep backdrop bands, drift slowly
 TEXT, MUTED = "#eef1ff", "#8d95bb"
 PINK, VIOLET, CYAN, GREEN, RED = "#ff3d9a", "#8a5cff", "#27e1ff", "#35e08c", "#ff4d6d"
 FAMILY = "Segoe UI"
@@ -41,7 +60,9 @@ def _do_clip(w, act: str):
                 w.select_range(0, "end")
                 w.icursor("end")
         else:
-            w.event_generate({"copy": "<<Copy>>", "cut": "<<Cut>>", "paste": "<<Paste>>"}[act])
+            w.event_generate(
+                {"copy": "<<Copy>>", "cut": "<<Cut>>", "paste": "<<Paste>>"}[act]
+            )
     except tk.TclError:
         pass
 
@@ -49,9 +70,12 @@ def _do_clip(w, act: str):
 def install_clipboard(root: tk.Misc, lang=lambda: "en"):
     """Ctrl+C/V/X/A on any keyboard layout, right-click menu (Cut/Copy/Paste/Select all) on every entry
     and text box, and click-to-focus on the read-only chat log so it can be selected and copied."""
+
     def on_key(e):
         act = clip_action(e.keycode, e.keysym, bool(e.state & 0x1), os.name == "nt")
-        if act and isinstance(e.widget, (tk.Entry, tk.Text, ttk.Entry, ttk.Combobox, ttk.Spinbox)):
+        if act and isinstance(
+            e.widget, (tk.Entry, tk.Text, ttk.Entry, ttk.Combobox, ttk.Spinbox)
+        ):
             _do_clip(e.widget, act)
             return "break"
 
@@ -60,9 +84,15 @@ def install_clipboard(root: tk.Misc, lang=lambda: "en"):
         w.focus_set()
         th = lang() == "th"
         m = tk.Menu(w, tearoff=0)
-        for act, en, thai in (("cut", "Cut", "ตัด"), ("copy", "Copy", "คัดลอก"),
-                              ("paste", "Paste", "วาง"), ("all", "Select all", "เลือกทั้งหมด")):
-            m.add_command(label=thai if th else en, command=lambda a=act: _do_clip(w, a))
+        for act, en, thai in (
+            ("cut", "Cut", "ตัด"),
+            ("copy", "Copy", "คัดลอก"),
+            ("paste", "Paste", "วาง"),
+            ("all", "Select all", "เลือกทั้งหมด"),
+        ):
+            m.add_command(
+                label=thai if th else en, command=lambda a=act: _do_clip(w, a)
+            )
         m.tk_popup(e.x_root, e.y_root)
         return "break"
 
@@ -76,6 +106,7 @@ def install_clipboard(root: tk.Misc, lang=lambda: "en"):
 class PillButton(tk.Canvas):
     """Rounded button drawn on a canvas. Behaves like a Button for the pieces the app uses:
     configure(text=..., command=...), cget("text"), plus set_active() for tabs/toggle chips and set_icon()."""
+
     STYLES = {  # kind: (fill, hover fill, outline, text colour, active fill, active outline, active text)
         "primary": (PINK, "#ff62b0", "", "#ffffff", PINK, "", "#ffffff"),
         "ghost": (SURFACE2, "#232b4a", BORDER, TEXT, SURFACE2, BORDER, TEXT),
@@ -84,10 +115,30 @@ class PillButton(tk.Canvas):
         "danger": (SURFACE2, "#2d1f33", RED, RED, SURFACE2, RED, RED),
     }
 
-    def __init__(self, parent, text="", command=None, kind="ghost", icon="", font=None, icon_font=None,
-                 bg=SURFACE, minw=0, height=38, padx=16):
-        tk.Canvas.__init__(self, parent, width=max(minw, 40), height=height, bg=bg,
-                           highlightthickness=0, bd=0, cursor="hand2")
+    def __init__(
+        self,
+        parent,
+        text="",
+        command=None,
+        kind="ghost",
+        icon="",
+        font=None,
+        icon_font=None,
+        bg=SURFACE,
+        minw=0,
+        height=38,
+        padx=16,
+    ):
+        tk.Canvas.__init__(
+            self,
+            parent,
+            width=max(minw, 40),
+            height=height,
+            bg=bg,
+            highlightthickness=0,
+            bd=0,
+            cursor="hand2",
+        )
         self._text, self._cmd, self._look, self._icon = text, command, kind, icon
         self._font = font or tkfont.nametofont("TkDefaultFont")
         self._ifont = icon_font or self._font
@@ -146,7 +197,12 @@ class PillButton(tk.Canvas):
         was = self._down
         self._down = False
         self._draw()
-        if was and self._cmd and 0 <= e.x <= int(self.winfo_width() or 9999) and 0 <= e.y <= self._h:
+        if (
+            was
+            and self._cmd
+            and 0 <= e.x <= int(self.winfo_width() or 9999)
+            and 0 <= e.y <= self._h
+        ):
             self._cmd()
 
     # --- drawing
@@ -163,20 +219,31 @@ class PillButton(tk.Canvas):
         w = max(self._minw, iw + tw + 2 * self._padx)
         tk.Canvas.configure(self, width=w)
         self.delete("all")
-        self.create_polygon(round_rect_points(1, 1, w - 1, self._h - 1, self._h / 2), smooth=True,
-                            fill=fill, outline=line, width=1)
+        self.create_polygon(
+            round_rect_points(1, 1, w - 1, self._h - 1, self._h / 2),
+            smooth=True,
+            fill=fill,
+            outline=line,
+            width=1,
+        )
         x = (w - (iw + tw)) / 2
         if self._icon:
-            self.create_text(x, self._h / 2, text=self._icon, font=self._ifont, fill=fg, anchor="w")
+            self.create_text(
+                x, self._h / 2, text=self._icon, font=self._ifont, fill=fg, anchor="w"
+            )
             x += iw
-        self.create_text(x, self._h / 2, text=self._text, font=self._font, fill=fg, anchor="w")
+        self.create_text(
+            x, self._h / 2, text=self._text, font=self._font, fill=fg, anchor="w"
+        )
 
 
 class GlowBar(tk.Canvas):
     """Track progress: rounded track, gradient-coloured fill and a glowing head."""
 
     def __init__(self, parent, height=18, bg=SURFACE):
-        tk.Canvas.__init__(self, parent, height=height, bg=bg, highlightthickness=0, bd=0)
+        tk.Canvas.__init__(
+            self, parent, height=height, bg=bg, highlightthickness=0, bd=0
+        )
         self._h, self._frac, self._bg = height, 0.0, bg
         self.bind("<Configure>", lambda _e: self._draw())
 
@@ -192,24 +259,59 @@ class GlowBar(tk.Canvas):
             return
         self.delete("all")
         mid = h / 2
-        self.create_polygon(round_rect_points(0, mid - 3, w, mid + 3, 3), smooth=True, fill="#232a48", outline="")
+        self.create_polygon(
+            round_rect_points(0, mid - 3, w, mid + 3, 3),
+            smooth=True,
+            fill="#232a48",
+            outline="",
+        )
         fx = self._frac * (w - 12) + 6
         if self._frac > 0:
             n = 18
             cols = gradient([PINK, VIOLET, CYAN], n)
             seg = max(fx / n, 1)
             for i in range(n):
-                self.create_rectangle(i * seg, mid - 3, min((i + 1) * seg + 1, fx), mid + 3, fill=cols[i], outline="")
-            self.create_oval(fx - 11, mid - 11, fx + 11, mid + 11, fill=lerp_color(self._bg, CYAN, 0.22), outline="")
-            self.create_oval(fx - 6, mid - 6, fx + 6, mid + 6, fill="#ffffff", outline=CYAN, width=2)
+                self.create_rectangle(
+                    i * seg,
+                    mid - 3,
+                    min((i + 1) * seg + 1, fx),
+                    mid + 3,
+                    fill=cols[i],
+                    outline="",
+                )
+            self.create_oval(
+                fx - 11,
+                mid - 11,
+                fx + 11,
+                mid + 11,
+                fill=lerp_color(self._bg, CYAN, 0.22),
+                outline="",
+            )
+            self.create_oval(
+                fx - 6, mid - 6, fx + 6, mid + 6, fill="#ffffff", outline=CYAN, width=2
+            )
 
 
 class VolSlider(tk.Canvas):
     """Volume slider; command(v) fires when the knob is released, on_change(v) while dragging."""
 
     def __init__(self, parent, command=None, on_change=None, bg=SURFACE, height=26):
-        tk.Canvas.__init__(self, parent, height=height, bg=bg, highlightthickness=0, bd=0, cursor="hand2")
-        self._h, self._v, self._cmd, self._chg, self.dragging = height, 50, command, on_change, False
+        tk.Canvas.__init__(
+            self,
+            parent,
+            height=height,
+            bg=bg,
+            highlightthickness=0,
+            bd=0,
+            cursor="hand2",
+        )
+        self._h, self._v, self._cmd, self._chg, self.dragging = (
+            height,
+            50,
+            command,
+            on_change,
+            False,
+        )
         self.bind("<Configure>", lambda _e: self._draw())
         self.bind("<ButtonPress-1>", self._move_start)
         self.bind("<B1-Motion>", self._move)
@@ -251,11 +353,30 @@ class VolSlider(tk.Canvas):
             return
         self.delete("all")
         mid, x = h / 2, 10 + self._v / 100 * (w - 20)
-        self.create_polygon(round_rect_points(8, mid - 3, w - 8, mid + 3, 3), smooth=True, fill="#232a48", outline="")
+        self.create_polygon(
+            round_rect_points(8, mid - 3, w - 8, mid + 3, 3),
+            smooth=True,
+            fill="#232a48",
+            outline="",
+        )
         if x > 12:
-            self.create_polygon(round_rect_points(8, mid - 3, x, mid + 3, 3), smooth=True, fill=CYAN, outline="")
-        self.create_oval(x - 9, mid - 9, x + 9, mid + 9, fill=lerp_color(self["bg"], CYAN, 0.2), outline="")
-        self.create_oval(x - 6, mid - 6, x + 6, mid + 6, fill="#ffffff", outline=CYAN, width=2)
+            self.create_polygon(
+                round_rect_points(8, mid - 3, x, mid + 3, 3),
+                smooth=True,
+                fill=CYAN,
+                outline="",
+            )
+        self.create_oval(
+            x - 9,
+            mid - 9,
+            x + 9,
+            mid + 9,
+            fill=lerp_color(self["bg"], CYAN, 0.2),
+            outline="",
+        )
+        self.create_oval(
+            x - 6, mid - 6, x + 6, mid + 6, fill="#ffffff", outline=CYAN, width=2
+        )
 
 
 class App(tk.Tk):
@@ -263,7 +384,9 @@ class App(tk.Tk):
         self._enable_dpi()
         super().__init__()
         self.e = engine
-        self.k = max(1.0, self.winfo_fpixels("1i") / 96.0)  # display scaling: sizes below are for 96 dpi
+        self.k = max(
+            1.0, self.winfo_fpixels("1i") / 96.0
+        )  # display scaling: sizes below are for 96 dpi
         self.title("AutoDJ")
         self._set_icon()
         self.geometry(f"{self.px(1200)}x{self.px(780)}")
@@ -274,8 +397,13 @@ class App(tk.Tk):
         self._drag = False
         self._seen = 0  # show whatever is already in the log
         self._q_cache = self._h_cache = None
-        self._state = "idle"           # idle | playing | paused (drives the animations)
-        self._level, self._spin, self._angle, self._t_prev = 0.05, 0.0, 0.0, time.monotonic()
+        self._state = "idle"  # idle | playing | paused (drives the animations)
+        self._level, self._spin, self._angle, self._t_prev = (
+            0.05,
+            0.0,
+            0.0,
+            time.monotonic(),
+        )
         self._bar_items: list = []
         self._bars: list[float] = []
         self._bar_geo = (0, 1, 0, 1)
@@ -284,9 +412,13 @@ class App(tk.Tk):
         self._closing = False
         self._anim_err = False
         self._particles = make_particles(26, seed=1)
-        self._confetti: list[tuple[float, dict]] = []   # (launch_time, piece) still animating
+        self._confetti: list[
+            tuple[float, dict, int]
+        ] = []  # (launch_time, piece, item) still animating
         self._last_track_id: int | None = None
-        self._border_glow = 0.0  # 0..1 window-border-glow intensity, pulses with playback
+        self._border_glow = (
+            0.0  # 0..1 window-border-glow intensity, pulses with playback
+        )
         self._fonts()
         self._style()
         self._build()
@@ -306,6 +438,7 @@ class App(tk.Tk):
         if os.name == "nt":
             try:
                 import ctypes
+
                 try:
                     ctypes.windll.shcore.SetProcessDpiAwareness(1)
                 except Exception:
@@ -314,17 +447,26 @@ class App(tk.Tk):
                 pass
 
     def px(self, n: float) -> int:
-        return int(round(n * self.k))
+        return round(n * self.k)
 
     def _dark_titlebar(self):
         if os.name != "nt":
             return
         try:
             import ctypes
+
             hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
             val = ctypes.c_int(1)
-            for attr in (20, 19):  # DWMWA_USE_IMMERSIVE_DARK_MODE (Win10 2004+/Win11, older builds use 19)
-                if ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, attr, ctypes.byref(val), ctypes.sizeof(val)) == 0:
+            for attr in (
+                20,
+                19,
+            ):  # DWMWA_USE_IMMERSIVE_DARK_MODE (Win10 2004+/Win11, older builds use 19)
+                if (
+                    ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                        hwnd, attr, ctypes.byref(val), ctypes.sizeof(val)
+                    )
+                    == 0
+                ):
                     break
         except Exception:
             pass
@@ -332,7 +474,10 @@ class App(tk.Tk):
     def _set_icon(self):
         import sys
         from pathlib import Path
-        base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))  # frozen exe unpacks app.ico here
+
+        base = Path(
+            getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent)
+        )  # frozen exe unpacks app.ico here
         ico = base / "app.ico"
         if os.name == "nt" and ico.exists():
             try:
@@ -342,7 +487,9 @@ class App(tk.Tk):
 
     # ---- construction ----------------------------------------------------
     def _fonts(self):
-        mk = lambda size, weight="normal", fam=FAMILY: tkfont.Font(root=self, family=fam, size=size, weight=weight)
+        mk = lambda size, weight="normal", fam=FAMILY: tkfont.Font(
+            root=self, family=fam, size=size, weight=weight
+        )
         self.f_body, self.f_bold, self.f_small = mk(10), mk(10, "bold"), mk(9)
         self.f_list, self.f_title, self.f_brand = mk(11), mk(21, "bold"), mk(21, "bold")
         self.f_h2, self.f_icon = mk(11, "bold"), mk(11, "normal", "Segoe UI Symbol")
@@ -354,38 +501,87 @@ class App(tk.Tk):
             s.theme_use("clam")
         except tk.TclError:
             pass
-        s.configure("Vertical.TScrollbar", background=SURFACE2, troughcolor=SURFACE, bordercolor=SURFACE,
-                    arrowcolor=MUTED, lightcolor=SURFACE2, darkcolor=SURFACE2, relief="flat")
+        s.configure(
+            "Vertical.TScrollbar",
+            background=SURFACE2,
+            troughcolor=SURFACE,
+            bordercolor=SURFACE,
+            arrowcolor=MUTED,
+            lightcolor=SURFACE2,
+            darkcolor=SURFACE2,
+            relief="flat",
+        )
         s.map("Vertical.TScrollbar", background=[("active", BORDER)])
 
     def _card(self, parent):
-        return tk.Frame(parent, bg=SURFACE, highlightthickness=1, highlightbackground=BORDER, highlightcolor=BORDER)
+        return tk.Frame(
+            parent,
+            bg=SURFACE,
+            highlightthickness=1,
+            highlightbackground=BORDER,
+            highlightcolor=BORDER,
+        )
 
     def _lbl(self, parent, key, font=None, fg=MUTED, bg=SURFACE, **kw):
         w = tk.Label(parent, bg=bg, fg=fg, font=font or self.f_small, **kw)
         self._labels.append((w, key))
         return w
 
-    def _btn(self, parent, key, cmd, kind="ghost", icon="", bg=SURFACE, height=38, minw=0):
-        w = PillButton(parent, command=cmd, kind=kind, icon=icon, font=self.f_bold, icon_font=self.f_icon,
-                       bg=bg, height=self.px(height), minw=self.px(minw))
+    def _btn(
+        self, parent, key, cmd, kind="ghost", icon="", bg=SURFACE, height=38, minw=0
+    ):
+        w = PillButton(
+            parent,
+            command=cmd,
+            kind=kind,
+            icon=icon,
+            font=self.f_bold,
+            icon_font=self.f_icon,
+            bg=bg,
+            height=self.px(height),
+            minw=self.px(minw),
+        )
         self._labels.append((w, key))
         return w
 
     def _entry(self, parent):
-        ent = tk.Entry(parent, bg=SURFACE2, fg=TEXT, insertbackground=CYAN, relief="flat", font=self.f_list,
-                       highlightthickness=1, highlightbackground=BORDER, highlightcolor=VIOLET,
-                       selectbackground=VIOLET, selectforeground="#ffffff", bd=0)
+        ent = tk.Entry(
+            parent,
+            bg=SURFACE2,
+            fg=TEXT,
+            insertbackground=CYAN,
+            relief="flat",
+            font=self.f_list,
+            highlightthickness=1,
+            highlightbackground=BORDER,
+            highlightcolor=VIOLET,
+            selectbackground=VIOLET,
+            selectforeground="#ffffff",
+            bd=0,
+        )
         return ent
 
     def _listbox(self, parent):
-        return tk.Listbox(parent, bg=SURFACE, fg=TEXT, selectbackground="#2a2160", selectforeground=TEXT,
-                          relief="flat", highlightthickness=0, activestyle="none", selectmode="extended",
-                          font=self.f_list, bd=0, exportselection=False)
+        return tk.Listbox(
+            parent,
+            bg=SURFACE,
+            fg=TEXT,
+            selectbackground="#2a2160",
+            selectforeground=TEXT,
+            relief="flat",
+            highlightthickness=0,
+            activestyle="none",
+            selectmode="extended",
+            font=self.f_list,
+            bd=0,
+            exportselection=False,
+        )
 
     def _build(self):
         px = self.px
-        self._border = tk.Frame(self, bg=BG)  # a few px of this shows around `root`: the animated glow border
+        self._border = tk.Frame(
+            self, bg=BG
+        )  # a few px of this shows around `root`: the animated glow border
         self._border.pack(fill="both", expand=True)
         root = tk.Frame(self._border, bg=BG)
         root.pack(fill="both", expand=True, padx=px(3), pady=px(3))
@@ -393,21 +589,54 @@ class App(tk.Tk):
         # header: logo, language pills, ON AIR light
         hdr = tk.Frame(root, bg=BG)
         hdr.pack(fill="x", padx=px(26), pady=(px(16), px(10)))
-        logo = tk.Canvas(hdr, width=px(170), height=px(44), bg=BG, highlightthickness=0, bd=0)
+        logo = tk.Canvas(
+            hdr, width=px(170), height=px(44), bg=BG, highlightthickness=0, bd=0
+        )
         logo.pack(side="left")
-        halo = logo.create_text(1, px(22) + 1, text="AUTODJ", font=self.f_brand, fill=lerp_color(PINK, BG, 0.4), anchor="w")
-        logo.create_text(0, px(22), text="AUTO", font=self.f_brand, fill=TEXT, anchor="w")
-        logo.create_text(self.f_brand.measure("AUTO") + 2, px(22), text="DJ", font=self.f_brand, fill=PINK, anchor="w")
+        halo = logo.create_text(
+            1,
+            px(22) + 1,
+            text="AUTODJ",
+            font=self.f_brand,
+            fill=lerp_color(PINK, BG, 0.4),
+            anchor="w",
+        )
+        logo.create_text(
+            0, px(22), text="AUTO", font=self.f_brand, fill=TEXT, anchor="w"
+        )
+        logo.create_text(
+            self.f_brand.measure("AUTO") + 2,
+            px(22),
+            text="DJ",
+            font=self.f_brand,
+            fill=PINK,
+            anchor="w",
+        )
         self._logo_halo = halo
-        tk.Label(hdr, text="CAMFROG  ·  ROOM MUSIC BOT", bg=BG, fg=MUTED, font=self.f_small).pack(side="left", padx=(px(8), 0), pady=(px(8), 0))
+        tk.Label(
+            hdr, text="CAMFROG  ·  ROOM MUSIC BOT", bg=BG, fg=MUTED, font=self.f_small
+        ).pack(side="left", padx=(px(8), 0), pady=(px(8), 0))
         self.b_lang = {}
         for code in ("th", "en"):
-            b = PillButton(hdr, text=code.upper(), command=lambda c=code: self.set_lang(c), kind="tab", font=self.f_bold,
-                           bg=BG, height=px(32), minw=px(52), padx=px(10))
+            b = PillButton(
+                hdr,
+                text=code.upper(),
+                command=lambda c=code: self.set_lang(c),
+                kind="tab",
+                font=self.f_bold,
+                bg=BG,
+                height=px(32),
+                minw=px(52),
+                padx=px(10),
+            )
             b.pack(side="right", padx=(px(6), 0))
             self.b_lang[code] = b
-        self.led = tk.Canvas(hdr, width=px(18), height=px(18), bg=BG, highlightthickness=0, bd=0)
-        self._led_id = self.led.create_oval(px(3), px(3), px(15), px(15), fill="#3a3f5c", outline="")
+        self.led = tk.Canvas(
+            hdr, width=px(18), height=px(18), bg=BG, highlightthickness=0, bd=0
+        )
+        self._led_id = self.led.create_oval(
+            px(3), px(3), px(15), px(15), fill="#3a3f5c", outline=""
+        )
         self.led.pack(side="right", padx=(0, px(6)))
         self.v_onair = self._lbl(hdr, "g_on_air", font=self.f_bold, bg=BG)
         self.v_onair.pack(side="right", padx=(px(18), px(2)))
@@ -421,7 +650,15 @@ class App(tk.Tk):
         # warning when mpv cannot be found (nothing could play)
         avail = getattr(self.e.player, "available", None)
         if callable(avail) and not avail():
-            ban = tk.Label(root, bg="#3a1424", fg="#ffb3c6", font=self.f_body, anchor="w", padx=px(26), pady=px(8))
+            ban = tk.Label(
+                root,
+                bg="#3a1424",
+                fg="#ffb3c6",
+                font=self.f_body,
+                anchor="w",
+                padx=px(26),
+                pady=px(8),
+            )
             self._labels.append((ban, "g_mpv_missing"))
             ban.pack(fill="x")
 
@@ -438,51 +675,115 @@ class App(tk.Tk):
         # ---- now-playing card
         card = self._card(left)
         card.pack(fill="x")
-        self.stage = tk.Canvas(card, height=px(230), bg=SURFACE, highlightthickness=0, bd=0)
+        self.stage = tk.Canvas(
+            card, height=px(230), bg=SURFACE, highlightthickness=0, bd=0
+        )
         self.stage.pack(fill="x")
         self.stage.bind("<Configure>", self._layout_stage)
         info = tk.Frame(card, bg=SURFACE)
         info.pack(fill="x", padx=px(22), pady=(px(10), px(18)))
-        self.v_title = tk.Label(info, bg=SURFACE, fg=TEXT, font=self.f_title, anchor="w", justify="left", wraplength=px(560))
+        self.v_title = tk.Label(
+            info,
+            bg=SURFACE,
+            fg=TEXT,
+            font=self.f_title,
+            anchor="w",
+            justify="left",
+            wraplength=px(560),
+        )
         self.v_title.pack(fill="x")
         self.v_sub = tk.Label(info, bg=SURFACE, fg=CYAN, font=self.f_body, anchor="w")
         self.v_sub.pack(fill="x", pady=(px(2), px(10)))
         self.bar = GlowBar(info, height=px(22), bg=SURFACE)
         self.bar.pack(fill="x")
-        self.v_time = tk.Label(info, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w")
+        self.v_time = tk.Label(
+            info, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w"
+        )
         self.v_time.pack(fill="x", pady=(0, px(10)))
         ctl = tk.Frame(info, bg=SURFACE)
         ctl.pack(fill="x")
-        self.b_pause = PillButton(ctl, command=self.toggle_pause, kind="primary", icon="❚❚", font=self.f_bold,
-                                  icon_font=self.f_big_icon, bg=SURFACE, height=px(44), minw=px(150), padx=px(20))
+        self.b_pause = PillButton(
+            ctl,
+            command=self.toggle_pause,
+            kind="primary",
+            icon="❚❚",
+            font=self.f_bold,
+            icon_font=self.f_big_icon,
+            bg=SURFACE,
+            height=px(44),
+            minw=px(150),
+            padx=px(20),
+        )
         self.b_pause.pack(side="left")
         skip = self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=44, minw=110)
         skip.pack(side="left", padx=(px(10), 0))
-        self.v_volpct = tk.Label(ctl, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e")
+        discover = self._btn(
+            ctl, "g_discover", self.do_discover, icon="🔍", height=44, minw=130
+        )
+        discover.pack(side="left", padx=(px(10), 0))
+        check = self._btn(
+            ctl, "g_check", self.do_check, icon="✓", height=44, minw=110
+        )
+        check.pack(side="left", padx=(px(10), 0))
+        self.v_volpct = tk.Label(
+            ctl, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e"
+        )
         self.v_volpct.pack(side="right")
-        self.vol = VolSlider(ctl, command=self._vol_release, on_change=self._vol_live, bg=SURFACE, height=px(28))
+        self.vol = VolSlider(
+            ctl,
+            command=self._vol_release,
+            on_change=self._vol_live,
+            bg=SURFACE,
+            height=px(28),
+        )
         self.vol.pack(side="right", fill="x", expand=True, padx=(px(24), px(6)))
         self._lbl(ctl, "g_vol", bg=SURFACE).pack(side="right", padx=(px(18), 0))
-        self.v_next = tk.Label(info, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w", justify="left", wraplength=px(560))
+        self.v_next = tk.Label(
+            info,
+            bg=SURFACE,
+            fg=MUTED,
+            font=self.f_small,
+            anchor="w",
+            justify="left",
+            wraplength=px(560),
+        )
         self.v_next.pack(fill="x", pady=(px(12), 0))
-        card.bind("<Configure>", lambda e: [w.configure(wraplength=max(200, e.width - px(48))) for w in (self.v_title, self.v_next)])
+        card.bind(
+            "<Configure>",
+            lambda e: [
+                w.configure(wraplength=max(200, e.width - px(48)))
+                for w in (self.v_title, self.v_next)
+            ],
+        )
 
         # ---- add row
         add = tk.Frame(left, bg=BG)
         add.pack(fill="x", pady=(px(18), 0))
         self.ent_add = self._entry(add)
-        self.ent_add.pack(side="left", fill="x", expand=True, ipady=px(9), padx=(0, px(10)))
+        self.ent_add.pack(
+            side="left", fill="x", expand=True, ipady=px(9), padx=(0, px(10))
+        )
         self.ent_add.bind("<Return>", lambda _e: self.add())
-        self._btn(add, "g_add", self.add, "primary", icon="＋", bg=BG, height=40).pack(side="left")
-        self._btn(add, "g_folder", self.load_folder, bg=BG, height=40).pack(side="left", padx=(px(8), 0))
-        self._btn(add, "g_file", self.add_files, bg=BG, height=40).pack(side="left", padx=(px(8), 0))
+        self._btn(add, "g_add", self.add, "primary", icon="＋", bg=BG, height=40).pack(
+            side="left"
+        )
+        self._btn(add, "g_folder", self.load_folder, bg=BG, height=40).pack(
+            side="left", padx=(px(8), 0)
+        )
+        self._btn(add, "g_file", self.add_files, bg=BG, height=40).pack(
+            side="left", padx=(px(8), 0)
+        )
         self.v_hint = tk.Label(left, bg=BG, fg=MUTED, font=self.f_small, anchor="w")
         self.v_hint.pack(fill="x", pady=(px(6), 0))
         opts = tk.Frame(left, bg=BG)
         opts.pack(fill="x", pady=(px(12), 0))
-        self.c_shuffle = self._btn(opts, "g_shuffle", self.on_shuffle, "chip", icon="⇄", bg=BG, height=34)
+        self.c_shuffle = self._btn(
+            opts, "g_shuffle", self.on_shuffle, "chip", icon="⇄", bg=BG, height=34
+        )
         self.c_shuffle.pack(side="left")
-        self.c_repeat = self._btn(opts, "g_repeat", self.on_repeat, "chip", icon="↻", bg=BG, height=34)
+        self.c_repeat = self._btn(
+            opts, "g_repeat", self.on_repeat, "chip", icon="↻", bg=BG, height=34
+        )
         self.c_repeat.pack(side="left", padx=(px(8), 0))
 
         # ---- tabbed panel: queue / history / chat
@@ -491,19 +792,29 @@ class App(tk.Tk):
         bar = tk.Frame(panel, bg=SURFACE)
         bar.pack(fill="x", padx=px(14), pady=(px(14), px(8)))
         self.tabs = {}
-        for key, lab in (("queue", "g_queue"), ("history", "g_history"), ("chat", "g_chat")):
+        for key, lab in (
+            ("queue", "g_queue"),
+            ("history", "g_history"),
+            ("chat", "g_chat"),
+        ):
             b = self._btn(bar, lab, lambda k=key: self.show_tab(k), "tab", height=34)
             b.pack(side="left", padx=(0, px(6)))
             self.tabs[key] = b
         pages = tk.Frame(panel, bg=SURFACE)
         pages.pack(fill="both", expand=True, padx=px(14), pady=(0, px(14)))
-        self.pages = {k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat")}
+        self.pages = {
+            k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat")
+        }
 
         qp = self.pages["queue"]
         qb = tk.Frame(qp, bg=SURFACE)
         qb.pack(side="bottom", fill="x", pady=(px(10), 0))
-        self._btn(qb, "g_remove", self.remove_selected, "danger", height=34).pack(side="left")
-        self._btn(qb, "g_clear", self.e.queue.clear, height=34).pack(side="left", padx=(px(8), 0))
+        self._btn(qb, "g_remove", self.remove_selected, "danger", height=34).pack(
+            side="left"
+        )
+        self._btn(qb, "g_clear", self.e.queue.clear, height=34).pack(
+            side="left", padx=(px(8), 0)
+        )
         sb = ttk.Scrollbar(qp, orient="vertical")
         sb.pack(side="right", fill="y")
         self.lb = self._listbox(qp)
@@ -523,14 +834,31 @@ class App(tk.Tk):
         sr = tk.Frame(cp, bg=SURFACE)
         sr.pack(side="bottom", fill="x", pady=(px(10), 0))
         self.ent_say = self._entry(sr)
-        self.ent_say.pack(side="left", fill="x", expand=True, ipady=px(7), padx=(0, px(8)))
+        self.ent_say.pack(
+            side="left", fill="x", expand=True, ipady=px(7), padx=(0, px(8))
+        )
         self.ent_say.bind("<Return>", lambda _e: self.say())
         self._btn(sr, "g_say", self.say, "primary", height=34).pack(side="left")
-        self._btn(sr, "g_speak", self.speak, height=34).pack(side="left", padx=(px(8), 0))
+        self._btn(sr, "g_speak", self.speak, height=34).pack(
+            side="left", padx=(px(8), 0)
+        )
         cs = ttk.Scrollbar(cp, orient="vertical")
         cs.pack(side="right", fill="y")
-        self.chat = tk.Text(cp, bg=SURFACE, fg=TEXT, wrap="word", state="disabled", relief="flat", highlightthickness=0,
-                            padx=px(8), pady=px(6), font=self.f_body, insertbackground=CYAN, selectbackground=VIOLET, bd=0)
+        self.chat = tk.Text(
+            cp,
+            bg=SURFACE,
+            fg=TEXT,
+            wrap="word",
+            state="disabled",
+            relief="flat",
+            highlightthickness=0,
+            padx=px(8),
+            pady=px(6),
+            font=self.f_body,
+            insertbackground=CYAN,
+            selectbackground=VIOLET,
+            bd=0,
+        )
         self.chat.pack(side="left", fill="both", expand=True)
         self.chat.configure(yscrollcommand=cs.set)
         cs.configure(command=self.chat.yview)
@@ -547,8 +875,12 @@ class App(tk.Tk):
         cols = gradient([PINK, VIOLET, CYAN, VIOLET, PINK], n)
         seg = w / n
         for i, c in enumerate(cols):
-            self.line.create_rectangle(i * seg, 0, (i + 1) * seg + 1, 3, fill=c, outline="")
-        self._shimmer = self.line.create_rectangle(-200, 0, -80, 3, fill="#ffffff", outline="")
+            self.line.create_rectangle(
+                i * seg, 0, (i + 1) * seg + 1, 3, fill=c, outline=""
+            )
+        self._shimmer = self.line.create_rectangle(
+            -200, 0, -80, 3, fill="#ffffff", outline=""
+        )
 
     def _layout_stage(self, _e=None):
         c, px = self.stage, self.px
@@ -562,30 +894,91 @@ class App(tk.Tk):
             for _ in range(60):
                 x = (x * 9301 + 49297) % 233280
                 rnd.append(x / 233280)
-            self._stars = [(rnd[i * 2 % 60], rnd[(i * 2 + 1) % 60], 0.4 + rnd[i % 60] * 1.3) for i in range(30)]
+            self._stars = [
+                (rnd[i * 2 % 60], rnd[(i * 2 + 1) % 60], 0.4 + rnd[i % 60] * 1.3)
+                for i in range(30)
+            ]
         n = len(AURORA)
         strip = h / n * 1.8
-        self._aurora_items = [c.create_rectangle(0, i * h / n, w, i * h / n + strip, fill=AURORA[i], outline="")
-                              for i in range(n)]
-        self._star_items = [c.create_oval(sx * w, sy * h * 0.7, sx * w + sr * 2, sy * h * 0.7 + sr * 2,
-                                          fill="#ffffff", outline="", stipple="gray25") for sx, sy, sr in self._stars]
+        self._aurora_items = [
+            c.create_rectangle(
+                0, i * h / n, w, i * h / n + strip, fill=AURORA[i], outline=""
+            )
+            for i in range(n)
+        ]
+        self._star_items = [
+            c.create_oval(
+                sx * w,
+                sy * h * 0.7,
+                sx * w + sr * 2,
+                sy * h * 0.7 + sr * 2,
+                fill="#ffffff",
+                outline="",
+                stipple="gray25",
+            )
+            for sx, sy, sr in self._stars
+        ]
         cx, cy, r = h * 0.56, h / 2, min(h * 0.38, px(92))
-        self._glow = [c.create_oval(cx - r - d, cy - r - d, cx + r + d, cy + r + d,
-                                    fill=lerp_color("#0d1021", PINK, 0.05 + 0.03 * i), outline="") for i, d in enumerate((px(44), px(28), px(14)))]
-        c.create_oval(cx - r, cy - r, cx + r, cy + r, fill="#07080f", outline="#2b3156", width=2)
+        self._glow = [
+            c.create_oval(
+                cx - r - d,
+                cy - r - d,
+                cx + r + d,
+                cy + r + d,
+                fill=lerp_color("#0d1021", PINK, 0.05 + 0.03 * i),
+                outline="",
+            )
+            for i, d in enumerate((px(44), px(28), px(14)))
+        ]
+        c.create_oval(
+            cx - r, cy - r, cx + r, cy + r, fill="#07080f", outline="#2b3156", width=2
+        )
         for f in (0.92, 0.82, 0.72, 0.62, 0.52):
-            c.create_oval(cx - r * f, cy - r * f, cx + r * f, cy + r * f, outline="#171a2e")
+            c.create_oval(
+                cx - r * f, cy - r * f, cx + r * f, cy + r * f, outline="#171a2e"
+            )
         rs = r * 0.94
-        self._sheen = [c.create_arc(cx - rs, cy - rs, cx + rs, cy + rs, start=a, extent=34, style="arc",
-                                    outline="#566099", width=3) for a in (20, 200)]
+        self._sheen = [
+            c.create_arc(
+                cx - rs,
+                cy - rs,
+                cx + rs,
+                cy + rs,
+                start=a,
+                extent=34,
+                style="arc",
+                outline="#566099",
+                width=3,
+            )
+            for a in (20, 200)
+        ]
         lab = r * 0.36
-        c.create_oval(cx - lab, cy - lab, cx + lab, cy + lab, fill=PINK, outline=lerp_color(PINK, "#ffffff", 0.4), width=2)
-        c.create_oval(cx - lab * 0.55, cy - lab * 0.55, cx + lab * 0.55, cy + lab * 0.55, fill=VIOLET, outline="")
-        self._needle = c.create_line(cx, cy, cx + lab * 0.8, cy, fill="#ffffff", width=2)
+        c.create_oval(
+            cx - lab,
+            cy - lab,
+            cx + lab,
+            cy + lab,
+            fill=PINK,
+            outline=lerp_color(PINK, "#ffffff", 0.4),
+            width=2,
+        )
+        c.create_oval(
+            cx - lab * 0.55,
+            cy - lab * 0.55,
+            cx + lab * 0.55,
+            cy + lab * 0.55,
+            fill=VIOLET,
+            outline="",
+        )
+        self._needle = c.create_line(
+            cx, cy, cx + lab * 0.8, cy, fill="#ffffff", width=2
+        )
         c.create_oval(cx - 4, cy - 4, cx + 4, cy + 4, fill="#0a0c14", outline="")
         self._vc = (cx, cy, r, lab)
-        self._particle_items = [c.create_oval(0, 0, 1, 1, fill=col, outline="")
-                                for col in gradient([CYAN, VIOLET, PINK, "#ffffff"], len(self._particles))]
+        self._particle_items = [
+            c.create_oval(0, 0, 1, 1, fill=col, outline="")
+            for col in gradient([CYAN, VIOLET, PINK, "#ffffff"], len(self._particles))
+        ]
         self._confetti_items: list[int] = []
         x0, x1 = cx + r + px(52), w - px(26)
         self._bar_items, self._bars = [], []
@@ -593,12 +986,28 @@ class App(tk.Tk):
             nb = max(12, min(48, int((x1 - x0) / px(14))))
             bw, base = (x1 - x0) / nb, h - px(24)
             cols = gradient([CYAN, VIOLET, PINK], nb)
-            self._bar_items = [c.create_rectangle(x0 + i * bw + 1, base - 2, x0 + (i + 1) * bw - 2, base, fill=cols[i], outline="")
-                               for i in range(nb)]
+            self._bar_items = [
+                c.create_rectangle(
+                    x0 + i * bw + 1,
+                    base - 2,
+                    x0 + (i + 1) * bw - 2,
+                    base,
+                    fill=cols[i],
+                    outline="",
+                )
+                for i in range(nb)
+            ]
             self._bars = [0.03] * nb
             self._bar_geo = (x0, bw, base, h - px(66))
             c.create_line(x0, base + 5, x1, base + 5, fill=BORDER)
-        self._stage_tag = c.create_text(px(20), px(14), text=self.e.t("g_now").upper(), anchor="nw", fill=MUTED, font=self.f_small)
+        self._stage_tag = c.create_text(
+            px(20),
+            px(14),
+            text=self.e.t("g_now").upper(),
+            anchor="nw",
+            fill=MUTED,
+            font=self.f_small,
+        )
 
     def _tick(self):
         try:
@@ -609,7 +1018,9 @@ class App(tk.Tk):
                 log.exception("GUI animation frame failed")
         finally:
             if not self._closing:
-                self._anim = self.after(250 if self.state() == "iconic" else FPS_MS, self._tick)
+                self._anim = self.after(
+                    250 if self.state() == "iconic" else FPS_MS, self._tick
+                )
 
     def _frame(self):
         t = time.monotonic()
@@ -624,21 +1035,37 @@ class App(tk.Tk):
                 off = aurora_offset(t, i, n) * h * 0.1
                 y0 = i * h / n - off
                 c.coords(item, 0, y0, w, y0 + strip)
-            for i, (item, (sx, sy, sr)) in enumerate(zip(self._star_items, self._stars)):
+            for i, (item, (sx, sy, sr)) in enumerate(
+                zip(self._star_items, self._stars)
+            ):
                 a = 0.4 + 0.6 * pulse(t * 0.6 + i * 0.9, 2.3)
-                c.itemconfigure(item, stipple="gray75" if a > 0.7 else ("gray50" if a > 0.4 else "gray25"))
+                c.itemconfigure(
+                    item,
+                    stipple="gray75"
+                    if a > 0.7
+                    else ("gray50" if a > 0.4 else "gray25"),
+                )
         if self._vc and getattr(self, "_particle_items", None):
-            cx, cy, r, lab = self._vc
+            cx, cy, r, _lab = self._vc
             for item, p in zip(self._particle_items, self._particles):
                 x, y, alpha = particle_pos(p, t, cx, cy, r + self.px(70))
                 s = p["size"] * (0.6 + 0.7 * alpha) * (1.0 if st == "playing" else 0.5)
                 c.coords(item, x - s, y - s, x + s, y + s)
-                c.itemconfigure(item, stipple="gray75" if alpha > 0.75 else ("gray50" if alpha > 0.45 else "gray25"))
+                c.itemconfigure(
+                    item,
+                    stipple="gray75"
+                    if alpha > 0.75
+                    else ("gray50" if alpha > 0.45 else "gray25"),
+                )
         self._run_confetti(t)
         glow_target = 0.75 + 0.25 * pulse(t, 1.5) if st == "playing" else 0.0
         self._border_glow = ease(self._border_glow, glow_target, 0.12, 0.05)
         self._border.configure(bg=lerp_color(BG, PINK, 0.55 * self._border_glow))
-        target = 1.0 if st == "playing" else (0.10 if st == "paused" else 0.05 + 0.04 * pulse(t, 3.0))
+        target = (
+            1.0
+            if st == "playing"
+            else (0.10 if st == "paused" else 0.05 + 0.04 * pulse(t, 3.0))
+        )
         self._level = ease(self._level, target, 0.15, 0.08)
         c = self.stage
         if self._bar_items:
@@ -646,20 +1073,47 @@ class App(tk.Tk):
             x0, bw, base, maxh = self._bar_geo
             for i, item in enumerate(self._bar_items):
                 self._bars[i] = ease(self._bars[i], tgt[i])
-                c.coords(item, x0 + i * bw + 1, base - max(2.0, self._bars[i] * maxh), x0 + (i + 1) * bw - 2, base)
+                c.coords(
+                    item,
+                    x0 + i * bw + 1,
+                    base - max(2.0, self._bars[i] * maxh),
+                    x0 + (i + 1) * bw - 2,
+                    base,
+                )
         if self._vc:
-            cx, cy, r, lab = self._vc
+            cx, cy, _r, lab = self._vc
             self._spin = ease(self._spin, 1.0 if st == "playing" else 0.0, 0.08, 0.04)
-            self._angle = (self._angle + self._spin * dt * 200.0) % 360.0  # 33⅓ rpm = 200 deg/s
+            self._angle = (
+                self._angle + self._spin * dt * 200.0
+            ) % 360.0  # 33⅓ rpm = 200 deg/s
             c.itemconfigure(self._sheen[0], start=self._angle)
             c.itemconfigure(self._sheen[1], start=(self._angle + 180) % 360)
             a = math.radians(self._angle)
-            c.coords(self._needle, cx, cy, cx + lab * 0.8 * math.cos(a), cy - lab * 0.8 * math.sin(a))
+            c.coords(
+                self._needle,
+                cx,
+                cy,
+                cx + lab * 0.8 * math.cos(a),
+                cy - lab * 0.8 * math.sin(a),
+            )
             for i, ring in enumerate(self._glow):
-                c.itemconfigure(ring, fill=lerp_color("#0d1021", PINK, (0.04 + 0.03 * i) + 0.10 * self._level * pulse(t, 1.8) * (i + 1) / 3))
+                c.itemconfigure(
+                    ring,
+                    fill=lerp_color(
+                        "#0d1021",
+                        PINK,
+                        (0.04 + 0.03 * i)
+                        + 0.10 * self._level * pulse(t, 1.8) * (i + 1) / 3,
+                    ),
+                )
         if st == "playing" and self._cur_dur:
             self.bar.set(self.e.position() / self._cur_dur)
-        self.led.itemconfigure(self._led_id, fill=lerp_color("#4a1f2c", RED, pulse(t, 1.4)) if st == "playing" else "#3a3f5c")
+        self.led.itemconfigure(
+            self._led_id,
+            fill=lerp_color("#4a1f2c", RED, pulse(t, 1.4))
+            if st == "playing"
+            else "#3a3f5c",
+        )
         if self._shimmer is not None and self.line.winfo_width() > 10:
             x = (t * 220) % (self.line.winfo_width() + 400) - 200
             self.line.coords(self._shimmer, x, 0, x + 110, 3)
@@ -711,7 +1165,7 @@ class App(tk.Tk):
     def _run_confetti(self, t: float):
         if not self._confetti or not self._vc:
             return
-        cx, cy, r, lab = self._vc
+        cx, cy, _r, _lab = self._vc
         keep = []
         for launch, piece, item in self._confetti:
             age = t - launch
@@ -721,7 +1175,12 @@ class App(tk.Tk):
             x, y, _rot, alpha = confetti_pos(piece, age, cx, cy)
             s = piece["size"] * (0.5 + 0.5 * alpha)
             self.stage.coords(item, x - s, y - s, x + s, y + s)
-            self.stage.itemconfigure(item, stipple="gray75" if alpha > 0.7 else ("gray50" if alpha > 0.35 else "gray25"))
+            self.stage.itemconfigure(
+                item,
+                stipple="gray75"
+                if alpha > 0.7
+                else ("gray50" if alpha > 0.35 else "gray25"),
+            )
             keep.append((launch, piece, item))
         self._confetti = keep
 
@@ -747,12 +1206,31 @@ class App(tk.Tk):
             self.ent_add.delete(0, "end")
 
     def add_files(self):
+        import os
+        if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+            log.warning("file dialog skipped: no display available")
+            return
         ext = " ".join(f"*{x}" for x in sorted(MEDIA))
-        for f in filedialog.askopenfilenames(filetypes=[("Media", ext), ("All", "*.*")]):
+        try:
+            files = filedialog.askopenfilenames(
+                filetypes=[("Media", ext), ("All", "*.*")]
+            )
+        except Exception:
+            log.exception("file dialog failed")
+            return
+        for f in files:
             self.e.request(f)
 
     def load_folder(self):
-        d = filedialog.askdirectory()
+        import os
+        if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+            log.warning("folder dialog skipped: no display available")
+            return
+        try:
+            d = filedialog.askdirectory()
+        except Exception:
+            log.exception("folder dialog failed")
+            return
         if d:
             self.e.load_async(d)
 
@@ -780,6 +1258,28 @@ class App(tk.Tk):
             self.e.speak(text)
             self.ent_say.delete(0, "end")
 
+    def do_discover(self):
+        """Run auto-discovery to find the Camfrog room window and chat controls."""
+        import subprocess, sys
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "camfrog_autodj", "--discover", "-c", self.e.cfg_path if hasattr(self.e, "cfg_path") else "config.toml"],
+                check=False,
+            )
+        except Exception:
+            log.exception("discover failed")
+
+    def do_check(self):
+        """Run setup diagnostic: mpv, yt-dlp, folders, Camfrog window."""
+        import subprocess, sys
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "camfrog_autodj", "--check", "-c", self.e.cfg_path if hasattr(self.e, "cfg_path") else "config.toml"],
+                check=False,
+            )
+        except Exception:
+            log.exception("check failed")
+
     def close(self):
         self._closing = True
         self.e.shutdown()
@@ -789,7 +1289,9 @@ class App(tk.Tk):
     def refresh(self):
         try:
             self._refresh()
-        except Exception:  # one bad frame must not freeze the window: log it and keep polling
+        except (
+            Exception
+        ):  # one bad frame must not freeze the window: log it and keep polling
             log.exception("GUI refresh failed")
         finally:
             if not self._closing:
@@ -815,19 +1317,29 @@ class App(tk.Tk):
             self.v_time.configure(text="")
         self._sync_pause()
         n = s["next"]
-        self.v_next.configure(text=f"{self.e.t('g_up_next')}: {n.title} [{n.dur}] ({n.requester})" if n else "")
+        self.v_next.configure(
+            text=f"{self.e.t('g_up_next')}: {n.title} [{n.dur}] ({n.requester})"
+            if n
+            else ""
+        )
         if not self.vol.dragging:
             self.vol.set(s["volume"])
             self.v_volpct.configure(text=f"{int(s['volume'])}%")
         self.c_shuffle.set_active(s["shuffle"])
         self.c_repeat.set_active(s["repeat"] == "one")
-        items = [f"{i}. {q.title}  [{q.dur}]  ({q.requester})" for i, q in enumerate(s["queue"], 1)]
+        items = [
+            f"{i}. {q.title}  [{q.dur}]  ({q.requester})"
+            for i, q in enumerate(s["queue"], 1)
+        ]
         self._q_tracks = list(s["queue"])
         if items != self._q_cache:
             self._q_cache = items
             self.lb.delete(0, "end")
             self.lb.insert("end", *items)
-        hist = [f"{i}. {q.title}  [{q.dur}]  ({q.requester})" for i, q in enumerate(s.get("history", []), 1)]
+        hist = [
+            f"{i}. {q.title}  [{q.dur}]  ({q.requester})"
+            for i, q in enumerate(s.get("history", []), 1)
+        ]
         if hist != self._h_cache:
             self._h_cache = hist
             self.hist.delete(0, "end")
@@ -839,7 +1351,9 @@ class App(tk.Tk):
                 bot = who == self.e.cfg.bot_nick
                 self.chat.insert("end", who + ": ", ("who", "bot") if bot else ("who",))
                 self.chat.insert("end", text + "\n")
-            extra = int(self.chat.index("end-1c").split(".")[0]) - 1000  # keep the log box bounded
+            extra = (
+                int(self.chat.index("end-1c").split(".")[0]) - 1000
+            )  # keep the log box bounded
             if extra > 0:
                 self.chat.delete("1.0", f"{extra + 1}.0")
             self.chat.see("end")

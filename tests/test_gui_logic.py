@@ -1,5 +1,6 @@
 """Runs the GUI's logic against the strict fake Tk (see fake_tk.py): construction, language switch, polling,
 animation frames, button clicks. Catches wrong option names and runtime mistakes without needing a display."""
+
 import sys
 import time
 import types
@@ -13,9 +14,24 @@ from camfrog_autodj.models import Track
 
 def _tk_module():
     m = types.ModuleType("tkinter")
-    for n in ("Tk", "Frame", "Label", "Entry", "Listbox", "Text", "Canvas", "Menu", "Misc"):
+    for n in (
+        "Tk",
+        "Frame",
+        "Label",
+        "Entry",
+        "Listbox",
+        "Text",
+        "Canvas",
+        "Menu",
+        "Misc",
+    ):
         setattr(m, n, getattr(fake_tk, n))
-    m.TclError, m.font, m.ttk, m.filedialog = fake_tk.TclError, fake_tk.font, fake_tk.ttk, fake_tk.filedialog
+    m.TclError, m.font, m.ttk, m.filedialog = (
+        fake_tk.TclError,
+        fake_tk.font,
+        fake_tk.ttk,
+        fake_tk.filedialog,
+    )
     return m
 
 
@@ -25,6 +41,7 @@ def _gui(monkeypatch):
     monkeypatch.setitem(sys.modules, "tkinter.font", types.ModuleType("tkinter.font"))
     sys.modules.pop("camfrog_autodj.gui", None)
     import camfrog_autodj.gui as gui
+
     return gui
 
 
@@ -79,15 +96,19 @@ def test_playing_state_drives_animation_and_progress(monkeypatch):
         app._refresh()
         assert app._state == "playing" and app.v_title.cget("text") == "Midnight City"
         before = [app.stage.items[i][1][:] for i in app._bar_items]
-        for _ in range(25):                      # ~0.8 s of frames
+        for _ in range(25):  # ~0.8 s of frames
             app._frame()
             time.sleep(0.01)
         after = [app.stage.items[i][1][:] for i in app._bar_items]
-        assert before != after                    # the equaliser moved
-        assert app.bar._frac > 0.2                # 30 s of 120 s
+        assert before != after  # the equaliser moved
+        assert app.bar._frac > 0.2  # 30 s of 120 s
         e.paused = True
         app._refresh()
-        assert app._state == "paused" and app.b_pause.cget("text") == "Resume" and app.b_pause._icon == "▶"
+        assert (
+            app._state == "paused"
+            and app.b_pause.cget("text") == "Resume"
+            and app.b_pause._icon == "▶"
+        )
     finally:
         sys.modules.pop("camfrog_autodj.gui", None)
 
@@ -98,7 +119,7 @@ def test_buttons_do_what_they_say(monkeypatch):
         app.ent_add.insert(0, "my song")
         app.add()
         time.sleep(0.2)
-        assert app.ent_add.get() == ""                       # request accepted and the box cleared
+        assert app.ent_add.get() == ""  # request accepted and the box cleared
         _click(app.c_shuffle)
         assert e.queue.shuffle is False or e.queue.shuffle is True
         was = e.queue.repeat
@@ -113,7 +134,9 @@ def test_buttons_do_what_they_say(monkeypatch):
         app.ent_say.insert(0, "hi all")
         app.say()
         assert any("hi all" in o for o in out(e))
-        app.vol._release(types.SimpleNamespace(x=450))       # drag the volume knob to the middle
+        app.vol._release(
+            types.SimpleNamespace(x=450)
+        )  # drag the volume knob to the middle
         assert 40 <= e.volume <= 60
     finally:
         sys.modules.pop("camfrog_autodj.gui", None)
@@ -134,6 +157,6 @@ def test_refresh_survives_an_error_and_keeps_polling(monkeypatch):
         n = len(app._after)
         e.snapshot = lambda: (_ for _ in ()).throw(RuntimeError("boom"))
         app.refresh()
-        assert len(app._after) == n + 1                        # rescheduled despite the exception
+        assert len(app._after) == n + 1  # rescheduled despite the exception
     finally:
         sys.modules.pop("camfrog_autodj.gui", None)

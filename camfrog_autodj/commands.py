@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 import time
 
@@ -15,6 +16,7 @@ def command(*names, admin=False):
                 raise ValueError(f"command name {n!r} is registered twice")
             COMMANDS[n] = (fn, admin)
         return fn
+
     return deco
 
 
@@ -31,13 +33,20 @@ class Router:
         text = msg.text.strip()
         if not text.startswith(p):
             return
-        name, _, arg = text[len(p):].partition(" ")
+        name, _, arg = text[len(p) :].partition(" ")
         entry = COMMANDS.get(name.lower())
         if not entry:
             return
         fn, need_admin = entry
         admin = self.is_admin(msg)
-        log.info("command %s%s (%s) from %s%s", p, name, arg, msg.user, ", admin" if admin else "")
+        log.info(
+            "command %s%s (%s) from %s%s",
+            p,
+            name,
+            arg,
+            msg.user,
+            ", admin" if admin else "",
+        )
         if not admin and msg.user.lower() in e.blocked:
             log.info("blocked: ignoring %s's %s%s", msg.user, p, name)
             return  # blocked users get no reply at all (a reply would just be more room noise)
@@ -46,11 +55,17 @@ class Router:
             return
         now = time.monotonic()
         if not admin:
-            if now - self.last.get(msg.user, -1e9) < e.cfg.cooldown:
-                log.info("cooldown: dropping %s's %s%s (%.1fs to go)", msg.user, p, name,
-                         e.cfg.cooldown - (now - self.last[msg.user]))
+            who = msg.user.lower()  # "Bob" and "bob" are one person: changing case must not dodge the cooldown
+            if now - self.last.get(who, -1e9) < e.cfg.cooldown:
+                log.info(
+                    "cooldown: dropping %s's %s%s (%.1fs to go)",
+                    msg.user,
+                    p,
+                    name,
+                    e.cfg.cooldown - (now - self.last[who]),
+                )
                 return
-            self.last[msg.user] = now
+            self.last[who] = now
         try:
             fn(e, msg, arg.strip(), admin)
         except UserError as ex:
@@ -91,20 +106,34 @@ def _play(e, m, a, admin):
         if t.duration and t.duration > c.max_duration:
             raise UserError(e.t("too_long", m=c.max_duration // 60))
     pos = 0
-    with e.queue.lock:  # the lookup above can take seconds: re-check now, atomically with the add
+    with (
+        e.queue.lock
+    ):  # the lookup above can take seconds: re-check now, atomically with the add
         if not admin:
             if len(e.queue.requests) >= c.max_queue:
                 raise UserError(e.t("queue_full"))
             if e.queue.count_by(m.user) >= c.max_requests_per_user:
                 raise UserError(e.t("max_requests", n=c.max_requests_per_user))
             src = tracks[0].source
-            if (e.current and e.current.source == src) or any(r.source == src for r in e.queue.requests):
+            if (e.current and e.current.source == src) or any(
+                r.source == src for r in e.queue.requests
+            ):
                 raise UserError(e.t("already_queued"))
         for t in tracks:
             pos = e.queue.add_request(t)
     e.wake.set()
+    if e.playlist:  # promised by the playlist docs / config: chat requests are saved too (feeds !last and the pool)
+        e.playlist.add(tracks)
     if len(tracks) == 1:
-        e.say(e.t("queued_one", pos=pos, title=tracks[0].title, dur=tracks[0].dur, user=m.user))
+        e.say(
+            e.t(
+                "queued_one",
+                pos=pos,
+                title=tracks[0].title,
+                dur=tracks[0].dur,
+                user=m.user,
+            )
+        )
     else:
         e.say(e.t("queued_many", n=len(tracks), user=m.user))
 
@@ -167,14 +196,16 @@ def _voteskip(e, m, a, admin):
 
 @command("remove", "rm", "ลบ")
 def _remove(e, m, a, admin):
-    if not a.isdigit():
+    if not a.isascii() or not a.isdigit():  # "²".isdigit() is True but int("²") raises
         raise UserError(e.t("remove_usage", p=e.cfg.prefix))
     t = e.queue.get(int(a))
     if not t:
         raise UserError(e.t("no_such_item"))
     if not (admin or t.requester.lower() == m.user.lower()):
         raise UserError(e.t("remove_own"))
-    if e.queue.remove_track(t):  # by identity: the numbered slot may have shifted since get()
+    if e.queue.remove_track(
+        t
+    ):  # by identity: the numbered slot may have shifted since get()
         e.say(e.t("removed", title=t.title))
     else:
         raise UserError(e.t("no_such_item"))
@@ -192,8 +223,8 @@ def _resume(e, m, a, admin):
 
 @command("vol", "volume", "เสียง", admin=True)
 def _vol(e, m, a, admin):
-    if a.isdigit():
-        e.set_volume(int(a))
+    if a.isascii() and a.isdigit():
+        e.set_volume(int(a[:6]))
     e.say(e.t("volume", v=e.volume))
 
 
@@ -245,7 +276,11 @@ def _history(e, m, a, admin):
     if not items:
         e.say(e.t("history_empty"))
         return
-    e.say(e.t("history_head") + " " + " | ".join(f"{i}) {_line(t)}" for i, t in enumerate(items, 1)))
+    e.say(
+        e.t("history_head")
+        + " "
+        + " | ".join(f"{i}) {_line(t)}" for i, t in enumerate(items, 1))
+    )
 
 
 @command("block", "บล็อก", admin=True)

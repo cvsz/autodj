@@ -1,6 +1,7 @@
 """Background chat input: post window messages straight to the chat window's own HWND, so Camfrog never
 has to come to the foreground and the keyboard/clipboard are left alone. Win32 only; the pure helpers at
 the top are platform independent (and unit-tested)."""
+
 from __future__ import annotations
 
 import logging
@@ -25,6 +26,7 @@ WM_IME_COMPOSITION = 0x010F
 try:
     import ctypes
     from ctypes import wintypes as w
+
     U = ctypes.windll.user32
     U.PostMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
     U.PostMessageW.restype = w.BOOL
@@ -50,14 +52,16 @@ except Exception:
 def utf16_units(text: str) -> list[int]:
     """WM_CHAR carries UTF-16 code units (Thai = 1 unit, emoji = surrogate pair)."""
     b = text.encode("utf-16-le")
-    return [int.from_bytes(b[i:i + 2], "little") for i in range(0, len(b), 2)]
+    return [int.from_bytes(b[i : i + 2], "little") for i in range(0, len(b), 2)]
 
 
 def make_lparam(x: int, y: int) -> int:
     return ((y & 0xFFFF) << 16) | (x & 0xFFFF)
 
 
-def pick_child(rects: list[tuple[int, tuple[int, int, int, int]]], pt: tuple[int, int]) -> int | None:
+def pick_child(
+    rects: list[tuple[int, tuple[int, int, int, int]]], pt: tuple[int, int]
+) -> int | None:
     """Handle of the smallest window whose rect contains pt (the deepest control under the point)."""
     best, best_area = None, None
     for h, (l, t, r, b) in rects:
@@ -72,6 +76,7 @@ def _u32():
     if U is None:
         import ctypes
         from ctypes import wintypes as w
+
         u = ctypes.windll.user32
         u.PostMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
         u.PostMessageW.restype = w.BOOL
@@ -131,13 +136,20 @@ def _send_message(hwnd: int, msg: int, wp: int = 0, lparam: int = 0):
     return U.SendMessageW(hwnd, msg, wp, lparam)
 
 
-def post_text(top: int, screen_pt: tuple[int, int], text: str, enter: bool = True,
-              click: bool = True, delay: float = 0.004) -> bool:
+def post_text(
+    top: int,
+    screen_pt: tuple[int, int],
+    text: str,
+    enter: bool = True,
+    click: bool = True,
+    delay: float = 0.004,
+) -> bool:
     """Click the editor at screen_pt and type `text` (+ Enter) with posted messages. No focus change.
     Returns True if every message was queued (this does NOT prove the page accepted it)."""
     from .textutil import clean_text
     import ctypes
     from ctypes import wintypes as w
+
     u = _u32()
     rects = child_rects(top)
     target = pick_child(rects, screen_pt) or top
@@ -176,16 +188,28 @@ def post_text(top: int, screen_pt: tuple[int, int], text: str, enter: bool = Tru
         post(WM_CHAR, 13, 0x001C0001)
         post(WM_KEYUP, VK_RETURN, 0xC01C0001)
 
-    log.debug("posted %d chars to hwnd %s (top %s): %s", len(text), target, top, "ok" if ok else "FAILED")
+    log.debug(
+        "posted %d chars to hwnd %s (top %s): %s",
+        len(text),
+        target,
+        top,
+        "ok" if ok else "FAILED",
+    )
     return ok
 
 
-def post_text_rich(top: int, screen_pt: tuple[int, int], text: str, enter: bool = True,
-                   click: bool = True) -> bool:
+def post_text_rich(
+    top: int,
+    screen_pt: tuple[int, int],
+    text: str,
+    enter: bool = True,
+    click: bool = True,
+) -> bool:
     """Alternative: Use WM_SETTEXT for the entire text, then Enter.
     More reliable for Chromium contenteditable editors."""
     import ctypes
     from ctypes import wintypes as w
+
     u = _u32()
     rects = child_rects(top)
     target = pick_child(rects, screen_pt) or top
@@ -220,31 +244,13 @@ def post_text_rich(top: int, screen_pt: tuple[int, int], text: str, enter: bool 
         post(WM_CHAR, 13, 0x001C0001)
         post(WM_KEYUP, VK_RETURN, 0xC01C0001)
 
-    log.debug("posted rich text to hwnd %s (top %s): %s", target, top, "ok" if ok else "FAILED")
+    log.debug(
+        "posted rich text to hwnd %s (top %s): %s",
+        target,
+        top,
+        "ok" if ok else "FAILED",
+    )
     return ok
-
-
-def make_lparam(x: int, y: int) -> int:
-    return ((y & 0xFFFF) << 16) | (x & 0xFFFF)
-
-
-def pick_child(rects: list[tuple[int, tuple[int, int, int, int]]], pt: tuple[int, int]) -> int | None:
-    """Handle of the smallest window whose rect contains pt (the deepest control under the point)."""
-    best, best_area = None, None
-    for h, (l, t, r, b) in rects:
-        if l <= pt[0] < r and t <= pt[1] < b:
-            a = (r - l) * (b - t)
-            if best_area is None or a < best_area:
-                best, best_area = h, a
-    return best
-
-
-def show_noactivate(hwnd: int):
-    """Un-minimise without stealing focus."""
-    u = _u32()
-    if u.IsIconic(hwnd):
-        u.ShowWindow(hwnd, 4)  # SW_SHOWNOACTIVATE
-        time.sleep(0.3)
 
 
 def foreground() -> int:

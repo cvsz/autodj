@@ -1,14 +1,15 @@
 """Regression tests for v0.3.0 fixes:
-  - TTS: thread-safe single-engine worker (N-tts-1)
-  - player.play_file: CREATE_NO_WINDOW on Windows (N-player-1)
-  - player.play: the per-track mpv spawn hides the console window too (N-player-2)
-  - player._base: force --force-window=no so a user's mpv.conf cannot open the mpv video window (N-player-3)
-  - library: search_limit parameter wired through (N-lib-1)
-  - config: search_limit validated in range (N-cfg-1)
-  - messages: 'error' is now a human-readable sentence (N-msg-1)
-  - webchat: find_web_panes logs when pane not found (N-web-1)
-  - engine: _remote passes search_limit from config (N-eng-1)
+- TTS: thread-safe single-engine worker (N-tts-1)
+- player.play_file: CREATE_NO_WINDOW on Windows (N-player-1)
+- player.play: the per-track mpv spawn hides the console window too (N-player-2)
+- player._base: force --force-window=no so a user's mpv.conf cannot open the mpv video window (N-player-3)
+- library: search_limit parameter wired through (N-lib-1)
+- config: search_limit validated in range (N-cfg-1)
+- messages: 'error' is now a human-readable sentence (N-msg-1)
+- webchat: find_web_panes logs when pane not found (N-web-1)
+- engine: _remote passes search_limit from config (N-eng-1)
 """
+
 from __future__ import annotations
 
 import logging
@@ -33,7 +34,9 @@ from camfrog_autodj.player import MpvPlayer
 def test_error_message_is_descriptive():
     en_err = tr("en", "error")
     th_err = tr("th", "error")
-    assert len(en_err) > 5, "EN error message should be a real sentence, not bare 'error'"
+    assert len(en_err) > 5, (
+        "EN error message should be a real sentence, not bare 'error'"
+    )
     assert len(th_err) > 5, "TH error message should be a real sentence"
     # Must not be the bare word used to trigger the condition
     assert en_err != "error"
@@ -86,7 +89,11 @@ def test_remote_tracks_uses_search_limit_for_plain_query(monkeypatch):
 
     def fake_extract_module(target, playlist, limit):
         captured["target"] = target
-        return {"entries": [{"webpage_url": "https://youtu.be/x", "title": "T", "duration": 60}]}
+        return {
+            "entries": [
+                {"webpage_url": "https://youtu.be/x", "title": "T", "duration": 60}
+            ]
+        }
 
     monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
     monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
@@ -101,9 +108,16 @@ def test_remote_tracks_search_limit_default_is_one(monkeypatch):
 
     def fake_extract_module(target, playlist, limit):
         captured["target"] = target
-        return {"entries": [{"webpage_url": "https://youtu.be/x", "title": "T", "duration": 60}]}
+        return {
+            "entries": [
+                {"webpage_url": "https://youtu.be/x", "title": "T", "duration": 60}
+            ]
+        }
 
-    monkeypatch.setattr("camfrog_autodj.library._extract_exe", lambda *a: (_ for _ in ()).throw(OSError()))
+    monkeypatch.setattr(
+        "camfrog_autodj.library._extract_exe",
+        lambda *a: (_ for _ in ()).throw(OSError()),
+    )
     monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
     monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **kw: "")
 
@@ -117,7 +131,11 @@ def test_remote_tracks_url_not_prefixed_with_ytsearch(monkeypatch):
 
     def fake_extract_module(target, playlist, limit):
         captured["target"] = target
-        return {"entries": [{"webpage_url": "https://youtu.be/abc", "title": "T", "duration": 60}]}
+        return {
+            "entries": [
+                {"webpage_url": "https://youtu.be/abc", "title": "T", "duration": 60}
+            ]
+        }
 
     monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
     monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **kw: "")
@@ -143,7 +161,9 @@ def test_play_file_uses_create_no_window_on_windows(monkeypatch):
     p = MpvPlayer(cfg)
     p.play_file("/some/track.wav")
 
-    assert "creationflags" in captured_kw, "CREATE_NO_WINDOW creationflags not set on Windows"
+    assert "creationflags" in captured_kw, (
+        "CREATE_NO_WINDOW creationflags not set on Windows"
+    )
     assert captured_kw["creationflags"] == 0x08000000
 
 
@@ -186,7 +206,9 @@ def test_play_hidden_console_on_windows(monkeypatch):
     p = MpvPlayer(cfg)
     assert p.play("https://youtu.be/x", 80) is True
 
-    assert "creationflags" in captured_kw, "CREATE_NO_WINDOW not set on the per-track spawn"
+    assert "creationflags" in captured_kw, (
+        "CREATE_NO_WINDOW not set on the per-track spawn"
+    )
     assert captured_kw["creationflags"] == 0x08000000
 
 
@@ -266,15 +288,20 @@ def test_tts_synth_is_callable_and_thread_safe():
         id = "v1"
 
     class FakeEngine:
-        def setProperty(self, k, v): pass
+        def setProperty(self, k, v):
+            pass
+
         def getProperty(self, k):
             if k == "voices":
                 return [FakeVoice()]
             return 150
+
         def save_to_file(self, text, path):
             with lock:
                 order.append(text)
-        def runAndWait(self): pass
+
+        def runAndWait(self):
+            pass
 
     cfg = Config(tts_voice="", tts_rate=150)
 
@@ -284,6 +311,7 @@ def test_tts_synth_is_callable_and_thread_safe():
 
     # Reset TTS worker between test runs
     import importlib
+
     tts_mod = importlib.reload(tts)
 
     def call_synth(text, path):
@@ -357,20 +385,38 @@ def test_engine_remote_uses_config_search_limit(monkeypatch):
     from camfrog_autodj.library import LocalIndex
 
     class FakeAdapter(ChatAdapter):
-        def messages(self): return iter(())
-        def send(self, text): pass
+        def messages(self):
+            return iter(())
+
+        def send(self, text):
+            pass
 
     class FakePlayer:
         skipped = False
-        def stop(self): pass
-        def set_pause(self, v): return True
-        def set_volume(self, v): pass
-        def available(self): return True
+
+        def stop(self):
+            pass
+
+        def set_pause(self, v):
+            return True
+
+        def set_volume(self, v):
+            pass
+
+        def available(self):
+            return True
 
     captured = {}
 
-    def fake_remote_tracks(query, requester="AutoDJ", playlist=False, limit=200,
-                           ytdlp_path="", mpv_path="", search_limit=1):
+    def fake_remote_tracks(
+        query,
+        requester="AutoDJ",
+        playlist=False,
+        limit=200,
+        ytdlp_path="",
+        mpv_path="",
+        search_limit=1,
+    ):
         captured["search_limit"] = search_limit
         return [Track("https://youtu.be/x", "T", 60, requester)]
 
