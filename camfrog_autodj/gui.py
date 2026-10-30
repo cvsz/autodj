@@ -1206,10 +1206,6 @@ class App(tk.Tk):
             self.ent_add.delete(0, "end")
 
     def add_files(self):
-        import os
-        if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
-            log.warning("file dialog skipped: no display available")
-            return
         ext = " ".join(f"*{x}" for x in sorted(MEDIA))
         try:
             files = filedialog.askopenfilenames(
@@ -1222,10 +1218,6 @@ class App(tk.Tk):
             self.e.request(f)
 
     def load_folder(self):
-        import os
-        if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
-            log.warning("folder dialog skipped: no display available")
-            return
         try:
             d = filedialog.askdirectory()
         except Exception:
