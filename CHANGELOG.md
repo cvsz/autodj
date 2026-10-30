@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.4
 
 ### Fixed
 - `camfrog_autodj/adapters/uia.py` `_appeared()`: `norm_l` was referenced outside the `for l in new:` loop. When no new chat lines arrived, `norm_l` was never assigned, causing `UnboundLocalError` on every background chat send — messages retried endlessly (`send failed ... retrying once in 2s`). Moved the `bot_nick` match inside the loop so `norm_l` is always defined before use, and every new line is checked (not just the last one).

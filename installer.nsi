@@ -22,7 +22,7 @@
 ; Metadata
 ; -----------------------------------------------------------------------------
 !define APP_NAME "Camfrog AutoDJ"
-!define APP_VERSION "0.2.3"
+!define APP_VERSION "0.2.4"
 !define APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define APP_WEBSITE "https://github.com/cvsz/autodj"
 !define APP_EXE "AutoDJ.exe"
