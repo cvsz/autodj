@@ -64,3 +64,31 @@ cert/
 camfrog-re-report.md
 exec-next.md
 docs/camfrog-re-report.md
+
+# Build artifacts (staged installer output)
+dist_staging/
+
+# Binaries (do not commit compiled artifacts)
+*.exe
+*.dll
+*.zip
+
+# MPV runtime bundle (shipped with installer, not source)
+mpv/
+
+# Temporary debug / test scripts (one-off diagnostics, not source)
+fix_config*.ps1
+test_debug*.bat
+test_exact.bat
+test_goto.bat
+test_if_syntax*.bat
+test_ver*.bat
+test_mpv.ps1
+test_ps_check*.bat
+test_regex*.bat
+
+# Forensic / RE reference artifacts (do not distribute)
+docs/rea/
+*.pcap
+*.dmp
+*_pw_infected.zip
