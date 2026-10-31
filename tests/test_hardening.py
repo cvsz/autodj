@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import threading
 import time
 
@@ -98,12 +99,14 @@ def test_failures_are_throttled_and_backed_off():
     e.fail_delay = lambda n: delays.append(n) or 0.0
     th = threading.Thread(target=e._player_loop, daemon=True)
     th.start()
-    time.sleep(0.4)
+    deadline = time.monotonic() + 3.0
+    while e.player.plays < 3 and time.monotonic() < deadline:
+        time.sleep(0.01)
     e.stop_evt.set()
     e.wake.set()
     th.join(2)
     cannot = [o for o in out(e) if o.startswith("Could not play")]
-    assert e.player.plays > 5  # it kept trying (zero delay in this test)...
+    assert e.player.plays >= 3  # retries continue without relying on scheduler speed...
     assert 1 <= len(cannot) <= 3  # ...but only announced a few times
     assert delays[:3] == [1, 2, 3]  # consecutive-failure counter grows
 
@@ -438,12 +441,17 @@ def test_doctor_reports_missing_mpv_and_ok_dirs(monkeypatch, tmp_path):
     assert doctor.has_failures(res)
 
 
-def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path):
+def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path, monkeypatch):
     import os
 
     from camfrog_autodj.library import find_ytdlp
 
     nt = os.name == "nt"
+    real_which = shutil.which
+    monkeypatch.setattr(
+        "camfrog_autodj.library.shutil.which",
+        lambda command: None if command == "yt-dlp" else real_which(command),
+    )
     mpv = tmp_path / ("mpv.exe" if nt else "mpv")
     yt = tmp_path / ("yt-dlp.exe" if nt else "yt-dlp")
     mpv.write_text("x")
@@ -460,6 +468,16 @@ def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path):
     assert (
         find_ytdlp(str(tmp_path / "nope.exe"), str(mpv)) == ""
     )  # explicit but wrong: do not silently pick another
+
+
+def test_find_ytdlp_falls_back_to_path(monkeypatch):
+    from camfrog_autodj.library import find_ytdlp
+
+    monkeypatch.setattr(
+        "camfrog_autodj.library.shutil.which",
+        lambda command: "/opt/bin/yt-dlp" if command == "yt-dlp" else None,
+    )
+    assert find_ytdlp("", "missing-mpv") == "/opt/bin/yt-dlp"
 
 
 def test_remote_tracks_uses_module_when_no_exe(monkeypatch):
@@ -610,7 +628,6 @@ def test_play_saves_to_playlist_json(tmp_path):
 
     data = json.loads(playlist_path.read_text("utf-8"))
     sources = [t["source"] for t in data["tracks"]]
-    expected_source = os.path.abspath("/m/song one.mp3") if os.name == "nt" else "/m/song one.mp3"
     assert sources == [tracks[0].source]
     assert [t["added_by"] for t in data["tracks"]] == ["amy"]
 

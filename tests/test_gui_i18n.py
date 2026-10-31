@@ -92,10 +92,12 @@ def test_launcher_requires_template(monkeypatch):
 def test_gui_smoke():
     tk = pytest.importorskip("tkinter")
     try:
-        root = tk.Tk()
-        root.destroy()
+        probe = tk.Tk()
+        probe.destroy()
+        del probe
     except tk.TclError:
         pytest.skip("no display")
+
     from camfrog_autodj.gui import App
 
     e = make()
@@ -114,6 +116,11 @@ def test_gui_smoke():
         assert app.b_pause.cget("text") == "หยุดชั่วคราว"
     finally:
         app.close()
+        del app
+        # Release the Tcl interpreter on the same thread that created it.
+        import gc
+
+        gc.collect()
 
 
 def test_window_pick():

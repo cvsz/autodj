@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 from unittest.mock import MagicMock
 
@@ -120,7 +119,7 @@ def test_play_includes_resolved_ytdlp_hook_even_when_ytdlp_path_empty(monkeypatc
         return proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
     monkeypatch.setattr(
         "camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe"
     )
@@ -158,13 +157,15 @@ def test_play_terminates_hung_mpv_after_timeout(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
     monkeypatch.setattr(
         "camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe"
     )
 
-    cfg = Config(mpv_path="mpv", ytdlp_path="", mpv_timeout=0.01)
-    assert MpvPlayer(cfg).play("https://youtu.be/abc", 80) is False
+    cfg = Config(mpv_path="mpv", ytdlp_path="", mpv_timeout=1)
+    player = MpvPlayer(cfg)
+    monkeypatch.setattr(player, "_played", lambda started: 2.0)
+    assert player.play("https://youtu.be/abc", 80, duration=0.5) is False
     assert killed == ["terminate"], f"expected terminate, got {killed}"
 
 
