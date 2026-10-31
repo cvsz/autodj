@@ -92,13 +92,6 @@ SectionEnd
 Section "Documentation" SEC_DOCS
     SetOutPath "$INSTDIR\docs"
     File /r "docs\*.md"
-    File /nonfatal /r "docs\*.txt"
-SectionEnd
-
-Section "Python Scripts (Source)" SEC_SRC
-    SetOutPath "$INSTDIR\src"
-    File /r "camfrog_autodj\*.py"
-    File /r "camfrog_autodj\adapters\*.py"
 SectionEnd
 
 Section "Tools & Scripts" SEC_TOOLS
@@ -137,11 +130,6 @@ Function .onInstSuccess
     MessageBox MB_ICONINFORMATION|MB_OK "Camfrog AutoDJ has been successfully installed!$\n$\nYou can now run it from the Start Menu or Desktop shortcut."
 FunctionEnd
 
-Function .onUninstSuccess
-    HideWindow
-    MessageBox MB_ICONINFORMATION|MB_OK "Camfrog AutoDJ has been successfully uninstalled."
-FunctionEnd
-
 ; -----------------------------------------------------------------------------
 ; Shortcuts & Registry
 ; -----------------------------------------------------------------------------
@@ -154,7 +142,6 @@ Section -Post
     CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Camfrog AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
     CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Uninstall Camfrog AutoDJ"
     CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Edit Config.lnk" "notepad.exe" "$INSTDIR\config.toml" "" 0 SW_SHOWNORMAL "" "Edit configuration"
-    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "" 0 SW_SHOWNORMAL "" "Uninstall Camfrog AutoDJ"
 
     ; Desktop shortcut
     CreateShortcut "$DESKTOP\Camfrog AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
@@ -171,7 +158,8 @@ Section -Post
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoRepair" 1
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "HelpLink" "${APP_WEBSITE}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "URLUpdateInfo" "${APP_WEBSITE}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "InstallDate" "$(GetDate)"
+    Call GetDate
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "InstallDate" $0
 
     ; App Paths for CLI access
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "" "$INSTDIR\AutoDJ.exe"
@@ -206,7 +194,6 @@ SectionEnd
 ; Custom Functions
 ; -----------------------------------------------------------------------------
 Function GetDate
-    Push $0
     Push $1
     Push $2
     Push $3
@@ -221,7 +208,6 @@ Function GetDate
     Pop $3
     Pop $2
     Pop $1
-    Pop $0
 FunctionEnd
 
 ; -----------------------------------------------------------------------------
