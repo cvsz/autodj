@@ -640,6 +640,18 @@ class App(tk.Tk):
         self.led.pack(side="right", padx=(0, px(6)))
         self.v_onair = self._lbl(hdr, "g_on_air", font=self.f_bold, bg=BG)
         self.v_onair.pack(side="right", padx=(px(18), px(2)))
+        self.b_settings = PillButton(
+            hdr,
+            text="⚙️",
+            command=self.show_settings,
+            kind="tab",
+            font=self.f_bold,
+            bg=BG,
+            height=px(32),
+            minw=px(52),
+            padx=px(10),
+        )
+        self.b_settings.pack(side="right", padx=(px(6), 0))
 
         # animated gradient line under the header
         self.line = tk.Canvas(root, height=3, bg=BG, highlightthickness=0, bd=0)
@@ -1639,6 +1651,10 @@ class App(tk.Tk):
         except Exception as ex:
             log.exception("save settings failed")
             self.e.say(self.e.t("g_settings_save_failed", err=str(ex)))
+
+    def show_settings(self):
+        """Switch to the settings tab."""
+        self.show_tab("settings")
 
     def close(self):
         self._closing = True
