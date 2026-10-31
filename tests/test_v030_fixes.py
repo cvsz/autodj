@@ -309,6 +309,9 @@ def test_tts_synth_is_callable_and_thread_safe(monkeypatch):
     fake_mod = types.ModuleType("pyttsx3")
     fake_mod.init = lambda: FakeEngine()
 
+    import sys
+    monkeypatch.setitem(sys.modules, "pyttsx3", fake_mod)
+
     # Reset TTS worker between test runs
     import importlib
 
@@ -420,6 +423,7 @@ def test_engine_remote_uses_config_search_limit(monkeypatch):
         mpv_path="",
         search_limit=1,
         raw_target=False,
+        **kw,
     ):
         captured["search_limit"] = search_limit
         return [Track("https://youtu.be/x", "T", 60, requester)]

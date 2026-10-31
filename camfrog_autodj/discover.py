@@ -212,16 +212,8 @@ def _toml_value(v) -> str:
     if isinstance(v, int):
         return str(v)
     s = str(v)
-    # Use double quotes for simple strings without backslashes, double quotes,
-    # or single quotes; single quotes (literal) preserve backslashes for regex
-    # patterns and other strings that need them.
-    if (
-        "\\" not in s
-        and '"' not in s
-        and "'" not in s
-        and not any(ord(c) < 32 or ord(c) == 127 for c in s)
-    ):
-        return f'"{s}"'
+    if "'" not in s and not any(ord(c) < 32 or ord(c) == 127 for c in s):
+        return f"'{s}'"  # literal string: regex backslashes stay as-is
     esc = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"}
     return (
         '"'
@@ -264,7 +256,15 @@ def update_config_text(text: str, updates: dict) -> str:
 def save_config(path: str, updates: dict) -> bool:
     """Write updates into config.toml (backup in config.toml.bak). Returns True if the file changed."""
     p = Path(path)
-    old = p.read_text("utf-8") if p.exists() else ""
+    try:
+        old = p.read_text("utf-8") if p.exists() else ""
+    except OSError as ex:
+        log.warning(
+            "auto-discover: NOT saving to %s, cannot read config file (%s)",
+            path,
+            ex,
+        )
+        return False
     new = update_config_text(old, updates)
     if new == old:
         return False
@@ -279,11 +279,19 @@ def save_config(path: str, updates: dict) -> bool:
             ex,
         )
         return False
-    if p.exists():
-        shutil.copyfile(p, p.with_name(p.name + ".bak"))
-    tmp = p.with_name(p.name + ".tmp")
-    tmp.write_text(new, "utf-8")
-    os.replace(tmp, p)  # atomic: a crash mid-write cannot leave half a file
+    try:
+        if p.exists():
+            shutil.copyfile(p, p.with_name(p.name + ".bak"))
+        tmp = p.with_name(p.name + ".tmp")
+        tmp.write_text(new, "utf-8")
+        os.replace(tmp, p)  # atomic: a crash mid-write cannot leave half a file
+    except OSError as ex:  # permission denied, read-only file, etc.
+        log.warning(
+            "auto-discover: NOT saving to %s, cannot write config file (%s)",
+            path,
+            ex,
+        )
+        return False
     return True
 
 

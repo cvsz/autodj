@@ -85,12 +85,19 @@ def test_launcher_flow(monkeypatch):
 
 def test_launcher_requires_template(monkeypatch):
     monkeypatch.setattr(launcher, "find_window", lambda p, t: True)
-    with pytest.raises(RuntimeError):
-        launcher.ensure_room(Config(room="x"))
+    # Should log warning but not raise when join_uri_template is empty
+    launcher.ensure_room(Config(room="x"))
 
 
 def test_gui_smoke():
     tk = pytest.importorskip("tkinter")
+    try:
+        probe = tk.Tk()
+        probe.destroy()
+        del probe
+    except tk.TclError:
+        pytest.skip("no display")
+
     from camfrog_autodj.gui import App
 
     e = make()
@@ -98,10 +105,7 @@ def test_gui_smoke():
     e.started_at = __import__("time").monotonic() - 60
     e.queue.add_request(Track("q", "Queued song", 100, "amy"))
     e.say("hello")
-    try:
-        app = App(e)
-    except tk.TclError:
-        pytest.skip("no display")
+    app = App(e)
     try:
         app.update()
         assert app.v_title.cget("text") == "Midnight City"

@@ -44,9 +44,10 @@ def ensure_room(cfg) -> None:
             raise RuntimeError("Camfrog window did not appear")
     if cfg.room:
         if not cfg.join_uri_template:
-            raise RuntimeError("room is set but join_uri_template is empty")
-        uri = cfg.join_uri_template.format(room=quote(cfg.room))
-        log.info("joining room via %s", uri)
-        _open_uri(uri)
+            log.warning("room is set but join_uri_template is empty; skipping auto-join")
+        else:
+            uri = cfg.join_uri_template.format(room=quote(cfg.room))
+            log.info("joining room via %s", uri)
+            _open_uri(uri)
     if not find_window(cfg.window_title_re, cfg.launch_timeout):
         raise RuntimeError(f"room window not found: {cfg.window_title_re}")

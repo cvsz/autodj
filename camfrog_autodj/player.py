@@ -97,15 +97,15 @@ class MpvPlayer:
             self.proc = p = subprocess.Popen(cmd, **kw)
         limit = (
             float(duration) + self.cfg.mpv_timeout
-            if duration and self.cfg.mpv_timeout
-            else None
+            if duration is not None and self.cfg.mpv_timeout
+            else (float(self.cfg.mpv_timeout) if self.cfg.mpv_timeout else None)
         )
         started, rc, hung = time.monotonic(), None, False
         while rc is None:
             try:
                 rc = p.wait(timeout=POLL if limit is not None else None)
             except subprocess.TimeoutExpired:
-                if self._played(started) > limit:
+                if limit is not None and self._played(started) >= limit:
                     hung = True
                     break
         if hung:

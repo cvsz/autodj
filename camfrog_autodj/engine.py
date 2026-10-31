@@ -416,6 +416,17 @@ class Engine:
     def _player_loop(self):
         fails = 0  # consecutive tracks that failed to play
         while not self.stop_evt.is_set():
+            # Don't pop from queue if player is not available (e.g. mpv_path not set).
+            # Otherwise playlist tracks get consumed and lost before mpv is configured.
+            if hasattr(self.player, "available") and not self.player.available():
+                if fails == 0:
+                    log.warning(
+                        "mpv not available (mpv_path=%r); waiting for mpv before playing queue",
+                        self.cfg.mpv_path,
+                    )
+                fails += 1
+                self.stop_evt.wait(30.0)  # wait 30s before checking again
+                continue
             t = self.queue.pop()
             if t is None:
                 self.wake.wait(2)

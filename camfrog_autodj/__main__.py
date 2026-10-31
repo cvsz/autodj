@@ -2,7 +2,11 @@ import argparse
 import logging
 import logging.handlers
 import os
+import shutil
 import sys
+from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 from . import __version__
 from .adapters import NullAdapter, build_adapter
@@ -58,6 +62,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _add_log_file(path: str, level: int):
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
     h = logging.handlers.RotatingFileHandler(
         path, maxBytes=1_000_000, backupCount=3, encoding="utf-8"
     )
@@ -113,7 +119,32 @@ def _run(a, level):
         )
     cfg = Config.load(a.config)
     if a.log_file or cfg.log_file:
-        _add_log_file(a.log_file or cfg.log_file, level)
+        log_path = a.log_file or cfg.log_file
+        # Resolve relative log paths to a user-writable directory (APPDATA/Camfrog AutoDJ)
+        # instead of CWD which may be Program Files (write-protected).
+        if log_path and not os.path.isabs(log_path):
+            app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
+            log_path = os.path.join(app_data, "Camfrog AutoDJ", log_path)
+        _add_log_file(log_path, level)
+
+    # If config file is not writable (e.g. installed to Program Files), relocate to APPDATA
+    # so settings changes and auto-discover can be saved.
+    p = Path(a.config)
+    if not p.exists() or not os.access(p, os.W_OK):
+        app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
+        app_cfg_dir = Path(app_data) / "Camfrog AutoDJ"
+        app_cfg_dir.mkdir(parents=True, exist_ok=True)
+        app_cfg_path = app_cfg_dir / "config.toml"
+        if p.exists() and not app_cfg_path.exists():
+            shutil.copyfile(p, app_cfg_path)
+            logging.info(
+                "config.toml not writable at %s; using %s instead",
+                p,
+                app_cfg_path,
+            )
+        p = app_cfg_path
+        a.config = str(p)
+        cfg = Config.load(str(p))  # re-load from new location
     if a.lang:
         cfg.lang = a.lang
     if a.console:
@@ -127,7 +158,12 @@ def _run(a, level):
     if cfg.auto_launch and "uia" in (cfg.chat_reader, cfg.chat_sender):
         from .launcher import ensure_room
 
-        ensure_room(cfg)
+        try:
+            ensure_room(cfg)
+        except Exception as ex:  # pragma: no cover - defensive; discovery is best-effort
+            logging.getLogger(__name__).warning(
+                "auto-launch failed; continuing without Camfrog: %s", ex
+            )
     uses_uia = "uia" in (cfg.chat_reader, cfg.chat_sender)
     if uses_uia and (a.discover or (cfg.auto_discover and not a.no_discover)):
         from . import discover
@@ -137,7 +173,7 @@ def _run(a, level):
         try:
             ups = discover.apply(cfg, a.config)
         except Exception:  # pragma: no cover - defensive; discovery is best-effort
-            log.exception("auto-discover failed; continuing without it")
+            logging.getLogger(__name__).exception("auto-discover failed; continuing without it")
             ups = None
         if a.discover:
             print(ups or "nothing found: open the room window and try again")
