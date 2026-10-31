@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **GUI ไม่ขึ้น (GUI won't open)**: `camfrog_autodj/__main__.py` — auto-discovery (`discover.apply()`) crashed with `ImportError` on `pywinauto.Desktop` before `App(eng).mainloop()` was reached, so the Tk window never appeared. Auto-discovery is now wrapped in `try/except` and logs a warning instead of crashing; `build_adapter()` failures fall back to `NullAdapter` so the GUI still opens without chat (user can run `--check`/`--discover` from inside it).
+- **Camfrog adapter blocks GUI startup**: `camfrog_autodj/adapters/uia.py` `UiaAdapter.__init__()` called `resolve()` which polls up to 30s for a Camfrog window, blocking GUI launch. With `NullAdapter` fallback in `__main__.py`, this no longer blocks.
+- **Playlist not in queue list box**: `camfrog_autodj/engine.py` `_load_all()` added `playlist.json` tracks to the autoplay *pool* (`add_pool`), but the GUI list box only shows the request *queue* (`add_request`). Playlist tracks are now added to `add_request` so they appear in the GUI and play before the autoplay pool. Dedupe against existing requests and history prevents re-queuing on restart.
+- **Thread-safety data race on `e.current`**: `camfrog_autodj/commands.py` `_play()` read `e.current.source` outside `e.queue.lock`, racing with `_player_loop()` which writes `e.current`. Now read under the same lock.
+- **Ungraceful shutdown**: `camfrog_autodj/engine.py` `shutdown()` did not wait for daemon threads. Thread references are now stored in `self._threads` and joined (5s timeout each) on shutdown.
+- **Windows-only code crashes on Linux**: `camfrog_autodj/launcher.py`, `camfrog_autodj/tts.py`, `camfrog_autodj/winmsg.py` now call `_require_windows()` to raise a clear `RuntimeError` instead of crashing with obscure `ctypes`/`pywinauto` errors on non-Windows platforms.
+- **`!load` path traversal**: `camfrog_autodj/commands.py` `_load()` now rejects absolute paths outside `music_dirs` (admin-only guard).
+
+### Changed
+- `camfrog_autodj/engine.py`: `Engine.__init__` now accepts `cfg_path` (was missing, causing `TypeError` when `_run()` passed it). GUI buttons `do_discover()`/`do_check()` read `self.e.cfg_path`.
+
+### Added
+- `camfrog_autodj/adapters/__init__.py`: new `NullAdapter` — silent fallback when Camfrog cannot be reached; GUI stays open, chat degrades gracefully.
+- `camfrog_autodj/engine.py`: `_threads` list tracking all daemon threads started by `start()`.
+
 ## 0.2.4
 
 ### Fixed

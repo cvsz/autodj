@@ -155,7 +155,13 @@ def scan_window(win) -> list[Ctl]:
 
 def discover(cfg) -> dict | None:
     """Scan every visible Camfrog window and return config updates for the best room, or None."""
-    from pywinauto import Desktop
+    try:
+        from pywinauto import Desktop
+    except ImportError:  # pywinauto is Windows-only; may be absent on other platforms
+        log.warning(
+            "auto-discover: pywinauto is not available; cannot scan Camfrog windows"
+        )
+        return None
 
     from .windows import candidates
 

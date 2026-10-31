@@ -36,8 +36,9 @@ ECHO_TTL = 120.0  # seconds a line we posted is remembered, to recognise it when
 
 
 class Engine:
-    def __init__(self, cfg, adapter, player=None, index=None):
+    def __init__(self, cfg, adapter, player=None, index=None, cfg_path=None):
         self.cfg, self.adapter = cfg, adapter
+        self.cfg_path = cfg_path
         self.lang = cfg.lang
         self.player = player or MpvPlayer(cfg)
         self.index = index or LocalIndex(cfg.music_dirs)
@@ -70,6 +71,7 @@ class Engine:
         self._sent: deque[tuple[float, str]] = deque(maxlen=64)
         self._sent_lock = threading.Lock()
         self._speak_lock = threading.Lock()  # one TTS clip at a time: overlapping jobs would un-duck the music early
+        self._threads: list[threading.Thread] = []  # daemon threads started by start(), joined on shutdown()
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -382,10 +384,21 @@ class Engine:
                 log.exception("autoplay source failed: %s", s)
         if self.playlist:
             try:
-                self.queue.add_pool(self.playlist.load())
+                # Add playlist tracks to the request queue so they are visible in the
+                # GUI list box and play before the autoplay pool (requests first).
+                # Dedupe against existing requests and recently played history so a
+                # restart does not re-queue the same tracks.
+                loaded = self.playlist.load()
+                with self.queue.lock:
+                    queued_sources = {r.source for r in self.queue.requests}
+                    played_sources = {t.source for t in self.history}
+                    for t in loaded:
+                        if t.source not in queued_sources and t.source not in played_sources:
+                            self.queue.add_request(t)
+                            queued_sources.add(t.source)
             except Exception:
                 log.exception("playlist load failed")
-        log.info("autoplay pool: %d tracks", len(self.queue.pool))
+        log.info("autoplay pool: %d tracks; queue: %d requests", len(self.queue.pool), len(self.queue.requests))
         self.wake.set()
 
     # ---- playback loop --------------------------------------------------
@@ -479,7 +492,9 @@ class Engine:
                 self.cfg.mpv_path,
             )
         for fn in (self._sender, self._player_loop, self._load_all, self._chat_loop):
-            threading.Thread(target=fn, daemon=True).start()
+            t = threading.Thread(target=fn, daemon=True, name=f"autodj-{fn.__name__}")
+            self._threads.append(t)
+            t.start()
 
     def run(self):
         self.start()
@@ -500,3 +515,7 @@ class Engine:
         self.player.stop()
         self.adapter.close()
         self.exec.shutdown(wait=False, cancel_futures=True)
+        # Join daemon threads with a timeout so shutdown does not hang forever.
+        for t in self._threads:
+            if t.is_alive():
+                t.join(timeout=5.0)

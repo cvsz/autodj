@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
+from pathlib import Path
 
 from .models import UserError
 
@@ -106,18 +108,16 @@ def _play(e, m, a, admin):
         if t.duration and t.duration > c.max_duration:
             raise UserError(e.t("too_long", m=c.max_duration // 60))
     pos = 0
-    with (
-        e.queue.lock
-    ):  # the lookup above can take seconds: re-check now, atomically with the add
+    with e.queue.lock:  # the lookup above can take seconds: re-check now, atomically with the add
         if not admin:
             if len(e.queue.requests) >= c.max_queue:
                 raise UserError(e.t("queue_full"))
             if e.queue.count_by(m.user) >= c.max_requests_per_user:
                 raise UserError(e.t("max_requests", n=c.max_requests_per_user))
             src = tracks[0].source
-            if (e.current and e.current.source == src) or any(
-                r.source == src for r in e.queue.requests
-            ):
+            # e.current is read under the queue lock to avoid a data race with _player_loop
+            current_source = e.current.source if e.current else None
+            if (current_source == src) or any(r.source == src for r in e.queue.requests):
                 raise UserError(e.t("already_queued"))
         for t in tracks:
             pos = e.queue.add_request(t)
@@ -253,7 +253,17 @@ def _clear(e, m, a, admin):
 def _load(e, m, a, admin):
     if not a:
         raise UserError(e.t("load_usage", p=e.cfg.prefix))
-    e.load_async(a.strip('"'))
+    src = a.strip('"')
+    # Reject obviously dangerous paths (absolute system paths outside music dirs)
+    if os.path.isabs(src):
+        p = Path(src)
+        try:
+            p = p.resolve()
+        except Exception:
+            raise UserError(e.t("load_failed", err="invalid path"))
+        if not any(p.is_relative_to(d) for d in (Path(d).resolve() for d in e.cfg.music_dirs)):
+            raise UserError(e.t("folders_admin"))
+    e.load_async(src)
 
 
 @command("say", "พูด", admin=True)

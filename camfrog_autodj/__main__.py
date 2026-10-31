@@ -5,7 +5,7 @@ import os
 import sys
 
 from . import __version__
-from .adapters import build_adapter
+from .adapters import NullAdapter, build_adapter
 from .config import Config, ConfigError
 from .engine import Engine
 from .textutil import clean_text
@@ -132,7 +132,13 @@ def _run(a, level):
     if uses_uia and (a.discover or (cfg.auto_discover and not a.no_discover)):
         from . import discover
 
-        ups = discover.apply(cfg, a.config)
+        # Auto-discovery must never prevent the GUI from opening: log the failure
+        # and continue with the existing config instead of crashing at startup.
+        try:
+            ups = discover.apply(cfg, a.config)
+        except Exception:  # pragma: no cover - defensive; discovery is best-effort
+            log.exception("auto-discover failed; continuing without it")
+            ups = None
         if a.discover:
             print(ups or "nothing found: open the room window and try again")
             return
@@ -141,7 +147,20 @@ def _run(a, level):
         ad.send(clean_text(a.say))
         print("sent:", a.say)
         return
-    eng = Engine(cfg, build_adapter(cfg), cfg_path=a.config)
+    try:
+        adapter = build_adapter(cfg)
+    except Exception as ex:  # Camfrog not open / pywinauto unavailable, ...
+        if a.gui:
+            # The window must still open so the user can run --check / --discover
+            # from inside it; chat degrades to silent until Camfrog is reachable.
+            logging.error(
+                "cannot attach to Camfrog chat (%s); opening the GUI without chat",
+                ex,
+            )
+            adapter = NullAdapter()
+        else:
+            raise
+    eng = Engine(cfg, adapter, cfg_path=a.config)
     if a.gui:
         from .gui import App
 

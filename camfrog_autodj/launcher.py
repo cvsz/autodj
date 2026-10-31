@@ -7,9 +7,15 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
+import sys
 from urllib.parse import quote
 
 log = logging.getLogger("autodj")
+
+
+def _require_windows() -> None:
+    if sys.platform != "win32":
+        raise RuntimeError("Camfrog launcher is Windows-only")
 
 
 def find_window(pattern: str, timeout: float) -> bool:
@@ -19,10 +25,12 @@ def find_window(pattern: str, timeout: float) -> bool:
 
 
 def _open_uri(uri: str):
+    _require_windows()
     os.startfile(uri)  # type: ignore[attr-defined]  # Windows only
 
 
 def _start(exe: str):
+    _require_windows()
     subprocess.Popen([exe])
 
 

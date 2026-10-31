@@ -5,6 +5,7 @@ the top are platform independent (and unit-tested)."""
 from __future__ import annotations
 
 import logging
+import sys
 import time
 
 from .textutil import clean_text
@@ -47,6 +48,11 @@ try:
     U.IsWindowEnabled.restype = w.BOOL
 except Exception:
     U = None
+
+
+def _require_windows() -> None:
+    if sys.platform != "win32":
+        raise RuntimeError("winmsg (Win32 API) is Windows-only")
 
 
 def utf16_units(text: str) -> list[int]:
@@ -99,6 +105,7 @@ def _u32():
 
 
 def child_rects(top: int) -> list[tuple[int, tuple[int, int, int, int]]]:
+    _require_windows()
     u = _u32()
     out = []
     cb_t = ctypes.WINFUNCTYPE(w.BOOL, w.HWND, w.LPARAM)
@@ -116,6 +123,7 @@ def child_rects(top: int) -> list[tuple[int, tuple[int, int, int, int]]]:
 
 def show_noactivate(hwnd: int):
     """Un-minimise without stealing focus."""
+    _require_windows()
     u = _u32()
     if u.IsIconic(hwnd):
         u.ShowWindow(hwnd, 4)  # SW_SHOWNOACTIVATE
@@ -146,6 +154,7 @@ def post_text(
 ) -> bool:
     """Click the editor at screen_pt and type `text` (+ Enter) with posted messages. No focus change.
     Returns True if every message was queued (this does NOT prove the page accepted it)."""
+    _require_windows()
     from .textutil import clean_text
     import ctypes
     from ctypes import wintypes as w
@@ -207,6 +216,7 @@ def post_text_rich(
 ) -> bool:
     """Alternative: Use WM_SETTEXT for the entire text, then Enter.
     More reliable for Chromium contenteditable editors."""
+    _require_windows()
     import ctypes
     from ctypes import wintypes as w
 
@@ -254,12 +264,14 @@ def post_text_rich(
 
 
 def foreground() -> int:
-    return int(_u32().GetForegroundWindow() or 0)
+    if U is None:
+        return 0
+    return int(U.GetForegroundWindow() or 0)
 
 
 def restore_foreground(hwnd: int):
-    if hwnd:
+    if hwnd and U is not None:
         try:
-            _u32().SetForegroundWindow(hwnd)
+            U.SetForegroundWindow(hwnd)
         except Exception:
             pass

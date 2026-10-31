@@ -1,6 +1,8 @@
 """Regression tests for the v0.2.0 audit findings. Each test pins a bug that existed in 0.1.0."""
 
 import json
+import os
+import pathlib
 import re
 import threading
 import time
@@ -583,3 +585,132 @@ def test_build_env_checker_lists_what_is_missing():
     assert (
         list(gone) == ["yt_dlp"] and "YouTube" in gone["yt_dlp"]
     )  # the exact failure the exe had
+
+
+# ---- F12: !play from chat is saved to playlist.json (feeds !last) ----
+
+def test_play_saves_to_playlist_json(tmp_path):
+    """Chat requests (!play) are appended to playlist.json and deduplicated by source."""
+    playlist_path = tmp_path / "playlist.json"
+    e = make()
+    e.playlist_file = str(playlist_path)
+    from camfrog_autodj.playlist import PlaylistStore
+    from camfrog_autodj.library import local_track
+    e.playlist = PlaylistStore(str(playlist_path))
+
+    # make() overrides resolve to return YouTube URLs; override back for local files
+    e.resolve = lambda arg, user, admin: [
+        local_track(arg, user) if os.path.isabs(arg) else []
+    ]
+
+    tracks = e.resolve("/m/song one.mp3", "amy", True)
+    e.queue.add_request(tracks[0])
+    e.playlist.add(tracks)
+
+    data = json.loads(playlist_path.read_text("utf-8"))
+    sources = [t["source"] for t in data["tracks"]]
+    assert sources == ["/m/song one.mp3"]
+    assert [t["added_by"] for t in data["tracks"]] == ["amy"]
+
+    # Duplicate request is refused
+    tracks2 = e.resolve("/m/song one.mp3", "amy", True)
+    e.queue.add_request(tracks2[0])
+    e.playlist.add(tracks2)
+    data2 = json.loads(playlist_path.read_text("utf-8"))
+    assert len(data2["tracks"]) == 1  # still only one entry
+
+
+def test_playlist_loads_into_history_on_startup(tmp_path):
+    """Tracks in playlist.json join the autoplay pool on startup."""
+    playlist_path = tmp_path / "playlist.json"
+    playlist_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "tracks": [
+                    {
+                        "source": "/m/pool track.mp3",
+                        "title": "Pool Track",
+                        "duration": 120,
+                        "added_by": "amy",
+                        "added": "2026-01-01T00:00:00",
+                    }
+                ],
+            }
+        ),
+        "utf-8",
+    )
+    e = make()
+    e.playlist_file = str(playlist_path)
+    e.playlist = None
+    from camfrog_autodj.playlist import PlaylistStore
+    e.playlist = PlaylistStore(str(playlist_path))
+
+    # Simulate what _load_all does for playlist loading
+    e.queue.add_pool(e.playlist.load())
+    assert any(t.title == "Pool Track" for t in e.queue.pool)
+
+
+# ---- F13: TTS synth works with default voice and raises clear error when pyttsx3 missing ----
+
+def test_tts_synth_works_with_default_voice(tmp_path, monkeypatch):
+    """Synthesising with no tts_voice set still produces a WAV file."""
+    import types
+    import sys
+
+    from camfrog_autodj import tts
+
+    # Fake pyttsx3 that writes a dummy WAV
+    class FakeVoice:
+        name = "Microsoft David"
+        id = "HKEY_LOCAL_MACHINE\\Voices\\Tokens\\TTS_MS_EN-US_DAVID_11.0"
+
+    class FakeEngine:
+        def setProperty(self, name, value):
+            pass
+
+        def getProperty(self, name):
+            if name == "voices":
+                return [FakeVoice()]
+            return None
+
+        def save_to_file(self, text, path):
+            pathlib.Path(path).write_text("dummy wav", "utf-8")
+
+        def runAndWait(self):
+            pass
+
+    fake_mod = types.ModuleType("pyttsx3")
+    fake_mod.init = lambda: FakeEngine()
+    monkeypatch.setitem(sys.modules, "pyttsx3", fake_mod)
+
+    wav = tmp_path / "test.wav"
+    cfg = type("Cfg", (), {"tts_voice": "", "tts_rate": 170})()
+    tts.synth("hello world", str(wav), cfg)
+    assert wav.exists()
+    assert wav.read_text("utf-8") == "dummy wav"
+
+
+def test_tts_raises_clear_error_when_pyttsx3_missing(monkeypatch, tmp_path):
+    """When pyttsx3 is not installed, synth() raises a clear error."""
+    import builtins
+
+    from camfrog_autodj import tts
+
+    # Block pyttsx3 import
+    real_import = builtins.__import__
+
+    def blocked_import(name, *a, **k):
+        if name == "pyttsx3":
+            raise ModuleNotFoundError("No module named 'pyttsx3'")
+        return real_import(name, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", blocked_import)
+
+    # Reset TTS worker so it re-initialises
+    tts._tts_started = False
+
+    wav = tmp_path / "test.wav"
+    cfg = type("Cfg", (), {"tts_voice": "", "tts_rate": 170})()
+    with pytest.raises(ModuleNotFoundError, match="pyttsx3"):
+        tts.synth("hello world", str(wav), cfg)

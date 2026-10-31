@@ -41,3 +41,18 @@ def build_adapter(cfg) -> ChatAdapter:
         reader if cfg.chat_sender == cfg.chat_reader else _make(cfg.chat_sender, cfg)
     )
     return Composite(reader, sender)
+
+
+class NullAdapter(ChatAdapter):
+    """Fallback adapter when Camfrog cannot be reached (pywinauto missing, no room
+    window open, ...). The GUI still opens; chat simply does nothing until Camfrog
+    is available and discovery is re-run."""
+
+    def messages(self):  # no chat lines ever
+        return iter(())
+
+    def send(self, text: str) -> None:
+        pass
+
+    def close(self) -> None:
+        pass

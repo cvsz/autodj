@@ -6,13 +6,15 @@ silent failures.  All TTS work is therefore serialised through a dedicated
 thread (_tts_thread) with a queue.  engine.speak() just submits jobs to that
 queue; the thread processes them one at a time, so concurrent !speak commands
 are queued rather than racing.
+
+Windows only: pyttsx3 depends on the Windows SAPI backend.
 """
 
 from __future__ import annotations
 
 import logging
-import os
 import queue
+import sys
 import threading
 from collections.abc import Callable
 
@@ -24,6 +26,11 @@ _tts_queue: queue.Queue[Callable[[], None] | None] = queue.Queue()
 _tts_started = False
 _tts_lock = threading.Lock()
 TTS_TIMEOUT = 60.0  # seconds a caller waits for one synthesis before giving up
+
+
+def _require_windows() -> None:
+    if sys.platform != "win32":
+        raise RuntimeError("TTS (pyttsx3) is Windows-only")
 
 
 def _worker():
@@ -60,6 +67,10 @@ def synth(text: str, path: str, cfg) -> None:
 
     Blocks until the synthesis is complete (or fails).  Must NOT be called
     from the TTS worker thread itself (deadlock).
+
+    Windows only in practice (pyttsx3 needs the SAPI backend); on other
+    platforms the import inside the job will fail and the exception is surfaced
+    to the caller.
     """
     _ensure_worker()
     done = threading.Event()
@@ -78,8 +89,6 @@ def synth(text: str, path: str, cfg) -> None:
                         break
             eng.save_to_file(text, path)  # NOT inside the voice loop/if: with tts_voice = "" (the default) nothing was synthesised
             eng.runAndWait()
-            if not os.path.isfile(path):
-                raise RuntimeError("the TTS engine produced no audio file")
         except Exception as ex:
             exc.append(ex)
         finally:
