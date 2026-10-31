@@ -20,7 +20,7 @@ _WHY = ("error", "fail", "not found", "unable", "[ytdl_hook]", "cannot", "no suc
 
 def _is_windows() -> bool:
     """Return whether the host uses Windows-specific process and IPC behavior."""
-    return _is_windows()
+    return os.name == "nt"
 
 
 def failure_reasons(log_text: str, keep: int = 4) -> list[str]:
