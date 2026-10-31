@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import threading
 import time
 
@@ -438,12 +439,17 @@ def test_doctor_reports_missing_mpv_and_ok_dirs(monkeypatch, tmp_path):
     assert doctor.has_failures(res)
 
 
-def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path):
+def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path, monkeypatch):
     import os
 
     from camfrog_autodj.library import find_ytdlp
 
     nt = os.name == "nt"
+    real_which = shutil.which
+    monkeypatch.setattr(
+        "camfrog_autodj.library.shutil.which",
+        lambda command: None if command == "yt-dlp" else real_which(command),
+    )
     mpv = tmp_path / ("mpv.exe" if nt else "mpv")
     yt = tmp_path / ("yt-dlp.exe" if nt else "yt-dlp")
     mpv.write_text("x")
@@ -459,6 +465,16 @@ def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path):
     assert (
         find_ytdlp(str(tmp_path / "nope.exe"), str(mpv)) == ""
     )  # explicit but wrong: do not silently pick another
+
+
+def test_find_ytdlp_falls_back_to_path(monkeypatch):
+    from camfrog_autodj.library import find_ytdlp
+
+    monkeypatch.setattr(
+        "camfrog_autodj.library.shutil.which",
+        lambda command: "/opt/bin/yt-dlp" if command == "yt-dlp" else None,
+    )
+    assert find_ytdlp("", "missing-mpv") == "/opt/bin/yt-dlp"
 
 
 def test_remote_tracks_uses_module_when_no_exe(monkeypatch):
@@ -609,7 +625,7 @@ def test_play_saves_to_playlist_json(tmp_path):
 
     data = json.loads(playlist_path.read_text("utf-8"))
     sources = [t["source"] for t in data["tracks"]]
-    assert sources == ["/m/song one.mp3"]
+    assert [pathlib.Path(source).as_posix() for source in sources] == ["/m/song one.mp3"]
     assert [t["added_by"] for t in data["tracks"]] == ["amy"]
 
     # Duplicate request is refused
