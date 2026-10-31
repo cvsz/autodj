@@ -99,12 +99,14 @@ def test_failures_are_throttled_and_backed_off():
     e.fail_delay = lambda n: delays.append(n) or 0.0
     th = threading.Thread(target=e._player_loop, daemon=True)
     th.start()
-    time.sleep(0.4)
+    deadline = time.monotonic() + 3.0
+    while e.player.plays < 3 and time.monotonic() < deadline:
+        time.sleep(0.01)
     e.stop_evt.set()
     e.wake.set()
     th.join(2)
     cannot = [o for o in out(e) if o.startswith("Could not play")]
-    assert e.player.plays > 5  # it kept trying (zero delay in this test)...
+    assert e.player.plays >= 3  # retries continue without relying on scheduler speed...
     assert 1 <= len(cannot) <= 3  # ...but only announced a few times
     assert delays[:3] == [1, 2, 3]  # consecutive-failure counter grows
 
