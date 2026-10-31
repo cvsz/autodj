@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install -e . pyinstaller
+
+      - name: Install NSIS
+        run: |
+          choco install nsis --yes
+
+      - name: Build AutoDJ.exe
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -Clean -NoSign
+
+      - name: Build NSIS installer
+        run: |
+          makensis /DVERSION=${{ github.ref_name }} installer.nsi
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Camfrog-AutoDJ-Setup-${{ github.ref_name }}.exe
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: |
+            Camfrog AutoDJ ${{ github.ref_name }}
+            
+            Built from ${{ github.ref_name }} tag.
+            Installer includes AutoDJ.exe + source code + docs + tools.
