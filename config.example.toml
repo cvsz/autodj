@@ -26,9 +26,10 @@ input_index = -1
 # mpv and yt-dlp are installed alongside AutoDJ by the NSIS installer:
 #   $INSTDIR/mpv/mpv.exe        (mpv player)
 #   $INSTDIR/mpv/yt-dlp.exe     (YouTube downloader for mpv + title lookups)
-# mpv_path = "REPLACE_ME:/path/to/mpv.exe"   # e.g. "C:/Program Files/Camfrog AutoDJ/mpv/mpv.exe"
-mpv_path = "REPLACE_ME"
-ytdlp_path = ""                # "" = auto: yt-dlp.exe next to mpv.exe (set by installer), else on PATH, else the module bundled in AutoDJ.exe
+# Example: mpv_path = "mpv/mpv.exe"  (relative to AutoDJ.exe install dir)
+# Example: ytdlp_path = "mpv/yt-dlp.exe"
+mpv_path = "mpv/mpv.exe"
+ytdlp_path = "mpv/yt-dlp.exe"
 
 audio_device = ""              # e.g. "wasapi/{guid}" -> virtual cable input; list: mpv --audio-device=help
 volume = 70
