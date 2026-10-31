@@ -64,6 +64,7 @@ $pyi = @("--noconfirm", "--onefile", "--noupx", "--windowed", "--name", $Name, "
 & python -m PyInstaller @pyi   # same interpreter that was just checked (a `pyinstaller` on PATH may belong to another Python)
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) { throw "PyInstaller failed" }
 if (Test-Path config.toml) { Copy-Item config.toml dist\config.toml -Force; "copied config.toml -> dist\" }
+if (Test-Path mpv) { Copy-Item mpv dist\mpv -Recurse -Force; "copied mpv/ -> dist\mpv\" }
 
 Step "smoke test"
 & $exe --version
