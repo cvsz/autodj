@@ -4,6 +4,7 @@ import logging.handlers
 import os
 import shutil
 import sys
+from pathlib import Path
 
 from . import __version__
 from .adapters import NullAdapter, build_adapter
@@ -59,6 +60,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _add_log_file(path: str, level: int):
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
     h = logging.handlers.RotatingFileHandler(
         path, maxBytes=1_000_000, backupCount=3, encoding="utf-8"
     )
