@@ -13,10 +13,11 @@
 from __future__ import annotations
 
 import logging
+import sys
 import subprocess
 import threading
 import types
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -271,7 +272,7 @@ def test_play_cmd_includes_no_window_flags(monkeypatch):
 # ---------------------------------------------------------------------------
 # N-tts-1: TTS worker serialises calls; synth is thread-safe
 # ---------------------------------------------------------------------------
-def test_tts_synth_is_callable_and_thread_safe():
+def test_tts_synth_is_callable_and_thread_safe(monkeypatch):
     """synth() must be importable and have the expected signature; the worker
     must serialise concurrent callers (smoke test: two threads call synth
     with a fake pyttsx3 that would corrupt state if called concurrently)."""
@@ -313,10 +314,13 @@ def test_tts_synth_is_callable_and_thread_safe():
 
     tts_mod = importlib.reload(tts)
 
+    # Install the fake module before either caller starts; patching sys.modules
+    # independently inside concurrent threads races with the worker's import.
+    monkeypatch.setitem(sys.modules, "pyttsx3", fake_mod)
+
     def call_synth(text, path):
         try:
-            with patch.dict("sys.modules", {"pyttsx3": fake_mod}):
-                tts_mod.synth(text, path, cfg)
+            tts_mod.synth(text, path, cfg)
             results.append(text)
         except Exception as ex:
             errors.append(ex)
