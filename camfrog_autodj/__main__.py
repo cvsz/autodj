@@ -6,6 +6,8 @@ import shutil
 import sys
 from pathlib import Path
 
+log = logging.getLogger(__name__)
+
 from . import __version__
 from .adapters import NullAdapter, build_adapter
 from .config import Config, ConfigError
