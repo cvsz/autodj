@@ -64,7 +64,31 @@ $pyi = @("--noconfirm", "--onefile", "--noupx", "--windowed", "--name", $Name, "
 & python -m PyInstaller @pyi   # same interpreter that was just checked (a `pyinstaller` on PATH may belong to another Python)
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) { throw "PyInstaller failed" }
 if (Test-Path config.toml) { Copy-Item config.toml dist\config.toml -Force; "copied config.toml -> dist\" }
-if (Test-Path mpv) { Copy-Item mpv dist\mpv -Recurse -Force; "copied mpv/ -> dist\mpv\" }
+# Copy mpv/ directory to dist/mpv/ so mpv.exe and yt-dlp.exe are available at runtime
+if (Test-Path mpv) {
+    Copy-Item mpv dist\mpv -Recurse -Force
+    "copied mpv/ -> dist\mpv\" | Write-Host
+} else {
+    # mpv/ not present (e.g. cloned repo, gitignored). Try to find mpv.exe on the system.
+    $mpvSearchPaths = @(
+        "C:\Program Files\mpv\mpv.exe",
+        "C:\Program Files (x86)\mpv\mpv.exe",
+        "$env:LOCALAPPDATA\Microsoft\WindowsApps\mpv.exe"
+    )
+    $found = $false
+    foreach ($mpvPath in $mpvSearchPaths) {
+        if (Test-Path $mpvPath) {
+            if (-not (Test-Path "dist\mpv")) { New-Item -ItemType Directory -Path "dist\mpv" | Out-Null }
+            Copy-Item $mpvPath "dist\mpv\mpv.exe" -Force
+            "copied mpv.exe from $mpvPath to dist\mpv\" | Write-Host
+            $found = $true
+            break
+        }
+    }
+    if (-not $found) {
+        Write-Warning "mpv.exe not found locally or on system. dist\mpv\mpv.exe will be missing."
+    }
+}
 
 Step "smoke test"
 & $exe --version
