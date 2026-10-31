@@ -12,6 +12,8 @@
 ; - Start Menu shortcuts
 ; - Uninstaller
 ; - Registry entries for Add/Remove Programs
+; - Auto-uninstall of previous version before install
+; - mpv + yt-dlp + VBCable driver
 
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
@@ -89,6 +91,27 @@ Section "!MainProgram" SEC_MAIN
     ; do NOT bundle a machine-specific config.toml here
 SectionEnd
 
+Section "mpv + yt-dlp" SEC_MPV
+    SetOutPath "$INSTDIR\mpv"
+    File "mpv\mpv.exe"
+    File "mpv\mpv.com"
+    File "mpv\yt-dlp.exe"
+    File "mpv\mpv-register.bat"
+    File "mpv\mpv-unregister.bat"
+    SetOutPath "$INSTDIR\mpv\_internal"
+    File /r "mpv\_internal\*.*"
+SectionEnd
+
+Section "VBCable Virtual Audio Driver" SEC_VBCABLE
+    SetOutPath "$INSTDIR\mpv\VBCABLE_Driver_Pack45"
+    File "mpv\VBCABLE_Driver_Pack45\VBCABLE_Setup_x64.exe"
+    File "mpv\VBCABLE_Driver_Pack45\VBCABLE_ControlPanel.exe"
+    File "mpv\VBCABLE_Driver_Pack45\readme.txt"
+    File /r "mpv\VBCABLE_Driver_Pack45\*.inf"
+    File /r "mpv\VBCABLE_Driver_Pack45\*.cat"
+    File /r "mpv\VBCABLE_Driver_Pack45\*.sys"
+SectionEnd
+
 Section "Documentation" SEC_DOCS
     SetOutPath "$INSTDIR\docs"
     File /r "docs\*.md"
@@ -115,8 +138,25 @@ SectionEnd
 ; -----------------------------------------------------------------------------
 ; Installer Logic
 ; -----------------------------------------------------------------------------
+; Check for existing installation and uninstall it first before installing new version
+Function CheckExistingInstall
+    Push $R0
+    ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "UninstallString"
+    ${If} $R0 != ""
+        DetailPrint "Existing installation found. Removing old version..."
+        # Strip surrounding quotes from UninstallString if present
+        ${GetParameters} "$R0" $R1
+        ExecWait '"$R0" /S'
+        DetailPrint "Old version removed."
+    ${EndIf}
+    Pop $R0
+FunctionEnd
+
 Function .onInit
-    ; Verify we're on Windows
+    ; Check for existing installation and uninstall it first
+    Call CheckExistingInstall
+
+    ; Verify we're on Windows 64-bit
     ${If} ${RunningX64}
         StrCpy $INSTDIR "$PROGRAMFILES64\Camfrog AutoDJ"
     ${Else}
@@ -164,6 +204,10 @@ Section -Post
     ; App Paths for CLI access
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "" "$INSTDIR\AutoDJ.exe"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "Path" "$INSTDIR"
+
+    ; mpv path for AutoDJ to find mpv.exe
+    WriteRegStr HKLM "Software\CamfrogAutoDJ" "mpv_path" "$INSTDIR\mpv\mpv.exe"
+    WriteRegStr HKLM "Software\CamfrogAutoDJ" "ytdlp_path" "$INSTDIR\mpv\yt-dlp.exe"
 SectionEnd
 
 ; -----------------------------------------------------------------------------
