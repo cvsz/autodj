@@ -2,6 +2,7 @@ import argparse
 import logging
 import logging.handlers
 import os
+import shutil
 import sys
 
 from . import __version__
@@ -120,6 +121,25 @@ def _run(a, level):
             app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
             log_path = os.path.join(app_data, "Camfrog AutoDJ", log_path)
         _add_log_file(log_path, level)
+
+    # If config file is not writable (e.g. installed to Program Files), relocate to APPDATA
+    # so settings changes and auto-discover can be saved.
+    p = Path(a.config)
+    if not p.exists() or not os.access(p, os.W_OK):
+        app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
+        app_cfg_dir = Path(app_data) / "Camfrog AutoDJ"
+        app_cfg_dir.mkdir(parents=True, exist_ok=True)
+        app_cfg_path = app_cfg_dir / "config.toml"
+        if p.exists() and not app_cfg_path.exists():
+            shutil.copyfile(p, app_cfg_path)
+            logging.info(
+                "config.toml not writable at %s; using %s instead",
+                p,
+                app_cfg_path,
+            )
+        p = app_cfg_path
+        a.config = str(p)
+        cfg = Config.load(str(p))  # re-load from new location
     if a.lang:
         cfg.lang = a.lang
     if a.console:
