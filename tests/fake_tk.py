@@ -99,6 +99,7 @@ ITEM_OPTS = {
     "oval": _s("fill", "outline", "width", "tags", "stipple", "dash"),
     "arc": _s("start", "extent", "style", "outline", "width", "fill", "tags", "dash"),
     "line": _s("fill", "width", "tags", "dash", "capstyle"),
+    "window": _s("window", "anchor"),
 }
 PACK = _s(
     "side",
@@ -383,6 +384,12 @@ class Canvas(Misc):
             self.items = {}
         else:
             self.items.pop(what, None)
+
+    def create_window(self, *c, **k):
+        self._new("window", c[0] if len(c) == 1 else c, k)
+
+    def yview(self, *a):
+        pass
 
 
 # ---- tkinter.font / ttk / filedialog -------------------------------------------------------
