@@ -91,11 +91,6 @@ def test_launcher_requires_template(monkeypatch):
 
 def test_gui_smoke():
     tk = pytest.importorskip("tkinter")
-    try:
-        root = tk.Tk()
-        root.destroy()
-    except tk.TclError:
-        pytest.skip("no display")
     from camfrog_autodj.gui import App
 
     e = make()
@@ -103,15 +98,25 @@ def test_gui_smoke():
     e.started_at = __import__("time").monotonic() - 60
     e.queue.add_request(Track("q", "Queued song", 100, "amy"))
     e.say("hello")
-    app = App(e)
-    app.update()
-    assert app.v_title.cget("text") == "Midnight City"
-    assert "Queued song" in app.lb.get(0)
-    assert "hello" in app.chat.get("1.0", "end")
-    app.set_lang("th")
-    app.update()
-    assert app.b_pause.cget("text") == "หยุดชั่วคราว"
-    app.close()
+    try:
+        app = App(e)
+    except tk.TclError:
+        pytest.skip("no display")
+    try:
+        app.update()
+        assert app.v_title.cget("text") == "Midnight City"
+        assert "Queued song" in app.lb.get(0)
+        assert "hello" in app.chat.get("1.0", "end")
+        app.set_lang("th")
+        app.update()
+        assert app.b_pause.cget("text") == "หยุดชั่วคราว"
+    finally:
+        app.close()
+        del app
+        # Release the Tcl interpreter on the same thread that created it.
+        import gc
+
+        gc.collect()
 
 
 def test_window_pick():
