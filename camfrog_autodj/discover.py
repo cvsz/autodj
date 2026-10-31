@@ -48,7 +48,11 @@ def choose_view(ctls: list[Ctl], rx: re.Pattern) -> tuple[Ctl | None, int]:
         key = (matched, len(c.text), c.area, c.ctype == "Document")
         if best_key is None or key > best_key:
             best, best_key = c, key
-    if best is None or (best_key[0] == 0 and best_key[1] == 0 and best.ctype != "Document"):
+    if best is None:
+        return None, 0
+    assert best_key is not None
+    if best_key[0] == 0 and best.ctype != "Document":
+        # No chat-like lines matched: not a chat view.
         return None, 0
     return best, best_key[0]
 
@@ -167,8 +171,16 @@ def _toml_value(v) -> str:
     if isinstance(v, int):
         return str(v)
     s = str(v)
-    if "'" not in s and not any(ord(c) < 32 or ord(c) == 127 for c in s):
-        return f"'{s}'"          # literal string: regex backslashes stay as-is
+    # Use double quotes for simple strings without backslashes, double quotes,
+    # or single quotes; single quotes (literal) preserve backslashes for regex
+    # patterns and other strings that need them.
+    if (
+        "\\" not in s
+        and '"' not in s
+        and "'" not in s
+        and not any(ord(c) < 32 or ord(c) == 127 for c in s)
+    ):
+        return f'"{s}"'
     esc = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"}
     return '"' + "".join(esc.get(c, c if ord(c) >= 32 and ord(c) != 127 else f"\\u{ord(c):04x}") for c in s) + '"'
 
@@ -181,6 +193,17 @@ def update_config_text(text: str, updates: dict) -> str:
         for i, ln in enumerate(lines):
             m = rx.match(ln)
             if m:
+                # Preserve the original line when the new value is semantically
+                # equal (avoid changing double→single quotes or vice versa).
+                old_val_part = m.group(0).split("=", 1)[1].strip()
+                old_val_part = old_val_part.split(" #")[0].strip()
+                try:
+                    old_d = tomllib.loads(f"{key} = {old_val_part}")
+                    new_d = tomllib.loads(new)
+                    if old_d.get(key) == new_d.get(key):
+                        continue
+                except Exception:
+                    pass
                 lines[i] = m.group(1) + new + (m.group(2) or "")
                 break
         else:
