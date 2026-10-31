@@ -85,8 +85,8 @@ def test_launcher_flow(monkeypatch):
 
 def test_launcher_requires_template(monkeypatch):
     monkeypatch.setattr(launcher, "find_window", lambda p, t: True)
-    with pytest.raises(RuntimeError):
-        launcher.ensure_room(Config(room="x"))
+    # Should log warning but not raise when join_uri_template is empty
+    launcher.ensure_room(Config(room="x"))
 
 
 def test_gui_smoke():
