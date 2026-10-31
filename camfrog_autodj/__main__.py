@@ -161,7 +161,7 @@ def _run(a, level):
         try:
             ensure_room(cfg)
         except Exception as ex:  # pragma: no cover - defensive; discovery is best-effort
-            log.warning(
+            logging.getLogger(__name__).warning(
                 "auto-launch failed; continuing without Camfrog: %s", ex
             )
     uses_uia = "uia" in (cfg.chat_reader, cfg.chat_sender)
@@ -173,7 +173,7 @@ def _run(a, level):
         try:
             ups = discover.apply(cfg, a.config)
         except Exception:  # pragma: no cover - defensive; discovery is best-effort
-            log.exception("auto-discover failed; continuing without it")
+            logging.getLogger(__name__).exception("auto-discover failed; continuing without it")
             ups = None
         if a.discover:
             print(ups or "nothing found: open the room window and try again")
