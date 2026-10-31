@@ -880,8 +880,20 @@ class App(tk.Tk):
 
         sp = self.pages["settings"]
         sp.columnconfigure(0, weight=1)
-        sp_inner = tk.Frame(sp, bg=SURFACE)
-        sp_inner.pack(fill="both", expand=True, padx=px(14), pady=px(14))
+        sp.rowconfigure(0, weight=1)
+        # scrollable settings area
+        sp_scroll = ttk.Scrollbar(sp, orient="vertical")
+        sp_scroll.grid(row=0, column=1, sticky="ns")
+        sp_canvas = tk.Canvas(sp, bg=SURFACE, highlightthickness=0)
+        sp_canvas.grid(row=0, column=0, sticky="nsew")
+        sp_canvas.configure(yscrollcommand=sp_scroll.set)
+        sp_scroll.configure(command=sp_canvas.yview)
+        sp_inner = tk.Frame(sp_canvas, bg=SURFACE)
+        sp_canvas.create_window((0, 0), window=sp_inner, anchor="nw")
+        sp_inner.bind(
+            "<Configure>",
+            lambda e: sp_canvas.configure(scrollregion=sp_canvas.bbox("all")),
+        )
         sp_inner.columnconfigure(0, weight=1)
 
         row = 0
