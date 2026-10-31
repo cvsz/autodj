@@ -271,11 +271,19 @@ def save_config(path: str, updates: dict) -> bool:
             ex,
         )
         return False
-    if p.exists():
-        shutil.copyfile(p, p.with_name(p.name + ".bak"))
-    tmp = p.with_name(p.name + ".tmp")
-    tmp.write_text(new, "utf-8")
-    os.replace(tmp, p)  # atomic: a crash mid-write cannot leave half a file
+    try:
+        if p.exists():
+            shutil.copyfile(p, p.with_name(p.name + ".bak"))
+        tmp = p.with_name(p.name + ".tmp")
+        tmp.write_text(new, "utf-8")
+        os.replace(tmp, p)  # atomic: a crash mid-write cannot leave half a file
+    except OSError as ex:  # permission denied, read-only file, etc.
+        log.warning(
+            "auto-discover: NOT saving to %s, cannot write config file (%s)",
+            path,
+            ex,
+        )
+        return False
     return True
 
 
