@@ -63,7 +63,9 @@ auto_launch = false            # set true to have AutoDJ launch Camfrog and join
 # --- added in 0.2.0 ---------------------------------------------------------------------------------
 blocked_users = []             # nicks whose commands are ignored (admins cannot be blocked). Admins can also use !block / !unblock live
 poll_interval = 0.5            # seconds between chat reads; raise to 1.0 if AutoDJ uses too much CPU
-log_file = ""                  # e.g. "autodj.log": also write the log to a rotating file (1 MB x 3). Same as --log-file
+log_file = ""                  # e.g. "autodj.log": also write the log to a rotating file (1 MB x 3). Same as --log-file.
+                                # Relative paths are resolved to %APPDATA%/Camfrog AutoDJ/ so they are
+                                # writable even when AutoDJ is installed to Program Files.
 playlist_file = "playlist.json"   # user-requested tracks (!play / GUI request / !load) are appended here
                                   # (deduplicated) and join the autoplay pool (random); "" = disable persistence
 search_limit = 1               # YouTube text-search results fetched per non-admin !play (1 = first match only; max 50)
