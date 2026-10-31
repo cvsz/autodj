@@ -113,7 +113,13 @@ def _run(a, level):
         )
     cfg = Config.load(a.config)
     if a.log_file or cfg.log_file:
-        _add_log_file(a.log_file or cfg.log_file, level)
+        log_path = a.log_file or cfg.log_file
+        # Resolve relative log paths to a user-writable directory (APPDATA/Camfrog AutoDJ)
+        # instead of CWD which may be Program Files (write-protected).
+        if log_path and not os.path.isabs(log_path):
+            app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
+            log_path = os.path.join(app_data, "Camfrog AutoDJ", log_path)
+        _add_log_file(log_path, level)
     if a.lang:
         cfg.lang = a.lang
     if a.console:
