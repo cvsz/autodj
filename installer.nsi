@@ -144,9 +144,7 @@ Function CheckExistingInstall
     ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "UninstallString"
     ${If} $R0 != ""
         DetailPrint "Existing installation found. Removing old version..."
-        # Strip surrounding quotes from UninstallString
-        StrReplace $R0 $R0 '"' ''
-        ExecWait '"$R0" /S'
+        ExecWait "$R0 /S"
         DetailPrint "Old version removed."
     ${EndIf}
     Pop $R0
