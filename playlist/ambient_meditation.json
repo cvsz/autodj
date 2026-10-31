@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Ambient / Meditation",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:ambient music for relaxation official",
+      "title": "ambient music for relaxation official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:meditation music peaceful official",
+      "title": "meditation music peaceful official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:nature sounds rain forest official",
+      "title": "nature sounds rain forest official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:sleep music instrumental official",
+      "title": "sleep music instrumental official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:sound bath meditation music official",
+      "title": "sound bath meditation music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:ambient drone music official",
+      "title": "ambient drone music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:ocean waves relaxing sounds official",
+      "title": "ocean waves relaxing sounds official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:spa relaxation instrumental music official",
+      "title": "spa relaxation instrumental music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

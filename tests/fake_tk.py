@@ -1,6 +1,7 @@
 """A strict stand-in for tkinter, so the GUI's logic can be exercised on machines without a display.
 It rejects options that real Tk widgets / canvas items do not accept (the usual way a hand-written GUI breaks at
 start-up) and records what was drawn. It does NOT render anything: the real-Tk smoke test covers that."""
+
 import itertools
 import types
 
@@ -13,20 +14,81 @@ def _s(*names):
     return set(names)
 
 
-COMMON = _s("bg", "background", "bd", "borderwidth", "relief", "cursor", "highlightthickness",
-            "highlightbackground", "highlightcolor", "takefocus", "width", "height")
+COMMON = _s(
+    "bg",
+    "background",
+    "bd",
+    "borderwidth",
+    "relief",
+    "cursor",
+    "highlightthickness",
+    "highlightbackground",
+    "highlightcolor",
+    "takefocus",
+    "width",
+    "height",
+)
 OPTS = {
     "Tk": _s("bg", "background", "cursor", "menu"),
     "Frame": COMMON | _s("padx", "pady"),
-    "Label": COMMON | _s("text", "font", "fg", "foreground", "anchor", "justify", "wraplength", "padx", "pady",
-                         "textvariable", "image"),
-    "Canvas": COMMON | _s("scrollregion", "insertbackground", "yscrollcommand", "xscrollcommand"),
-    "Entry": COMMON | _s("fg", "foreground", "insertbackground", "font", "selectbackground", "selectforeground",
-                         "show", "textvariable", "state", "justify", "exportselection"),
-    "Listbox": COMMON | _s("fg", "foreground", "selectbackground", "selectforeground", "activestyle", "selectmode",
-                           "font", "exportselection", "yscrollcommand", "xscrollcommand"),
-    "Text": COMMON | _s("fg", "foreground", "wrap", "state", "padx", "pady", "font", "insertbackground",
-                        "selectbackground", "selectforeground", "yscrollcommand", "xscrollcommand"),
+    "Label": COMMON
+    | _s(
+        "text",
+        "font",
+        "fg",
+        "foreground",
+        "anchor",
+        "justify",
+        "wraplength",
+        "padx",
+        "pady",
+        "textvariable",
+        "image",
+    ),
+    "Canvas": COMMON
+    | _s("scrollregion", "insertbackground", "yscrollcommand", "xscrollcommand"),
+    "Entry": COMMON
+    | _s(
+        "fg",
+        "foreground",
+        "insertbackground",
+        "font",
+        "selectbackground",
+        "selectforeground",
+        "show",
+        "textvariable",
+        "state",
+        "justify",
+        "exportselection",
+    ),
+    "Listbox": COMMON
+    | _s(
+        "fg",
+        "foreground",
+        "selectbackground",
+        "selectforeground",
+        "activestyle",
+        "selectmode",
+        "font",
+        "exportselection",
+        "yscrollcommand",
+        "xscrollcommand",
+    ),
+    "Text": COMMON
+    | _s(
+        "fg",
+        "foreground",
+        "wrap",
+        "state",
+        "padx",
+        "pady",
+        "font",
+        "insertbackground",
+        "selectbackground",
+        "selectforeground",
+        "yscrollcommand",
+        "xscrollcommand",
+    ),
     "Scrollbar": _s("orient", "command", "style", "takefocus", "cursor"),
     "Menu": _s("tearoff"),
 }
@@ -38,8 +100,22 @@ ITEM_OPTS = {
     "arc": _s("start", "extent", "style", "outline", "width", "fill", "tags", "dash"),
     "line": _s("fill", "width", "tags", "dash", "capstyle"),
 }
-PACK = _s("side", "fill", "expand", "padx", "pady", "ipadx", "ipady", "anchor", "before", "after", "in_")
-GRID = _s("row", "column", "sticky", "padx", "pady", "columnspan", "rowspan", "ipadx", "ipady")
+PACK = _s(
+    "side",
+    "fill",
+    "expand",
+    "padx",
+    "pady",
+    "ipadx",
+    "ipady",
+    "anchor",
+    "before",
+    "after",
+    "in_",
+)
+GRID = _s(
+    "row", "column", "sticky", "padx", "pady", "columnspan", "rowspan", "ipadx", "ipady"
+)
 
 
 def _check(kind, opts, allowed):
@@ -78,6 +154,7 @@ class Misc:
     # geometry managers
     def pack(self, **kw):
         _check("pack", kw, PACK)
+
     pack_configure = pack
 
     def pack_forget(self):
@@ -88,6 +165,7 @@ class Misc:
 
     def columnconfigure(self, *a, **k):
         pass
+
     rowconfigure = columnconfigure
 
     # misc window info
@@ -106,6 +184,7 @@ class Misc:
 
     def winfo_x(self):
         return 0
+
     winfo_y = winfo_x
 
     def focus_set(self):
@@ -134,6 +213,7 @@ class Misc:
 
     def update(self):
         pass
+
     update_idletasks = update
 
     def destroy(self):
@@ -232,7 +312,9 @@ class Text(Misc):
 
     def insert(self, where, s, tags=()):
         if self._opts.get("state") == "disabled":
-            raise TclError("text widget is disabled: insert ignored by real Tk, a bug in the caller")
+            raise TclError(
+                "text widget is disabled: insert ignored by real Tk, a bug in the caller"
+            )
         self.buf += s
 
     def delete(self, a, b=None):
@@ -340,6 +422,13 @@ class _TEntry(Entry):
     pass
 
 
-ttk = types.SimpleNamespace(Style=Style, Scrollbar=_Scrollbar, Entry=_TEntry, Combobox=type("Combobox", (Entry,), {}),
-                            Spinbox=type("Spinbox", (Entry,), {}))
-filedialog = types.SimpleNamespace(askopenfilenames=lambda **k: (), askdirectory=lambda **k: "")
+ttk = types.SimpleNamespace(
+    Style=Style,
+    Scrollbar=_Scrollbar,
+    Entry=_TEntry,
+    Combobox=type("Combobox", (Entry,), {}),
+    Spinbox=type("Spinbox", (Entry,), {}),
+)
+filedialog = types.SimpleNamespace(
+    askopenfilenames=lambda **k: (), askdirectory=lambda **k: ""
+)

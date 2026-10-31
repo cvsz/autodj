@@ -53,6 +53,14 @@ install-dev:  ## Install the project + test tooling (pytest)
 install-build:  ## Install the project + build tooling (pyinstaller), for Windows exe builds
 	$(PIP) install -e ".[build]"
 
+install-auto:  ## Run the automated Windows 11 installer (install.ps1)
+ifeq ($(OS),Windows_NT)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1
+else
+	@echo "install-auto requires Windows 11"
+	@exit 1
+endif
+
 ## ---- running ----------------------------------------------------------------
 run: run-gui  ## Alias for run-gui
 
@@ -179,6 +187,16 @@ release: changelog-check test build package  ## Full pipeline: check CHANGELOG, 
 package:  ## Zip the source tree for distribution (excludes caches, local config.toml)
 	@mkdir -p dist
 	$(PY) tools/package.py "$(DIST_ZIP)"
+
+installer:  ## Build NSIS installer (Windows: .ps1, Linux/WSL: .sh)
+ifeq ($(OS),Windows_NT)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_installer.ps1 -Version $(VERSION)
+else
+	bash scripts/build_installer_linux.sh $(VERSION) dist dist
+endif
+
+installer-clean:  ## Clean installer artifacts
+	@rm -f dist/Camfrog-AutoDJ-Setup-*.exe dist/installer.nsi
 
 ## ---- housekeeping ---------------------------------------------------------------
 clean:  ## Remove Python caches and test artifacts

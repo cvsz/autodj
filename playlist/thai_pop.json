@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "name": "Thai Pop",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:เพลงไทยฮิต T-Pop official music video",
+      "title": "เพลงไทยฮิต T-Pop official music video",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทยป๊อป 2025 2026 เพลงใหม่",
+      "title": "เพลงไทยป๊อป 2025 2026 เพลงใหม่",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงรักไทย pop official MV",
+      "title": "เพลงรักไทย pop official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงอกหักไทย pop official MV",
+      "title": "เพลงอกหักไทย pop official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงฮิตติดชาร์ตไทย T-Pop",
+      "title": "เพลงฮิตติดชาร์ตไทย T-Pop",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทยฟังสบาย pop playlist",
+      "title": "เพลงไทยฟังสบาย pop playlist",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงวัยรุ่นไทย pop official",
+      "title": "เพลงวัยรุ่นไทย pop official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทย viral TikTok pop full song",
+      "title": "เพลงไทย viral TikTok pop full song",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทย acoustic pop official",
+      "title": "เพลงไทย acoustic pop official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทย duet pop official MV",
+      "title": "เพลงไทย duet pop official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

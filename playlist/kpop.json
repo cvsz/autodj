@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "K-Pop",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:K-pop hits official music video",
+      "title": "K-pop hits official music video",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:K-pop girl group hits official MV",
+      "title": "K-pop girl group hits official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:K-pop boy group hits official MV",
+      "title": "K-pop boy group hits official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:K-pop solo artists official MV",
+      "title": "K-pop solo artists official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:K-pop dance performance official",
+      "title": "K-pop dance performance official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:K-pop 2025 2026 comeback official",
+      "title": "K-pop 2025 2026 comeback official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:K-pop ballads official audio",
+      "title": "K-pop ballads official audio",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:K-pop classics 2nd generation official",
+      "title": "K-pop classics 2nd generation official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

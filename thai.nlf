@@ -1,0 +1,172 @@
+;--------------------------------
+; Thai Language File for NSIS MUI2
+; Encoding: UTF-8
+;--------------------------------
+
+!insertmacro MUI_LANGUAGE "Thai"
+
+;--------------------------------
+; General
+;--------------------------------
+
+LangString YES ${LANG_THAI} "ใช่"
+LangString NO ${LANG_THAI} "ไม่ใช่"
+LangString OK ${LANG_THAI} "ตกลง"
+LangString CANCEL ${LANG_THAI} "ยกเลิก"
+LangString INSTALL ${LANG_THAI} "ติดตั้ง"
+LangString UNINSTALL ${LANG_THAI} "ถอนการติดตั้ง"
+LangString INSTALLED ${LANG_THAI} "ติดตั้งแล้ว"
+LangString UNINSTALLED ${LANG_THAI} "ถอนการติดตั้งแล้ว"
+LangString COMPLETE ${LANG_THAI} "เสร็จสมบูรณ์"
+LangString NEXT > ${LANG_THAI} "ถัดไป >"
+LangString BACK < ${LANG_THAI} "< ย้อนกลับ"
+LangString CLOSE ${LANG_THAI} "ปิด"
+LangString FINISH ${LANG_THAI} "เสร็จสิ้น"
+
+;--------------------------------
+; MUI_PAGE_WELCOME
+;--------------------------------
+
+LangString WELCOMEPAGE_TITLE ${LANG_THAI} "ยินดีต้อนรับสู่ตัวติดตั้ง ${NAME}"
+LangString WELCOMEPAGE_TEXT ${LANG_THAI} "ตัวช่วยติดตั้งนี้จะแนะนำขั้นตอนการติดตั้ง ${NAME} บนคอมพิวเตอร์ของคุณ\n\nคลิกถัดไปเพื่อดำเนินการต่อ"
+
+;--------------------------------
+; MUI_PAGE_LICENSE
+;--------------------------------
+
+LangString LICENSEPAGE_TITLE ${LANG_THAI} "สัญญาอนุญาตผู้ใช้งานสุดท้าย"
+LangString LICENSEPAGE_TEXT_RADIO ${LANG_THAI} "ฉันยอมรับข้อตกลง"
+LangString LICENSEPAGE_TEXT_RADIO2 ${LANG_THAI} "ฉันไม่ยอมรับข้อตกลง"
+LangString LICENSEPAGE_TEXT_BOTTOM ${LANG_THAI} "หากคุณยอมรับเงื่อนไข โปรดคลิก 'ฉันยอมรับข้อตกลง' คุณจำเป็นต้องยอมรับข้อตกลงเพื่อติดตั้ง"
+
+;--------------------------------
+; MUI_PAGE_COMPONENTS
+;--------------------------------
+
+LangString COMPONENTPAGE_TITLE ${LANG_THAI} "เลือกส่วนประกอบ"
+LangString COMPONENTPAGE_TEXT_TOP ${LANG_THAI} "เลือกส่วนประกอบที่ต้องการติดตั้ง ส่วนประกอบที่จำเป็นจะถูกติดตั้งเสมอ"
+LangString COMPONENTPAGE_TEXT_COMPLIST ${LANG_THAI} "ส่วนประกอบที่พร้อมใช้งาน:"
+LangString COMPONENTPAGE_TEXT_DESCRIPTION_TITLE ${LANG_THAI} "คำอธิบาย"
+LangString COMPONENTPAGE_TEXT_DESCRIPTION_INFO ${LANG_THAI} "วางเมาส์เหนือรายการเพื่อดูคำอธิบาย"
+
+;--------------------------------
+; MUI_PAGE_DIRECTORY
+;--------------------------------
+
+LangString DIRECTORYPAGE_TITLE ${LANG_THAI} "เลือกโฟลเดอร์ติดตั้ง"
+LangString DIRECTORYPAGE_TEXT_TOP ${LANG_THAI} "เลือกโฟลเดอร์ที่ต้องการติดตั้ง ${NAME}"
+LangString DIRECTORYPAGE_TEXT_DESTINATION ${LANG_THAI} "โฟลเดอร์ปลายทาง"
+LangString DIRECTORYPAGE_BROWSE ${LANG_THAI} "เรียกดู..."
+LangString DIRECTORYPAGE_TEXT_SPACE_AVAILABLE ${LANG_THAI} "พื้นที่ว่าง:"
+LangString DIRECTORYPAGE_TEXT_SPACE_REQUIRED ${LANG_THAI} "พื้นที่ที่ต้องการ:"
+
+;--------------------------------
+; MUI_PAGE_INSTFILES
+;--------------------------------
+
+LangString INSTFILESPAGE_TITLE ${LANG_THAI} "กำลังติดตั้ง"
+LangString INSTFILESPAGE_TEXT_TOP ${LANG_THAI} "โปรดรอขณะที่ตัวช่วยติดตั้งกำลังติดตั้ง ${NAME} บนคอมพิวเตอร์ของคุณ"
+LangString INSTFILESPAGE_TEXT_EXTRACT ${LANG_THAI} "กำลังแตกไฟล์"
+LangString INSTFILESPAGE_TEXT_COMPRESSING ${LANG_THAI} "กำลังบีบอัด"
+LangString INSTFILESPAGE_TEXT_READING ${LANG_THAI} "กำลังอ่าน"
+LangString INSTFILESPAGE_TEXT_WRITING ${LANG_THAI} "กำลังเขียน"
+LangString INSTFILESPAGE_TEXT_STARTUNINSTALLER ${LANG_THAI} "กำลังเริ่มต้นตัวถอนการติดตั้ง"
+LangString INSTFILESPAGE_FINISHHEADER_TEXT ${LANG_THAI} "การติดตั้งเสร็จสมบูรณ์"
+LangString INSTFILESPAGE_FINISHTEXT ${LANG_THAI} "คลิกเสร็จสิ้นเพื่อปิดตัวช่วยติดตั้ง"
+
+;--------------------------------
+; MUI_PAGE_FINISH
+;--------------------------------
+
+LangString FINISHPAGE_TITLE ${LANG_THAI} "การติดตั้งเสร็จสมบูรณ์"
+LangString FINISHPAGE_TEXT ${LANG_THAI} "การติดตั้ง ${NAME} บนคอมพิวเตอร์ของคุณเสร็จสมบูรณ์แล้ว\n\nคลิกเสร็จสิ้นเพื่อปิดตัวช่วยติดตั้ง"
+LangString FINISHPAGE_RUN ${LANG_THAI} "เรียกใช้ ${NAME} ทันที"
+LangString FINISHPAGE_SHOWREADME ${LANG_THAI} "แสดงไฟล์อ่านฉบับ"
+LangString FINISHPAGE_SHOWREADME_NOTCHECKED ${LANG_THAI} ""
+
+;--------------------------------
+; MUI_UNPAGE_WELCOME
+;--------------------------------
+
+LangString UNWELCOMEPAGE_TITLE ${LANG_THAI} "ยินดีต้อนรับสู่ตัวถอนการติดตั้ง ${NAME}"
+LangString UNWELCOMEPAGE_TEXT ${LANG_THAI} "ตัวช่วยถอนการติดตั้งนี้จะนำ ${NAME} ออกจากคอมพิวเตอร์ของคุณ\n\nคลิกถัดไปเพื่อดำเนินการต่อ"
+
+;--------------------------------
+; MUI_UNPAGE_CONFIRM
+;--------------------------------
+
+LangString UNCONFIRMPAGE_TITLE ${LANG_THAI} "ยืนยันการถอนการติดตั้ง"
+LangString UNCONFIRMPAGE_TEXT ${LANG_THAI} "ตัวช่วยถอนการติดตั้งพร้อมที่จะนำ ${NAME} ออกจากคอมพิวเตอร์ของคุณ\n\nคลิกติดตั้งเพื่อดำเนินการถอนการติดตั้ง"
+
+;--------------------------------
+; MUI_UNPAGE_INSTFILES
+;--------------------------------
+
+LangString UNINSTFILESPAGE_TITLE ${LANG_THAI} "กำลังถอนการติดตั้ง"
+LangString UNINSTFILESPAGE_TEXT_TOP ${LANG_THAI} "โปรดรอขณะที่ตัวช่วยถอนการติดตั้งกำลังนำ ${NAME} ออกจากคอมพิวเตอร์ของคุณ"
+LangString UNINSTFILESPAGE_TEXT_EXTRACT ${LANG_THAI} "กำลังแตกไฟล์"
+LangString UNINSTFILESPAGE_TEXT_COMPRESSING ${LANG_THAI} "กำลังบีบอัด"
+LangString UNINSTFILESPAGE_TEXT_READING ${LANG_THAI} "กำลังอ่าน"
+LangString UNINSTFILESPAGE_TEXT_WRITING ${LANG_THAI} "กำลังเขียน"
+LangString UNINSTFILESPAGE_FINISHHEADER_TEXT ${LANG_THAI} "การถอนการติดตั้งเสร็จสมบูรณ์"
+LangString UNINSTFILESPAGE_FINISHTEXT ${LANG_THAI} "คลิกเสร็จสิ้นเพื่อปิดตัวช่วยถอนการติดตั้ง"
+
+;--------------------------------
+; MUI_UNPAGE_FINISH
+;--------------------------------
+
+LangString UNFINISHPAGE_TITLE ${LANG_THAI} "การถอนการติดตั้งเสร็จสมบูรณ์"
+LangString UNFINISHPAGE_TEXT ${LANG_THAI} "${NAME} ถูกนำออกจากคอมพิวเตอร์ของคุณแล้ว\n\nคลิกเสร็จสิ้นเพื่อปิดตัวช่วยถอนการติดตั้ง"
+
+;--------------------------------
+; Error messages
+;--------------------------------
+
+LangString ERROR_CREATESHORTCUT ${LANG_THAI} "ไม่สามารถสร้างลิงก์ด่วนได้"
+LangString ERROR_CREATEUNINSTALLER ${LANG_THAI} "ไม่สามารถสร้างตัวถอนการติดตั้งได้"
+LangString ERROR_REGISTERFILEASSOC ${LANG_THAI} "ไม่สามารถเชื่อมโยงประเภทไฟล์ได้"
+LangString ERROR_ENUMERATINGKEYS ${LANG_THAI} "ไม่สามารถแสดงรายการคีย์ได้"
+LangString ERROR_ENUMERATINGVALUES ${LANG_THAI} "ไม่สามารถแสดงรายการค่าได้"
+LangString ERROR_WRITINGFILE ${LANG_THAI} "ข้อผิดพลาดในการเขียนไฟล์"
+LangString ERROR_CREATINGFILE ${LANG_THAI} "ไม่สามารถสร้างไฟล์ได้"
+LangString ERROR_CREATINGDIRECTORY ${LANG_THAI} "ไม่สามารถสร้างโฟลเดอร์ได้"
+LangString ERROR_CONNECTINGDATABASE ${LANG_THAI} "ไม่สามารถเชื่อมต่อฐานข้อมูลได้"
+LangString ERROR_LAUNCHINGDATABASE ${LANG_THAI} "ไม่สามารถเรียกใช้ฐานข้อมูลได้"
+LangString ERROR_DELETINGFILE ${LANG_THAI} "ไม่สามารถลบไฟล์ได้"
+LangString ERROR_DELETINGDIRECTORY ${LANG_THAI} "ไม่สามารถลบโฟลเดอร์ได้"
+LangString ERROR_RENAMEFILE ${LANG_THAI} "ไม่สามารถเปลี่ยนชื่อไฟล์ได้"
+LangString ERROR_MOVEFILE ${LANG_THAI} "ไม่สามารถย้ายไฟล์ได้"
+LangString ERROR_WRITEENVVAR ${LANG_THAI} "ไม่สามารถเขียนตัวแปรสภาพแวดล้อมได้"
+LangString ERROR_WRITEUNINSTALLER ${LANG_THAI} "ไม่สามารถเขียนตัวถอนการติดตั้งได้"
+LangString ERROR_REGISTERINGFILE ${LANG_THAI} "ไม่สามารถลงทะเบียนไฟล์ได้"
+LangString ERROR_CREATINGSHORTCUT ${LANG_THAI} "ไม่สามารถสร้างลิงก์ด่วนได้"
+LangString ERROR_CREATINGUNINSTALLER ${LANG_THAI} "ไม่สามารถสร้างตัวถอนการติดตั้งได้"
+LangString ERROR_CREATINGINSTALLEDFILES ${LANG_THAI} "ไม่สามารถสร้างไฟล์ที่ติดตั้งได้"
+LangString ERROR_CREATINGUNINSTALLEDFILES ${LANG_THAI} "ไม่สามารถสร้างไฟล์ที่ถอนการติดตั้งได้"
+
+;--------------------------------
+; Button texts
+;--------------------------------
+
+LangString BUTTON_INSTALL ${LANG_THAI} "ติดตั้ง"
+LangString BUTTON_UNINSTALL ${LANG_THAI} "ถอนการติดตั้ง"
+LangString BUTTON_INSTALLED ${LANG_THAI} "ติดตั้งแล้ว"
+LangString BUTTON_UNINSTALLED ${LANG_THAI} "ถอนการติดตั้งแล้ว"
+LangString BUTTON_COMPLETE ${LANG_THAI} "เสร็จสมบูรณ์"
+LangString BUTTON_NEXT > ${LANG_THAI} "ถัดไป >"
+LangString BUTTON_BACK < ${LANG_THAI} "< ย้อนกลับ"
+LangString BUTTON_CLOSE ${LANG_THAI} "ปิด"
+LangString BUTTON_FINISH ${LANG_THAI} "เสร็จสิ้น"
+LangString BUTTON_CANCEL ${LANG_THAI} "ยกเลิก"
+LangString BUTTON_BROWSE ${LANG_THAI} "เรียกดู..."
+
+;--------------------------------
+; Section descriptions
+;--------------------------------
+
+LangString DESC_SEC_MAIN ${LANG_THAI} "โปรแกรมหลักของ Camfrog AutoDJ (จำเป็น)"
+LangString DESC_SEC_DOCS ${LANG_THAI} "เอกสารประกอบและคู่มือการใช้งาน"
+LangString DESC_SEC_SRC ${LANG_THAI} "ซอร์สโค้ด Python ของโปรแกรม"
+LangString DESC_SEC_TOOLS ${LANG_THAI} "เครื่องมือและสคริปต์สำหรับนักพัฒนา"
+LangString DESC_SEC_TESTS ${LANG_THAI} "ชุดทดสอบ (สำหรับนักพัฒนา)"
+LangString DESC_SEC_SCRIPTS ${LANG_THAI} "สคริปต์ติดตั้งและถอนการติดตั้ง"

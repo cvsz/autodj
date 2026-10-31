@@ -22,6 +22,8 @@ No Windows, Camfrog, real mpv, real yt-dlp, PowerShell or on-screen Tk in the re
 | F11 | Low | GUI poll loop dies on one exception; chat widget unbounded; GUI Remove by index. | Fixed |
 | F12 | Low | Control characters in outgoing text were typed into the room. Duplicate autoplay entries on reload. Non-interruptible send sleep. 4 workers. | Fixed |
 | F13 | Info | `AutoDJ.spec` stale vs `build.ps1`; UPX raises antivirus false positives. | Fixed (`--noupx`, spec regenerated) |
+| F14 | High | `adapters/uia.py` `_appeared()`: `norm_l` referenced outside its defining loop → `UnboundLocalError` on every background chat send; messages retried endlessly. | Fixed (moved `bot_nick` match inside the loop) |
+| F15 | High | `winmsg.py`: `make_lparam`, `pick_child`, `show_noactivate` defined twice at module scope; second definition silently shadowed the first. | Fixed (removed duplicate block) |
 
 ## Open items / recommendations (not changed)
 - **O1 Admin = display nick only.** Anyone who can show the same nick (look-alike characters, a nick freed by a disconnect) gets admin rights. Keep `admins` short and check how your room handles duplicate/similar nicks.
@@ -35,5 +37,6 @@ No Windows, Camfrog, real mpv, real yt-dlp, PowerShell or on-screen Tk in the re
 - **O9** mpv's control pipe name is predictable; any local process of the same user could control playback. Low risk on a personal PC.
 
 ## Verification summary
-- Tests: 32 -> 78 (77 pass here, `test_gui_smoke` skips without a display). 7 mutation checks, all caught.
+- Tests: 32 -> 78 (0.2.3 release) -> **130 passed, 1 skipped** (current tree, `python -m pytest -q -p no:faulthandler -p no:cacheprovider`). 7 mutation checks, all caught.
 - End to end (real `python -m camfrog_autodj --console` + fake mpv): failing track -> one announcement + mpv's reason in the log; good track -> plays, `!history`, `!block`, `!help` behave; `--check`, `--version`, and four kinds of broken config give readable messages and exit codes.
+- All Thai command paths verified end-to-end (`!ช่วยเหลือ`, `!เล่น`, `!เพลงนี้`, `!ข้าม`, `!บล็อก`, `!คิว`, `!ประวัติ`, `!สุ่ม`, `!วนซ้ำ`, `!เสียง`, `!ล้างคิว`, `!พูด`, `!ออกเสียง`, `!โหลด`, `!บล็อก`, `!เลิกบล็อก`, `!โหวตข้าม`, `!ลบ`, `!np`, `!ถัดไป`).

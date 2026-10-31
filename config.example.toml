@@ -1,13 +1,13 @@
 bot_nick = "AutoDJ"            # nick the bot uses in the room (its own lines are ignored)
-admins = ["Seaza"]          # case-insensitive
-prefix = "!"
+admins = ["Seaza"]             # case-insensitive list of admin nicks
+prefix = "!"                   # command prefix
 lang = "th"                    # "en" | "th": bot replies + GUI (switchable live in the GUI)
 
 # chat I/O: "uia" (Windows UI automation), "logtail" (read only), "console" (testing)
 chat_reader = "uia"
 chat_sender = "uia"
-window_title_re = ".*"                 # room windows are titled "<room>: ห้องสนทนา" (no "Camfrog"); process_re filters
-process_re = "(?i)camfrog"          # only windows of a process whose exe name matches (skips browser tabs etc.); "" = any
+window_title_re = ".*"         # room windows are titled "<room>: ห้องสนทนา"; auto_discover fills this in
+process_re = "(?i)camfrog"     # only windows of a process whose exe name matches (skips browser tabs etc.); "" = any
 # several windows can match (main client + room). Narrow it, or filter/choose:
 # window_exclude_re = "Video Chat$"    # drop the main client window by title
 # window_index = 0                     # pick the Nth remaining match
@@ -23,11 +23,15 @@ input_index = -1
 # log_path = "C:/path/to/chat.log"
 # line_regex = '^(?P<user>[^:]{1,30}):\s(?P<text>.+)$'
 
-mpv_path = "C:/mpv/mpv.exe"   # full path; put yt-dlp.exe in the same folder (mpv finds it there) or on PATH
+# mpv: full path to mpv.exe. Put yt-dlp.exe next to mpv.exe (or set ytdlp_path below).
+# Example Windows path: mpv_path = "C:/mpv/mpv.exe"
+mpv_path = "REPLACE_ME:/path/to/mpv.exe"
+ytdlp_path = ""                # "" = auto: yt-dlp.exe next to mpv.exe, else on PATH, else the module bundled in AutoDJ.exe
+
 audio_device = ""              # e.g. "wasapi/{guid}" -> virtual cable input; list: mpv --audio-device=help
 volume = 70
-music_dirs = ["D:/Music"]      # local library: requestable by name, also autoplayed
-autoplay_sources = ["https://www.youtube.com/watch?v=xlU_o3vsTt4"]          # extra YouTube playlist URLs / folders / files
+music_dirs = ["REPLACE_ME:/path/to/your/music"]   # local library: requestable by name, also autoplayed
+autoplay_sources = []          # extra YouTube playlist URLs / folders / files to autoplay
 shuffle = true
 
 allowed_hosts = ["youtube.com", "youtu.be", "music.youtube.com"]
@@ -48,19 +52,17 @@ tts_duck = 25                  # music volume while speaking
 
 # --- auto launch (Windows). Off = you open Camfrog/the room yourself; AutoDJ waits for the window.
 auto_launch = false
-# camfrog_exe = "C:/Users/cvsz.ZEAZ/AppData/Local/Programs/Camfrog Video Chat/Camfrog Video Chat.exe"
+# camfrog_exe = "REPLACE_ME:/path/to/Camfrog Video Chat.exe"
 # client_title_re = ".*"          # main client window
 # room = "My Room"
-# join_uri_template = ""                   # URI your Camfrog build accepts for joining; {room} is URL-encoded
+# join_uri_template = ""          # URI your Camfrog build accepts for joining; {room} is URL-encoded
 # launch_timeout = 60
 
 # --- added in 0.2.0 ---------------------------------------------------------------------------------
 blocked_users = []             # nicks whose commands are ignored (admins cannot be blocked). Admins can also use !block / !unblock live
-ytdlp_path = ""                # "" = auto: yt-dlp.exe next to mpv.exe, else on PATH, else the module bundled in AutoDJ.exe
-                               # (mpv plays YouTube through that same yt-dlp.exe; keep it updated with: yt-dlp -U)
 poll_interval = 0.5            # seconds between chat reads; raise to 1.0 if AutoDJ uses too much CPU
 log_file = ""                  # e.g. "autodj.log": also write the log to a rotating file (1 MB x 3). Same as --log-file
 playlist_file = "playlist.json"   # user-requested tracks (!play / GUI request / !load) are appended here
-                                 # (deduplicated) and join the autoplay pool (random); "" = disable persistence
+                                  # (deduplicated) and join the autoplay pool (random); "" = disable persistence
 search_limit = 1               # YouTube text-search results fetched per non-admin !play (1 = first match only; max 50)
 mpv_timeout = 30               # seconds to wait for one mpv track before treating it as hung (0 = never)

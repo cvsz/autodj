@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Thai Heartbreak",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:เพลงอกหักไทยเศร้าๆ official MV",
+      "title": "เพลงอกหักไทยเศร้าๆ official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงเศร้าไทยยอดนิยม",
+      "title": "เพลงเศร้าไทยยอดนิยม",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงคนไม่สำคัญ ไทย official",
+      "title": "เพลงคนไม่สำคัญ ไทย official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงรักข้างเดียวไทย official MV",
+      "title": "เพลงรักข้างเดียวไทย official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงเศร้าไทยยุค 90",
+      "title": "เพลงเศร้าไทยยุค 90",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงเศร้าไทย acoustic",
+      "title": "เพลงเศร้าไทย acoustic",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงเจ็บๆ เพลงอกหักใหม่",
+      "title": "เพลงเจ็บๆ เพลงอกหักใหม่",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงเศร้าไทยฟังตอนกลางคืน",
+      "title": "เพลงเศร้าไทยฟังตอนกลางคืน",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

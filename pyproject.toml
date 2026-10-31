@@ -1,6 +1,6 @@
 [project]
 name = "camfrog-autodj"
-version = "0.2.3"
+version = "0.2.4"
 requires-python = ">=3.11"
 dependencies = [
   "yt-dlp",
@@ -21,3 +21,4 @@ build-backend = "setuptools.build_meta"
 packages = ["camfrog_autodj", "camfrog_autodj.adapters"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# pythonpath = ["."]  # removed to avoid path resolution issues on CI

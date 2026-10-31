@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Classical",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:Bach classical music official recording",
+      "title": "Bach classical music official recording",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Mozart symphony official recording",
+      "title": "Mozart symphony official recording",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Beethoven piano sonata official recording",
+      "title": "Beethoven piano sonata official recording",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Tchaikovsky orchestral music official",
+      "title": "Tchaikovsky orchestral music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Vivaldi Four Seasons official recording",
+      "title": "Vivaldi Four Seasons official recording",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Chopin nocturnes official recording",
+      "title": "Chopin nocturnes official recording",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Debussy piano music official recording",
+      "title": "Debussy piano music official recording",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:classical orchestra live performance official",
+      "title": "classical orchestra live performance official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

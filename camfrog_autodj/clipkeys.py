@@ -1,10 +1,16 @@
 """Tk-free key mapping for Ctrl+C/V/X/A on any keyboard layout (used by gui.py)."""
-from __future__ import annotations
 
+from __future__ import annotations
 
 # Windows virtual-key codes. Tk matches <Control-v> by keysym, which is a Thai letter on a Thai keyboard
 # layout, so Ctrl+C/V/X/A silently did nothing. We match the physical key (keycode) instead.
-_VK_ACTIONS = {67: "copy", 86: "paste", 88: "cut", 65: "all", 45: "paste"}  # 45 = Insert (Shift+Insert)
+_VK_ACTIONS = {
+    67: "copy",
+    86: "paste",
+    88: "cut",
+    65: "all",
+    45: "paste",
+}  # 45 = Insert (Shift+Insert)
 
 
 def clip_action(keycode: int, keysym: str, shift: bool = False, windows: bool = True):

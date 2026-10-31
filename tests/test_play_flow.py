@@ -1,13 +1,15 @@
 """Flow tests for user-request path fixes:
 
-  - scheme-less URL (youtube.com/..., youtu.be/x) is normalized with https:// before the remote lookup
-  - resolve("") raises UserError instead of searching the library
-  - bad msg_now / msg_next template falls back to built-in text (never kills the player-loop thread)
-  - play() passes the resolved yt-dlp to mpv via --script-opts=ytdl_hook-ytdl_path even when ytdlp_path=""
-  - playlist.json store: missing/corrupt file = empty, never fatal; appends are deduplicated by source
-  - engine.recent_requests + the `!last` command are registered
+- scheme-less URL (youtube.com/..., youtu.be/x) is normalized with https:// before the remote lookup
+- resolve("") raises UserError instead of searching the library
+- bad msg_now / msg_next template falls back to built-in text (never kills the player-loop thread)
+- play() passes the resolved yt-dlp to mpv via --script-opts=ytdl_hook-ytdl_path even when ytdlp_path=""
+- playlist.json store: missing/corrupt file = empty, never fatal; appends are deduplicated by source
+- engine.recent_requests + the `!last` command are registered
 """
+
 from __future__ import annotations
+
 import json
 import os
 import subprocess
@@ -26,6 +28,7 @@ from camfrog_autodj.playlist import PlaylistStore, load_playlist
 
 class FakeIndex:
     """Library stub: find() never hits so resolve() always reaches _remote()."""
+
     def scan(self):
         pass
 
@@ -60,8 +63,13 @@ def fake_remote(query, user="AutoDJ", playlist=False, search_limit=None, **kw):
 def test_resolve_scheme_less_youtube_url(monkeypatch):
     e = make_engine()
     captured = {}
-    monkeypatch.setattr(e, "_remote", lambda q, u="AutoDJ", playlist=False, search_limit=None, **kw:
-                        captured.update(q=q) or [])
+    monkeypatch.setattr(
+        e,
+        "_remote",
+        lambda q, u="AutoDJ", playlist=False, search_limit=None, **kw: (
+            captured.update(q=q) or []
+        ),
+    )
     e.resolve("www.youtube.com/watch?v=abc", "user1", False)
     assert captured["q"] == "https://www.youtube.com/watch?v=abc"
 
@@ -69,8 +77,13 @@ def test_resolve_scheme_less_youtube_url(monkeypatch):
 def test_resolve_youtu_be_without_scheme(monkeypatch):
     e = make_engine()
     captured = {}
-    monkeypatch.setattr(e, "_remote", lambda q, u="AutoDJ", playlist=False, search_limit=None, **kw:
-                        captured.update(q=q) or [])
+    monkeypatch.setattr(
+        e,
+        "_remote",
+        lambda q, u="AutoDJ", playlist=False, search_limit=None, **kw: (
+            captured.update(q=q) or []
+        ),
+    )
     e.resolve("youtu.be/xyz", "user1", True)
     assert captured["q"] == "https://youtu.be/xyz"
 
@@ -99,7 +112,8 @@ def test_fmt_next_bad_template_falls_back_to_builtin():
 # --------------------------------------------------------- player ytdl hook -
 def test_play_includes_resolved_ytdlp_hook_even_when_ytdlp_path_empty(monkeypatch):
     captured = {}
-    proc = MagicMock(); proc.wait.return_value = 0
+    proc = MagicMock()
+    proc.wait.return_value = 0
 
     def fake_popen(cmd, **kw):
         captured["cmd"] = list(cmd)
@@ -107,11 +121,15 @@ def test_play_includes_resolved_ytdlp_hook_even_when_ytdlp_path_empty(monkeypatc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
     monkeypatch.setattr(os, "name", "nt")
-    monkeypatch.setattr("camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe")
+    monkeypatch.setattr(
+        "camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe"
+    )
 
     cfg = Config(mpv_path="mpv", ytdlp_path="")
     assert MpvPlayer(cfg).play("https://youtu.be/abc", 80) is True
-    assert any("ytdl_hook-ytdl_path=D:/tools/yt-dlp.exe" in c for c in captured["cmd"]), captured["cmd"]
+    assert any(
+        "ytdl_hook-ytdl_path=D:/tools/yt-dlp.exe" in c for c in captured["cmd"]
+    ), captured["cmd"]
 
 
 # ------------------------------------------------------------- mpv timeout ---
@@ -121,17 +139,18 @@ def test_play_terminates_hung_mpv_after_timeout(monkeypatch):
 
     killed = []
     fake_proc = MagicMock()
-    fake_proc.wait.side_effect = subprocess.TimeoutExpired("mpv", 30)
+    fake_proc.wait.side_effect = [subprocess.TimeoutExpired("mpv", 30), 0]
     fake_proc.terminate = lambda: killed.append("terminate")
     fake_proc.kill = lambda: killed.append("kill")
-    fake_proc.poll.return_value = 0  # after terminate, process has exited
 
     def fake_popen(cmd, **kw):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
     monkeypatch.setattr(os, "name", "nt")
-    monkeypatch.setattr("camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe")
+    monkeypatch.setattr(
+        "camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe"
+    )
 
     cfg = Config(mpv_path="mpv", ytdlp_path="", mpv_timeout=1)
     assert MpvPlayer(cfg).play("https://youtu.be/abc", 80) is False
@@ -148,7 +167,7 @@ def test_playlist_add_persists_and_dedupes(tmp_path):
     p = str(tmp_path / "playlist.json")
     s = PlaylistStore(p)
     assert s.add([Track("https://youtu.be/a", "A", 10, "u1")]) == 1
-    assert s.add([Track("https://youtu.be/a", "A", 10, "u1")]) == 0   # dedup by source
+    assert s.add([Track("https://youtu.be/a", "A", 10, "u1")]) == 0  # dedup by source
     assert s.add([Track("https://youtu.be/b", "B", 20, "u2")]) == 1
     tracks = s.load()
     assert [t.source for t in tracks] == ["https://youtu.be/a", "https://youtu.be/b"]

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Thai Indie",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:เพลงไทยอินดี้ยอดนิยม official MV",
+      "title": "เพลงไทยอินดี้ยอดนิยม official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงอินดี้ไทย alternative",
+      "title": "เพลงอินดี้ไทย alternative",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทย bedroom pop",
+      "title": "เพลงไทย bedroom pop",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงอินดี้ไทย acoustic",
+      "title": "เพลงอินดี้ไทย acoustic",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทย indie rock",
+      "title": "เพลงไทย indie rock",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงอินดี้ไทยฟังสบาย",
+      "title": "เพลงอินดี้ไทยฟังสบาย",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทย indie folk",
+      "title": "เพลงไทย indie folk",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงอินดี้ไทยใหม่ 2025 2026",
+      "title": "เพลงอินดี้ไทยใหม่ 2025 2026",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

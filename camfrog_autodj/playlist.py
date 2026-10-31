@@ -10,9 +10,12 @@ The file is plain JSON the operator can edit by hand:
 * every user request (and admin !load) appends its tracks here -- deduplicated by `source`
 * missing or corrupt file = empty list, never fatal.
 """
+
 from __future__ import annotations
+
 import json
 import logging
+import shutil
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -29,8 +32,11 @@ def load_playlist(path: str) -> list[Track]:
     except FileNotFoundError:
         return []
     except Exception:
-        log.warning("cannot read playlist file %r -- starting without it (the file will not be overwritten)", path,
-                    exc_info=True)
+        log.warning(
+            "cannot read playlist file %r -- starting without it (the file will not be overwritten)",
+            path,
+            exc_info=True,
+        )
         return []
     entries = data.get("tracks", []) if isinstance(data, dict) else data
     out = []
@@ -40,21 +46,49 @@ def load_playlist(path: str) -> list[Track]:
             if not src:
                 continue
             dur = e.get("duration")
-            t = Track(src, str(e.get("title") or src), dur if isinstance(dur, (int, float)) else None,
-                      str(e.get("added_by") or "AutoDJ"))
-            t.added = str(e.get("added") or "")  # not a Track field: plain attribute, kept for !last
+            t = Track(
+                src,
+                str(e.get("title") or src),
+                dur if isinstance(dur, (int, float)) else None,
+                str(e.get("added_by") or "AutoDJ"),
+            )
+            t.added = str(
+                e.get("added") or ""
+            )  # not a Track field: plain attribute, kept for !last
             out.append(t)
         except Exception:
             continue
     return out
 
 
+def _unreadable(path: str) -> bool:
+    """The file exists but is not usable JSON (as opposed to missing or merely empty of tracks)."""
+    try:
+        json.loads(Path(path).read_text("utf-8-sig"))
+        return False
+    except FileNotFoundError:
+        return False
+    except Exception:
+        return True
+
+
 def save_playlist(path: str, tracks: list[Track]) -> None:
     """Write the whole playlist atomically (tmp file + replace)."""
-    entries = [{"source": t.source, "title": t.title, "duration": t.duration,
-                "added_by": t.requester, "added": getattr(t, "added", "")} for t in tracks]
+    entries = [
+        {
+            "source": t.source,
+            "title": t.title,
+            "duration": t.duration,
+            "added_by": t.requester,
+            "added": getattr(t, "added", ""),
+        }
+        for t in tracks
+    ]
     tmp = path + ".tmp"
-    Path(tmp).write_text(json.dumps({"version": 1, "tracks": entries}, ensure_ascii=False, indent=1), "utf-8")
+    Path(tmp).write_text(
+        json.dumps({"version": 1, "tracks": entries}, ensure_ascii=False, indent=1),
+        "utf-8",
+    )
     Path(tmp).replace(path)
 
 
@@ -77,6 +111,10 @@ class PlaylistStore:
         with self.lock:
             try:
                 cur = load_playlist(self.path)
+                if not cur and _unreadable(self.path):
+                    bad = f"{self.path}.corrupt-{datetime.now():%Y%m%d-%H%M%S}"
+                    shutil.copyfile(self.path, bad)  # keep the user's file; load_playlist promised not to overwrite it
+                    log.warning("playlist file %r is unreadable: saved a copy as %r", self.path, bad)
                 have = {t.source for t in cur}
                 now = datetime.now().isoformat(timespec="seconds")
                 fresh = []
@@ -89,8 +127,16 @@ class PlaylistStore:
                     return 0
                 cur.extend(fresh)
                 save_playlist(self.path, cur)
-                log.info("playlist: +%d new source(s) -> %s (%d total)", len(fresh), self.path, len(cur))
+                log.info(
+                    "playlist: +%d new source(s) -> %s (%d total)",
+                    len(fresh),
+                    self.path,
+                    len(cur),
+                )
                 return len(fresh)
             except Exception:
-                log.exception("cannot update playlist file %r (the request still went through)", self.path)
+                log.exception(
+                    "cannot update playlist file %r (the request still went through)",
+                    self.path,
+                )
                 return 0

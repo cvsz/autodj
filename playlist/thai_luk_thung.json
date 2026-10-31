@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Thai Luk Thung",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:เพลงลูกทุ่งฮิตล่าสุด official MV",
+      "title": "เพลงลูกทุ่งฮิตล่าสุด official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงลูกทุ่งยอดนิยม ผู้หญิง official",
+      "title": "เพลงลูกทุ่งยอดนิยม ผู้หญิง official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงลูกทุ่งยอดนิยม ผู้ชาย official",
+      "title": "เพลงลูกทุ่งยอดนิยม ผู้ชาย official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงลูกทุ่งหมอลำซิ่ง official MV",
+      "title": "เพลงลูกทุ่งหมอลำซิ่ง official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงลูกทุ่งเก่าอมตะ",
+      "title": "เพลงลูกทุ่งเก่าอมตะ",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงลูกทุ่งอีสานอินดี้ official",
+      "title": "เพลงลูกทุ่งอีสานอินดี้ official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงลูกทุ่งแดนซ์ รถแห่",
+      "title": "เพลงลูกทุ่งแดนซ์ รถแห่",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงลูกทุ่งเพราะๆ ฟังยาวๆ",
+      "title": "เพลงลูกทุ่งเพราะๆ ฟังยาวๆ",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}
