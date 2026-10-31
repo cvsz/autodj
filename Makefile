@@ -26,7 +26,7 @@ IS_WINDOWS  := $(filter Windows_NT,$(OS))
         run run-gui run-console check discover windows say \
         test test-v test-one coverage mutation-smoke \
         lint fmt typecheck \
-        build build-clean sign package release \
+        build build-clean sign package release installer installer-clean \
         clean clean-all distclean \
         config version bump-patch \
         docs changelog-check pre-commit ci
@@ -181,8 +181,8 @@ else
 	@exit 1
 endif
 
-release: changelog-check test build package  ## Full pipeline: check CHANGELOG, test, build dist/AutoDJ.exe (auto-signed), zip the source
-	@echo "release $(VERSION) ready: dist/AutoDJ.exe (signed unless NOSIGN=1) + $(DIST_ZIP)"
+release: changelog-check test build package installer  ## Full pipeline: check CHANGELOG, test, build dist/AutoDJ.exe (auto-signed), build NSIS installer, zip the source
+	@echo "release $(VERSION) ready: dist/AutoDJ.exe (signed unless NOSIGN=1) + Camfrog-AutoDJ-Setup-$(VERSION).exe + $(DIST_ZIP)"
 
 package:  ## Zip the source tree for distribution (excludes caches, local config.toml)
 	@mkdir -p dist
@@ -204,6 +204,7 @@ clean:  ## Remove Python caches and test artifacts
 
 clean-all: clean  ## clean + remove build/dist/spec from a Windows build
 	@$(PY) -c "import shutil; shutil.rmtree('build', ignore_errors=True); shutil.rmtree('dist', ignore_errors=True); [p.unlink() for p in pathlib.Path('.').glob('*.spec')]"
+	@rm -f dist/Camfrog-AutoDJ-Setup-*.exe dist/installer.nsi
 
 distclean: clean-all  ## clean-all + remove the virtualenv
 	@$(PY) -c "import shutil; shutil.rmtree('.venv', ignore_errors=True)"

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.5
+
 ### Fixed
 - **GUI ไม่ขึ้น (GUI won't open)**: `camfrog_autodj/__main__.py` — auto-discovery (`discover.apply()`) crashed with `ImportError` on `pywinauto.Desktop` before `App(eng).mainloop()` was reached, so the Tk window never appeared. Auto-discovery is now wrapped in `try/except` and logs a warning instead of crashing; `build_adapter()` failures fall back to `NullAdapter` so the GUI still opens without chat (user can run `--check`/`--discover` from inside it).
 - **Camfrog adapter blocks GUI startup**: `camfrog_autodj/adapters/uia.py` `UiaAdapter.__init__()` called `resolve()` which polls up to 30s for a Camfrog window, blocking GUI launch. With `NullAdapter` fallback in `__main__.py`, this no longer blocks.
@@ -10,6 +12,7 @@
 - **Ungraceful shutdown**: `camfrog_autodj/engine.py` `shutdown()` did not wait for daemon threads. Thread references are now stored in `self._threads` and joined (5s timeout each) on shutdown.
 - **Windows-only code crashes on Linux**: `camfrog_autodj/launcher.py`, `camfrog_autodj/tts.py`, `camfrog_autodj/winmsg.py` now call `_require_windows()` to raise a clear `RuntimeError` instead of crashing with obscure `ctypes`/`pywinauto` errors on non-Windows platforms.
 - **`!load` path traversal**: `camfrog_autodj/commands.py` `_load()` now rejects absolute paths outside `music_dirs` (admin-only guard).
+- **NSIS installer warnings**: `installer.nsi` — removed `docs\*.txt` file glob (no such files), removed unused `.onUninstSuccess` function, removed unused `GetDate` function (now called inline via `Call GetDate`), removed duplicate `Uninstall.lnk` shortcut, removed `SEC_SRC` section (Python source not shipped in installer). All 5 NSIS warnings eliminated.
 
 ### Changed
 - `camfrog_autodj/engine.py`: `Engine.__init__` now accepts `cfg_path` (was missing, causing `TypeError` when `_run()` passed it). GUI buttons `do_discover()`/`do_check()` read `self.e.cfg_path`.
