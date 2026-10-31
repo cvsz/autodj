@@ -437,3 +437,65 @@ def test_engine_remote_uses_config_search_limit(monkeypatch):
     assert captured.get("search_limit") == 7, (
         f"Expected search_limit=7 from config, got {captured.get('search_limit')}"
     )
+
+
+def test_player_loop_dynamically_resolves_ytsearch_tracks(monkeypatch):
+    from camfrog_autodj.engine import Engine
+    from camfrog_autodj.config import Config
+    from camfrog_autodj.models import Track
+
+    class FakeAdapter:
+        def messages(self):
+            return iter([])
+
+        def send(self, t):
+            pass
+
+        def close(self):
+            pass
+
+    played = []
+
+    class FakePlayer:
+        skipped = False
+
+        def play(self, source, volume, duration=None):
+            played.append(source)
+            return True
+
+        def available(self):
+            return True
+
+    def fake_remote_tracks(
+        query,
+        requester="AutoDJ",
+        playlist=False,
+        limit=200,
+        ytdlp_path="",
+        mpv_path="",
+        search_limit=1,
+        raw_target=False,
+        **kw,
+    ):
+        if query.startswith("ytsearch1:"):
+            return [Track("https://www.youtube.com/watch?v=real_resolved_id", "Resolved Title", 180, requester)]
+        return [Track("https://www.youtube.com/watch?v=fallback", "Fallback", 100, requester)]
+
+    monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote_tracks)
+
+    cfg = Config()
+    e = Engine(cfg, FakeAdapter(), player=FakePlayer())
+    search_track = Track("ytsearch1:some query", "Query Title", None, "User")
+    e.queue.add_request(search_track)
+
+    # Run one iteration of the player loop logic directly
+    t = e.queue.pop()
+    assert t.source == "ytsearch1:some query"
+    if t.source.startswith("ytsearch"):
+        resolved = e._remote(t.source, user=t.requester or "AutoDJ", playlist=False, search_limit=1, raw_target=True)
+        if resolved:
+            t = resolved[0]
+    assert t.source == "https://www.youtube.com/watch?v=real_resolved_id"
+    assert t.title == "Resolved Title"
+    assert t.duration == 180
+

@@ -432,6 +432,20 @@ class Engine:
                 self.wake.wait(2)
                 self.wake.clear()
                 continue
+            # Dynamic resolution for search-backed tracks (e.g. ytsearch1:... in playlist packs)
+            if SEARCH_PREFIX.match(t.source):
+                try:
+                    resolved = self._remote(
+                        t.source,
+                        user=t.requester or "AutoDJ",
+                        playlist=False,
+                        search_limit=1,
+                        raw_target=True,
+                    )
+                    if resolved:
+                        t = resolved[0]
+                except Exception:
+                    log.warning("failed to dynamically resolve search track %r; trying source as-is", t.source)
             recorded = False
             while not self.stop_evt.is_set():
                 self.current = t
