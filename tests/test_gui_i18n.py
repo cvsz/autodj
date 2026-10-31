@@ -111,7 +111,7 @@ def test_gui_smoke():
     app.set_lang("th")
     app.update()
     assert app.b_pause.cget("text") == "หยุดชั่วคราว"
-    app.destroy()
+    app.close()
 
 
 def test_window_pick():
