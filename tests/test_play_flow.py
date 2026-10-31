@@ -135,11 +135,22 @@ def test_play_includes_resolved_ytdlp_hook_even_when_ytdlp_path_empty(monkeypatc
 # ------------------------------------------------------------- mpv timeout ---
 def test_play_terminates_hung_mpv_after_timeout(monkeypatch):
     """mpv that never exits must be terminated after mpv_timeout, not block the player loop forever."""
+    import time
     from camfrog_autodj.player import MpvPlayer
 
     killed = []
     fake_proc = MagicMock()
-    fake_proc.wait.side_effect = [subprocess.TimeoutExpired("mpv", 30), 0]
+    calls = 0
+
+    def mock_wait(timeout=None):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            time.sleep(0.05)
+            raise subprocess.TimeoutExpired("mpv", 0.01)
+        return 0
+
+    fake_proc.wait = mock_wait
     fake_proc.terminate = lambda: killed.append("terminate")
     fake_proc.kill = lambda: killed.append("kill")
 
@@ -152,7 +163,7 @@ def test_play_terminates_hung_mpv_after_timeout(monkeypatch):
         "camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe"
     )
 
-    cfg = Config(mpv_path="mpv", ytdlp_path="", mpv_timeout=1)
+    cfg = Config(mpv_path="mpv", ytdlp_path="", mpv_timeout=0.01)
     assert MpvPlayer(cfg).play("https://youtu.be/abc", 80) is False
     assert killed == ["terminate"], f"expected terminate, got {killed}"
 

@@ -416,6 +416,7 @@ def test_engine_remote_uses_config_search_limit(monkeypatch):
         ytdlp_path="",
         mpv_path="",
         search_limit=1,
+        **kw,
     ):
         captured["search_limit"] = search_limit
         return [Track("https://youtu.be/x", "T", 60, requester)]
