@@ -108,14 +108,14 @@ def test_to_updates_web_and_text():
 def test_update_config_text_replaces_existing_key():
     text = 'bot_nick = "AutoDJ"\nlog_file = ""\n'
     new = update_config_text(text, {"log_file": "autodj.log"})
-    assert "log_file = 'autodj.log'" in new
+    assert 'log_file = "autodj.log"' in new
     assert 'bot_nick = "AutoDJ"' in new
 
 
 def test_update_config_text_appends_missing_key():
     text = 'bot_nick = "AutoDJ"\n'
     new = update_config_text(text, {"playlist_file": "playlist.json"})
-    assert "playlist_file = 'playlist.json'" in new
+    assert 'playlist_file = "playlist.json"' in new
 
 
 def test_update_config_text_keeps_comment():
