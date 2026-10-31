@@ -13,7 +13,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
 import threading
 import types
@@ -155,7 +154,7 @@ def test_play_file_uses_create_no_window_on_windows(monkeypatch):
         captured_kw.update(kw)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
 
     cfg = Config(mpv_path="mpv")
     p = MpvPlayer(cfg)
@@ -175,7 +174,7 @@ def test_play_file_no_creationflags_on_posix(monkeypatch):
         captured_kw.update(kw)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr(os, "name", "posix")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: False)
 
     cfg = Config(mpv_path="mpv")
     p = MpvPlayer(cfg)
@@ -199,7 +198,7 @@ def test_play_hidden_console_on_windows(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
 
     # Keep this test focused on process flags; avoid platform-dependent yt-dlp path discovery.
     cfg = Config(mpv_path="mpv", ytdlp_path="D:/tools/yt-dlp.exe", audio_device="")
@@ -223,7 +222,7 @@ def test_play_no_creationflags_on_posix(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr(os, "name", "posix")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: False)
 
     # Keep this test focused on POSIX flags; avoid platform-dependent yt-dlp path discovery.
     cfg = Config(mpv_path="mpv", ytdlp_path="yt-dlp", audio_device="")
@@ -257,7 +256,7 @@ def test_play_cmd_includes_no_window_flags(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr(os, "name", "nt")
+    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
 
     # Keep this test focused on window flags; yt-dlp discovery is covered separately.
     cfg = Config(mpv_path="mpv", ytdlp_path="D:/tools/yt-dlp.exe", audio_device="")
@@ -416,6 +415,7 @@ def test_engine_remote_uses_config_search_limit(monkeypatch):
         ytdlp_path="",
         mpv_path="",
         search_limit=1,
+        raw_target=False,
     ):
         captured["search_limit"] = search_limit
         return [Track("https://youtu.be/x", "T", 60, requester)]
