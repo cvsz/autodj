@@ -212,16 +212,8 @@ def _toml_value(v) -> str:
     if isinstance(v, int):
         return str(v)
     s = str(v)
-    # Use double quotes for simple strings without backslashes, double quotes,
-    # or single quotes; single quotes (literal) preserve backslashes for regex
-    # patterns and other strings that need them.
-    if (
-        "\\" not in s
-        and '"' not in s
-        and "'" not in s
-        and not any(ord(c) < 32 or ord(c) == 127 for c in s)
-    ):
-        return f'"{s}"'
+    if "'" not in s and not any(ord(c) < 32 or ord(c) == 127 for c in s):
+        return f"'{s}'"  # literal string: regex backslashes stay as-is
     esc = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"}
     return (
         '"'

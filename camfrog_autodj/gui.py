@@ -796,6 +796,7 @@ class App(tk.Tk):
             ("queue", "g_queue"),
             ("history", "g_history"),
             ("chat", "g_chat"),
+            ("settings", "g_settings"),
         ):
             b = self._btn(bar, lab, lambda k=key: self.show_tab(k), "tab", height=34)
             b.pack(side="left", padx=(0, px(6)))
@@ -803,7 +804,7 @@ class App(tk.Tk):
         pages = tk.Frame(panel, bg=SURFACE)
         pages.pack(fill="both", expand=True, padx=px(14), pady=(0, px(14)))
         self.pages = {
-            k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat")
+            k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat", "settings")
         }
 
         qp = self.pages["queue"]
@@ -864,6 +865,225 @@ class App(tk.Tk):
         cs.configure(command=self.chat.yview)
         self.chat.tag_configure("bot", foreground=CYAN)
         self.chat.tag_configure("who", foreground="#b79cff", font=self.f_bold)
+
+        sp = self.pages["settings"]
+        sp.columnconfigure(0, weight=1)
+        sp_inner = tk.Frame(sp, bg=SURFACE)
+        sp_inner.pack(fill="both", expand=True, padx=px(14), pady=px(14))
+        sp_inner.columnconfigure(0, weight=1)
+
+        row = 0
+
+        def _setting_row(label_key, widget, note_key=None, padx=(px(14), px(14))):
+            nonlocal row
+            lf = tk.Frame(sp_inner, bg=SURFACE)
+            lf.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(px(6), px(2)), padx=padx)
+            lbl = tk.Label(lf, bg=SURFACE, fg=TEXT, font=self.f_body, anchor="w")
+            lbl.pack(in_=lf, side="left")
+            self._labels.append((lbl, label_key))
+            widget.pack(in_=lf, side="right", fill="x", expand=True, padx=(px(10), 0))
+            if note_key:
+                note = tk.Label(
+                    sp_inner, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w"
+                )
+                note.grid(row=row + 1, column=0, columnspan=2, sticky="w", padx=padx)
+                self._labels.append((note, note_key))
+                row += 2
+            else:
+                row += 1
+            return widget
+
+        # Language (handled by header pills, shown for reference)
+        tk.Label(
+            sp_inner,
+            bg=SURFACE,
+            fg=MUTED,
+            font=self.f_bold,
+            anchor="w",
+            text=self.e.t("g_settings_lang") + " (use header pills)",
+        ).grid(row=row, column=0, columnspan=2, sticky="w", pady=(px(10), px(2)), padx=(px(14), px(14)))
+        row += 1
+
+        # mpv_path
+        self.s_mpv_path = self._entry(sp_inner)
+        self.s_mpv_path.insert(0, self.e.cfg.mpv_path)
+        _setting_row("g_settings_mpv_path", self.s_mpv_path, "g_settings_ytdlp_path")
+
+        # ytdlp_path
+        self.s_ytdlp_path = self._entry(sp_inner)
+        self.s_ytdlp_path.insert(0, self.e.cfg.ytdlp_path)
+        _setting_row("g_settings_ytdlp_path", self.s_ytdlp_path, "g_settings_audio_device")
+
+        # audio_device
+        self.s_audio_device = self._entry(sp_inner)
+        self.s_audio_device.insert(0, self.e.cfg.audio_device)
+        _setting_row("g_settings_audio_device", self.s_audio_device, "g_settings_bot_nick")
+
+        # bot_nick
+        self.s_bot_nick = self._entry(sp_inner)
+        self.s_bot_nick.insert(0, self.e.cfg.bot_nick)
+        _setting_row("g_settings_bot_nick", self.s_bot_nick, "g_settings_prefix")
+
+        # prefix
+        self.s_prefix = self._entry(sp_inner)
+        self.s_prefix.insert(0, self.e.cfg.prefix)
+        _setting_row("g_settings_prefix", self.s_prefix, "g_settings_admins")
+
+        # admins
+        self.s_admins = self._entry(sp_inner)
+        self.s_admins.insert(0, ", ".join(self.e.cfg.admins))
+        _setting_row("g_settings_admins", self.s_admins, "g_settings_blocked_users")
+
+        # blocked_users
+        self.s_blocked_users = self._entry(sp_inner)
+        self.s_blocked_users.insert(0, ", ".join(self.e.cfg.blocked_users))
+        _setting_row("g_settings_blocked_users", self.s_blocked_users, "g_settings_room")
+
+        # room
+        self.s_room = self._entry(sp_inner)
+        self.s_room.insert(0, self.e.cfg.room)
+        _setting_row("g_settings_room", self.s_room, "g_settings_join_uri")
+
+        # join_uri_template
+        self.s_join_uri = self._entry(sp_inner)
+        self.s_join_uri.insert(0, self.e.cfg.join_uri_template)
+        _setting_row("g_settings_join_uri", self.s_join_uri, "g_settings_music_dirs")
+
+        # music_dirs
+        self.s_music_dirs = self._entry(sp_inner)
+        self.s_music_dirs.insert(0, ", ".join(self.e.cfg.music_dirs))
+        _setting_row("g_settings_music_dirs", self.s_music_dirs, "g_settings_autoplay_sources")
+
+        # autoplay_sources
+        self.s_autoplay_sources = self._entry(sp_inner)
+        self.s_autoplay_sources.insert(0, ", ".join(self.e.cfg.autoplay_sources))
+        _setting_row("g_settings_autoplay_sources", self.s_autoplay_sources, "g_settings_volume")
+
+        # volume
+        self.s_volume = self._entry(sp_inner)
+        self.s_volume.insert(0, str(self.e.cfg.volume))
+        _setting_row("g_settings_volume", self.s_volume, "g_settings_max_queue")
+
+        # max_queue
+        self.s_max_queue = self._entry(sp_inner)
+        self.s_max_queue.insert(0, str(self.e.cfg.max_queue))
+        _setting_row("g_settings_max_queue", self.s_max_queue, "g_settings_max_duration")
+
+        # max_duration
+        self.s_max_duration = self._entry(sp_inner)
+        self.s_max_duration.insert(0, str(self.e.cfg.max_duration))
+        _setting_row("g_settings_max_duration", self.s_max_duration, "g_settings_cooldown")
+
+        # cooldown
+        self.s_cooldown = self._entry(sp_inner)
+        self.s_cooldown.insert(0, str(self.e.cfg.cooldown))
+        _setting_row("g_settings_cooldown", self.s_cooldown, "g_settings_send_interval")
+
+        # send_interval
+        self.s_send_interval = self._entry(sp_inner)
+        self.s_send_interval.insert(0, str(self.e.cfg.send_interval))
+        _setting_row("g_settings_send_interval", self.s_send_interval, "g_settings_poll_interval")
+
+        # poll_interval
+        self.s_poll_interval = self._entry(sp_inner)
+        self.s_poll_interval.insert(0, str(self.e.cfg.poll_interval))
+        _setting_row("g_settings_poll_interval", self.s_poll_interval, "g_settings_search_limit")
+
+        # search_limit
+        self.s_search_limit = self._entry(sp_inner)
+        self.s_search_limit.insert(0, str(self.e.cfg.search_limit))
+        _setting_row("g_settings_search_limit", self.s_search_limit, "g_settings_mpv_timeout")
+
+        # mpv_timeout
+        self.s_mpv_timeout = self._entry(sp_inner)
+        self.s_mpv_timeout.insert(0, str(self.e.cfg.mpv_timeout))
+        _setting_row("g_settings_mpv_timeout", self.s_mpv_timeout, "g_settings_tts_voice")
+
+        # tts_voice
+        self.s_tts_voice = self._entry(sp_inner)
+        self.s_tts_voice.insert(0, self.e.cfg.tts_voice)
+        _setting_row("g_settings_tts_voice", self.s_tts_voice, "g_settings_tts_rate")
+
+        # tts_rate
+        self.s_tts_rate = self._entry(sp_inner)
+        self.s_tts_rate.insert(0, str(self.e.cfg.tts_rate))
+        _setting_row("g_settings_tts_rate", self.s_tts_rate, "g_settings_tts_duck")
+
+        # tts_duck
+        self.s_tts_duck = self._entry(sp_inner)
+        self.s_tts_duck.insert(0, str(self.e.cfg.tts_duck))
+        _setting_row("g_settings_tts_duck", self.s_tts_duck, "g_settings_auto_discover")
+
+        # auto_discover toggle
+        self.s_auto_discover = self.e.cfg.auto_discover
+        cb_auto_discover = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_auto_discover", cb_auto_discover),
+            "chip",
+            icon="✓" if self.e.cfg.auto_discover else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_auto_discover.set_active(self.e.cfg.auto_discover)
+        cb_auto_discover.grid(row=row, column=0, columnspan=2, sticky="w", pady=(px(6), px(2)), padx=(px(14), px(14)))
+        row += 1
+
+        # auto_launch toggle
+        self.s_auto_launch = self.e.cfg.auto_launch
+        cb_auto_launch = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_auto_launch", cb_auto_launch),
+            "chip",
+            icon="✓" if self.e.cfg.auto_launch else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_auto_launch.set_active(self.e.cfg.auto_launch)
+        cb_auto_launch.grid(row=row, column=0, columnspan=2, sticky="w", pady=(px(6), px(2)), padx=(px(14), px(14)))
+        row += 1
+
+        # camfrog_exe
+        self.s_camfrog_exe = self._entry(sp_inner)
+        self.s_camfrog_exe.insert(0, self.e.cfg.camfrog_exe)
+        _setting_row("g_settings_camfrog_exe", self.s_camfrog_exe, "g_settings_client_title_re")
+
+        # client_title_re
+        self.s_client_title_re = self._entry(sp_inner)
+        self.s_client_title_re.insert(0, self.e.cfg.client_title_re)
+        _setting_row("g_settings_client_title_re", self.s_client_title_re, "g_settings_launch_timeout")
+
+        # launch_timeout
+        self.s_launch_timeout = self._entry(sp_inner)
+        self.s_launch_timeout.insert(0, str(self.e.cfg.launch_timeout))
+        _setting_row("g_settings_launch_timeout", self.s_launch_timeout, "g_settings_line_regex")
+
+        # line_regex
+        self.s_line_regex = self._entry(sp_inner)
+        self.s_line_regex.insert(0, self.e.cfg.line_regex)
+        _setting_row("g_settings_line_regex", self.s_line_regex, "g_settings_log_file")
+
+        # log_file
+        self.s_log_file = self._entry(sp_inner)
+        self.s_log_file.insert(0, self.e.cfg.log_file)
+        _setting_row("g_settings_log_file", self.s_log_file, None)
+
+        # Save button
+        save_btn = self._btn(
+            sp_inner,
+            "g_settings_save",
+            self.save_settings,
+            "primary",
+            icon="✓",
+            bg=SURFACE,
+            height=40,
+            minw=120,
+        )
+        save_btn.grid(row=row, column=0, columnspan=2, pady=(px(18), px(14)), padx=(px(14), px(14)))
+        row += 1
 
     # ---- animated scenery ---------------------------------------------------
     def _layout_line(self, _e=None):
@@ -1135,7 +1355,8 @@ class App(tk.Tk):
 
     def relabel(self):
         for w, k in self._labels:
-            w.configure(text=self.e.t(k))
+            if k:  # skip empty keys (e.g., toggle buttons with dynamic text)
+                w.configure(text=self.e.t(k))
         self.v_hint.configure(text=self.e.t("g_add_hint"))
         for code, b in self.b_lang.items():
             b.set_active(code == self.e.lang)
@@ -1271,6 +1492,153 @@ class App(tk.Tk):
             )
         except Exception:
             log.exception("check failed")
+
+    def _toggle_bool(self, attr: str, btn: "PillButton"):
+        """Toggle a boolean setting stored as a plain Python attribute."""
+        setattr(self, attr, not getattr(self, attr))
+        btn.set_active(getattr(self, attr))
+        btn.set_icon("✓" if getattr(self, attr) else "")
+
+    def save_settings(self):
+        """Save settings from the settings tab back to config.toml."""
+        try:
+            cfg = self.e.cfg
+
+            # String fields
+            cfg.mpv_path = self.s_mpv_path.get().strip()
+            cfg.ytdlp_path = self.s_ytdlp_path.get().strip()
+            cfg.audio_device = self.s_audio_device.get().strip()
+            cfg.bot_nick = self.s_bot_nick.get().strip()
+            cfg.prefix = self.s_prefix.get().strip()
+            cfg.room = self.s_room.get().strip()
+            cfg.join_uri_template = self.s_join_uri.get().strip()
+            cfg.camfrog_exe = self.s_camfrog_exe.get().strip()
+            cfg.client_title_re = self.s_client_title_re.get().strip()
+            cfg.line_regex = self.s_line_regex.get().strip()
+            cfg.log_file = self.s_log_file.get().strip()
+
+            # List fields
+            cfg.admins = [a.strip() for a in self.s_admins.get().split(",") if a.strip()]
+            cfg.blocked_users = [a.strip() for a in self.s_blocked_users.get().split(",") if a.strip()]
+            cfg.music_dirs = [a.strip() for a in self.s_music_dirs.get().split(",") if a.strip()]
+            cfg.autoplay_sources = [a.strip() for a in self.s_autoplay_sources.get().split(",") if a.strip()]
+
+            # Int fields
+            cfg.volume = int(self.s_volume.get())
+            cfg.max_queue = int(self.s_max_queue.get())
+            cfg.max_duration = int(self.s_max_duration.get())
+            cfg.search_limit = int(self.s_search_limit.get())
+            cfg.mpv_timeout = float(self.s_mpv_timeout.get())
+            cfg.tts_rate = int(self.s_tts_rate.get())
+            cfg.tts_duck = int(self.s_tts_duck.get())
+            cfg.launch_timeout = int(self.s_launch_timeout.get())
+
+            # Float fields
+            cfg.cooldown = float(self.s_cooldown.get())
+            cfg.send_interval = float(self.s_send_interval.get())
+            cfg.poll_interval = float(self.s_poll_interval.get())
+
+            # Bool fields
+            cfg.auto_discover = self.s_auto_discover
+            cfg.auto_launch = self.s_auto_launch
+
+            # TTS voice
+            cfg.tts_voice = self.s_tts_voice.get().strip()
+
+            # Validate prefix not empty
+            if not cfg.prefix.strip():
+                raise ValueError("prefix must not be empty")
+
+            # Validate regexes
+            import re
+            re.compile(cfg.line_regex)
+            re.compile(cfg.client_title_re)
+
+            # Write to config.toml using tomllib-compatible format
+            import tomllib
+            from pathlib import Path
+
+            cfg_path = self.e.cfg_path if hasattr(self.e, "cfg_path") else "config.toml"
+            p = Path(cfg_path)
+
+            # Build TOML text manually preserving comments is complex, so we write a clean version
+            lines = []
+            lines.append(f'bot_nick = "{cfg.bot_nick}"')
+            lines.append(f'admins = {cfg.admins!r}')
+            lines.append(f'prefix = "{cfg.prefix}"')
+            lines.append(f'lang = "{cfg.lang}"')
+            lines.append("")
+            lines.append(f'chat_reader = "{cfg.chat_reader}"')
+            lines.append(f'chat_sender = "{cfg.chat_sender}"')
+            lines.append(f'window_title_re = "{cfg.window_title_re}"')
+            lines.append(f'process_re = "{cfg.process_re}"')
+            lines.append(f'window_exclude_re = "{cfg.window_exclude_re}"')
+            lines.append(f'window_index = {cfg.window_index}')
+            lines.append(f'auto_discover = {str(cfg.auto_discover).lower()}')
+            lines.append(f'view_kind = "{cfg.view_kind}"')
+            lines.append(f'send_mode = "{cfg.send_mode}"')
+            lines.append(f'send_verify = {str(cfg.send_verify).lower()}')
+            lines.append(f'web_strict_body = {str(cfg.web_strict_body).lower()}')
+            lines.append(f'view_type = "{cfg.view_type}"')
+            lines.append(f'view_index = {cfg.view_index}')
+            lines.append(f'input_type = "{cfg.input_type}"')
+            lines.append(f'input_index = {cfg.input_index}')
+            lines.append("")
+            lines.append(f'mpv_path = "{cfg.mpv_path}"')
+            lines.append(f'audio_device = "{cfg.audio_device}"')
+            lines.append(f'volume = {cfg.volume}')
+            lines.append(f'music_dirs = {cfg.music_dirs!r}')
+            lines.append(f'autoplay_sources = {cfg.autoplay_sources!r}')
+            lines.append(f'shuffle = {str(cfg.shuffle).lower()}')
+            lines.append(f'allowed_hosts = {cfg.allowed_hosts!r}')
+            lines.append(f'max_requests_per_user = {cfg.max_requests_per_user}')
+            lines.append(f'max_queue = {cfg.max_queue}')
+            lines.append(f'max_duration = {cfg.max_duration}')
+            lines.append(f'voteskip_threshold = {cfg.voteskip_threshold}')
+            lines.append(f'cooldown = {cfg.cooldown}')
+            lines.append(f'send_interval = {cfg.send_interval}')
+            lines.append(f'max_msg_len = {cfg.max_msg_len}')
+            lines.append(f'announce_next = {str(cfg.announce_next).lower()}')
+            lines.append("")
+            lines.append(f'tts_voice = "{cfg.tts_voice}"')
+            lines.append(f'tts_rate = {cfg.tts_rate}')
+            lines.append(f'tts_duck = {cfg.tts_duck}')
+            lines.append("")
+            lines.append(f'auto_launch = {str(cfg.auto_launch).lower()}')
+            lines.append(f'camfrog_exe = "{cfg.camfrog_exe}"')
+            lines.append(f'client_title_re = "{cfg.client_title_re}"')
+            lines.append(f'room = "{cfg.room}"')
+            lines.append(f'join_uri_template = "{cfg.join_uri_template}"')
+            lines.append(f'launch_timeout = {cfg.launch_timeout}')
+            lines.append("")
+            lines.append(f'blocked_users = {cfg.blocked_users!r}')
+            lines.append(f'poll_interval = {cfg.poll_interval}')
+            lines.append(f'log_file = "{cfg.log_file}"')
+            lines.append(f'playlist_file = "{cfg.playlist_file}"')
+            lines.append(f'search_limit = {cfg.search_limit}')
+            lines.append(f'mpv_timeout = {cfg.mpv_timeout}')
+
+            new_text = "\n".join(lines) + "\n"
+
+            # Validate by parsing back
+            tomllib.loads(new_text)
+
+            p.write_text(new_text, "utf-8")
+
+            # Re-read config to apply
+            from .config import Config
+            new_cfg = Config.load(str(p))
+            self.e.cfg = new_cfg
+            self.e.lang = new_cfg.lang
+            self.e.volume = new_cfg.volume
+            self.e.queue.shuffle = new_cfg.shuffle
+
+            # Show save confirmation via say
+            self.e.say(self.e.t("g_settings_saved"))
+
+        except Exception as ex:
+            log.exception("save settings failed")
+            self.e.say(self.e.t("g_settings_save_failed", err=str(ex)))
 
     def close(self):
         self._closing = True
