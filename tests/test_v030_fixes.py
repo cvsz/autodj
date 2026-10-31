@@ -272,7 +272,7 @@ def test_play_cmd_includes_no_window_flags(monkeypatch):
 # ---------------------------------------------------------------------------
 # N-tts-1: TTS worker serialises calls; synth is thread-safe
 # ---------------------------------------------------------------------------
-def test_tts_synth_is_callable_and_thread_safe():
+def test_tts_synth_is_callable_and_thread_safe(monkeypatch):
     """synth() must be importable and have the expected signature; the worker
     must serialise concurrent callers (smoke test: two threads call synth
     with a fake pyttsx3 that would corrupt state if called concurrently)."""
@@ -309,6 +309,9 @@ def test_tts_synth_is_callable_and_thread_safe():
     fake_mod = types.ModuleType("pyttsx3")
     fake_mod.init = lambda: FakeEngine()
 
+    import sys
+    monkeypatch.setitem(sys.modules, "pyttsx3", fake_mod)
+
     # Reset TTS worker between test runs
     import importlib
 
@@ -316,8 +319,7 @@ def test_tts_synth_is_callable_and_thread_safe():
 
     def call_synth(text, path):
         try:
-            with patch.dict("sys.modules", {"pyttsx3": fake_mod}):
-                tts_mod.synth(text, path, cfg)
+            tts_mod.synth(text, path, cfg)
             results.append(text)
         except Exception as ex:
             errors.append(ex)
@@ -416,6 +418,7 @@ def test_engine_remote_uses_config_search_limit(monkeypatch):
         ytdlp_path="",
         mpv_path="",
         search_limit=1,
+        **kw,
     ):
         captured["search_limit"] = search_limit
         return [Track("https://youtu.be/x", "T", 60, requester)]

@@ -1670,6 +1670,14 @@ class App(tk.Tk):
 
     def close(self):
         self._closing = True
+        for attr in ("_anim", "_ref"):
+            timer_id = getattr(self, attr, None)
+            if timer_id:
+                try:
+                    self.after_cancel(timer_id)
+                except Exception:
+                    pass
+                setattr(self, attr, None)
         self.e.shutdown()
         self.destroy()
 

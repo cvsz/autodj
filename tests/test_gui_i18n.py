@@ -104,14 +104,16 @@ def test_gui_smoke():
     e.queue.add_request(Track("q", "Queued song", 100, "amy"))
     e.say("hello")
     app = App(e)
-    app.update()
-    assert app.v_title.cget("text") == "Midnight City"
-    assert "Queued song" in app.lb.get(0)
-    assert "hello" in app.chat.get("1.0", "end")
-    app.set_lang("th")
-    app.update()
-    assert app.b_pause.cget("text") == "หยุดชั่วคราว"
-    app.destroy()
+    try:
+        app.update()
+        assert app.v_title.cget("text") == "Midnight City"
+        assert "Queued song" in app.lb.get(0)
+        assert "hello" in app.chat.get("1.0", "end")
+        app.set_lang("th")
+        app.update()
+        assert app.b_pause.cget("text") == "หยุดชั่วคราว"
+    finally:
+        app.close()
 
 
 def test_window_pick():

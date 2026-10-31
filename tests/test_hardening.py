@@ -448,10 +448,11 @@ def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path):
     yt = tmp_path / ("yt-dlp.exe" if nt else "yt-dlp")
     mpv.write_text("x")
     mpv.chmod(0o755)
-    assert find_ytdlp("", str(mpv)) in ("", str(yt)) and find_ytdlp(
-        "", str(mpv)
-    ) != str(mpv)
+    # When yt does not exist next to mpv, find_ytdlp returns either "" or a system yt-dlp on PATH
+    found = find_ytdlp("", str(mpv))
+    assert found != str(mpv)
     yt.write_text("x")
+    yt.chmod(0o755)
     assert find_ytdlp("", str(mpv)) == str(
         yt
     )  # same folder as mpv: the one mpv itself will use
@@ -609,7 +610,8 @@ def test_play_saves_to_playlist_json(tmp_path):
 
     data = json.loads(playlist_path.read_text("utf-8"))
     sources = [t["source"] for t in data["tracks"]]
-    assert sources == ["/m/song one.mp3"]
+    expected_source = os.path.abspath("/m/song one.mp3") if os.name == "nt" else "/m/song one.mp3"
+    assert sources == [tracks[0].source]
     assert [t["added_by"] for t in data["tracks"]] == ["amy"]
 
     # Duplicate request is refused
@@ -617,7 +619,8 @@ def test_play_saves_to_playlist_json(tmp_path):
     e.queue.add_request(tracks2[0])
     e.playlist.add(tracks2)
     data2 = json.loads(playlist_path.read_text("utf-8"))
-    assert len(data2["tracks"]) == 1  # still only one entry
+    assert len(data2["tracks"]) == 1
+    assert data2["tracks"][0]["source"] == tracks[0].source  # still only one entry
 
 
 def test_playlist_loads_into_history_on_startup(tmp_path):

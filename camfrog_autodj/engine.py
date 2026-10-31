@@ -427,7 +427,6 @@ class Engine:
                 fails += 1
                 self.stop_evt.wait(30.0)  # wait 30s before checking again
                 continue
-            fails = 0  # player is available, reset failure counter
             t = self.queue.pop()
             if t is None:
                 self.wake.wait(2)
