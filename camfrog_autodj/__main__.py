@@ -156,7 +156,12 @@ def _run(a, level):
     if cfg.auto_launch and "uia" in (cfg.chat_reader, cfg.chat_sender):
         from .launcher import ensure_room
 
-        ensure_room(cfg)
+        try:
+            ensure_room(cfg)
+        except Exception as ex:  # pragma: no cover - defensive; discovery is best-effort
+            log.warning(
+                "auto-launch failed; continuing without Camfrog: %s", ex
+            )
     uses_uia = "uia" in (cfg.chat_reader, cfg.chat_sender)
     if uses_uia and (a.discover or (cfg.auto_discover and not a.no_discover)):
         from . import discover
