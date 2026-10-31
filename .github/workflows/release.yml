@@ -37,7 +37,7 @@ jobs:
           makensis /DVERSION=${{ github.ref_name }} installer.nsi
 
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: Camfrog-AutoDJ-Setup-${{ github.ref_name }}.exe
           tag_name: ${{ github.ref_name }}
