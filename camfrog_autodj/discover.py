@@ -256,7 +256,15 @@ def update_config_text(text: str, updates: dict) -> str:
 def save_config(path: str, updates: dict) -> bool:
     """Write updates into config.toml (backup in config.toml.bak). Returns True if the file changed."""
     p = Path(path)
-    old = p.read_text("utf-8") if p.exists() else ""
+    try:
+        old = p.read_text("utf-8") if p.exists() else ""
+    except OSError as ex:
+        log.warning(
+            "auto-discover: NOT saving to %s, cannot read config file (%s)",
+            path,
+            ex,
+        )
+        return False
     new = update_config_text(old, updates)
     if new == old:
         return False
