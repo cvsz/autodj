@@ -18,6 +18,11 @@ POLL = 0.5  # seconds between hang checks while a track with a known length play
 _WHY = ("error", "fail", "not found", "unable", "[ytdl_hook]", "cannot", "no such")
 
 
+def _is_windows() -> bool:
+    """Return whether the host uses Windows-specific process and IPC behavior."""
+    return _is_windows()
+
+
 def failure_reasons(log_text: str, keep: int = 4) -> list[str]:
     """The last few lines of an mpv log that explain why playback failed."""
     lines = [
@@ -62,7 +67,7 @@ class MpvPlayer:
         n = next(_ids)
         ipc = (
             rf"\\.\pipe\camfrog-autodj-{os.getpid()}-{n}"
-            if os.name == "nt"
+            if _is_windows()
             else os.path.join(
                 tempfile.gettempdir(), f"camfrog-autodj-{os.getpid()}-{n}.sock"
             )
@@ -81,7 +86,7 @@ class MpvPlayer:
             cmd.append(f"--script-opts=ytdl_hook-ytdl_path={ytdlp}")
         cmd += ["--", source]
         kw: dict = {}
-        if os.name == "nt":
+        if _is_windows():
             kw["creationflags"] = (
                 0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
             )
@@ -175,7 +180,7 @@ class MpvPlayer:
             return False
         data = (json.dumps({"command": list(cmd)}) + "\n").encode()
         try:
-            if os.name == "nt":
+            if _is_windows():
                 with open(ipc, "r+b", buffering=0) as f:
                     f.write(data)
             else:
@@ -196,7 +201,7 @@ class MpvPlayer:
 
     def play_file(self, path: str):
         kw: dict = {}
-        if os.name == "nt":
+        if _is_windows():
             kw["creationflags"] = (
                 0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
             )
