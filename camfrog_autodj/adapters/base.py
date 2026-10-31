@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 
 
 @dataclass
@@ -23,7 +24,7 @@ class ChatAdapter(ABC):
         pass
 
 
-def parse_line(line: str, rx: "re.Pattern[str]") -> ChatMessage | None:
+def parse_line(line: str, rx: re.Pattern[str]) -> ChatMessage | None:
     m = rx.match(line.strip())
     return ChatMessage(m["user"].strip(), m["text"].strip()) if m else None
 

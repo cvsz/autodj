@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Workout / Running",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:high energy workout music official",
+      "title": "high energy workout music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:running playlist upbeat music official",
+      "title": "running playlist upbeat music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:gym EDM workout songs official",
+      "title": "gym EDM workout songs official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:rock workout anthems official",
+      "title": "rock workout anthems official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:hip hop workout songs official",
+      "title": "hip hop workout songs official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:dance workout music official",
+      "title": "dance workout music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:high BPM electronic music official",
+      "title": "high BPM electronic music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Thai workout music upbeat official",
+      "title": "Thai workout music upbeat official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

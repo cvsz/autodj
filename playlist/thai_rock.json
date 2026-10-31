@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Thai Rock",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:เพลงร็อคไทยยุค 90 official MV",
+      "title": "เพลงร็อคไทยยุค 90 official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงร็อคไทยยุค 2000 official MV",
+      "title": "เพลงร็อคไทยยุค 2000 official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงร็อคไทยใหม่ official music video",
+      "title": "เพลงร็อคไทยใหม่ official music video",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงเพื่อชีวิตร็อคไทย official",
+      "title": "เพลงเพื่อชีวิตร็อคไทย official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงร็อคไทยอกหัก official MV",
+      "title": "เพลงร็อคไทยอกหัก official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลง alternative rock ไทย",
+      "title": "เพลง alternative rock ไทย",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงร็อคไทยคลาสสิก full song",
+      "title": "เพลงร็อคไทยคลาสสิก full song",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงร็อคไทย live concert",
+      "title": "เพลงร็อคไทย live concert",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

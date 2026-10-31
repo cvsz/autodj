@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Jazz / Blues",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:smooth jazz instrumental official",
+      "title": "smooth jazz instrumental official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:classic jazz standards official audio",
+      "title": "classic jazz standards official audio",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:blues greatest hits official",
+      "title": "blues greatest hits official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:electric blues guitar official",
+      "title": "electric blues guitar official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:jazz vocal standards official",
+      "title": "jazz vocal standards official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:jazz piano trio official",
+      "title": "jazz piano trio official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:blues rock classics official",
+      "title": "blues rock classics official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:late night jazz playlist official",
+      "title": "late night jazz playlist official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

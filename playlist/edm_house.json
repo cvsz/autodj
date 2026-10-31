@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "EDM / House",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:EDM festival hits official music video",
+      "title": "EDM festival hits official music video",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:progressive house classics official",
+      "title": "progressive house classics official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:deep house mix official",
+      "title": "deep house mix official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:tech house tracks official",
+      "title": "tech house tracks official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:trance classics official audio",
+      "title": "trance classics official audio",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:future bass hits official",
+      "title": "future bass hits official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:melodic techno official music",
+      "title": "melodic techno official music",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:EDM workout songs official",
+      "title": "EDM workout songs official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

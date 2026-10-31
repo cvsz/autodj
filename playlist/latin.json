@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Latin",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:Latin pop hits official music video",
+      "title": "Latin pop hits official music video",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:reggaeton hits official",
+      "title": "reggaeton hits official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:salsa classics official audio",
+      "title": "salsa classics official audio",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:bachata love songs official",
+      "title": "bachata love songs official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Latin dance hits official",
+      "title": "Latin dance hits official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:merengue classics official",
+      "title": "merengue classics official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Latin pop 2025 2026 official",
+      "title": "Latin pop 2025 2026 official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Latin music live performance official",
+      "title": "Latin music live performance official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

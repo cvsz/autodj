@@ -1,5 +1,11 @@
 import re
-from camfrog_autodj.adapters.base import ChatAdapter, ChatMessage, diff_lines, parse_line
+
+from camfrog_autodj.adapters.base import (
+    ChatAdapter,
+    ChatMessage,
+    diff_lines,
+    parse_line,
+)
 from camfrog_autodj.config import Config
 from camfrog_autodj.engine import Engine
 from camfrog_autodj.library import LocalIndex, host_ok
@@ -44,7 +50,9 @@ def test_parse_line():
 
 def test_host_ok():
     h = ["youtube.com", "youtu.be"]
-    assert host_ok("https://www.youtube.com/watch?v=1", h) and host_ok("https://youtu.be/x", h)
+    assert host_ok("https://www.youtube.com/watch?v=1", h) and host_ok(
+        "https://youtu.be/x", h
+    )
     assert not host_ok("https://evil.com/youtube.com", h)
     assert not host_ok("https://notyoutube.com/x", h)
 
@@ -74,9 +82,15 @@ class FakePlayer:
 
 
 def make():
-    e = Engine(Config(admins=["Boss"], cooldown=0, voteskip_threshold=2), FakeAdapter(),
-               player=FakePlayer(), index=LocalIndex([]))
-    e.resolve = lambda arg, user, admin: [Track("https://youtu.be/" + arg.replace(" ", "_"), arg, 120, user)]
+    e = Engine(
+        Config(admins=["Boss"], cooldown=0, voteskip_threshold=2),
+        FakeAdapter(),
+        player=FakePlayer(),
+        index=LocalIndex([]),
+    )
+    e.resolve = lambda arg, user, admin: [
+        Track("https://youtu.be/" + arg.replace(" ", "_"), arg, 120, user)
+    ]
     return e
 
 
@@ -94,7 +108,10 @@ def test_play_np_next_queue():
     e.current = Track("s", "now", 90, "bob")
     e.router.handle(ChatMessage("amy", "!np"))
     e.router.handle(ChatMessage("amy", "!next"))
-    assert out(e) == ["Now playing: now [1:30] - requested by bob", "Up next: song one [2:00] (amy)"]
+    assert out(e) == [
+        "Now playing: now [1:30] - requested by bob",
+        "Up next: song one [2:00] (amy)",
+    ]
     e.router.handle(ChatMessage("amy", "!queue"))
     assert "1) song one" in out(e)[0]
 

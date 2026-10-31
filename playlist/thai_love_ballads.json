@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Thai Love Ballads",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:เพลงรักไทยซึ้งๆ official MV",
+      "title": "เพลงรักไทยซึ้งๆ official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงช้าไทยเพราะๆ รวมเพลงรัก",
+      "title": "เพลงช้าไทยเพราะๆ รวมเพลงรัก",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงแต่งงานไทย เพลงรัก official",
+      "title": "เพลงแต่งงานไทย เพลงรัก official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงรักไทย acoustic live",
+      "title": "เพลงรักไทย acoustic live",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงรักหวานๆ ไทย official",
+      "title": "เพลงรักหวานๆ ไทย official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงรักเศร้าไทย official MV",
+      "title": "เพลงรักเศร้าไทย official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงรักไทย duet",
+      "title": "เพลงรักไทย duet",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงบอกรักไทยเพราะๆ",
+      "title": "เพลงบอกรักไทยเพราะๆ",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

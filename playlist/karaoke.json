@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Karaoke / Sing Along",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:เพลงคาราโอเกะไทย เพลงฮิต",
+      "title": "เพลงคาราโอเกะไทย เพลงฮิต",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงสากลร้องตามได้ official audio",
+      "title": "เพลงสากลร้องตามได้ official audio",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงคาราโอเกะลูกทุ่งไทย",
+      "title": "เพลงคาราโอเกะลูกทุ่งไทย",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทยยุค 90 ร้องตาม",
+      "title": "เพลงไทยยุค 90 ร้องตาม",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงรักสากล karaoke",
+      "title": "เพลงรักสากล karaoke",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลง K-pop sing along official",
+      "title": "เพลง K-pop sing along official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทยคาราโอเกะ ไม่มีเสียงร้อง",
+      "title": "เพลงไทยคาราโอเกะ ไม่มีเสียงร้อง",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงเก่ายอดนิยม sing along",
+      "title": "เพลงเก่ายอดนิยม sing along",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

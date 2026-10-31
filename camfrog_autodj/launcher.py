@@ -1,25 +1,36 @@
 """Optionally start the official Camfrog client and hand off to a room, then wait for its window.
 Windows only. This does not use the control-server API: if the control-server agent already
 launches/joins for you, leave auto_launch=false and AutoDJ just waits for the window."""
+
 from __future__ import annotations
+
 import logging
 import os
 import subprocess
+import sys
 from urllib.parse import quote
 
 log = logging.getLogger("autodj")
 
 
+def _require_windows() -> None:
+    if sys.platform != "win32":
+        raise RuntimeError("Camfrog launcher is Windows-only")
+
+
 def find_window(pattern: str, timeout: float) -> bool:
     from .windows import resolve
+
     return resolve(pattern, timeout=timeout) is not None
 
 
 def _open_uri(uri: str):
+    _require_windows()
     os.startfile(uri)  # type: ignore[attr-defined]  # Windows only
 
 
 def _start(exe: str):
+    _require_windows()
     subprocess.Popen([exe])
 
 

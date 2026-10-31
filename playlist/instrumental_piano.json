@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Instrumental / Piano",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:relaxing piano instrumental official",
+      "title": "relaxing piano instrumental official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:beautiful piano music official recording",
+      "title": "beautiful piano music official recording",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:cinematic orchestral instrumental official",
+      "title": "cinematic orchestral instrumental official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:guitar instrumental fingerstyle official",
+      "title": "guitar instrumental fingerstyle official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:saxophone instrumental smooth jazz official",
+      "title": "saxophone instrumental smooth jazz official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:instrumental music for relaxation official",
+      "title": "instrumental music for relaxation official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:piano covers popular songs official",
+      "title": "piano covers popular songs official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:acoustic instrumental background music official",
+      "title": "acoustic instrumental background music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

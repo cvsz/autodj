@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Thai Dance / Party",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:เพลงแดนซ์ไทยมันๆ official",
+      "title": "เพลงแดนซ์ไทยมันๆ official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงตื๊ดไทย EDM",
+      "title": "เพลงตื๊ดไทย EDM",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงสามช่าแดนซ์ไทย",
+      "title": "เพลงสามช่าแดนซ์ไทย",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงรถแห่แดนซ์มันๆ",
+      "title": "เพลงรถแห่แดนซ์มันๆ",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทย remix dance",
+      "title": "เพลงไทย remix dance",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงสงกรานต์แดนซ์ไทย",
+      "title": "เพลงสงกรานต์แดนซ์ไทย",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงปาร์ตี้ไทยยอดนิยม",
+      "title": "เพลงปาร์ตี้ไทยยอดนิยม",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงแดนซ์ไทยยุค 90 remix",
+      "title": "เพลงแดนซ์ไทยยุค 90 remix",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

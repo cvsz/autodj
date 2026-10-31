@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Hip-Hop / Rap",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:hip hop hits official music video",
+      "title": "hip hop hits official music video",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:classic hip hop 90s official",
+      "title": "classic hip hop 90s official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:rap hits 2025 2026 official",
+      "title": "rap hits 2025 2026 official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:conscious hip hop official music video",
+      "title": "conscious hip hop official music video",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:old school hip hop classics official",
+      "title": "old school hip hop classics official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:hip hop chill playlist official",
+      "title": "hip hop chill playlist official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:female rap hits official",
+      "title": "female rap hits official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:global rap hits official audio",
+      "title": "global rap hits official audio",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Mor Lam / Isan",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:หมอลำซิ่งยอดนิยม official",
+      "title": "หมอลำซิ่งยอดนิยม official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:หมอลำกลอนอีสาน",
+      "title": "หมอลำกลอนอีสาน",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:หมอลำอินดี้ เพลงใหม่ official MV",
+      "title": "หมอลำอินดี้ เพลงใหม่ official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงอีสานอินดี้ฮิต",
+      "title": "เพลงอีสานอินดี้ฮิต",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:รถแห่หมอลำซิ่ง เต็มวง",
+      "title": "รถแห่หมอลำซิ่ง เต็มวง",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:หมอลำม่วนๆ เต้นได้",
+      "title": "หมอลำม่วนๆ เต้นได้",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:หมอลำประยุกต์ร่วมสมัย",
+      "title": "หมอลำประยุกต์ร่วมสมัย",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงอีสานเพราะๆ official",
+      "title": "เพลงอีสานเพราะๆ official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

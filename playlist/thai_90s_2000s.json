@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Thai 90s & 2000s",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:เพลงไทยยุค 90 รวมฮิต official",
+      "title": "เพลงไทยยุค 90 รวมฮิต official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทยยุค 2000 รวมฮิต official MV",
+      "title": "เพลงไทยยุค 2000 รวมฮิต official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลง RS ยุค 90 official",
+      "title": "เพลง RS ยุค 90 official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลง Grammy ยุค 90 official",
+      "title": "เพลง Grammy ยุค 90 official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงรักไทยยุค 2000",
+      "title": "เพลงรักไทยยุค 2000",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงสตริงไทยเก่าเพราะๆ",
+      "title": "เพลงสตริงไทยเก่าเพราะๆ",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทยวัยรุ่นยุค 90",
+      "title": "เพลงไทยวัยรุ่นยุค 90",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงฮิตไทย 2000s full song",
+      "title": "เพลงฮิตไทย 2000s full song",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "J-Pop",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:J-pop hits official music video",
+      "title": "J-pop hits official music video",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Japanese city pop classics official",
+      "title": "Japanese city pop classics official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:J-pop anime opening official",
+      "title": "J-pop anime opening official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Japanese rock hits official MV",
+      "title": "Japanese rock hits official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:J-pop ballads official music video",
+      "title": "J-pop ballads official music video",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Japanese idol songs official MV",
+      "title": "Japanese idol songs official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:J-pop 2025 2026 official",
+      "title": "J-pop 2025 2026 official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Japanese city pop playlist official",
+      "title": "Japanese city pop playlist official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

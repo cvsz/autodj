@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "C-Pop / Mandopop",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:Mandopop hits official music video",
+      "title": "Mandopop hits official music video",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Chinese pop love songs official",
+      "title": "Chinese pop love songs official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Taiwanese pop classics official",
+      "title": "Taiwanese pop classics official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:C-pop 2025 2026 official MV",
+      "title": "C-pop 2025 2026 official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Mandarin ballads official audio",
+      "title": "Mandarin ballads official audio",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Chinese rock music official",
+      "title": "Chinese rock music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:C-pop female singers official MV",
+      "title": "C-pop female singers official MV",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:Mandopop greatest hits official",
+      "title": "Mandopop greatest hits official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

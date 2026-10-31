@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 
 
@@ -25,6 +26,7 @@ class Track:
     title: str
     duration: float | None = None
     requester: str = "AutoDJ"
+    added: str = ""
 
     @property
     def dur(self) -> str:

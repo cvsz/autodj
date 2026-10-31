@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 import os
 import queue
@@ -10,24 +11,34 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .commands import Router
-from .library import MEDIA, LocalIndex, host_ok, is_url, local_track, remote_tracks, scan_folder
+from .library import (
+    MEDIA,
+    SEARCH_PREFIX,
+    LocalIndex,
+    host_ok,
+    is_url,
+    local_track,
+    remote_tracks,
+    scan_folder,
+)
 from .messages import tr
 from .models import Track, UserError, YtdlpMissing
 from .player import MpvPlayer
-from .playqueue import PlayQueue
 from .playlist import PlaylistStore
+from .playqueue import PlayQueue
 from .textutil import clean_text, norm
 
 log = logging.getLogger("autodj")
 
-MAX_FAIL_ANNOUNCE = 3   # consecutive failed tracks announced in the room; after that only the log hears about it
-MAX_BACKOFF = 30.0      # seconds, ceiling of the pause between consecutive failed tracks
-ECHO_TTL = 120.0        # seconds a line we posted is remembered, to recognise it when it comes back from the room
+MAX_FAIL_ANNOUNCE = 3  # consecutive failed tracks announced in the room; after that only the log hears about it
+MAX_BACKOFF = 30.0  # seconds, ceiling of the pause between consecutive failed tracks
+ECHO_TTL = 120.0  # seconds a line we posted is remembered, to recognise it when it comes back from the room
 
 
 class Engine:
-    def __init__(self, cfg, adapter, player=None, index=None):
+    def __init__(self, cfg, adapter, player=None, index=None, cfg_path=None):
         self.cfg, self.adapter = cfg, adapter
+        self.cfg_path = cfg_path
         self.lang = cfg.lang
         self.player = player or MpvPlayer(cfg)
         self.index = index or LocalIndex(cfg.music_dirs)
@@ -49,12 +60,18 @@ class Engine:
         self.stop_evt = threading.Event()
         self.chat_done = threading.Event()
         self.wake = threading.Event()
-        self.exec = ThreadPoolExecutor(8)  # lookups can take seconds: keep !skip and friends responsive meanwhile
+        self.exec = ThreadPoolExecutor(
+            8
+        )  # lookups can take seconds: keep !skip and friends responsive meanwhile
         self.history: deque[Track] = deque(maxlen=20)  # newest first
         self.blocked: set[str] = {b.lower() for b in cfg.blocked_users}
-        self.fail_delay = lambda n: min(MAX_BACKOFF, 2.0 ** (n - 1))  # n = consecutive failures so far
+        self.fail_delay = lambda n: min(
+            MAX_BACKOFF, 2.0 ** (n - 1)
+        )  # n = consecutive failures so far
         self._sent: deque[tuple[float, str]] = deque(maxlen=64)
         self._sent_lock = threading.Lock()
+        self._speak_lock = threading.Lock()  # one TTS clip at a time: overlapping jobs would un-duck the music early
+        self._threads: list[threading.Thread] = []  # daemon threads started by start(), joined on shutdown()
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -62,16 +79,30 @@ class Engine:
 
     def fmt_now(self, t: Track) -> str:
         try:
-            return self.cfg.msg_now.format(**t.fields()) if self.cfg.msg_now else self.t("now_playing", **t.fields())
+            return (
+                self.cfg.msg_now.format(**t.fields())
+                if self.cfg.msg_now
+                else self.t("now_playing", **t.fields())
+            )
         except Exception:  # a typo in msg_now must not take down the player-loop thread
-            log.exception("bad msg_now template %r: falling back to the built-in text", self.cfg.msg_now)
+            log.exception(
+                "bad msg_now template %r: falling back to the built-in text",
+                self.cfg.msg_now,
+            )
             return self.t("now_playing", **t.fields())
 
     def fmt_next(self, t: Track) -> str:
         try:
-            return self.cfg.msg_next.format(**t.fields()) if self.cfg.msg_next else self.t("up_next", **t.fields())
+            return (
+                self.cfg.msg_next.format(**t.fields())
+                if self.cfg.msg_next
+                else self.t("up_next", **t.fields())
+            )
         except Exception:
-            log.exception("bad msg_next template %r: falling back to the built-in text", self.cfg.msg_next)
+            log.exception(
+                "bad msg_next template %r: falling back to the built-in text",
+                self.cfg.msg_next,
+            )
             return self.t("up_next", **t.fields())
 
     # ---- chat out -------------------------------------------------------
@@ -81,16 +112,22 @@ class Engine:
         # Also to the logger (so --log-file / console keeps a trail of every line the bot sent and every
         # line it acted on, even with the GUI closed -- the in-memory chat_log above is lost on restart
         # and was never enough on its own to reconstruct what happened after the fact).
-        log.info("chat %s %s: %s", ">>" if who == self.cfg.bot_nick else "<<", who, text)
+        log.info(
+            "chat %s %s: %s", ">>" if who == self.cfg.bot_nick else "<<", who, text
+        )
 
     def say(self, text: str):
         text = clean_text(text)
         if not text:
             return
         self.log_chat(self.cfg.bot_nick, text)
-        for i, chunk in enumerate(textwrap.wrap(text, self.cfg.max_msg_len, break_long_words=True)):
+        for i, chunk in enumerate(
+            textwrap.wrap(text, self.cfg.max_msg_len, break_long_words=True)
+        ):
             if i and chunk.startswith(self.cfg.prefix):
-                chunk = "… " + chunk  # a wrapped continuation must never look like a command
+                chunk = (
+                    "… " + chunk
+                )  # a wrapped continuation must never look like a command
             self.outbox.put(chunk)
 
     # The room shows our own lines back to us under the account's nick, which may differ from bot_nick.
@@ -116,7 +153,9 @@ class Engine:
                 m = self.outbox.get(timeout=0.5)
             except queue.Empty:
                 continue
-            self._remember_sent(m)  # before posting: the echo can show up before send() returns
+            self._remember_sent(
+                m
+            )  # before posting: the echo can show up before send() returns
             try:
                 self.adapter.send(m)
             except Exception as ex:
@@ -129,7 +168,9 @@ class Engine:
                     log.info("send retry ok: %s", m)
                 except Exception:
                     log.exception("send retry failed too, dropped: %s", m)
-            self.stop_evt.wait(self.cfg.send_interval)  # flood control (wakes up at shutdown)
+            self.stop_evt.wait(
+                self.cfg.send_interval
+            )  # flood control (wakes up at shutdown)
 
     # ---- controls -------------------------------------------------------
     def skip(self):
@@ -137,7 +178,9 @@ class Engine:
 
     def pause(self):
         if self.current and not self.paused:
-            if self.player.set_pause(True) is False:  # mpv's control pipe is not ready (yet): state stays truthful
+            if (
+                self.player.set_pause(True) is False
+            ):  # mpv's control pipe is not ready (yet): state stays truthful
                 log.warning("pause failed: mpv did not accept the command")
                 return
             self.paused, self._paused_at = True, time.monotonic()
@@ -147,7 +190,9 @@ class Engine:
             if self.player.set_pause(False) is False:
                 log.warning("resume failed: mpv did not accept the command")
                 return
-            self._paused_total += time.monotonic() - (self._paused_at or time.monotonic())
+            self._paused_total += time.monotonic() - (
+                self._paused_at or time.monotonic()
+            )
             self.paused, self._paused_at = False, None
 
     def position(self) -> float:
@@ -168,35 +213,64 @@ class Engine:
 
         def job():
             import tempfile
+
             from .tts import synth
-            wav = os.path.join(tempfile.gettempdir(), f"autodj-tts-{time.time_ns()}.wav")
-            try:
-                synth(text, wav, self.cfg)
-                self.player.set_volume(self.cfg.tts_duck)
-                self.player.play_file(wav)
-            except Exception:
-                log.exception("tts failed")
-            finally:
-                self.player.set_volume(self.volume)
-                Path(wav).unlink(missing_ok=True)
+
+            wav = os.path.join(
+                tempfile.gettempdir(), f"autodj-tts-{time.time_ns()}.wav"
+            )
+            with self._speak_lock:
+                try:
+                    synth(text, wav, self.cfg)
+                    self.player.set_volume(self.cfg.tts_duck)
+                    self.player.play_file(wav)
+                except Exception:
+                    log.exception("tts failed")
+                finally:
+                    self.player.set_volume(self.volume)
+                    Path(wav).unlink(missing_ok=True)
+
         self.exec.submit(job)
 
     def snapshot(self) -> dict:
         with self.queue.lock:
             reqs = list(self.queue.requests)
-        return dict(current=self.current, position=self.position(), paused=self.paused,
-                    volume=self.volume, queue=reqs, next=self.queue.peek(),
-                    shuffle=self.queue.shuffle, repeat=self.queue.repeat, history=list(self.history))
+        return {
+            "current": self.current,
+            "position": self.position(),
+            "paused": self.paused,
+            "volume": self.volume,
+            "queue": reqs,
+            "next": self.queue.peek(),
+            "shuffle": self.queue.shuffle,
+            "repeat": self.queue.repeat,
+            "history": list(self.history),
+        }
 
     # ---- sources --------------------------------------------------------
-    def _remote(self, query: str, user: str = "AutoDJ", playlist: bool = False,
-                search_limit: int | None = None) -> list[Track]:
+    def _remote(
+        self,
+        query: str,
+        user: str = "AutoDJ",
+        playlist: bool = False,
+        search_limit: int | None = None,
+        raw_target: bool = False,
+    ) -> list[Track]:
         try:
             sl = search_limit if search_limit is not None else self.cfg.search_limit
-            return remote_tracks(query, user, playlist=playlist, ytdlp_path=self.cfg.ytdlp_path,
-                                 mpv_path=self.cfg.mpv_path, search_limit=sl)
+            return remote_tracks(
+                query,
+                user,
+                playlist=playlist,
+                ytdlp_path=self.cfg.ytdlp_path,
+                mpv_path=self.cfg.mpv_path,
+                search_limit=sl,
+                raw_target=raw_target,
+            )
         except YtdlpMissing as ex:
-            log.error("%s", ex)  # the details (how to fix it) are for the operator, the room gets a short line
+            log.error(
+                "%s", ex
+            )  # the details (how to fix it) are for the operator, the room gets a short line
             raise UserError(self.t("yt_missing")) from None
 
     def recent_requests(self, n: int = 5) -> list[Track]:
@@ -211,9 +285,13 @@ class Engine:
         arg = arg.strip().strip('"')
         if not arg:
             raise UserError(self.t("nothing_found"))
-        if not is_url(arg):  # "youtube.com/x", "www.youtu.be/x" pasted without a scheme is still a link
+        if not is_url(
+            arg
+        ):  # "youtube.com/x", "www.youtu.be/x" pasted without a scheme is still a link
             host = arg.split("/")[0].lower()
-            if "." in host and any(host == h or host.endswith("." + h) for h in self.cfg.allowed_hosts):
+            if "." in host and any(
+                host == h or host.endswith("." + h) for h in self.cfg.allowed_hosts
+            ):
                 arg = "https://" + arg
         if is_url(arg):
             if not admin and not host_ok(arg, self.cfg.allowed_hosts):
@@ -235,6 +313,7 @@ class Engine:
 
     def request(self, arg: str, user: str = "DJ"):
         """Admin request (GUI): no limits, runs in the background."""
+
         def job():
             try:
                 tracks = self.resolve(arg, user, True)
@@ -246,18 +325,28 @@ class Engine:
                 self.wake.set()
                 if self.playlist:
                     self.playlist.add(tracks)
-                self.say(self.t("queued_many", n=len(tracks), user=user) if len(tracks) > 1 else
-                         self.t("queued_one", pos=pos, title=tracks[0].title, dur=tracks[0].dur, user=user))
+                self.say(
+                    self.t("queued_many", n=len(tracks), user=user)
+                    if len(tracks) > 1
+                    else self.t(
+                        "queued_one",
+                        pos=pos,
+                        title=tracks[0].title,
+                        dur=tracks[0].dur,
+                        user=user,
+                    )
+                )
             except UserError as ex:
                 self.say(str(ex))
             except Exception:
                 log.exception("request failed: %s", arg)
                 self.say(self.t("error"))
+
         self.exec.submit(job)
 
     def load_source(self, src: str) -> list[Track]:
-        if is_url(src):
-            return self._remote(src, playlist=True)
+        if is_url(src) or SEARCH_PREFIX.match(src):  # "ytsearch20:text" works as an autoplay source
+            return self._remote(src, playlist=True, raw_target=True)
         p = Path(src)
         if p.is_dir():
             return scan_folder(p)
@@ -279,6 +368,7 @@ class Engine:
                 log.exception("load failed")
                 if announce:
                     self.say(self.t("load_failed", err=ex))
+
         self.exec.submit(job)
 
     def _load_all(self):
@@ -294,10 +384,21 @@ class Engine:
                 log.exception("autoplay source failed: %s", s)
         if self.playlist:
             try:
-                self.queue.add_pool(self.playlist.load())
+                # Add playlist tracks to the request queue so they are visible in the
+                # GUI list box and play before the autoplay pool (requests first).
+                # Dedupe against existing requests and recently played history so a
+                # restart does not re-queue the same tracks.
+                loaded = self.playlist.load()
+                with self.queue.lock:
+                    queued_sources = {r.source for r in self.queue.requests}
+                    played_sources = {t.source for t in self.history}
+                    for t in loaded:
+                        if t.source not in queued_sources and t.source not in played_sources:
+                            self.queue.add_request(t)
+                            queued_sources.add(t.source)
             except Exception:
                 log.exception("playlist load failed")
-        log.info("autoplay pool: %d tracks", len(self.queue.pool))
+        log.info("autoplay pool: %d tracks; queue: %d requests", len(self.queue.pool), len(self.queue.requests))
         self.wake.set()
 
     # ---- playback loop --------------------------------------------------
@@ -332,10 +433,12 @@ class Engine:
                     self.exec.submit(self._announce_if_playing, t)
                 log.info("playing %s", t.source)
                 try:
-                    ok = self.player.play(t.source, self.volume)
+                    ok = self.player.play(t.source, self.volume, t.duration)
                 except Exception:
-                    log.exception("cannot start mpv (mpv_path=%r): install mpv and set mpv_path in config.toml",
-                                  self.cfg.mpv_path)
+                    log.exception(
+                        "cannot start mpv (mpv_path=%r): install mpv and set mpv_path in config.toml",
+                        self.cfg.mpv_path,
+                    )
                     ok = False
                 if not ok:
                     fails += 1
@@ -343,9 +446,14 @@ class Engine:
                     if fails <= MAX_FAIL_ANNOUNCE:
                         self.say(self.t("cannot_play", title=t.title))
                     elif fails == MAX_FAIL_ANNOUNCE + 1:
-                        log.warning("%d tracks in a row failed to play: not announcing further failures in the room "
-                                    "(check the lines above; run AutoDJ.exe --check)", fails - 1)
-                    self.stop_evt.wait(self.fail_delay(fails))  # back off: never spin on a broken setup
+                        log.warning(
+                            "%d tracks in a row failed to play: not announcing further failures in the room "
+                            "(check the lines above; run AutoDJ.exe --check)",
+                            fails - 1,
+                        )
+                    self.stop_evt.wait(
+                        self.fail_delay(fails)
+                    )  # back off: never spin on a broken setup
                     break
                 fails = 0
                 if not recorded:
@@ -361,12 +469,16 @@ class Engine:
             for msg in self.adapter.messages():
                 if self.stop_evt.is_set():
                     break
-                if msg.user.lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text):
+                if msg.user.lower() == self.cfg.bot_nick.lower() or self._is_echo(
+                    msg.text
+                ):
                     continue
                 self.log_chat(msg.user, msg.text)
                 self.exec.submit(self.router.handle, msg)
         except Exception:
-            if not self.stop_evt.is_set():  # at shutdown the adapter/executor going away is expected
+            if (
+                not self.stop_evt.is_set()
+            ):  # at shutdown the adapter/executor going away is expected
                 log.exception("chat loop ended")
         finally:
             self.chat_done.set()
@@ -374,10 +486,15 @@ class Engine:
     def start(self):
         """Non-blocking: used by the GUI."""
         if hasattr(self.player, "available") and not self.player.available():
-            log.error("mpv not found (mpv_path=%r). Install mpv and set mpv_path = \"C:/mpv/mpv.exe\" "
-                      "in config.toml; nothing will play until then.", self.cfg.mpv_path)
+            log.error(
+                'mpv not found (mpv_path=%r). Install mpv and set mpv_path = "C:/mpv/mpv.exe" '
+                "in config.toml; nothing will play until then.",
+                self.cfg.mpv_path,
+            )
         for fn in (self._sender, self._player_loop, self._load_all, self._chat_loop):
-            threading.Thread(target=fn, daemon=True).start()
+            t = threading.Thread(target=fn, daemon=True, name=f"autodj-{fn.__name__}")
+            self._threads.append(t)
+            t.start()
 
     def run(self):
         self.start()
@@ -398,3 +515,7 @@ class Engine:
         self.player.stop()
         self.adapter.close()
         self.exec.shutdown(wait=False, cancel_futures=True)
+        # Join daemon threads with a timeout so shutdown does not hang forever.
+        for t in self._threads:
+            if t.is_alive():
+                t.join(timeout=5.0)

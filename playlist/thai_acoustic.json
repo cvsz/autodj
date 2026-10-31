@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Thai Acoustic",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:เพลงไทย acoustic cover session",
+      "title": "เพลงไทย acoustic cover session",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทย unplugged live",
+      "title": "เพลงไทย unplugged live",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทยกีตาร์โปร่งเพราะๆ",
+      "title": "เพลงไทยกีตาร์โปร่งเพราะๆ",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทย acoustic cafe",
+      "title": "เพลงไทย acoustic cafe",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงรักไทย acoustic version",
+      "title": "เพลงรักไทย acoustic version",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทย folk acoustic",
+      "title": "เพลงไทย folk acoustic",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทย live session acoustic",
+      "title": "เพลงไทย live session acoustic",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:เพลงไทยฟังสบาย acoustic playlist",
+      "title": "เพลงไทยฟังสบาย acoustic playlist",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

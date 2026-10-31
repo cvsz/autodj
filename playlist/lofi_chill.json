@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Lo-fi / Chill",
+  "description": "YouTube search-backed starter playlist. Results are resolved dynamically at playback time.",
+  "tracks": [
+    {
+      "source": "ytsearch1:lofi hip hop beats official livestream",
+      "title": "lofi hip hop beats official livestream",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:lofi chill beats instrumental",
+      "title": "lofi chill beats instrumental",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:chillhop instrumental music official",
+      "title": "chillhop instrumental music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:lofi study beats official",
+      "title": "lofi study beats official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:chill beats no vocals official",
+      "title": "chill beats no vocals official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:downtempo chillout music official",
+      "title": "downtempo chillout music official",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:relaxing lo-fi guitar beats",
+      "title": "relaxing lo-fi guitar beats",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    },
+    {
+      "source": "ytsearch1:ambient chill electronic music",
+      "title": "ambient chill electronic music",
+      "duration": null,
+      "added_by": "AutoDJ Playlist Pack",
+      "added": ""
+    }
+  ]
+}

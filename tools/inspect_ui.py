@@ -2,8 +2,11 @@
   python tools/inspect_ui.py --list                 show every visible window matching the pattern
   python tools/inspect_ui.py ".*Camfrog.*" [N]      dump the Nth match (default 0)
 Open a room window first. Use a tighter pattern (e.g. the room name) if several match."""
+
 import sys
+
 from pywinauto import Desktop
+
 from camfrog_autodj.windows import candidates
 
 args = [a for a in sys.argv[1:] if a != "--list"]

@@ -1,11 +1,21 @@
 """Zip the source tree for distribution. Used by `make package` (a multi-line heredoc inside a Makefile
 recipe does not work reliably across `make` implementations/shells, so this lives in its own script instead)."""
+
 from __future__ import annotations
+
 import os
 import sys
 import zipfile
 
-SKIP_DIRS = {"__pycache__", ".pytest_cache", ".git", ".venv", "dist", "build", "htmlcov"}
+SKIP_DIRS = {
+    "__pycache__",
+    ".pytest_cache",
+    ".git",
+    ".venv",
+    "dist",
+    "build",
+    "htmlcov",
+}
 SKIP_FILES = {"config.toml", "config.toml.bak", "config.toml.tmp"}
 SKIP_SUFFIXES = (".pyc", ".pfx", ".cer")
 
