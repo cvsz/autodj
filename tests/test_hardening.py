@@ -448,10 +448,11 @@ def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path):
     yt = tmp_path / ("yt-dlp.exe" if nt else "yt-dlp")
     mpv.write_text("x")
     mpv.chmod(0o755)
-    assert find_ytdlp("", str(mpv)) in ("", str(yt)) and find_ytdlp(
-        "", str(mpv)
-    ) != str(mpv)
+    # When yt does not exist next to mpv, find_ytdlp returns either "" or a system yt-dlp on PATH
+    found = find_ytdlp("", str(mpv))
+    assert found != str(mpv)
     yt.write_text("x")
+    yt.chmod(0o755)
     assert find_ytdlp("", str(mpv)) == str(
         yt
     )  # same folder as mpv: the one mpv itself will use
