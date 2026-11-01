@@ -1,12 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.2.5
 
 ### Added
 - **Dynamic search resolution for playlist tracks**: Search-backed entries (`ytsearch1:...`) from starter playlist files are dynamically resolved to real YouTube URLs, verified video titles, and exact durations upon playback and via asynchronous lookahead queue preloading.
 - **Automatic playlist update on resolve**: `PlaylistStore.update_source()` replaces resolved search queries in `playlist.json` with the real YouTube URL atomically, preventing repetitive search overhead on subsequent restarts.
-
-## 0.2.5
+- **Audio fade-in and fade-out**: Smooth volume ramping upon track playback start and skip/stop.
+- **Dynamic loudness normalization**: Configurable dynamic audio normalization using FFmpeg `dynaudnorm` filter in mpv.
+- **YouTube authentication & cookie support**: Optional `--cookies` file and `--cookies-from-browser` parameters passed securely to yt-dlp.
+- **Dynamic voteskip threshold**: Optional dynamic quorum based on room participant count.
+- **Per-user sliding rate limiting**: Monotonic sliding window cooldown and request limit to protect against chat flood.
+- **Software Supply Chain Security**: Release workflow upgraded with automated CycloneDX SBOM generation and GitHub artifact attestation.
 
 ### Fixed
 - **GUI ไม่ขึ้น (GUI won't open)**: `camfrog_autodj/__main__.py` — auto-discovery (`discover.apply()`) crashed with `ImportError` on `pywinauto.Desktop` before `App(eng).mainloop()` was reached, so the Tk window never appeared. Auto-discovery is now wrapped in `try/except` and logs a warning instead of crashing; `build_adapter()` failures fall back to `NullAdapter` so the GUI still opens without chat (user can run `--check`/`--discover` from inside it).

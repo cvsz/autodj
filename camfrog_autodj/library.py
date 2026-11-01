@@ -100,7 +100,14 @@ def parse_ytdlp_info(info: dict, requester: str = "AutoDJ") -> list[Track]:
     return out
 
 
-def _extract_exe(exe: str, target: str, playlist: bool, limit: int) -> dict:
+def _extract_exe(
+    exe: str,
+    target: str,
+    playlist: bool,
+    limit: int,
+    cookies_file: str = "",
+    cookies_browser: str = "",
+) -> dict:
     cmd = [
         exe,
         "--dump-single-json",
@@ -110,8 +117,12 @@ def _extract_exe(exe: str, target: str, playlist: bool, limit: int) -> dict:
         "--yes-playlist" if playlist else "--no-playlist",
         "--playlist-end",
         str(limit),
-        target,
     ]
+    if cookies_file and Path(cookies_file).is_file():
+        cmd.extend(["--cookies", str(Path(cookies_file).resolve())])
+    elif cookies_browser:
+        cmd.extend(["--cookies-from-browser", str(cookies_browser).strip()])
+    cmd.append(target)
     kw: dict = {
         "capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace", "timeout": 90
     }
@@ -158,6 +169,8 @@ def remote_tracks(
     mpv_path: str = "",
     search_limit: int = 1,
     raw_target: bool = False,
+    cookies_file: str = "",
+    cookies_browser: str = "",
 ) -> list[Track]:
     """YouTube URL, playlist URL, or plain search text -> tracks (metadata only).
     Uses the yt-dlp executable when there is one (see find_ytdlp), else the yt_dlp Python module.
@@ -176,7 +189,14 @@ def remote_tracks(
     info = None
     if exe:
         try:
-            info = _extract_exe(exe, target, playlist, limit)
+            info = _extract_exe(
+                exe,
+                target,
+                playlist,
+                limit,
+                cookies_file=cookies_file,
+                cookies_browser=cookies_browser,
+            )
         except OSError as ex:  # cannot even start it: try the module instead
             log.warning("cannot run %s (%s): trying the yt_dlp module", exe, ex)
     if info is None:

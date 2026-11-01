@@ -56,7 +56,25 @@ class MpvPlayer:
         ]
         if self.cfg.audio_device:
             a.append(f"--audio-device={self.cfg.audio_device}")
+        if getattr(self.cfg, "audio_normalize", False):
+            # Dynamic audio loudness normalization via FFmpeg dynaudnorm filter
+            a.append("--af=dynaudnorm=f=75:g=15:p=0.95")
         return a
+
+    def _fade_volume(self, start_vol: int, target_vol: int, duration_sec: float):
+        """Asynchronously ramps volume over duration_sec."""
+        steps = max(int(duration_sec / 0.1), 1)
+        step_duration = duration_sec / steps
+        vol_delta = (target_vol - start_vol) / steps
+        current = float(start_vol)
+        for _ in range(steps):
+            if self.skipped or self.proc is None:
+                break
+            current += vol_delta
+            self.set_volume(int(round(current)))
+            time.sleep(step_duration)
+        if not self.skipped and self.proc is not None:
+            self.set_volume(target_vol)
 
     def play(self, source: str, volume: int, duration: float | None = None) -> bool:
         """Play one track to its end; True = it played (or was skipped), False = it failed or hung.
@@ -75,11 +93,13 @@ class MpvPlayer:
         logf = os.path.join(
             tempfile.gettempdir(), f"camfrog-autodj-mpv-{os.getpid()}-{n}.log"
         )
+        fade_in = getattr(self.cfg, "audio_fade", False) and getattr(self.cfg, "audio_fade_in_sec", 0.0) > 0
+        init_vol = 0 if fade_in else volume
         cmd = self._base() + [
             "--ytdl-format=bestaudio/best",
             f"--input-ipc-server={ipc}",
             f"--log-file={logf}",
-            f"--volume={volume}",
+            f"--volume={init_vol}",
         ]
         ytdlp = getattr(self.cfg, "ytdlp_path", "") or find_ytdlp("", self.cfg.mpv_path)
         if ytdlp:  # mpv's youtube hook must use the same yt-dlp our title lookups use; its own default search only looks on PATH
@@ -95,6 +115,13 @@ class MpvPlayer:
             self._paused_since, self._paused_total = None, 0.0
             self._ipc = ipc
             self.proc = p = subprocess.Popen(cmd, **kw)
+        if fade_in:
+            threading.Thread(
+                target=self._fade_volume,
+                args=(0, volume, self.cfg.audio_fade_in_sec),
+                daemon=True,
+                name="autodj-fade-in",
+            ).start()
         limit = (
             float(duration) + self.cfg.mpv_timeout
             if duration is not None and self.cfg.mpv_timeout
@@ -168,6 +195,13 @@ class MpvPlayer:
                 pass
 
     def stop(self):
+        fade_out = getattr(self.cfg, "audio_fade", False) and getattr(self.cfg, "audio_fade_out_sec", 0.0) > 0
+        if fade_out and self._ipc:
+            # Quick fade out before terminating
+            try:
+                self._fade_volume(getattr(self.cfg, "volume", 100), 0, min(self.cfg.audio_fade_out_sec, 0.8))
+            except Exception:
+                pass
         with self._lock:
             p = self.proc
             if p and p.poll() is None:

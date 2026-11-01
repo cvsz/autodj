@@ -26,6 +26,7 @@ class Router:
     def __init__(self, engine):
         self.e = engine
         self.last: dict[str, float] = {}
+        self.user_requests: dict[str, list[float]] = {}
 
     def is_admin(self, msg) -> bool:
         return msg.local or msg.user.lower() in self.e.admins
@@ -67,6 +68,17 @@ class Router:
                     e.cfg.cooldown - (now - self.last[who]),
                 )
                 return
+            # Sliding window request limit per user
+            if name.lower() in ("play", "request", "req", "p", "เล่น"):
+                limit = getattr(e.cfg, "user_request_limit", 5)
+                window = getattr(e.cfg, "rate_limit_window", 300.0)
+                reqs = [t for t in self.user_requests.get(who, []) if now - t < window]
+                if len(reqs) >= limit:
+                    log.info("rate limit: user %s exceeded %d requests in %.0fs", who, limit, window)
+                    e.say(f"{msg.user}: {e.t('max_requests', n=limit)}")
+                    return
+                reqs.append(now)
+                self.user_requests[who] = reqs
             self.last[who] = now
         try:
             fn(e, msg, arg.strip(), admin)
@@ -186,7 +198,13 @@ def _voteskip(e, m, a, admin):
     if not e.current:
         raise UserError(e.t("nothing_playing"))
     e.votes.add(m.user.lower())
-    n, need = len(e.votes), e.cfg.voteskip_threshold
+    n = len(e.votes)
+    need = e.cfg.voteskip_threshold
+    if getattr(e.cfg, "voteskip_dynamic", False):
+        participants = getattr(e, "participant_count", 0)
+        if participants > 0:
+            pct = getattr(e.cfg, "voteskip_dynamic_pct", 30)
+            need = max(1, int(round((participants * pct) / 100.0)))
     if n >= need:
         e.skip()
         e.say(e.t("vote_passed", n=n, need=need))
