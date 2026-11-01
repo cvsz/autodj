@@ -10,7 +10,7 @@
 #>
 
 param(
-    [string]$Version = "0.2.5",
+    [string]$Version = "0.2.6",
     [string]$SrcDir = "dist",
     [string]$OutDir = "dist",
     [switch]$Sign

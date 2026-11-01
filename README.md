@@ -50,7 +50,7 @@ It first verifies that every package the exe must contain (yt-dlp, mutagen, pytt
 - Close `AutoDJ.exe` before building (it cannot be rebuilt or signed while running). `camfrog_autodj/__init__.py` must contain only `__version__`.
 
 ## Automated Windows 11 Installer (one click)
-**New in 0.2.5**: `install.ps1` / `install.bat` — a full-featured automated installer for Windows 11.
+**New in 0.2.6**: `install.ps1` / `install.bat` — a full-featured automated installer for Windows 11.
 It handles the entire setup end-to-end:
 1. **Verifies Windows 11** (Build 22000+)
 2. **Installs prerequisites** via winget (or direct download):
