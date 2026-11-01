@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-VERSION="${1:-0.2.5}"
+VERSION="${1:-0.2.6}"
 SRCDIR="${2:-dist}"
 OUTDIR="${3:-dist}"
 

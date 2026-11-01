@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.6
+
+### Added
+- **Official v0.2.6 Delivery & Recovery**: Complete release publication with verified Windows installer (`Camfrog-AutoDJ-Setup-0.2.6.exe`), standalone `AutoDJ.exe`, CycloneDX SBOM (`Camfrog-AutoDJ-v0.2.6.cdx.json`), and cryptographic Sigstore provenance attestation.
+- **Workflow Hardening & Persistent Artifact Retention**: Integrated `actions/upload-artifact@v4` in `.github/workflows/release.yml` for persistent operational retention of release build artifacts.
+- **SHA256 Manifest Generation**: Automated generation of `SHA256SUMS.txt` for all release assets.
+
+### Fixed
+- **Release Automation Pattern Alignment**: Aligned installer and standalone executable target patterns in release workflow and attestation subject paths.
+- **Release Recovery from Immutable Tag Restriction**: Resolved release distribution blocker by transitioning from tombstoned `v0.2.5` immutable tag ref to cleanly published `v0.2.6`.
+
 ## 0.2.5
 
 ### Added

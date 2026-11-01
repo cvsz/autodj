@@ -43,23 +43,44 @@ jobs:
         run: |
           cyclonedx-py environment --pyproject pyproject.toml -o Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
 
+      - name: Generate SHA256 Checksums
+        run: |
+          Get-FileHash -Algorithm SHA256 dist\AutoDJ.exe, Camfrog-AutoDJ-Setup-*.exe, Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json | ForEach-Object { "$($_.Hash.ToLower())  $([System.IO.Path]::GetFileName($_.Path))" } | Out-File -FilePath SHA256SUMS.txt -Encoding ascii
+          Get-Content SHA256SUMS.txt
+
       - name: Attest Build Artifacts
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
+            dist/AutoDJ.exe
             Camfrog-AutoDJ-Setup-*.exe
             Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
+            SHA256SUMS.txt
+
+      - name: Upload Build Artifacts (Retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: autodj-release-${{ github.ref_name }}
+          path: |
+            dist/AutoDJ.exe
+            Camfrog-AutoDJ-Setup-*.exe
+            Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
+            SHA256SUMS.txt
+          retention-days: 90
 
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
           files: |
+            dist/AutoDJ.exe
             Camfrog-AutoDJ-Setup-*.exe
             Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
+            SHA256SUMS.txt
           tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
+          name: Camfrog AutoDJ ${{ github.ref_name }}
           body: |
             Camfrog AutoDJ ${{ github.ref_name }}
             
             Built from ${{ github.ref_name }} tag.
             Installer includes AutoDJ.exe + source code + docs + tools.
+            See attached SHA256SUMS.txt for checksums and CycloneDX SBOM for supply chain verification.
