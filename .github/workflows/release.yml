@@ -41,7 +41,7 @@ jobs:
 
       - name: Generate CycloneDX SBOM
         run: |
-          cyclonedx-py poetry || cyclonedx-py requirements || python -m cyclonedx_py environment --outfile Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
+          cyclonedx-py environment --pyproject pyproject.toml -o Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
 
       - name: Attest Build Artifacts
         uses: actions/attest-build-provenance@v2
