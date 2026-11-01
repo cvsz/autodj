@@ -437,3 +437,134 @@ def test_engine_remote_uses_config_search_limit(monkeypatch):
     assert captured.get("search_limit") == 7, (
         f"Expected search_limit=7 from config, got {captured.get('search_limit')}"
     )
+
+
+def test_player_loop_dynamically_resolves_ytsearch_tracks(monkeypatch):
+    from camfrog_autodj.engine import Engine
+    from camfrog_autodj.config import Config
+    from camfrog_autodj.models import Track
+
+    class FakeAdapter:
+        def messages(self):
+            return iter([])
+
+        def send(self, t):
+            pass
+
+        def close(self):
+            pass
+
+    played = []
+
+    class FakePlayer:
+        skipped = False
+
+        def play(self, source, volume, duration=None):
+            played.append(source)
+            return True
+
+        def available(self):
+            return True
+
+    def fake_remote_tracks(
+        query,
+        requester="AutoDJ",
+        playlist=False,
+        limit=200,
+        ytdlp_path="",
+        mpv_path="",
+        search_limit=1,
+        raw_target=False,
+        **kw,
+    ):
+        if query.startswith("ytsearch1:"):
+            return [Track("https://www.youtube.com/watch?v=real_resolved_id", "Resolved Title", 180, requester)]
+        return [Track("https://www.youtube.com/watch?v=fallback", "Fallback", 100, requester)]
+
+    monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote_tracks)
+
+    cfg = Config()
+    e = Engine(cfg, FakeAdapter(), player=FakePlayer())
+    search_track = Track("ytsearch1:some query", "Query Title", None, "User")
+    e.queue.add_request(search_track)
+
+    # Run one iteration of the player loop logic directly
+    t = e.queue.pop()
+    assert t.source == "ytsearch1:some query"
+    t = e._resolve_track_if_search(t)
+    assert t.source == "https://www.youtube.com/watch?v=real_resolved_id"
+    assert t.title == "Resolved Title"
+    assert t.duration == 180
+
+
+def test_playlist_store_update_source(tmp_path):
+    from camfrog_autodj.playlist import PlaylistStore, save_playlist
+    from camfrog_autodj.models import Track
+
+    p = tmp_path / "playlist.json"
+    initial = [
+        Track("ytsearch1:first", "First", None, "User1"),
+        Track("https://youtube.com/watch?v=already_url", "Second", 200, "User2"),
+    ]
+    save_playlist(str(p), initial)
+
+    store = PlaylistStore(str(p))
+    resolved_track = Track("https://youtube.com/watch?v=resolved_first", "Resolved First", 195, "User1")
+    ok = store.update_source("ytsearch1:first", resolved_track)
+    assert ok is True
+
+    loaded = store.load()
+    assert len(loaded) == 2
+    assert loaded[0].source == "https://youtube.com/watch?v=resolved_first"
+    assert loaded[0].title == "Resolved First"
+    assert loaded[0].duration == 195
+    assert loaded[1].source == "https://youtube.com/watch?v=already_url"
+
+
+def test_preload_search_tracks_updates_queue(monkeypatch):
+    from camfrog_autodj.engine import Engine
+    from camfrog_autodj.config import Config
+    from camfrog_autodj.models import Track
+
+    class FakeAdapter:
+        def messages(self):
+            return iter([])
+
+        def send(self, t):
+            pass
+
+        def close(self):
+            pass
+
+    class FakePlayer:
+        def play(self, *a, **k):
+            return True
+
+        def available(self):
+            return True
+
+    def fake_remote_tracks(query, requester="AutoDJ", **kw):
+        if query == "ytsearch1:q1":
+            return [Track("https://youtube.com/watch?v=id1", "Title 1", 100, requester)]
+        return [Track("https://youtube.com/watch?v=id2", "Title 2", 200, requester)]
+
+    monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote_tracks)
+
+    cfg = Config()
+    e = Engine(cfg, FakeAdapter(), player=FakePlayer())
+    t1 = Track("ytsearch1:q1", "Raw Q1", None, "User")
+    t2 = Track("https://youtube.com/watch?v=already", "Direct", 150, "User")
+    e.queue.add_request(t1)
+    e.queue.add_request(t2)
+
+    e._preload_search_tracks()
+
+    # The first item should now be resolved in the queue
+    with e.queue.lock:
+        first = e.queue.requests[0]
+        second = e.queue.requests[1]
+    assert first.source == "https://youtube.com/watch?v=id1"
+    assert first.title == "Title 1"
+    assert second.source == "https://youtube.com/watch?v=already"
+
+

@@ -103,6 +103,28 @@ class PlaylistStore:
         with self.lock:
             return load_playlist(self.path)
 
+    def update_source(self, old_source: str, new_track: Track) -> bool:
+        """Replace a track in the playlist file (e.g. after resolving ytsearch to a real URL)."""
+        if not self.path or not old_source or not new_track:
+            return False
+        with self.lock:
+            try:
+                cur = load_playlist(self.path)
+                changed = False
+                for i, t in enumerate(cur):
+                    if t.source == old_source:
+                        cur[i] = new_track
+                        changed = True
+                        break
+                if changed:
+                    save_playlist(self.path, cur)
+                    log.info("playlist: resolved %r -> %r in %s", old_source, new_track.source, self.path)
+                    return True
+                return False
+            except Exception:
+                log.exception("cannot update resolved track in playlist file %r", self.path)
+                return False
+
     def add(self, tracks) -> int:
         """Append tracks to playlist.json (dedup by source). Returns how many were new.
         Disabled / nothing to add / write failure are all no-ops (never breaks the request)."""

@@ -371,6 +371,46 @@ class Engine:
 
         self.exec.submit(job)
 
+    def _resolve_track_if_search(self, t: Track) -> Track:
+        """Resolve a search-backed track (ytsearch1:...) to a real URL if needed."""
+        if not SEARCH_PREFIX.match(t.source):
+            return t
+        orig_src = t.source
+        try:
+            resolved = self._remote(
+                orig_src,
+                user=t.requester or "AutoDJ",
+                playlist=False,
+                search_limit=1,
+                raw_target=True,
+            )
+            if resolved:
+                res = resolved[0]
+                if self.playlist:
+                    self.playlist.update_source(orig_src, res)
+                return res
+        except Exception:
+            log.warning("failed to dynamically resolve search track %r; using source as-is", orig_src)
+        return t
+
+    def _preload_search_tracks(self):
+        """Asynchronously resolve upcoming search-backed tracks in the queue."""
+        try:
+            with self.queue.lock:
+                candidates = [t for t in self.queue.requests if SEARCH_PREFIX.match(t.source)][:3]
+            for cand in candidates:
+                if self.stop_evt.is_set():
+                    break
+                resolved = self._resolve_track_if_search(cand)
+                if resolved is not cand:
+                    with self.queue.lock:
+                        for idx, req in enumerate(self.queue.requests):
+                            if req is cand or req.source == cand.source:
+                                self.queue.requests[idx] = resolved
+                                break
+        except Exception:
+            log.debug("preload search tracks encountered an issue", exc_info=True)
+
     def _load_all(self):
         try:
             self.index.scan()
@@ -400,6 +440,8 @@ class Engine:
                 log.exception("playlist load failed")
         log.info("autoplay pool: %d tracks; queue: %d requests", len(self.queue.pool), len(self.queue.requests))
         self.wake.set()
+        # Trigger background lookahead resolution for search tracks
+        self.exec.submit(self._preload_search_tracks)
 
     # ---- playback loop --------------------------------------------------
     def _announce(self, t: Track):
@@ -432,6 +474,10 @@ class Engine:
                 self.wake.wait(2)
                 self.wake.clear()
                 continue
+            # Dynamic resolution for search-backed tracks (e.g. ytsearch1:... in playlist packs)
+            t = self._resolve_track_if_search(t)
+            # After popping and resolving current, trigger preload for next in queue
+            self.exec.submit(self._preload_search_tracks)
             recorded = False
             while not self.stop_evt.is_set():
                 self.current = t
