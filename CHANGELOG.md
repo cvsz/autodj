@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+- **Dynamic search resolution for playlist tracks**: Search-backed entries (`ytsearch1:...`) from starter playlist files are dynamically resolved to real YouTube URLs, verified video titles, and exact durations upon playback and via asynchronous lookahead queue preloading.
+- **Automatic playlist update on resolve**: `PlaylistStore.update_source()` replaces resolved search queries in `playlist.json` with the real YouTube URL atomically, preventing repetitive search overhead on subsequent restarts.
+
 ## 0.2.5
 
 ### Fixed
