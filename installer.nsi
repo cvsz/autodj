@@ -92,25 +92,25 @@ Section "!MainProgram" SEC_MAIN
     ; do NOT bundle a machine-specific config.toml here
 SectionEnd
 
-Section "mpv + yt-dlp" SEC_MPV
+Section /o "mpv + yt-dlp" SEC_MPV
     SetOutPath "$INSTDIR\mpv"
-    File "mpv\mpv.exe"
-    File "mpv\mpv.com"
-    File "mpv\yt-dlp.exe"
-    File "mpv\mpv-register.bat"
-    File "mpv\mpv-unregister.bat"
+    File /nonfatal "mpv\mpv.exe"
+    File /nonfatal "mpv\mpv.com"
+    File /nonfatal "mpv\yt-dlp.exe"
+    File /nonfatal "mpv\mpv-register.bat"
+    File /nonfatal "mpv\mpv-unregister.bat"
     SetOutPath "$INSTDIR\mpv\_internal"
-    File /r "mpv\_internal\*.*"
+    File /nonfatal /r "mpv\_internal\*.*"
 SectionEnd
 
-Section "VBCable Virtual Audio Driver" SEC_VBCABLE
+Section /o "VBCable Virtual Audio Driver" SEC_VBCABLE
     SetOutPath "$INSTDIR\mpv\VBCABLE_Driver_Pack45"
-    File "mpv\VBCABLE_Driver_Pack45\VBCABLE_Setup_x64.exe"
-    File "mpv\VBCABLE_Driver_Pack45\VBCABLE_ControlPanel.exe"
-    File "mpv\VBCABLE_Driver_Pack45\readme.txt"
-    File /r "mpv\VBCABLE_Driver_Pack45\*.inf"
-    File /r "mpv\VBCABLE_Driver_Pack45\*.cat"
-    File /r "mpv\VBCABLE_Driver_Pack45\*.sys"
+    File /nonfatal "mpv\VBCABLE_Driver_Pack45\VBCABLE_Setup_x64.exe"
+    File /nonfatal "mpv\VBCABLE_Driver_Pack45\VBCABLE_ControlPanel.exe"
+    File /nonfatal "mpv\VBCABLE_Driver_Pack45\readme.txt"
+    File /nonfatal /r "mpv\VBCABLE_Driver_Pack45\*.inf"
+    File /nonfatal /r "mpv\VBCABLE_Driver_Pack45\*.cat"
+    File /nonfatal /r "mpv\VBCABLE_Driver_Pack45\*.sys"
 SectionEnd
 
 Section "Documentation" SEC_DOCS
