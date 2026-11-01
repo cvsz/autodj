@@ -29,6 +29,7 @@ jobs:
       - name: Install NSIS
         run: |
           choco install nsis --yes
+          echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Build AutoDJ.exe
         run: |
@@ -36,7 +37,7 @@ jobs:
 
       - name: Build NSIS installer
         run: |
-          makensis /DVERSION=${{ github.ref_name }} installer.nsi
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /DVERSION=${{ github.ref_name }} installer.nsi
 
       - name: Generate CycloneDX SBOM
         run: |
