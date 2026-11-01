@@ -7,7 +7,9 @@ Each `*.json` file follows the `version: 1` / `tracks: [...]` structure read by 
 The pack includes Thai and international pop, rock, country, hip-hop, R&B, jazz, EDM, K-pop, J-pop, C-pop, classical, instrumental, ambient, workout, karaoke, and more.
 
 ## Converting the search entries to real YouTube URLs
-Every `source` in this pack is a search query (`ytsearch1:...`), not a video URL, and AutoDJ plays the `source` as given, so these entries are not usable until they are resolved. Run once on a machine with internet access:
+In AutoDJ 0.2.5+, search queries (`ytsearch1:...`) are automatically resolved to verified YouTube URLs and titles on the fly and preloaded in the background without requiring offline resolution.
+
+If you prefer to pre-resolve the entire playlist pack beforehand, you can run the optional offline resolution script on a machine with internet access:
 
 ```
 pip install yt-dlp
