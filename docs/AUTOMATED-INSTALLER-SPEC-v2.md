@@ -179,15 +179,15 @@ REM Windows batch
 .\build_installer.bat
 
 REM PowerShell (with version override)
-.\scripts\build_installer.ps1 -Version 0.2.4 -Sign
+.\scripts\build_installer.ps1 -Version 0.2.5 -Sign
 
 REM Linux/Wine
-./scripts/build_installer_linux.sh 0.2.4
+./scripts/build_installer_linux.sh 0.2.5
 ```
 
 ### Output
 ```
-dist\Camfrog-AutoDJ-Setup-0.2.3.exe  (~35 MB)
+dist\Camfrog-AutoDJ-Setup-0.2.5.exe  (~35 MB)
 ```
 
 ### Installer Features
@@ -284,9 +284,9 @@ VSVersionInfo(
 ```
 
 ### Version Update Checklist
-When bumping version (e.g., 0.2.3 → 0.2.4):
-- [ ] `version_info.txt` - `filevers=(0,2,4,0)`, `prodvers=(0,2,4,0)`, `FileVersion='0.2.4.0'`, `ProductVersion='0.2.4.0'`
-- [ ] `installer.nsi` - `!define APP_VERSION "0.2.4"`
+When bumping version (e.g., 0.2.4 → 0.2.5):
+- [ ] `version_info.txt` - `filevers=(0,2,5,0)`, `prodvers=(0,2,5,0)`, `FileVersion='0.2.5.0'`, `ProductVersion='0.2.5.0'`
+- [ ] `installer.nsi` - `!define APP_VERSION "0.2.5"`
 - [ ] `install.ps1` - Update version in header comment
 - [ ] `CHANGELOG.md` - Add release notes
 - [ ] Run `.\build.ps1 -Clean` then `.\build_installer.bat`
