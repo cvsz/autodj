@@ -47,14 +47,14 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
-            Camfrog-AutoDJ-Setup-${{ github.ref_name }}.exe
+            Camfrog-AutoDJ-Setup-*.exe
             Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
 
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            Camfrog-AutoDJ-Setup-${{ github.ref_name }}.exe
+            Camfrog-AutoDJ-Setup-*.exe
             Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
