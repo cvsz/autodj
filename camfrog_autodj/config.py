@@ -79,6 +79,19 @@ class Config:
     # (deduplicated) and join the autoplay pool (random); "" = disable persistence
     search_limit: int = 1  # YouTube text-search results fetched per non-admin !play (1 = first match only)
     mpv_timeout: float = 30.0  # seconds to wait for one mpv track before treating it as hung (0 = no timeout)
+    # Audio Engineering
+    audio_fade: bool = True  # enable audio volume fade-in and fade-out
+    audio_fade_in_sec: float = 1.2  # fade-in duration in seconds
+    audio_fade_out_sec: float = 1.5  # fade-out duration on skip/stop in seconds
+    audio_normalize: bool = False  # enable dynamic audio loudness normalization (dynaudnorm)
+    # YouTube Authentication
+    youtube_cookies_file: str = ""  # path to Netscape cookies.txt for yt-dlp
+    youtube_cookies_browser: str = ""  # browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
+    # Dynamic Moderation
+    voteskip_dynamic: bool = False  # dynamic voteskip threshold based on participant count
+    voteskip_dynamic_pct: int = 30  # percentage of participants required to skip
+    user_request_limit: int = 5  # max song requests allowed per user within rate_limit_window
+    rate_limit_window: float = 300.0  # rolling time window for per-user request limit (seconds)
 
     @classmethod
     def load(cls, path: str | None) -> Config:
@@ -143,6 +156,11 @@ _RANGES = {
     "tts_duck": (0, 100),
     "search_limit": (1, 50),
     "mpv_timeout": (0, 3600),
+    "audio_fade_in_sec": (0.1, 10.0),
+    "audio_fade_out_sec": (0.1, 10.0),
+    "voteskip_dynamic_pct": (1, 100),
+    "user_request_limit": (1, 1000),
+    "rate_limit_window": (10.0, 86400.0),
 }
 
 

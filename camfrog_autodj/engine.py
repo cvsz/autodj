@@ -266,6 +266,8 @@ class Engine:
                 mpv_path=self.cfg.mpv_path,
                 search_limit=sl,
                 raw_target=raw_target,
+                cookies_file=getattr(self.cfg, "youtube_cookies_file", ""),
+                cookies_browser=getattr(self.cfg, "youtube_cookies_browser", ""),
             )
         except YtdlpMissing as ex:
             log.error(

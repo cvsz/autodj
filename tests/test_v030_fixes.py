@@ -568,3 +568,90 @@ def test_preload_search_tracks_updates_queue(monkeypatch):
     assert second.source == "https://youtube.com/watch?v=already"
 
 
+def test_audio_normalization_and_fade_configuration():
+    from camfrog_autodj.config import Config
+    from camfrog_autodj.player import MpvPlayer
+
+    cfg = Config(audio_fade=True, audio_fade_in_sec=1.5, audio_normalize=True)
+    player = MpvPlayer(cfg)
+    base = player._base()
+    assert "--af=dynaudnorm=f=75:g=15:p=0.95" in base
+
+
+def test_dynamic_voteskip_threshold():
+    from collections import namedtuple
+    from camfrog_autodj.config import Config
+    from camfrog_autodj.commands import Router
+    from camfrog_autodj.models import Track
+
+    Msg = namedtuple("Msg", ["user", "text", "local"], defaults=["", "", False])
+
+    class FakeEngine:
+        def __init__(self):
+            self.cfg = Config(voteskip_threshold=5, voteskip_dynamic=True, voteskip_dynamic_pct=30)
+            self.current = Track("https://youtube.com/watch?v=1", "Song", 120, "DJ")
+            self.votes = set()
+            self.admins = set()
+            self.blocked = set()
+            self.participant_count = 20
+            self.messages = []
+
+        def t(self, key, **kw):
+            return f"{key}:{kw}"
+
+        def say(self, text):
+            self.messages.append(text)
+
+        def skip(self):
+            self.messages.append("SKIPPED")
+
+    e = FakeEngine()
+    r = Router(e)
+    # Threshold for 20 participants at 30% is 6 votes
+    for i in range(5):
+        r.handle(Msg(f"user{i}", "!voteskip"))
+    assert "SKIPPED" not in e.messages
+    assert len(e.votes) == 5
+
+    # 6th vote reaches threshold
+    r.handle(Msg("user5", "!voteskip"))
+    assert "SKIPPED" in e.messages
+
+
+def test_user_request_rate_limit():
+    from collections import namedtuple
+    from camfrog_autodj.config import Config
+    from camfrog_autodj.commands import Router
+    from camfrog_autodj.models import Track
+
+    Msg = namedtuple("Msg", ["user", "text", "local"], defaults=["", "", False])
+
+    class FakeEngine:
+        def __init__(self):
+            self.cfg = Config(cooldown=0.0, user_request_limit=2, rate_limit_window=60.0, max_queue=100)
+            self.admins = set()
+            self.blocked = set()
+            self.messages = []
+            self.queue = type("Q", (), {"requests": [], "count_by": lambda *a: 0, "add_request": lambda *a: None})()
+
+        def t(self, key, **kw):
+            return f"{key}:{kw}"
+
+        def say(self, text):
+            self.messages.append(text)
+
+        def resolve(self, *a, **k):
+            return [Track("https://youtube.com/watch?v=1", "Song", 100, "user")]
+
+    e = FakeEngine()
+    r = Router(e)
+    r.handle(Msg("user1", "!play song1"))
+    r.handle(Msg("user1", "!play song2"))
+    assert len(r.user_requests["user1"]) == 2
+
+    # 3rd request within window should be rejected
+    r.handle(Msg("user1", "!play song3"))
+    assert any("max_requests" in m for m in e.messages)
+
+
+
