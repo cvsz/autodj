@@ -112,16 +112,21 @@ def _read_registry_values() -> dict[str, str]:
 
         values: dict[str, str] = {}
         try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\CamfrogAutoDJ") as key:
+            with winreg.OpenKey(  # type: ignore[attr-defined]
+                winreg.HKEY_CURRENT_USER,  # type: ignore[attr-defined]
+                r"Software\CamfrogAutoDJ",
+            ) as key:
                 for valname in ("mpv_path", "ytdlp_path"):
                     try:
-                        values[valname] = winreg.QueryValueEx(key, valname)[0]
+                        values[valname] = (  # type: ignore[attr-defined]
+                            winreg.QueryValueEx(key, valname)[0]  # type: ignore[attr-defined]
+                        )
                     except FileNotFoundError:
                         pass
         except FileNotFoundError:
             pass
         return values
-    except Exception:
+    except Exception:  # noqa: BLE001 - never let registry reads crash startup
         return {}
 
 
