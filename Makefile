@@ -168,6 +168,9 @@ config-check:  ## Validate config.toml: parses TOML, checks required keys exist
 security-check:  ## Security audit: check for hardcoded secrets, weak permissions, unsafe patterns
 	@$(PY) -c "import re,sys,pathlib; fail=0; [print(f'SECURITY: {p}:{i} possible hardcoded secret') or (fail:=1) for p in pathlib.Path('camfrog_autodj').rglob('*.py') for i,line in enumerate(p.read_text(encoding='utf-8',errors='replace').splitlines(),1) if re.search(r'(password|secret|token|api_key)\s*=\s*[\"\\'][^\"\\']{8,}[\"\\']',line,re.I)]; sys.exit(1) if fail else print('OK: no hardcoded secrets found')"
 
+validate-template:  ## Validate repository structure and Markdown links (template baseline check)
+	$(PY) scripts/validate_repo.py
+
 ## ---- Windows exe build + sign (cross-platform: Windows 11 + WSL2 Ubuntu 26.04) -------------
 PFX         ?=
 PASSWORD    ?=
