@@ -44,4 +44,4 @@ def test_version_consistency():
     assert "dist/AutoDJ.exe" in release_yml
     assert "Camfrog-AutoDJ-Setup-*.exe" in release_yml
     assert "SHA256SUMS.txt" in release_yml
-    assert "actions/upload-artifact@v4" in release_yml
+    assert "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" in release_yml  # v4
