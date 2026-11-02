@@ -204,7 +204,7 @@ def _voteskip(e, m, a, admin):
         participants = getattr(e, "participant_count", 0)
         if participants > 0:
             pct = getattr(e.cfg, "voteskip_dynamic_pct", 30)
-            need = max(1, int(round((participants * pct) / 100.0)))
+            need = max(1, round((participants * pct) / 100.0))
     if n >= need:
         e.skip()
         e.say(e.t("vote_passed", n=n, need=need))

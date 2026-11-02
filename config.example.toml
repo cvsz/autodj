@@ -27,9 +27,9 @@ input_index = -1
 #   $INSTDIR/mpv/mpv.exe        (mpv player)
 #   $INSTDIR/mpv/yt-dlp.exe     (YouTube downloader for mpv + title lookups)
 # Example: mpv_path = "mpv/mpv.exe"  (relative to AutoDJ.exe install dir)
-# Example: ytdlp_path = "mpv/yt-dlp.exe"
-mpv_path = "mpv/mpv.exe"
-ytdlp_path = "mpv/yt-dlp.exe"
+# Example: ytdlp_path = "%APPDATA%\\Camfrog AutoDJ\\mpv\\yt-dlp.exe"
+mpv_path = "%APPDATA%\\Camfrog AutoDJ\\mpv\\mpv.exe"
+ytdlp_path = "%APPDATA%\\Camfrog AutoDJ\\mpv\\yt-dlp.exe"
 
 audio_device = ""              # e.g. "wasapi/{guid}" -> virtual cable input; list: mpv --audio-device=help
 volume = 70

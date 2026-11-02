@@ -107,7 +107,7 @@ class PillButton(tk.Canvas):
     """Rounded button drawn on a canvas. Behaves like a Button for the pieces the app uses:
     configure(text=..., command=...), cget("text"), plus set_active() for tabs/toggle chips and set_icon()."""
 
-    STYLES = {  # kind: (fill, hover fill, outline, text colour, active fill, active outline, active text)
+    STYLES = {  # kind: (fill, hover fill, outline, text colour, active fill, active outline, active text)  # noqa: RUF012
         "primary": (PINK, "#ff62b0", "", "#ffffff", PINK, "", "#ffffff"),
         "ghost": (SURFACE2, "#232b4a", BORDER, TEXT, SURFACE2, BORDER, TEXT),
         "tab": (SURFACE, SURFACE2, "", MUTED, "#241b4d", VIOLET, TEXT),
@@ -898,8 +898,10 @@ class App(tk.Tk):
 
         row = 0
 
-        def _setting_row(label_key, widget, note_key=None, padx=(px(14), px(14))):
+        def _setting_row(label_key, widget, note_key=None, padx=None):
             nonlocal row
+            if padx is None:
+                padx = (px(14), px(14))
             lf = tk.Frame(sp_inner, bg=SURFACE)
             lf.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(px(6), px(2)), padx=padx)
             lbl = tk.Label(lf, bg=SURFACE, fg=TEXT, font=self.f_body, anchor="w")
@@ -1497,7 +1499,8 @@ class App(tk.Tk):
 
     def do_discover(self):
         """Run auto-discovery to find the Camfrog room window and chat controls."""
-        import subprocess, sys
+        import subprocess
+        import sys
         try:
             subprocess.run(
                 [sys.executable, "-m", "camfrog_autodj", "--discover", "-c", self.e.cfg_path if hasattr(self.e, "cfg_path") else "config.toml"],
@@ -1508,7 +1511,8 @@ class App(tk.Tk):
 
     def do_check(self):
         """Run setup diagnostic: mpv, yt-dlp, folders, Camfrog window."""
-        import subprocess, sys
+        import subprocess
+        import sys
         try:
             subprocess.run(
                 [sys.executable, "-m", "camfrog_autodj", "--check", "-c", self.e.cfg_path if hasattr(self.e, "cfg_path") else "config.toml"],
@@ -1517,7 +1521,7 @@ class App(tk.Tk):
         except Exception:
             log.exception("check failed")
 
-    def _toggle_bool(self, attr: str, btn: "PillButton"):
+    def _toggle_bool(self, attr: str, btn: PillButton):
         """Toggle a boolean setting stored as a plain Python attribute."""
         setattr(self, attr, not getattr(self, attr))
         btn.set_active(getattr(self, attr))
@@ -1609,6 +1613,7 @@ class App(tk.Tk):
             lines.append(f'input_index = {cfg.input_index}')
             lines.append("")
             lines.append(f'mpv_path = "{cfg.mpv_path}"')
+            lines.append(f'ytdlp_path = "{cfg.ytdlp_path}"')
             lines.append(f'audio_device = "{cfg.audio_device}"')
             lines.append(f'volume = {cfg.volume}')
             lines.append(f'music_dirs = {cfg.music_dirs!r}')
@@ -1647,7 +1652,25 @@ class App(tk.Tk):
             # Validate by parsing back
             tomllib.loads(new_text)
 
-            p.write_text(new_text, "utf-8")
+            # Write to config.toml; if not writable (e.g. installed to Program Files),
+            # relocate to %APPDATA%\Camfrog AutoDJ\config.toml and write there instead.
+            try:
+                p.write_text(new_text, "utf-8")
+            except (OSError, PermissionError):
+                app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
+                app_cfg_dir = Path(app_data) / "Camfrog AutoDJ"
+                app_cfg_dir.mkdir(parents=True, exist_ok=True)
+                app_cfg_path = app_cfg_dir / "config.toml"
+                p = app_cfg_path
+                p.write_text(new_text, "utf-8")
+                # Remember the writable location so subsequent saves don't keep trying
+                # the original (read-only) path first.
+                self.e.cfg_path = str(p)
+                logging.getLogger(__name__).info(
+                    "config.toml not writable at %s; saved to %s instead",
+                    cfg_path,
+                    p,
+                )
 
             # Re-read config to apply
             from .config import Config

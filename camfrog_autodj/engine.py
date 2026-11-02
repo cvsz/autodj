@@ -9,6 +9,7 @@ import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from .commands import Router
 from .library import (
@@ -104,6 +105,23 @@ class Engine:
                 self.cfg.msg_next,
             )
             return self.t("up_next", **t.fields())
+
+    def _is_youtube_playlist(self, url: str) -> bool:
+        """Check if the URL is a YouTube playlist URL."""
+        try:
+            parsed = urlparse(url)
+            if not parsed.scheme or not parsed.netloc:
+                return False
+            hostname = parsed.netloc.lower()
+            if not any(h == hostname or hostname.endswith("." + h) for h in ("youtube.com", "youtu.be", "music.youtube.com")):
+                return False
+            # Check for playlist URL patterns
+            if parsed.path == "/playlist":
+                return True
+            query = parse_qs(parsed.query)
+            return "list" in query
+        except Exception:
+            return False
 
     # ---- chat out -------------------------------------------------------
     def log_chat(self, who: str, text: str):
@@ -298,7 +316,9 @@ class Engine:
         if is_url(arg):
             if not admin and not host_ok(arg, self.cfg.allowed_hosts):
                 raise UserError(self.t("host_denied"))
-            return self._remote(arg, user, playlist=admin)
+            # Detect YouTube playlist URLs and enable playlist mode automatically
+            is_playlist = self._is_youtube_playlist(arg)
+            return self._remote(arg, user, playlist=admin or is_playlist)
         if os.path.isabs(arg):
             p = Path(arg)
             if not admin and not self.index.contains(p):

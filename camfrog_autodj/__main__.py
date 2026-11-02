@@ -82,7 +82,7 @@ def main():
         print(f"\nCannot start: {ex}\n", file=sys.stderr)
         sys.exit(2)
     except RuntimeError as ex:  # e.g. the Camfrog room window is not open
-        logging.error("%s", ex)
+        log.error("%s", ex)
         sys.exit(1)
 
 
@@ -111,9 +111,9 @@ def _run(a, level):
         if os.path.exists(alt):
             a.config = alt
     if os.path.exists(a.config):
-        logging.info("config: %s", os.path.abspath(a.config))
+        log.info("config: %s", os.path.abspath(a.config))
     else:
-        logging.warning(
+        log.warning(
             "config file %s not found: running with built-in defaults (copy config.example.toml to config.toml)",
             os.path.abspath(a.config),
         )
@@ -137,7 +137,7 @@ def _run(a, level):
         app_cfg_path = app_cfg_dir / "config.toml"
         if p.exists() and not app_cfg_path.exists():
             shutil.copyfile(p, app_cfg_path)
-            logging.info(
+            log.info(
                 "config.toml not writable at %s; using %s instead",
                 p,
                 app_cfg_path,
@@ -161,7 +161,7 @@ def _run(a, level):
         try:
             ensure_room(cfg)
         except Exception as ex:  # pragma: no cover - defensive; discovery is best-effort
-            logging.getLogger(__name__).warning(
+            log.warning(
                 "auto-launch failed; continuing without Camfrog: %s", ex
             )
     uses_uia = "uia" in (cfg.chat_reader, cfg.chat_sender)
@@ -189,7 +189,7 @@ def _run(a, level):
         if a.gui:
             # The window must still open so the user can run --check / --discover
             # from inside it; chat degrades to silent until Camfrog is reachable.
-            logging.error(
+            log.error(
                 "cannot attach to Camfrog chat (%s); opening the GUI without chat",
                 ex,
             )

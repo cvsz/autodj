@@ -35,7 +35,7 @@ def _ytdlp_version(exe: str) -> str:
         kw: dict = {"capture_output": True, "text": True, "timeout": 15}
         if os.name == "nt":
             kw["creationflags"] = 0x08000000
-        r = subprocess.run([exe, "--version"], **kw)
+        r = subprocess.run([exe, "--version"], check=False, **kw)
         return (
             (r.stdout or "").strip().splitlines()[0]
             if r.returncode == 0 and r.stdout.strip()
