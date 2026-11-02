@@ -356,6 +356,47 @@ def write_report(path: Path, report: dict) -> None:
             tmp.unlink()
 
 
+def paths_alias(left: Path, right: Path) -> bool:
+    """Return whether two paths identify the same filesystem object."""
+    left = left.expanduser()
+    right = right.expanduser()
+    try:
+        left_resolved = left.resolve(strict=False)
+        right_resolved = right.resolve(strict=False)
+    except (OSError, RuntimeError) as ex:
+        raise ResolverError("invalid_report_path", f"Could not resolve report/input path: {ex}") from ex
+
+    if os.path.normcase(str(left_resolved)) == os.path.normcase(str(right_resolved)):
+        return True
+
+    try:
+        return os.path.samefile(left, right)
+    except FileNotFoundError:
+        return False
+    except OSError as ex:
+        raise ResolverError("invalid_report_path", f"Could not compare report/input paths: {ex}") from ex
+
+
+def validate_report_path(report_path: Path, input_files: list[Path]) -> None:
+    """Reject report targets that could overwrite an input or its backup."""
+    protected_paths: list[tuple[str, Path]] = []
+    for input_path in input_files:
+        protected_paths.append(("playlist", input_path))
+        protected_paths.append(("playlist backup", input_path.with_name(input_path.name + ".bak")))
+
+    output_paths = (
+        ("report", report_path),
+        ("report temporary file", report_path.with_name(report_path.name + ".tmp")),
+    )
+    for output_label, output_path in output_paths:
+        for protected_label, protected_path in protected_paths:
+            if paths_alias(output_path, protected_path):
+                raise ResolverError(
+                    "report_path_collision",
+                    f"--report-json {output_path} conflicts with {protected_label} path {protected_path}",
+                )
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("files", nargs="*", help="playlist files (default: every *.json next to this script)")
@@ -381,6 +422,15 @@ def main(argv=None) -> int:
     if args.delay < 0:
         parser.error("--delay must not be negative")
 
+    here = Path(__file__).resolve().parent
+    files = [Path(file) for file in args.files] or sorted(here.glob("*.json"))
+    if args.report_json:
+        try:
+            validate_report_path(Path(args.report_json), files)
+        except ResolverError as ex:
+            print(f"ERROR [{ex.category}]: {ex}", file=sys.stderr)
+            return 2
+
     try:
         command = find_ytdlp(args.ytdlp)
         env, use_system_ca, ca_bundle = configure_ca(args.ca_bundle, args.system_ca)
@@ -393,8 +443,6 @@ def main(argv=None) -> int:
     if ca_bundle:
         print(f"CA bundle: {ca_bundle}")
 
-    here = Path(__file__).resolve().parent
-    files = [Path(file) for file in args.files] or sorted(here.glob("*.json"))
     total_ok = total_skip = 0
     all_fails: list[str] = []
     failure_records: list[dict] = []
