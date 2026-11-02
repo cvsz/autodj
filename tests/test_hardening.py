@@ -16,7 +16,7 @@ from camfrog_autodj.adapters.base import ChatMessage
 from camfrog_autodj.commands import COMMANDS
 from camfrog_autodj.config import Config, ConfigError
 from camfrog_autodj.messages import STR
-from camfrog_autodj.models import Track
+from camfrog_autodj.models import Track, UserError
 from camfrog_autodj.playqueue import PlayQueue
 
 
@@ -335,6 +335,17 @@ def test_valid_config_still_loads_and_normalises(tmp_path):
     assert Config.load(None).lang == "en"
 
 
+def test_config_rejects_duplicate_keys(tmp_path):
+    """ConfigLoader should reject duplicate keys in TOML."""
+    from camfrog_autodj.config import Config, ConfigError
+
+    p = tmp_path / "config.toml"
+    p.write_text('bot_nick = "AutoDJ"\nbot_nick = "Other"\n', "utf-8")
+
+    with pytest.raises(ConfigError):
+        Config.load(str(p))
+
+
 def test_shipped_example_config_is_valid():
     import pathlib
 
@@ -403,6 +414,62 @@ def test_parse_ytdlp_info_playlist_and_single():
         "webpage_url": "https://youtu.be/q",
     }
     assert parse_ytdlp_info(single, "amy")[0].source == "https://youtu.be/q"
+
+
+def test_parse_ytdlp_info_rejects_invalid_urls():
+    """parse_ytdlp_info should skip entries with invalid or missing URLs."""
+    from camfrog_autodj.library import parse_ytdlp_info
+
+    # Entry with no URL and no ID should be skipped
+    info = {"entries": [{"title": "No URL", "duration": 100}]}
+    tracks = parse_ytdlp_info(info, "amy")
+    assert len(tracks) == 0
+
+    # Entry with empty string URL should be skipped
+    info = {"entries": [{"url": "", "title": "Empty URL", "duration": 100}]}
+    tracks = parse_ytdlp_info(info, "amy")
+    assert len(tracks) == 0
+
+    # Entry with invalid URL (not http/https) should be skipped
+    info = {"entries": [{"url": "not-a-valid-url", "title": "Invalid URL", "duration": 100}]}
+    tracks = parse_ytdlp_info(info, "amy")
+    assert len(tracks) == 0
+
+    # Entry with valid URL should be kept
+    info = {"entries": [{"url": "https://www.youtube.com/watch?v=abc123", "title": "Valid", "duration": 100}]}
+    tracks = parse_ytdlp_info(info, "amy")
+    assert len(tracks) == 1
+    assert tracks[0].source == "https://www.youtube.com/watch?v=abc123"
+
+
+def test_resolve_track_if_search_fails_on_empty_result(monkeypatch):
+    """_resolve_track_if_search should raise UserError when resolution returns no tracks."""
+    e = make()
+    t = Track("ytsearch1:nonexistent", "test", 100, "amy")
+
+    def mock_remote(query, user, playlist=False, search_limit=1, raw_target=False, **kwargs):
+        return []
+
+    e._remote = mock_remote
+
+    with pytest.raises(UserError):
+        e._resolve_track_if_search(t)
+
+
+def test_resolve_track_if_search_returns_resolved_track(monkeypatch):
+    """_resolve_track_if_search should return resolved track with state READY."""
+    e = make()
+    t = Track("ytsearch1:test song", "test", 100, "amy")
+
+    def mock_remote(query, user, playlist=False, search_limit=1, raw_target=False, **kwargs):
+        return [Track("https://youtu.be/abc123", "Resolved Track", 100, "amy")]
+
+    e._remote = mock_remote
+
+    result = e._resolve_track_if_search(t)
+    assert result.source == "https://youtu.be/abc123"
+    assert result.title == "Resolved Track"
+    assert result.state == "READY"
 
 
 def test_remote_tracks_falls_back_to_exe_when_module_missing(monkeypatch, tmp_path):

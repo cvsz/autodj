@@ -286,6 +286,7 @@ class Engine:
                 raw_target=raw_target,
                 cookies_file=getattr(self.cfg, "youtube_cookies_file", ""),
                 cookies_browser=getattr(self.cfg, "youtube_cookies_browser", ""),
+                ca_bundle=getattr(self.cfg, "youtube_ca_bundle", ""),
             )
         except YtdlpMissing as ex:
             log.error(
@@ -333,8 +334,21 @@ class Engine:
         hit = self.index.find(arg, user)
         return [hit] if hit else self._remote(arg, user)
 
-    def request(self, arg: str, user: str = "DJ"):
-        """Admin request (GUI): no limits, runs in the background."""
+    def request(
+        self,
+        arg: str,
+        user: str = "DJ",
+        on_success=None,
+        on_error=None,
+    ):
+        """Admin request (GUI): no limits, runs in the background.
+
+        Args:
+            arg: The URL or search text to resolve.
+            user: The user name for display in announcements.
+            on_success: Optional callback called with (tracks) list on success.
+            on_error: Optional callback called with (error_message) string on failure.
+        """
 
         def job():
             try:
@@ -347,22 +361,31 @@ class Engine:
                 self.wake.set()
                 if self.playlist:
                     self.playlist.add(tracks)
-                self.say(
-                    self.t("queued_many", n=len(tracks), user=user)
-                    if len(tracks) > 1
-                    else self.t(
-                        "queued_one",
-                        pos=pos,
-                        title=tracks[0].title,
-                        dur=tracks[0].dur,
-                        user=user,
+                if on_success:
+                    on_success(tracks)
+                else:
+                    self.say(
+                        self.t("queued_many", n=len(tracks), user=user)
+                        if len(tracks) > 1
+                        else self.t(
+                            "queued_one",
+                            pos=pos,
+                            title=tracks[0].title,
+                            dur=tracks[0].dur,
+                            user=user,
+                        )
                     )
-                )
             except UserError as ex:
-                self.say(str(ex))
+                if on_error:
+                    on_error(str(ex))
+                else:
+                    self.say(str(ex))
             except Exception:
                 log.exception("request failed: %s", arg)
-                self.say(self.t("error"))
+                if on_error:
+                    on_error(self.t("error"))
+                else:
+                    self.say(self.t("error"))
 
         self.exec.submit(job)
 
@@ -394,7 +417,11 @@ class Engine:
         self.exec.submit(job)
 
     def _resolve_track_if_search(self, t: Track) -> Track:
-        """Resolve a search-backed track (ytsearch1:...) to a real URL if needed."""
+        """Resolve a search-backed track (ytsearch1:...) to a real URL if needed.
+
+        Raises UserError if resolution fails, so callers know not to play
+        the unresolved search URL.
+        """
         if not SEARCH_PREFIX.match(t.source):
             return t
         orig_src = t.source
@@ -408,12 +435,16 @@ class Engine:
             )
             if resolved:
                 res = resolved[0]
+                res.state = "READY"
                 if self.playlist:
                     self.playlist.update_source(orig_src, res)
                 return res
-        except Exception:
-            log.warning("failed to dynamically resolve search track %r; using source as-is", orig_src)
-        return t
+            raise UserError(self.t("nothing_found"))
+        except UserError:
+            raise
+        except Exception as ex:
+            log.warning("failed to dynamically resolve search track %r: %s", orig_src, ex)
+            raise UserError(str(ex)) from ex
 
     def _preload_search_tracks(self):
         """Asynchronously resolve upcoming search-backed tracks in the queue."""
@@ -521,12 +552,29 @@ class Engine:
                 self.wake.clear()
                 continue
             # Dynamic resolution for search-backed tracks (e.g. ytsearch1:... in playlist packs)
-            t = self._resolve_track_if_search(t)
+            try:
+                t = self._resolve_track_if_search(t)
+            except UserError as ex:
+                log.warning("failed to resolve track %r: %s", t.source, ex)
+                t.state = "FAILED"
+                fails += 1
+                self.current = None
+                if fails <= MAX_FAIL_ANNOUNCE:
+                    self.say(self.t("cannot_play", title=t.title))
+                elif fails == MAX_FAIL_ANNOUNCE + 1:
+                    log.warning(
+                        "%d tracks in a row failed to play: not announcing further failures in the room "
+                        "(check the lines above; run AutoDJ.exe --check)",
+                        fails - 1,
+                    )
+                self.stop_evt.wait(self.fail_delay(fails))
+                continue
             # After popping and resolving current, trigger preload for next in queue
             self.exec.submit(self._preload_search_tracks)
             recorded = False
             while not self.stop_evt.is_set():
                 self.current = t
+                t.state = "PLAYING"
                 self.votes.clear()
                 self.paused, self._paused_at, self._paused_total = False, None, 0.0
                 self.started_at = time.monotonic()
@@ -545,6 +593,7 @@ class Engine:
                     ok = False
                 if not ok:
                     fails += 1
+                    t.state = "FAILED"
                     self.current = None
                     if fails <= MAX_FAIL_ANNOUNCE:
                         self.say(self.t("cannot_play", title=t.title))
@@ -560,6 +609,7 @@ class Engine:
                     break
                 fails = 0
                 if not recorded:
+                    t.state = "COMPLETED"
                     self.history.appendleft(t)
                     recorded = True
                 if self.queue.repeat != "one" or getattr(self.player, "skipped", False):
@@ -572,7 +622,8 @@ class Engine:
             for msg in self.adapter.messages():
                 if self.stop_evt.is_set():
                     break
-                if msg.user.lower() == self.cfg.bot_nick.lower() or self._is_echo(
+                # Ignore our own messages: match by normalized nick or by echo detection
+                if norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(
                     msg.text
                 ):
                     continue

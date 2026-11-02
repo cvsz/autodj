@@ -118,7 +118,9 @@ def test_buttons_do_what_they_say(monkeypatch):
         gui, e, app = _app(monkeypatch)
         app.ent_add.insert(0, "my song")
         app.add()
-        time.sleep(0.2)
+        app.update()  # process Tk events so async callback clears entry
+        time.sleep(0.1)
+        app.update()
         assert app.ent_add.get() == ""  # request accepted and the box cleared
         _click(app.c_shuffle)
         assert e.queue.shuffle is False or e.queue.shuffle is True

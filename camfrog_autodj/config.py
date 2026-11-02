@@ -88,6 +88,7 @@ class Config:
     # YouTube Authentication
     youtube_cookies_file: str = ""  # path to Netscape cookies.txt for yt-dlp
     youtube_cookies_browser: str = ""  # browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
+    youtube_ca_bundle: str = ""  # path to custom CA bundle PEM file for yt-dlp certificate verification
     # Dynamic Moderation
     voteskip_dynamic: bool = False  # dynamic voteskip threshold based on participant count
     voteskip_dynamic_pct: int = 30  # percentage of participants required to skip
