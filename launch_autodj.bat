@@ -5,8 +5,10 @@ rem Self-relaunch hidden via PowerShell so the CMD window does not show.
 rem First run: no marker -> relaunch hidden, then exit.
 rem Second run: marker set -> proceed normally with hidden window.
 if "%AUTODJ_HIDDEN%" neq "1" (
-    powershell -NoProfile -WindowStyle Hidden -Command "Start-Process -FilePath '%~f0' -ArgumentList '' -WindowStyle Hidden"
-    exit /b
+    rem First run: relaunch hidden via PowerShell; if PowerShell is unavailable,
+    rem fall through and run with a visible CMD window instead of exiting.
+    powershell -NoProfile -WindowStyle Hidden -Command "Start-Process -FilePath '%~f0' -ArgumentList '' -WindowStyle Hidden" 2>nul
+    if not errorlevel 1 exit /b
 )
 set AUTODJ_HIDDEN=1
 setlocal EnableDelayedExpansion
