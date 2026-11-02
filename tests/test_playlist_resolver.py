@@ -41,6 +41,16 @@ def test_find_ytdlp_uses_windows_executable_name(monkeypatch):
     assert calls[0] == "yt-dlp.exe"
 
 
+def test_find_ytdlp_can_detect_windows_exe_from_wsl_path(monkeypatch):
+    monkeypatch.setattr(resolver.os, "name", "posix")
+    monkeypatch.setattr(
+        resolver.shutil,
+        "which",
+        lambda name: "/mnt/c/Tools/yt-dlp.exe" if name == "yt-dlp.exe" else None,
+    )
+    assert resolver.find_ytdlp() == ["/mnt/c/Tools/yt-dlp.exe"]
+
+
 def test_find_ytdlp_falls_back_to_current_python_module(monkeypatch):
     monkeypatch.setattr(resolver.shutil, "which", lambda name: None)
     monkeypatch.setattr(resolver.importlib.util, "find_spec", lambda name: object())
