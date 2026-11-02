@@ -184,7 +184,7 @@ installer-clean:  ## Clean installer artifacts
 clean:  ## Remove Python caches and test artifacts
 	@$(PY) -c "import shutil, pathlib; [shutil.rmtree(p) for p in pathlib.Path('.').glob('**/__pycache__') if p.is_dir()]; [p.unlink() for p in pathlib.Path('.').glob('**/*.pyc')]; shutil.rmtree('.pytest_cache', ignore_errors=True); shutil.rmtree('htmlcov', ignore_errors=True); pathlib.Path('.coverage').unlink(missing_ok=True)"
 
-clean-all: clean  ## clean + remove build/dist/spec from a Windows build
+clean-all: clean  ## clean generated build/dist artifacts; preserve tracked PyInstaller spec files
 	@$(PY) -c "import shutil; shutil.rmtree('build', ignore_errors=True); shutil.rmtree('dist', ignore_errors=True)"
 	@rm -f dist/Camfrog-AutoDJ-Setup-*.exe dist/installer.nsi
 
