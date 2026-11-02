@@ -153,6 +153,7 @@ class PillButton(tk.Canvas):
         self._ifont = icon_font or self._font
         self._minw, self._h, self._padx = minw, height, padx
         self._hover = self._down = self._active = False
+        self._enabled = True
         self.bind("<Enter>", lambda _e: self._hov(True))
         self.bind("<Leave>", lambda _e: self._hov(False))
         self.bind("<ButtonPress-1>", self._press)
@@ -170,6 +171,10 @@ class PillButton(tk.Canvas):
             redraw = True
         if "command" in kw:
             self._cmd = kw.pop("command")
+            redraw = True
+        if "state" in kw:
+            self._enabled = kw.pop("state") == "normal"
+            redraw = True
         if redraw:
             self._draw()
         if kw or cnf:
@@ -199,10 +204,14 @@ class PillButton(tk.Canvas):
         self._draw()
 
     def _press(self, _e):
+        if not self._enabled:
+            return
         self._down = True
         self._draw()
 
     def _release(self, e):
+        if not self._enabled:
+            return
         was = self._down
         self._down = False
         self._draw()
@@ -214,6 +223,10 @@ class PillButton(tk.Canvas):
         ):
             self._cmd()
 
+    def set_state(self, enabled: bool):
+        self._enabled = bool(enabled)
+        self._draw()
+
     # --- drawing
     def _draw(self):
         fill, hov, line, fg, afill, aline, afg = self.STYLES[self._look]
@@ -223,6 +236,9 @@ class PillButton(tk.Canvas):
             fill = hov if not self._active else lerp_color(fill, "#ffffff", 0.08)
         if self._down:
             fill = lerp_color(fill, "#000000", 0.25)
+        if not self._enabled:
+            fill = lerp_color(fill, BG, 0.5)
+            fg = lerp_color(fg, BG, 0.6)
         iw = self._ifont.measure(self._icon) + 8 if self._icon else 0
         tw = self._font.measure(self._text)
         w = max(self._minw, iw + tw + 2 * self._padx)
@@ -785,9 +801,17 @@ class App(tk.Tk):
             side="left", fill="x", expand=True, ipady=px(9), padx=(0, px(10))
         )
         self.ent_add.bind("<Return>", lambda _e: self.add())
-        self._btn(add, "g_add", self.add, "primary", icon="＋", bg=BG, height=40).pack(
-            side="left"
+        self.b_add = self._btn(
+            add,
+            "g_add",
+            self.add,
+            "primary",
+            icon="＋",
+            bg=BG,
+            height=40,
+            minw=px(100),
         )
+        self.b_add.pack(side="left", padx=(px(10), 0))
         self._btn(add, "g_folder", self.load_folder, bg=BG, height=40).pack(
             side="left", padx=(px(8), 0)
         )
@@ -1517,11 +1541,45 @@ class App(tk.Tk):
     def _vol_release(self, v):
         self.e.set_volume(v)
 
+    def _set_adding_state(self, adding: bool):
+        """Disable add button and show resolving state during resolution."""
+        self.b_add.configure(state="disabled" if adding else "normal")
+        if adding:
+            self.v_hint.configure(text=self.e.t("g_adding"))
+        else:
+            self.v_hint.configure(text=self.e.t("g_add_hint"))
+
     def add(self):
         text = self.ent_add.get().strip()
-        if text:
-            self.e.request(text)
+        if not text:
+            return
+
+        self._set_adding_state(True)
+
+        def on_success(tracks):
+            self._set_adding_state(False)
             self.ent_add.delete(0, "end")
+            if len(tracks) == 1:
+                t = tracks[0]
+                self.v_hint.configure(
+                    text=self.e.t(
+                        "queued_one",
+                        pos=1,
+                        title=t.title,
+                        dur=t.dur,
+                        user="you",
+                    )
+                )
+            else:
+                self.v_hint.configure(
+                    text=self.e.t("queued_many", n=len(tracks), user="you")
+                )
+
+        def on_error(msg):
+            self._set_adding_state(False)
+            self.v_hint.configure(text=msg)
+
+        self.e.request(text, on_success=on_success, on_error=on_error)
 
     def add_files(self):
         ext = " ".join(f"*{x}" for x in sorted(MEDIA))

@@ -90,7 +90,11 @@ def find_ytdlp(ytdlp_path: str = "", mpv_path: str = "") -> str:
 
 
 def parse_ytdlp_info(info: dict, requester: str = "AutoDJ") -> list[Track]:
-    """yt-dlp's info dict (single video, playlist or search result) -> tracks."""
+    """yt-dlp's info dict (single video, playlist or search result) -> tracks.
+
+    Only tracks with valid, non-empty URLs are returned. Tracks with missing or
+    invalid URLs are skipped with a log warning.
+    """
     out = []
     for e in info.get("entries") or [info]:
         if not e:
@@ -98,8 +102,12 @@ def parse_ytdlp_info(info: dict, requester: str = "AutoDJ") -> list[Track]:
         url = e.get("webpage_url") or e.get("url") or ""
         if not is_url(url):
             if not e.get("id"):
+                log.warning("yt-dlp entry missing URL and ID, skipping")
                 continue
             url = f"https://www.youtube.com/watch?v={e['id']}"
+        if not url or not is_url(url):
+            log.warning(f"yt-dlp entry has invalid URL: {url!r}, skipping")
+            continue
         out.append(Track(url, e.get("title") or url, e.get("duration"), requester))
     return out
 
@@ -111,6 +119,7 @@ def _extract_exe(
     limit: int,
     cookies_file: str = "",
     cookies_browser: str = "",
+    ca_bundle: str = "",
 ) -> dict:
     cmd = [
         exe,
@@ -126,6 +135,8 @@ def _extract_exe(
         cmd.extend(["--cookies", str(Path(cookies_file).resolve())])
     elif cookies_browser:
         cmd.extend(["--cookies-from-browser", str(cookies_browser).strip()])
+    if ca_bundle and Path(ca_bundle).is_file():
+        cmd.extend(["--certificate", str(Path(ca_bundle).resolve())])
     cmd.append(target)
     kw: dict = {
         "capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace", "timeout": 90
@@ -175,6 +186,7 @@ def remote_tracks(
     raw_target: bool = False,
     cookies_file: str = "",
     cookies_browser: str = "",
+    ca_bundle: str = "",
 ) -> list[Track]:
     """YouTube URL, playlist URL, or plain search text -> tracks (metadata only).
     Uses the yt-dlp executable when there is one (see find_ytdlp), else the yt_dlp Python module.
@@ -200,6 +212,7 @@ def remote_tracks(
                 limit,
                 cookies_file=cookies_file,
                 cookies_browser=cookies_browser,
+                ca_bundle=ca_bundle,
             )
         except OSError as ex:  # cannot even start it: try the module instead
             log.warning("cannot run %s (%s): trying the yt_dlp module", exe, ex)
