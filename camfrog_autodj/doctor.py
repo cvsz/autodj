@@ -10,6 +10,7 @@ import subprocess
 from pathlib import Path
 
 from .library import MEDIA, find_ytdlp
+from .paths import resolve_executable
 
 Result = tuple[str, str]
 JS_RUNTIMES = ("deno", "node", "bun")
@@ -50,8 +51,9 @@ def run_checks(cfg, check_window: bool = True) -> list[Result]:
     add = lambda level, text: out.append((level, text))
 
     # mpv: the player itself
-    if shutil.which(cfg.mpv_path) or Path(cfg.mpv_path).is_file():
-        add("OK", f"mpv: {cfg.mpv_path}")
+    mpv_executable = resolve_executable(cfg.mpv_path)
+    if mpv_executable:
+        add("OK", f"mpv: {mpv_executable}")
     else:
         add(
             "FAIL",

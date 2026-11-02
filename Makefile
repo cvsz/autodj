@@ -25,7 +25,7 @@ IS_WINDOWS  := $(filter Windows_NT,$(OS))
 .PHONY: help install install-dev install-build install-auto venv \
         run run-gui run-console run-headless check discover windows say \
         test test-v test-one coverage mutation-smoke \
-        lint fmt typecheck validate-playlists full-validation security-check config-check \
+        lint lint-src fmt typecheck validate-playlists fix-playlists full-validation security-check config-check \
         build build-clean sign package release installer installer-clean \
         clean clean-all distclean \
         config version bump-patch changelog-check pre-commit ci docs
@@ -148,10 +148,11 @@ fix-playlists:  ## Validate and fix playlist/*.json (removes invalid entries wit
 	$(PY) tools/validate_playlists.py --fix
 
 ## ---- full validation -----------------------------------------------------------
-full-validation: typecheck validate-playlists test changelog-check config-check  ## Run ALL validation: typecheck, playlists, tests, changelog, config, installer
+full-validation: lint typecheck validate-playlists test changelog-check config-check  ## Run source validation (does not build or test the Windows installer)
 	@echo ""
 	@echo "================================================"
-	@echo "  FULL VALIDATION PASSED for v$(VERSION)"
+	@echo "  SOURCE VALIDATION PASSED for v$(VERSION)"
+	@echo "  Build, signing, installer, and Windows runtime are separate gates."
 	@echo "================================================"
 
 lint-src:  ## Lint source + tools with ruff (excludes test files with pre-existing issues)
@@ -164,11 +165,6 @@ lint-src:  ## Lint source + tools with ruff (excludes test files with pre-existi
 
 config-check:  ## Validate config.toml: parses TOML, checks required keys exist
 	@$(PY) -c "import tomllib,sys; p='$(CONFIG)'; data=tomllib.load(open(p,'rb')); required=['bot_nick','prefix','chat_reader','chat_sender','mpv_path']; missing=[k for k in required if k not in data]; sys.exit(1) if missing else print(f'OK: {p} is valid TOML with {len(data)} keys')"
-	@echo "  RELEASE v$(VERSION) READY"
-	@echo "  dist/AutoDJ.exe (signed unless NOSIGN=1)"
-	@echo "  Camfrog-AutoDJ-Setup-$(VERSION).exe"
-	@echo "  $(DIST_ZIP)"
-	@echo "================================================"
 
 package:  ## Zip the source tree for distribution (excludes caches, local config.toml)
 	@mkdir -p dist
@@ -189,7 +185,7 @@ clean:  ## Remove Python caches and test artifacts
 	@$(PY) -c "import shutil, pathlib; [shutil.rmtree(p) for p in pathlib.Path('.').glob('**/__pycache__') if p.is_dir()]; [p.unlink() for p in pathlib.Path('.').glob('**/*.pyc')]; shutil.rmtree('.pytest_cache', ignore_errors=True); shutil.rmtree('htmlcov', ignore_errors=True); pathlib.Path('.coverage').unlink(missing_ok=True)"
 
 clean-all: clean  ## clean + remove build/dist/spec from a Windows build
-	@$(PY) -c "import shutil; shutil.rmtree('build', ignore_errors=True); shutil.rmtree('dist', ignore_errors=True); [p.unlink() for p in pathlib.Path('.').glob('*.spec')]"
+	@$(PY) -c "import shutil; shutil.rmtree('build', ignore_errors=True); shutil.rmtree('dist', ignore_errors=True)"
 	@rm -f dist/Camfrog-AutoDJ-Setup-*.exe dist/installer.nsi
 
 distclean: clean-all  ## clean-all + remove the virtualenv
