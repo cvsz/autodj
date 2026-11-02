@@ -232,6 +232,8 @@ This report documents the complete project state after all fixes, validations, a
 | `docs/ai/README.md` | AI prompts |
 | `docs/adr/` | Architecture decision records |
 | `docs/reports/` | Post-release reports |
+| `docs/engineering/en.md` | ORC framework engineering documentation (English) |
+| `docs/engineering/th.md` | ORC framework engineering documentation (Thai) |
 
 ---
 
@@ -438,6 +440,31 @@ All **34 playlist files** in `playlist/` validated:
 
 ---
 
+
+## 17. Residual Risks & Known Limitations
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| `config.toml` contains machine-specific paths after first run | Low | Operator must edit `music_dirs`, `camfrog_exe`, `room` after installation |
+| Self-signed code signing certificate | Medium | Public distribution may trigger SmartScreen warnings; requires real code-signing certificate |
+| `mpv/` directory not tracked in git | Low | Must be present at build time; installer bundles `mpv\` directory |
+| Thai language installer requires `thai.nlf` in NSIS Contrib | Low | Installer falls back to English if `thai.nlf` not installed |
+
+## 18. Rollback / Recovery Instructions
+
+- **Code rollback:** `git revert <commit>` or `git reset --hard <previous-SHA>` on `main`
+- **Installer rollback:** Previous installer versions remain available in GitHub Releases
+- **Config rollback:** `config.toml.bak` is created by auto-discover before overwriting `config.toml`
+- **Uninstall:** NSIS uninstaller removes all files, shortcuts, and registry entries
+
+## 19. Next Actions
+
+| Action | Owner | Status |
+|--------|-------|--------|
+| Obtain real code-signing certificate (OV/EV) for public distribution | Operator | Pending |
+| Test on clean Windows VM without Camfrog pre-installed | Tester | Pending |
+| Verify auto-discover works with different Camfrog versions | Tester | Pending |
+| Document end-user installation steps in `docs/windows-install.md` | Writer | Pending |
 ## 16. Conclusion
 
 Camfrog AutoDJ v0.2.6 is production-ready as a reusable GitHub template with a fully functional Camfrog AutoDJ music bot. All critical issues have been resolved, all tests pass, all CI checks pass, and the repository is clean with a working tree in sync with `origin/main`.
