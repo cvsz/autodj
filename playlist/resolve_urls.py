@@ -314,14 +314,17 @@ def process_file(
                 )
 
     seen: set[str] = set()
-    unique = [
-        track
-        for track in tracks
-        if not (
-            URL.fullmatch(str(track.get("source", "")))
-            and (track["source"] in seen or seen.add(track["source"]))
-        )
-    ]
+    unique = []
+    for track in tracks:
+        if not isinstance(track, dict):
+            unique.append(track)
+            continue
+        source = str(track.get("source", ""))
+        if URL.fullmatch(source):
+            if source in seen:
+                continue
+            seen.add(source)
+        unique.append(track)
     if len(unique) != len(tracks) and not dry:
         tracks[:] = unique
         save(path, data)
