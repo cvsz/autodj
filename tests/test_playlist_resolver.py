@@ -5,7 +5,6 @@ import json
 import subprocess
 from pathlib import Path
 
-import certifi
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "playlist" / "resolve_urls.py"
@@ -65,7 +64,9 @@ def test_find_ytdlp_reports_missing_installation(monkeypatch):
 
 
 def test_configure_ca_uses_explicit_bundle_and_validates_it(monkeypatch, tmp_path):
-    bundle = Path(certifi.where())
+    bundle = tmp_path / "trusted-ca.pem"
+    bundle.write_text("test PEM bundle", encoding="utf-8")
+    monkeypatch.setattr(resolver.ssl, "create_default_context", lambda cafile: object())
     env, use_system_ca, selected = resolver.configure_ca(str(bundle), None)
     assert use_system_ca is True
     assert selected == str(bundle.resolve())
@@ -75,6 +76,13 @@ def test_configure_ca_uses_explicit_bundle_and_validates_it(monkeypatch, tmp_pat
 
     with pytest.raises(resolver.ResolverError, match="does not exist"):
         resolver.configure_ca(str(tmp_path / "missing.pem"), None)
+
+
+def test_configure_ca_rejects_invalid_pem_bundle(tmp_path):
+    bundle = tmp_path / "invalid-ca.pem"
+    bundle.write_text("not a PEM certificate", encoding="utf-8")
+    with pytest.raises(resolver.ResolverError, match="valid readable PEM bundle"):
+        resolver.configure_ca(str(bundle), None)
 
 
 def test_configure_ca_uses_posix_system_store_by_default(monkeypatch):
