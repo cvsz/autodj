@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Resolve MPV and yt-dlp executable paths consistently, including Windows environment variables and app-relative paths.
+- Preserve the user's `config.toml` across installer upgrades and retain user data during uninstall.
+- Make source-validation output explicit and keep `clean-all` from deleting the tracked PyInstaller spec.
+
 ## 0.2.6
 
 ### Added

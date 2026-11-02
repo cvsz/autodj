@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from .models import Track, YtdlpMissing
+from .paths import resolve_executable
 
 log = logging.getLogger("autodj")
 
@@ -68,35 +69,24 @@ def scan_folder(folder, requester: str = "AutoDJ") -> list[Track]:
 
 
 def find_ytdlp(ytdlp_path: str = "", mpv_path: str = "") -> str:
-    """The yt-dlp executable to use, '' if there is none. Order: the configured path, next to mpv, then PATH.
-    mpv plays YouTube through that same executable, so looking up titles with it keeps both in step
-    (and `yt-dlp -U` fixes both when YouTube changes)."""
+    """Resolve yt-dlp consistently with mpv: configured path, beside mpv, then PATH.
+
+    Explicit but invalid paths fail closed rather than silently selecting another binary.
+    Relative configured paths are resolved from the application directory.
+    """
     if ytdlp_path:
-        return (
-            ytdlp_path
-            if (shutil.which(ytdlp_path) or Path(ytdlp_path).is_file())
-            else ""
-        )
+        return resolve_executable(ytdlp_path)
+
+    mpv_executable = resolve_executable(mpv_path)
     names = ("yt-dlp.exe", "yt-dlp") if os.name == "nt" else ("yt-dlp",)
-    # If mpv_path is given and points to an actual file, use its parent directory
-    mpv_candidate = None
-    if mpv_path:
-        p = Path(mpv_path)
-        if p.is_file():
-            mpv_candidate = p.resolve()
-        else:
-            # Fallback: try to resolve via PATH
-            resolved = shutil.which(mpv_path)
-            if resolved:
-                mpv_candidate = Path(resolved).resolve()
-    if mpv_candidate:
-        for n in names:
-            cand = mpv_candidate.parent / n
-            if cand.is_file():
-                return str(cand)
-    # Not next to mpv: PATH, which is also where mpv's own youtube hook looks. (The default mpv_path is "mpv",
-    # i.e. always "provided": refusing PATH here made lookups ignore a perfectly good yt-dlp on PATH.)
-    return shutil.which("yt-dlp") or ""
+    if mpv_executable:
+        mpv_candidate = Path(mpv_executable)
+        for name in names:
+            candidate = mpv_candidate.parent / name
+            if candidate.is_file():
+                return str(candidate.resolve())
+
+    return resolve_executable("yt-dlp")
 
 
 def parse_ytdlp_info(info: dict, requester: str = "AutoDJ") -> list[Track]:

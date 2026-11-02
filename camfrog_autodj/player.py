@@ -4,13 +4,13 @@ import itertools
 import json
 import logging
 import os
-import shutil
 import subprocess
 import tempfile
 import threading
 import time
 
 from .library import find_ytdlp
+from .paths import resolve_executable
 
 _ids = itertools.count()
 log = logging.getLogger("autodj")
@@ -44,11 +44,12 @@ class MpvPlayer:
         self._paused_total = 0.0
 
     def available(self) -> bool:
-        return shutil.which(self.cfg.mpv_path) is not None
+        return bool(resolve_executable(self.cfg.mpv_path))
 
     def _base(self) -> list[str]:
+        mpv_executable = resolve_executable(self.cfg.mpv_path) or self.cfg.mpv_path
         a = [
-            self.cfg.mpv_path,
+            mpv_executable,
             "--no-video",
             "--force-window=no",
             "--no-terminal",
@@ -101,7 +102,7 @@ class MpvPlayer:
             f"--log-file={logf}",
             f"--volume={init_vol}",
         ]
-        ytdlp = getattr(self.cfg, "ytdlp_path", "") or find_ytdlp("", self.cfg.mpv_path)
+        ytdlp = find_ytdlp(getattr(self.cfg, "ytdlp_path", ""), self.cfg.mpv_path)
         if ytdlp:  # mpv's youtube hook must use the same yt-dlp our title lookups use; its own default search only looks on PATH
             cmd.append(f"--script-opts=ytdl_hook-ytdl_path={ytdlp}")
         cmd += ["--", source]
