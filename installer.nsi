@@ -118,7 +118,7 @@ Section "!MainProgram" SEC_MAIN
     File "CHANGELOG.md"
     File "LICENSE"
     ; Preserve an existing user configuration during upgrades.
-    IfFileExists "$INSTDIR\\config.toml" config_exists
+    IfFileExists "$INSTDIR\config.toml" config_exists
     File /oname=config.toml config.example.toml
 config_exists:
     ; config.toml can be customized by install.ps1 on first run (interactive prompts)
@@ -274,18 +274,18 @@ Section Uninstall
 
     ; Remove application-owned files and directories only.
     ; Keep config.toml, playlist.json, logs, playlists, and other user-created data.
-    Delete "$INSTDIR\\AutoDJ.exe"
-    Delete "$INSTDIR\\app.ico"
-    Delete "$INSTDIR\\README.md"
-    Delete "$INSTDIR\\CHANGELOG.md"
-    Delete "$INSTDIR\\LICENSE"
-    Delete "$INSTDIR\\run_autodj.py"
-    Delete "$INSTDIR\\install.ps1"
-    Delete "$INSTDIR\\install.bat"
-    Delete "$INSTDIR\\uninstall.exe"
-    RMDir /r "$INSTDIR\\mpv"
-    RMDir /r "$INSTDIR\\docs"
-    RMDir /r "$INSTDIR\\tools"
+    Delete "$INSTDIR\AutoDJ.exe"
+    Delete "$INSTDIR\app.ico"
+    Delete "$INSTDIR\README.md"
+    Delete "$INSTDIR\CHANGELOG.md"
+    Delete "$INSTDIR\LICENSE"
+    Delete "$INSTDIR\run_autodj.py"
+    Delete "$INSTDIR\install.ps1"
+    Delete "$INSTDIR\install.bat"
+    Delete "$INSTDIR\uninstall.exe"
+    RMDir /r "$INSTDIR\mpv"
+    RMDir /r "$INSTDIR\docs"
+    RMDir /r "$INSTDIR\tools"
     RMDir "$INSTDIR"
 SectionEnd
 
