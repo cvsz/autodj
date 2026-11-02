@@ -316,4 +316,4 @@ if (-not $RunLive) {
     Write-Host "Live Camfrog tests were NOT run. Use -RunLive to enable (requires credentials)." -ForegroundColor Yellow
 }
 
-exit $script:Failures
+exit $script:Failures

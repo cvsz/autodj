@@ -88,11 +88,6 @@ function Write-Result {
     if ($Status -eq "FAIL") { $script:HasCriticalFailure = $true }
 }
 
-function Get-CertThumbprint {
-    param([object]$Cert)
-    return $Cert.Thumbprint
-}
-
 # ---------------------------------------------------------------------------
 # Initialize
 # ---------------------------------------------------------------------------
@@ -141,7 +136,7 @@ if (-not $certFound) {
     Write-Host "  3. Run this validator again to confirm certificate readiness"
     Write-Host ""
     Write-Host "Validation command:" -ForegroundColor Cyan
-    Write-Host "  .\tools\windows-qualification\Test-AutoDJCodeSigning.ps1 -Pfx cert\autodj.pfx -Password '"'`"***REDACTED***"`"'" -ForegroundColor Gray
+    Write-Host "  .\tools\windows-qualification\Test-AutoDJCodeSigning.ps1 -Pfx cert\autodj.pfx -Password '$env:AUTODJ_PFX_PASSWORD'" -ForegroundColor Gray
     exit 2
 }
 
@@ -320,4 +315,4 @@ if ($script:HasCriticalFailure) {
     Write-Host ""
     Write-Host "Certificate readiness: READY" -ForegroundColor Green
     exit 0
-}
+}

@@ -134,7 +134,6 @@ if ($psVersion.Major -ge 5) {
 
 $pythonFound = $false
 $pythonVersion = $null
-$pythonArch = $null
 $pythonPath = $null
 
 foreach ($cmd in @("python", "python3", "py")) {
@@ -345,13 +344,13 @@ if ($Format -eq "summary") {
     Write-Host "=== Summary ===" -ForegroundColor Cyan
     foreach ($r in $script:Results) {
         $color = switch ($r.Status) {
-            "PASS" { "Green" }
-            "FAIL" { "Red" }
-            "WARN" { "Yellow" }
+            "PASS"   { "Green" }
+            "FAIL"   { "Red" }
+            "WARN"   { "Yellow" }
             "BLOCKED" { "Red" }
             default { "White" }
         }
-        Write-Host ("{0}: {1} - {2}" -f $r.Status, $r.Check, $r.Detail) -ForegroundColor $color
+        Write-Host ("[{0}] {1} - {2}" -f $r.Status, $r.Check, $r.Detail) -ForegroundColor $color
     }
     Write-Host ""
     Write-Host ("Overall: {0}" -f $summary.OverallStatus) -ForegroundColor Cyan
@@ -368,4 +367,4 @@ if ($OutputPath) {
     Write-Host $json
 }
 
-exit $script:HasCriticalFailure ? 1 : 0
+exit $script:HasCriticalFailure ? 1 : 0

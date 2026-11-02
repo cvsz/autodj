@@ -351,4 +351,4 @@ $blocked = ($script:Results | Where-Object { $_.Status -eq "BLOCKED" }).Count
 $notRun = ($script:Results | Where-Object { $_.Status -eq "NOT RUN" }).Count
 Write-Host ("Passed: $passed, Failed: $failed, Blocked: $blocked, Not Run: $notRun") -ForegroundColor Cyan
 
-exit $script:Failures
+exit $script:Failures

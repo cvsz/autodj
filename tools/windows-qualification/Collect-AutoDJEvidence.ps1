@@ -255,4 +255,4 @@ $summary | Set-Content -Path (Join-Path $runDir "summary.md") -Encoding UTF8
 Write-Host "Generated: summary.md" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "Evidence collection complete: $runDir" -ForegroundColor Cyan
+Write-Host "Evidence collection complete: $runDir" -ForegroundColor Cyan

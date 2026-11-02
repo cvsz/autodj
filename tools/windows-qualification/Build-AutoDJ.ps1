@@ -7,9 +7,9 @@
     applicable tests, executes lint and strict typecheck, builds the Windows
     executable, compiles the NSIS installer, and generates SHA256 checksums.
 
-    Every command and exit code is reported. Required steps that fail cause
-    the script to exit with a non-zero code. Missing dependencies are never
-    silently skipped.
+    Every command and exit code is reported. Required steps that fail
+    cause the script to exit with a non-zero code. Missing dependencies are
+    never silently skipped.
 
     This script is intended to run on a real Windows 11 host. It does NOT
     create or publish a release, and does not modify published tags.
@@ -52,7 +52,7 @@ $ErrorActionPreference = "Stop"
 # Helpers
 # ---------------------------------------------------------------------------
 
-function Write-Step {
+function Write-ScriptHeader {
     param([string]$Message)
     Write-Host ""
     Write-Host ("=" * 60) -ForegroundColor Cyan
@@ -96,9 +96,13 @@ function Test-CommandExists {
 $script:OverallExitCode = 0
 $runId = (Get-Date -Format "yyyyMMdd-HHmmss")
 $scriptRoot = (Get-Item (Resolve-Path $PSScriptRoot).Parent.Parent).FullName
-$outputRoot = Resolve-Path $OutputDir -ErrorAction SilentlyContinue
-if (-not $outputRoot) {
-    $outputRoot = Join-Path $scriptRoot $OutputDir
+
+# Default output dir
+if (-not $OutputDir) {
+    $OutputDir = "build-output"
+}
+$outputRoot = Resolve-Path (Join-Path $scriptRoot $OutputDir) -ErrorAction Stop
+if (-not (Test-Path $outputRoot)) {
     New-Item -ItemType Directory -Path $outputRoot -ErrorAction Stop | Out-Null
 }
 $logDir = Join-Path $outputRoot "logs"
@@ -117,7 +121,7 @@ Write-Host ""
 # Step 1: Verify working tree and commit SHA
 # ---------------------------------------------------------------------------
 
-Write-Step "Step 1: Verify working tree and commit SHA"
+Write-ScriptHeader "Step 1: Verify working tree and commit SHA"
 
 $commit = Invoke-CommandWithCode -Command "git rev-parse HEAD" -Description "Get commit SHA"
 if ($commit -ne 0) { $script:OverallExitCode = 1 }
@@ -142,7 +146,7 @@ if ($headSha -ne $originSha) {
 # Step 2: Verify version
 # ---------------------------------------------------------------------------
 
-Write-Step "Step 2: Verify version"
+Write-ScriptHeader "Step 2: Verify version"
 
 if (-not $Version) {
     $Version = & python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])" 2>$null
@@ -157,7 +161,7 @@ Write-Host ("Version: $Version") -ForegroundColor Gray
 # Step 3: Install dependencies
 # ---------------------------------------------------------------------------
 
-Write-Step "Step 3: Install dependencies"
+Write-ScriptHeader "Step 3: Install dependencies"
 
 # Check Python
 $pyCmd = Get-Command "python" -ErrorAction SilentlyContinue
@@ -205,7 +209,7 @@ if (-not $nsisCmd) {
 # Step 4: Run tests
 # ---------------------------------------------------------------------------
 
-Write-Step "Step 4: Run unit tests"
+Write-ScriptHeader "Step 4: Run unit tests"
 
 if ($pyCmd) {
     $code = Invoke-CommandWithCode -Command "& $pyCmd -m pytest -q -p no:faulthandler -p no:cacheprovider" -Description "Run unit tests"
@@ -216,7 +220,7 @@ if ($pyCmd) {
 # Step 5: Lint and typecheck
 # ---------------------------------------------------------------------------
 
-Write-Step "Step 5: Lint and strict typecheck"
+Write-ScriptHeader "Step 5: Lint and strict typecheck"
 
 if ($pyCmd) {
     $code = Invoke-CommandWithCode -Command "& $pyCmd -m ruff check ." -Description "Run ruff lint"
@@ -230,7 +234,7 @@ if ($pyCmd) {
 # Step 6: Build Windows executable
 # ---------------------------------------------------------------------------
 
-Write-Step "Step 6: Build Windows executable"
+Write-ScriptHeader "Step 6: Build Windows executable"
 
 if ($pyCmd -and $nsisCmd) {
     $signArgs = @("-Clean")
@@ -277,7 +281,7 @@ if ($pyCmd -and $nsisCmd) {
 # Step 7: Compile NSIS installer
 # ---------------------------------------------------------------------------
 
-Write-Step "Step 7: Compile NSIS installer"
+Write-ScriptHeader "Step 7: Compile NSIS installer"
 
 if ($nsisCmd -and (Test-Path (Join-Path $scriptRoot "installer.nsi"))) {
     $installerName = "Camfrog-AutoDJ-Setup-$Version.exe"
@@ -317,7 +321,7 @@ if ($nsisCmd -and (Test-Path (Join-Path $scriptRoot "installer.nsi"))) {
 # Step 8: Generate SHA256 checksums
 # ---------------------------------------------------------------------------
 
-Write-Step "Step 8: Generate SHA256 checksums"
+Write-ScriptHeader "Step 8: Generate SHA256 checksums"
 
 $checksumFile = Join-Path $artifactDir "SHA256SUMS.txt"
 $files = Get-ChildItem -Path $artifactDir -File | Where-Object { $_.Name -ne "SHA256SUMS.txt" }
@@ -338,7 +342,7 @@ if ($files) {
 # Step 9: Generate SBOM
 # ---------------------------------------------------------------------------
 
-Write-Step "Step 9: Generate CycloneDX SBOM"
+Write-ScriptHeader "Step 9: Generate CycloneDX SBOM"
 
 if ($pyCmd) {
     $sbomPath = Join-Path $artifactDir "Camfrog-AutoDJ-$Version.cdx.json"
@@ -353,10 +357,10 @@ if ($pyCmd) {
 # Summary
 # ---------------------------------------------------------------------------
 
-Write-Step "Build Summary"
+Write-ScriptHeader "Build Summary"
 
 Write-Host ("Exit code: $script:OverallExitCode") -ForegroundColor Cyan
 Write-Host ("Artifacts: $artifactDir") -ForegroundColor Cyan
 Write-Host ("Logs:      $logDir") -ForegroundColor Cyan
 
-exit $script:OverallExitCode
+exit $script:OverallExitCode
