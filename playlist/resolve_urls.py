@@ -383,6 +383,7 @@ def validate_report_path(report_path: Path, input_files: list[Path]) -> None:
     for input_path in input_files:
         protected_paths.append(("playlist", input_path))
         protected_paths.append(("playlist backup", input_path.with_name(input_path.name + ".bak")))
+        protected_paths.append(("playlist staging file", input_path.with_name(input_path.name + ".tmp")))
 
     output_paths = (
         ("report", report_path),
