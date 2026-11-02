@@ -186,3 +186,66 @@ def test_tls_failure_is_reported_in_json_and_exit_status(monkeypatch, tmp_path):
     assert playlist.read_text(encoding="utf-8") == json.dumps(
         {"tracks": [{"source": "ytsearch1:EDM festival hits official music video"}]}
     )
+
+
+def test_main_rejects_report_path_matching_input_before_processing(monkeypatch, tmp_path):
+    playlist = tmp_path / "playlist.json"
+    original = b'{"tracks": [{"source": "ytsearch1:EDM"}]}\n'
+    playlist.write_bytes(original)
+
+    monkeypatch.setattr(
+        resolver,
+        "find_ytdlp",
+        lambda explicit=None: pytest.fail("report path validation must run before yt-dlp discovery"),
+    )
+
+    exit_code = resolver.main([str(playlist), "--report-json", str(playlist)])
+
+    assert exit_code == 2
+    assert playlist.read_bytes() == original
+    assert not playlist.with_name(playlist.name + ".bak").exists()
+
+
+def test_main_rejects_report_path_matching_existing_backup_before_processing(monkeypatch, tmp_path):
+    playlist = tmp_path / "playlist.json"
+    backup = playlist.with_name(playlist.name + ".bak")
+    original = b'{"tracks": [{"source": "ytsearch1:EDM"}]}\n'
+    backup_original = b"existing backup must be preserved\n"
+    playlist.write_bytes(original)
+    backup.write_bytes(backup_original)
+
+    monkeypatch.setattr(
+        resolver,
+        "find_ytdlp",
+        lambda explicit=None: pytest.fail("report path validation must run before yt-dlp discovery"),
+    )
+
+    exit_code = resolver.main([str(playlist), "--report-json", str(backup)])
+
+    assert exit_code == 2
+    assert playlist.read_bytes() == original
+    assert backup.read_bytes() == backup_original
+
+
+def test_main_rejects_report_staging_path_matching_another_input(monkeypatch, tmp_path):
+    playlist = tmp_path / "playlist.json"
+    staging_collision = tmp_path / "report.json.tmp"
+    report = tmp_path / "report.json"
+    playlist.write_text('{"tracks": []}\n', encoding="utf-8")
+    staging_original = b"do not overwrite this input\n"
+    staging_collision.write_bytes(staging_original)
+
+    monkeypatch.setattr(
+        resolver,
+        "find_ytdlp",
+        lambda explicit=None: pytest.fail("report path validation must run before yt-dlp discovery"),
+    )
+
+    exit_code = resolver.main(
+        [str(playlist), str(staging_collision), "--report-json", str(report)]
+    )
+
+    assert exit_code == 2
+    assert playlist.read_text(encoding="utf-8") == '{"tracks": []}\n'
+    assert staging_collision.read_bytes() == staging_original
+    assert not report.exists()
