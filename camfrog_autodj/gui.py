@@ -96,10 +96,19 @@ def install_clipboard(root: tk.Misc, lang=lambda: "en"):
         m.tk_popup(e.x_root, e.y_root)
         return "break"
 
-    root.bind_all("<Control-KeyPress>", on_key, add="+")
-    root.bind_all("<Control-Shift-KeyPress>", on_key, add="+")
-    for cls in ("Entry", "TEntry", "Text", "TCombobox", "TSpinbox"):
-        root.bind_class(cls, "<Button-3>", menu, add="+")
+    root.bind_class("Entry", "<Control-KeyPress>", on_key, add="-")
+    root.bind_class("TEntry", "<Control-KeyPress>", on_key, add="-")
+    root.bind_class("Text", "<Control-KeyPress>", on_key, add="-")
+    root.bind_class("TCombobox", "<Control-KeyPress>", on_key, add="-")
+    root.bind_class("TSpinbox", "<Control-KeyPress>", on_key, add="-")
+    root.bind_class("Entry", "<Control-Shift-KeyPress>", on_key, add="-")
+    root.bind_class("TEntry", "<Control-Shift-KeyPress>", on_key, add="-")
+    root.bind_class("Text", "<Control-Shift-KeyPress>", on_key, add="-")
+    root.bind_class("TCombobox", "<Control-Shift-KeyPress>", on_key, add="-")
+    root.bind_class("TSpinbox", "<Control-Shift-KeyPress>", on_key, add="-")
+    root.bind_class("Entry", "<Button-3>", menu, add="+")
+    root.bind_class("TEntry", "<Button-3>", menu, add="+")
+    root.bind_class("Text", "<Button-3>", menu, add="+")
     root.bind_class("Text", "<Button-1>", lambda e: e.widget.focus_set(), add="+")
 
 
@@ -798,7 +807,7 @@ class App(tk.Tk):
         )
         self.c_repeat.pack(side="left", padx=(px(8), 0))
 
-        # ---- tabbed panel: queue / history / chat
+        # ---- tabbed panel: queue / history / chat / settings
         panel = self._card(right)
         panel.pack(fill="both", expand=True)
         bar = tk.Frame(panel, bg=SURFACE)
@@ -808,7 +817,6 @@ class App(tk.Tk):
             ("queue", "g_queue"),
             ("history", "g_history"),
             ("chat", "g_chat"),
-            ("settings", "g_settings"),
         ):
             b = self._btn(bar, lab, lambda k=key: self.show_tab(k), "tab", height=34)
             b.pack(side="left", padx=(0, px(6)))
@@ -816,7 +824,7 @@ class App(tk.Tk):
         pages = tk.Frame(panel, bg=SURFACE)
         pages.pack(fill="both", expand=True, padx=px(14), pady=(0, px(14)))
         self.pages = {
-            k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat", "settings")
+            k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat")
         }
 
         qp = self.pages["queue"]
@@ -878,13 +886,49 @@ class App(tk.Tk):
         self.chat.tag_configure("bot", foreground=CYAN)
         self.chat.tag_configure("who", foreground="#b79cff", font=self.f_bold)
 
-        sp = self.pages["settings"]
-        sp.columnconfigure(0, weight=1)
-        sp.rowconfigure(0, weight=1)
-        # scrollable settings area
-        sp_scroll = ttk.Scrollbar(sp, orient="vertical")
+        # ---- (settings moved to popup window opened via settings button) ----
+        pass
+
+    # ---- settings popup ------------------------------------------------------
+    def open_settings(self):
+        """Open the settings dialog as a popup (Toplevel) window."""
+        # Bring existing settings window to front if already open
+        if getattr(self, "_settings_win", None) is not None and self._settings_win.winfo_exists():
+            self._settings_win.lift()
+            self._settings_win.focus_set()
+            return
+
+        sp = tk.Toplevel(self)
+        sp.title(self.e.t("g_settings"))
+        sp.configure(bg=BG)
+        sp.transient(self)
+        sp.grab_set()
+
+        # Make it a decent size and center-ish
+        sp.geometry(f"{self.px(700)}x{self.px(620)}")
+        sp.minsize(self.px(560), self.px(480))
+
+        # header bar
+        hdr = tk.Frame(sp, bg=SURFACE)
+        hdr.pack(fill="x", padx=px(16), pady=px(12))
+        tk.Label(
+            hdr, bg=SURFACE, fg=TEXT, font=self.f_bold,
+            text=self.e.t("g_settings"),
+        ).pack(side="left")
+        tk.Label(
+            hdr, bg=SURFACE, fg=MUTED, font=self.f_small,
+            text=self.e.t("g_settings_lang") + " (use header pills to switch)",
+        ).pack(side="right")
+
+        # scrollable content
+        container = tk.Frame(sp, bg=SURFACE)
+        container.pack(fill="both", expand=True, padx=px(14), pady=(0, px(14)))
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(0, weight=1)
+
+        sp_scroll = ttk.Scrollbar(container, orient="vertical")
         sp_scroll.grid(row=0, column=1, sticky="ns")
-        sp_canvas = tk.Canvas(sp, bg=SURFACE, highlightthickness=0)
+        sp_canvas = tk.Canvas(container, bg=SURFACE, highlightthickness=0)
         sp_canvas.grid(row=0, column=0, sticky="nsew")
         sp_canvas.configure(yscrollcommand=sp_scroll.set)
         sp_scroll.configure(command=sp_canvas.yview)
@@ -1097,9 +1141,11 @@ class App(tk.Tk):
         self.s_log_file.insert(0, self.e.cfg.log_file)
         _setting_row("g_settings_log_file", self.s_log_file, None)
 
-        # Save button
+        # Save / Cancel buttons
+        btn_row = tk.Frame(sp_inner, bg=SURFACE)
+        btn_row.grid(row=row, column=0, columnspan=2, pady=(px(18), px(14)), padx=(px(14), px(14)))
         save_btn = self._btn(
-            sp_inner,
+            btn_row,
             "g_settings_save",
             self.save_settings,
             "primary",
@@ -1108,8 +1154,33 @@ class App(tk.Tk):
             height=40,
             minw=120,
         )
-        save_btn.grid(row=row, column=0, columnspan=2, pady=(px(18), px(14)), padx=(px(14), px(14)))
-        row += 1
+        save_btn.pack(side="left")
+        cancel_btn = self._btn(
+            btn_row,
+            "Close",
+            lambda: self._settings_close(),
+            "ghost",
+            icon="✕",
+            bg=SURFACE,
+            height=40,
+            minw=100,
+        )
+        cancel_btn.pack(side="left", padx=(px(8), 0))
+
+        # Protocol handler for window close
+        sp.protocol("WM_DELETE_WINDOW", self._settings_close)
+
+        # Store reference
+        self._settings_win = sp
+
+        # Focus the first entry
+        self.s_mpv_path.focus_set()
+
+    def _settings_close(self):
+        """Close the settings popup."""
+        if hasattr(self, "_settings_win") and self._settings_win.winfo_exists():
+            self._settings_win.destroy()
+            self._settings_win = None
 
     # ---- animated scenery ---------------------------------------------------
     def _layout_line(self, _e=None):
@@ -1691,8 +1762,8 @@ class App(tk.Tk):
             self.e.say(self.e.t("g_settings_save_failed", err=str(ex)))
 
     def show_settings(self):
-        """Switch to the settings tab."""
-        self.show_tab("settings")
+        """Open the settings popup window."""
+        self.open_settings()
 
     def close(self):
         self._closing = True

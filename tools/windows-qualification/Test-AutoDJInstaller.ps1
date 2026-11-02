@@ -457,4 +457,4 @@ $failed = ($script:Results | Where-Object { $_.Status -eq "FAIL" }).Count
 $blocked = ($script:Results | Where-Object { $_.Status -eq "BLOCKED" }).Count
 Write-Host ("Passed: $passed, Failed: $failed, Blocked: $blocked") -ForegroundColor Cyan
 
-exit $script:Failures
+exit $script:Failures
