@@ -518,11 +518,74 @@ function Install-VBCable {
 }
 
 # ============================================================================
-# PROJECT SETUP
+# PROJECT SETUP (staging-based: preserves user data)
 # ============================================================================
+# User data files that must survive an installer re-run:
+#   config.toml, playlist.json, *.log, playlist_dir/*.json
+$script:UserDataGlobs = @("config.toml", "playlist.json", "*.log")
+
+function Backup-UserData {
+    param([string]$Dir)
+    $backup = Join-Path $env:TEMP "autodj-userdata-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    if (-not (Test-Path $Dir)) { return $null }
+    $found = $false
+    foreach ($g in $script:UserDataGlobs) {
+        Get-ChildItem -Path $Dir -Filter $g -File -ErrorAction SilentlyContinue | ForEach-Object {
+            $dest = Join-Path $backup $_.Name
+            Copy-Item $_.FullName -Destination $dest -Force
+            $found = $true
+        }
+    }
+    if (Test-Path (Join-Path $Dir "playlist_dir") -PathType Container) {
+        $pd = Join-Path $backup "playlist_dir"
+        New-Item -ItemType Directory -Path $pd -Force | Out-Null
+        Get-ChildItem -Path (Join-Path $Dir "playlist_dir") -Filter "*.json" -File -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item $_.FullName -Destination (Join-Path $pd $_.Name) -Force
+            $found = $true
+        }
+    }
+    if ($found) { SubStep "User data backed up to $backup" -Success; return $backup }
+    return $null
+}
+
+function Restore-UserData {
+    param([string]$Dir, [string]$Backup)
+    if (-not $Backup -or -not (Test-Path $Backup)) { return }
+    Set-Location $Backup
+    Get-ChildItem -File -ErrorAction SilentlyContinue | ForEach-Object {
+        Copy-Item $_.FullName -Destination (Join-Path $Dir $_.Name) -Force
+        SubStep "Restored user data: $($_.Name)" -Success
+    }
+    $pd = Join-Path $Backup "playlist_dir"
+    if (Test-Path $pd -PathType Container) {
+        $destPd = Join-Path $Dir "playlist_dir"
+        New-Item -ItemType Directory -Path $destPd -Force | Out-Null
+        Get-ChildItem -Path $pd -Filter "*.json" -File -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item $_.FullName -Destination (Join-Path $destPd $_.Name) -Force
+            SubStep "Restored playlist: $($_.Name)" -Success
+        }
+    }
+}
+
 function Setup-Project {
     Step "Setting up Camfrog AutoDJ Project"
+    $backupDir = $null
     if (Test-Path $ProjectDir) {
+        # Check for user data before any destructive operation
+        $hasUserData = $false
+        foreach ($g in $script:UserDataGlobs) {
+            if (Get-ChildItem -Path $ProjectDir -Filter $g -File -ErrorAction SilentlyContinue | Select -First 1) { $hasUserData = $true; break }
+        }
+        if (-not $hasUserData) {
+            $pd = Join-Path $ProjectDir "playlist_dir"
+            if (Test-Path $pd -PathType Container -and (Get-ChildItem -Path $pd -Filter "*.json" -File -ErrorAction SilentlyContinue | Select -First 1)) { $hasUserData = $true }
+        }
+
+        if ($hasUserData) {
+            $backupDir = Backup-UserData $ProjectDir
+            if (-not $backupDir) { SubStep "Failed to back up user data. Aborting to prevent data loss." -Error; return $false }
+        }
+
         if ($Force -or (Confirm "Directory $ProjectDir exists. Overwrite?")) {
             SubStep "Removing existing directory..."
             Remove-Item -Recurse -Force $ProjectDir -ErrorAction SilentlyContinue
@@ -530,6 +593,8 @@ function Setup-Project {
         else {
             SubStep "Using existing project directory" -Warning
             $script:State.ProjectCloned = $true
+            # Restore user data into existing directory
+            Restore-UserData $ProjectDir $backupDir
             return $true
         }
     }
@@ -539,6 +604,8 @@ function Setup-Project {
         git clone --branch $GitBranch --depth 1 $REPO_URL $ProjectDir
         if ($LASTEXITCODE -eq 0) {
             SubStep "Repository cloned to $ProjectDir" -Success
+            # Restore any backed-up user data into the fresh clone
+            Restore-UserData $ProjectDir $backupDir
             $script:State.ProjectCloned = $true
             return $true
         }

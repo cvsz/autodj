@@ -220,6 +220,65 @@ def test_command_aliases_unique():
     assert "history" in COMMANDS and "block" in COMMANDS
 
 
+# ---- Authorization: nickname-based admin, spoofing-resistant checks ----
+
+def test_admin_authorization_is_case_insensitive():
+    """Admin nicks match case-insensitively: 'Boss' and 'boss' are the same admin."""
+    e = make()
+    e.admins = {"boss"}
+    assert e.router.is_admin(ChatMessage("Boss", "!pause", local=False)) is True
+    assert e.router.is_admin(ChatMessage("BOSS", "!pause", local=False)) is True
+    assert e.router.is_admin(ChatMessage("bOsS", "!pause", local=False)) is True
+
+
+def test_local_console_is_always_admin():
+    """Local console messages (msg.local=True) are always trusted as admin."""
+    e = make()
+    e.admins = set()  # no admins configured
+    assert e.router.is_admin(ChatMessage("nobody", "!pause", local=True)) is True
+
+
+def test_non_admin_cannot_run_admin_command():
+    """Non-admin users get 'admin only' reply, no action taken."""
+    e = make()
+    e.admins = {"boss"}
+    e.router.handle(ChatMessage("amy", "!pause"))
+    assert out(e) == ["amy: admin only"]
+    assert not e.paused  # nothing happened
+
+
+def test_admin_can_run_admin_command():
+    """Admin users can run admin commands without denial."""
+    e = make()
+    e.admins = {"boss"}
+    e.player.play = lambda s, v, d=None: True
+    e.current = Track("s", "now", 90, "boss")  # a track must be "playing" for pause to act
+    e.router.handle(ChatMessage("boss", "!pause"))
+    out(e)  # consume any output
+    assert e.paused is True
+
+
+def test_blocked_user_cannot_be_admin():
+    """A blocked nick that is also in admins still gets 'cannot block admin' when self-blocking,
+    but a blocked non-admin is simply ignored."""
+    e = make()
+    e.admins = {"boss"}
+    e.blocked.add("boss")
+    # boss is an admin AND blocked: blocking self is rejected
+    e.router.handle(ChatMessage("boss", "!block boss"))
+    assert "admin" in out(e)[0].lower()
+
+
+def test_blocked_user_ignored_silently():
+    """Blocked users' commands produce no reply at all (no room noise)."""
+    e = make()
+    e.admins = {"boss"}
+    e.blocked.add("amy")
+    e.router.handle(ChatMessage("amy", "!pause"))
+    assert out(e) == []
+    assert e.paused is False
+
+
 # ---- F6: config errors are explained, not tracebacks ------------------------------------------
 
 
