@@ -117,8 +117,7 @@ Section "!MainProgram" SEC_MAIN
     File "README.md"
     File "CHANGELOG.md"
     File "LICENSE"
-    File "config.example.toml"
-    File /oname=config.toml /nonfatal "config.default.toml"
+    File /oname=config.toml config.example.toml
     ; config.toml can be customized by install.ps1 on first run (interactive prompts)
     File "run_autodj.py"
 SectionEnd
