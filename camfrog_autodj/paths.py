@@ -55,6 +55,6 @@ def resolve_executable(configured: str | None, fallback: str = "") -> str:
     if not has_separator:
         found = shutil.which(expanded)
         if found:
-            return str(Path(found).resolve())
+            return found
 
     return ""
