@@ -83,11 +83,11 @@ def test_remote_tracks_uses_search_limit_for_plain_query(monkeypatch):
     """ytsearch{n}: prefix must use search_limit, not hard-coded 1."""
     captured = {}
 
-    def fake_extract_exe(exe, target, playlist, limit):
+    def fake_extract_exe(exe, target, playlist, limit, **kw):
         captured["target"] = target
         raise OSError("no exe")  # fall through to module
 
-    def fake_extract_module(target, playlist, limit):
+    def fake_extract_module(target, playlist, limit, ca_bundle=""):
         captured["target"] = target
         return {
             "entries": [
@@ -106,7 +106,7 @@ def test_remote_tracks_uses_search_limit_for_plain_query(monkeypatch):
 def test_remote_tracks_search_limit_default_is_one(monkeypatch):
     captured = {}
 
-    def fake_extract_module(target, playlist, limit):
+    def fake_extract_module(target, playlist, limit, ca_bundle=""):
         captured["target"] = target
         return {
             "entries": [
@@ -129,7 +129,7 @@ def test_remote_tracks_url_not_prefixed_with_ytsearch(monkeypatch):
     """URLs must never get a ytsearch prefix regardless of search_limit."""
     captured = {}
 
-    def fake_extract_module(target, playlist, limit):
+    def fake_extract_module(target, playlist, limit, ca_bundle=""):
         captured["target"] = target
         return {
             "entries": [
