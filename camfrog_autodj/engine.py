@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import logging
 import os
 import queue
@@ -34,6 +35,16 @@ log = logging.getLogger("autodj")
 MAX_FAIL_ANNOUNCE = 3  # consecutive failed tracks announced in the room; after that only the log hears about it
 MAX_BACKOFF = 30.0  # seconds, ceiling of the pause between consecutive failed tracks
 ECHO_TTL = 120.0  # seconds a line we posted is remembered, to recognise it when it comes back from the room
+
+# Failure categories for structured diagnostics
+FAIL_RESOLVE = "resolve_failed"       # yt-dlp/search could not resolve the source
+FAIL_PLAYBACK = "playback_failed"     # mpv could not play the track
+FAIL_HUNG = "playback_hung"           # mpv did not exit within the expected time
+FAIL_CRASH = "playback_crashed"       # mpv exited with non-zero code
+FAIL_DELIVERY = "chat_delivery_failed"  # chat message could not be delivered
+FAIL_CONFIG = "config_error"          # configuration problem
+
+_req_ids = itertools.count()  # global request ID counter
 
 
 class Engine:
@@ -73,6 +84,11 @@ class Engine:
         self._sent_lock = threading.Lock()
         self._speak_lock = threading.Lock()  # one TTS clip at a time: overlapping jobs would un-duck the music early
         self._threads: list[threading.Thread] = []  # daemon threads started by start(), joined on shutdown()
+        # ---- observability --------------------------------------------------
+        self._req_counter = itertools.count()  # per-engine request ID counter
+        self._delivery_counter = itertools.count()  # per-engine delivery attempt ID counter
+        self._active_requests: dict[str, dict] = {}  # request_id -> {user, arg, start, state}
+        self._delivery_attempts: dict[int, dict] = {}  # attempt_id -> {text, stage, confirmed}
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -165,6 +181,112 @@ class Engine:
                     return True
         return False
 
+    # ---- observability ------------------------------------------------------
+
+    def _next_request_id(self) -> str:
+        return f"req-{next(self._req_counter)}"
+
+    def _next_delivery_id(self) -> int:
+        return next(self._delivery_counter)
+
+    def start_request(self, arg: str, user: str) -> str:
+        """Record the start of a user request; returns a request ID for correlating logs."""
+        req_id = self._next_request_id()
+        self._active_requests[req_id] = {
+            "user": user,
+            "arg": arg,
+            "start": time.monotonic(),
+            "state": "started",
+        }
+        log.info(
+            "req=%s user=%s arg=%r state=started",
+            req_id,
+            user,
+            arg,
+        )
+        return req_id
+
+    def update_request(self, req_id: str, state: str, **extra) -> None:
+        """Update the state of an active request (resolving, queued, playing, failed, completed)."""
+        rec = self._active_requests.get(req_id)
+        if rec is None:
+            return
+        rec["state"] = state
+        rec.update(extra)
+        elapsed = time.monotonic() - rec["start"]
+        log.info(
+            "req=%s user=%s state=%s elapsed=%.2fs %s",
+            req_id,
+            rec["user"],
+            state,
+            elapsed,
+            " ".join(f"{k}={v!r}" for k, v in extra.items()) if extra else "",
+        )
+
+    def end_request(self, req_id: str, state: str = "completed") -> None:
+        """Mark a request as finished and remove it from active tracking."""
+        rec = self._active_requests.pop(req_id, None)
+        if rec is None:
+            return
+        elapsed = time.monotonic() - rec["start"]
+        log.info(
+            "req=%s user=%s state=%s elapsed=%.2fs",
+            req_id,
+            rec["user"],
+            state,
+            elapsed,
+        )
+
+    def log_delivery(self, text: str, stage: str, attempt_id: int | None = None) -> int:
+        """Record a chat delivery attempt. Returns the attempt ID."""
+        if attempt_id is None:
+            attempt_id = self._next_delivery_id()
+        self._delivery_attempts[attempt_id] = {
+            "text": clean_text(text)[:80],  # truncated: never log full private content
+            "stage": stage,  # attempted | submitted | confirmed | failed
+        }
+        log.debug(
+            "deliv=%d stage=%s text=%r",
+            attempt_id,
+            stage,
+            self._delivery_attempts[attempt_id]["text"],
+        )
+        return attempt_id
+
+    def confirm_delivery(self, attempt_id: int) -> None:
+        """Mark a delivery attempt as confirmed (the message appeared in the room)."""
+        rec = self._delivery_attempts.get(attempt_id)
+        if rec is None:
+            return
+        rec["stage"] = "confirmed"
+        log.debug("deliv=%d stage=confirmed", attempt_id)
+
+    def fail_delivery(self, attempt_id: int, category: str = FAIL_DELIVERY) -> None:
+        """Mark a delivery attempt as failed with a category."""
+        rec = self._delivery_attempts.get(attempt_id)
+        if rec is None:
+            return
+        rec["stage"] = "failed"
+        rec["category"] = category
+        log.warning(
+            "deliv=%d stage=failed category=%s text=%r",
+            attempt_id,
+            category,
+            rec["text"],
+        )
+
+    def _log_track(self, t: Track, state: str, req_id: str | None = None) -> None:
+        """Structured log for track state transitions."""
+        extra = f" req={req_id}" if req_id else ""
+        log.info(
+            "track=%s state=%s source=%r duration=%s%s",
+            id(t),
+            state,
+            t.source,
+            t.dur,
+            extra,
+        )
+
     def _sender(self):
         while not self.stop_evt.is_set():
             try:
@@ -174,18 +296,24 @@ class Engine:
             self._remember_sent(
                 m
             )  # before posting: the echo can show up before send() returns
+            attempt_id = self.log_delivery(m, "attempted")
             try:
                 self.adapter.send(m)
+                self.confirm_delivery(attempt_id)
+                log.info("send ok: %r", m)
             except Exception as ex:
+                self.fail_delivery(attempt_id, FAIL_DELIVERY)
                 log.warning("send failed (%s); retrying once in 2s", ex)
                 self.stop_evt.wait(2.0)
                 if self.stop_evt.is_set():
                     break
                 try:
                     self.adapter.send(m)
-                    log.info("send retry ok: %s", m)
+                    self.confirm_delivery(attempt_id)
+                    log.info("send retry ok: %r", m)
                 except Exception:
-                    log.exception("send retry failed too, dropped: %s", m)
+                    self.fail_delivery(attempt_id, FAIL_DELIVERY)
+                    log.exception("send retry failed too, dropped: %r", m)
             self.stop_evt.wait(
                 self.cfg.send_interval
             )  # flood control (wakes up at shutdown)
@@ -351,6 +479,7 @@ class Engine:
         """
 
         def job():
+            req_id = self.start_request(arg, user)
             try:
                 tracks = self.resolve(arg, user, True)
                 if not tracks:
@@ -358,6 +487,7 @@ class Engine:
                 pos = 0
                 for t in tracks:
                     pos = self.queue.add_request(t)
+                    self._log_track(t, "QUEUED", req_id)
                 self.wake.set()
                 if self.playlist:
                     self.playlist.add(tracks)
@@ -375,12 +505,15 @@ class Engine:
                             user=user,
                         )
                     )
+                self.end_request(req_id, "completed")
             except UserError as ex:
+                self.end_request(req_id, "failed")
                 if on_error:
                     on_error(str(ex))
                 else:
                     self.say(str(ex))
             except Exception:
+                self.end_request(req_id, "failed")
                 log.exception("request failed: %s", arg)
                 if on_error:
                     on_error(self.t("error"))
@@ -557,6 +690,7 @@ class Engine:
             except UserError as ex:
                 log.warning("failed to resolve track %r: %s", t.source, ex)
                 t.state = "FAILED"
+                self._log_track(t, "FAILED")
                 fails += 1
                 self.current = None
                 if fails <= MAX_FAIL_ANNOUNCE:
@@ -575,6 +709,7 @@ class Engine:
             while not self.stop_evt.is_set():
                 self.current = t
                 t.state = "PLAYING"
+                self._log_track(t, "PLAYING")
                 self.votes.clear()
                 self.paused, self._paused_at, self._paused_total = False, None, 0.0
                 self.started_at = time.monotonic()
@@ -594,6 +729,7 @@ class Engine:
                 if not ok:
                     fails += 1
                     t.state = "FAILED"
+                    self._log_track(t, "FAILED")
                     self.current = None
                     if fails <= MAX_FAIL_ANNOUNCE:
                         self.say(self.t("cannot_play", title=t.title))
@@ -610,6 +746,7 @@ class Engine:
                 fails = 0
                 if not recorded:
                     t.state = "COMPLETED"
+                    self._log_track(t, "COMPLETED")
                     self.history.appendleft(t)
                     recorded = True
                 if self.queue.repeat != "one" or getattr(self.player, "skipped", False):
