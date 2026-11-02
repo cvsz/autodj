@@ -83,7 +83,13 @@ jobs:
 
       - name: Build AutoDJ.exe
         run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -Clean -NoSign
+          $signArgs = @("-Clean", "-NoSign")
+          if ($env:AUTODJ_PFX -and $env:AUTODJ_PFX_PASSWORD) {
+            $signArgs = @("-Clean", "-Pfx", $env:AUTODJ_PFX, "-Password", $env:AUTODJ_PFX_PASSWORD)
+          } elseif ($env:AUTODJ_CERT_THUMBPRINT) {
+            $signArgs = @("-Clean", "-Thumbprint", $env:AUTODJ_CERT_THUMBPRINT)
+          }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 @signArgs
 
       - name: Build NSIS installer
         run: |
