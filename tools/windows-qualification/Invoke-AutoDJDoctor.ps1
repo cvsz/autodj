@@ -80,7 +80,7 @@ function Get-RegistryValue {
 # Initialize
 # ---------------------------------------------------------------------------
 
-$script:Results = @[]
+$script:Results = @()
 $script:HasCriticalFailure = $false
 $runId = (Get-Date -Format "yyyyMMdd-HHmmss")
 
@@ -367,4 +367,8 @@ if ($OutputPath) {
     Write-Host $json
 }
 
-exit $script:HasCriticalFailure ? 1 : 0
+if ($script:HasCriticalFailure) {
+    exit 1
+} else {
+    exit 0
+}
