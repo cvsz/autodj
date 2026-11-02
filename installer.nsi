@@ -200,8 +200,16 @@ Function .onInit
 FunctionEnd
 
 Function .onInstSuccess
+    ; Register mpv with the system (run silently in background)
+    DetailPrint "Registering mpv..."
+    ExecWait '"$INSTDIR\mpv\mpv-register.bat"'
+
+    ; Install VBCable virtual audio driver silently
+    DetailPrint "Installing VBCable virtual audio driver..."
+    ExecWait '"$INSTDIR\mpv\VBCABLE_Driver_Pack45\VBCABLE_Setup_x64.exe" /S'
+
     HideWindow
-    MessageBox MB_ICONINFORMATION|MB_OK "Camfrog AutoDJ has been successfully installed!$\n$\nYou can now run it from the Start Menu or Desktop shortcut."
+    MessageBox MB_ICONINFORMATION|MB_OK "Camfrog AutoDJ has been successfully installed!$\n$\nmpv and VBCable virtual audio driver have been registered. You can now run AutoDJ from the Start Menu or Desktop shortcut."
 FunctionEnd
 
 ; -----------------------------------------------------------------------------
