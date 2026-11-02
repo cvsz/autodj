@@ -82,7 +82,7 @@ def find_ytdlp(explicit: str | None = None) -> list[str]:
             return [str(candidate.resolve())]
         raise ResolverError("ytdlp_not_found", f"Configured yt-dlp executable was not found: {explicit}")
 
-    names = ("yt-dlp.exe", "yt-dlp") if os.name == "nt" else ("yt-dlp",)
+    names = ("yt-dlp.exe", "yt-dlp") if os.name == "nt" else ("yt-dlp", "yt-dlp.exe")
     for name in names:
         resolved = shutil.which(name)
         if resolved:
