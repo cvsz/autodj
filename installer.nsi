@@ -257,6 +257,7 @@ Section Uninstall
 
     ; Remove application-owned files and directories only.
     ; Keep config.toml, playlist.json, logs, playlists, and other user-created data.
+    ; Do NOT remove $INSTDIR itself: user data may still reside here.
     Delete "$INSTDIR\AutoDJ.exe"
     Delete "$INSTDIR\app.ico"
     Delete "$INSTDIR\README.md"
@@ -269,7 +270,6 @@ Section Uninstall
     RMDir /r "$INSTDIR\mpv"
     RMDir /r "$INSTDIR\docs"
     RMDir /r "$INSTDIR\tools"
-    RMDir "$INSTDIR"
 SectionEnd
 
 ; -----------------------------------------------------------------------------
