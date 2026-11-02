@@ -125,7 +125,13 @@ def _run(a, level):
         if log_path and not os.path.isabs(log_path):
             app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
             log_path = os.path.join(app_data, "Camfrog AutoDJ", log_path)
-        _add_log_file(log_path, level)
+        try:
+            _add_log_file(log_path, level)
+        except (OSError, PermissionError):
+            log.warning(
+                "cannot open log file %s; continuing without file logging",
+                log_path,
+            )
 
     # If config file is not writable (e.g. installed to Program Files), relocate to APPDATA
     # so settings changes and auto-discover can be saved.
