@@ -74,12 +74,12 @@ class ResolverError(RuntimeError):
 def find_ytdlp(explicit: str | None = None) -> list[str]:
     """Detect explicit executable, PATH executable, then current Python module."""
     if explicit:
-        resolved = shutil.which(explicit)
         candidate = Path(explicit).expanduser()
-        if resolved:
-            return [resolved]
         if candidate.is_file():
             return [str(candidate.resolve())]
+        resolved = shutil.which(explicit)
+        if resolved:
+            return [resolved]
         raise ResolverError("ytdlp_not_found", f"Configured yt-dlp executable was not found: {explicit}")
 
     names = ("yt-dlp.exe", "yt-dlp") if os.name == "nt" else ("yt-dlp", "yt-dlp.exe")
