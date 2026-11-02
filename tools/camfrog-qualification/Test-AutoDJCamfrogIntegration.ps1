@@ -56,7 +56,7 @@ $ErrorActionPreference = "Stop"
 # Helpers
 # ---------------------------------------------------------------------------
 
-$script:Results = @[]
+$script:Results = @()
 $script:Failures = 0
 $testRoot = Resolve-Path $TestRoot -ErrorAction SilentlyContinue
 if (-not $testRoot) {
