@@ -26,9 +26,10 @@ WM_IME_COMPOSITION = 0x010F
 
 try:
     import ctypes
+    from ctypes import windll  # type: ignore[attr-defined]  # Windows-only, guarded by try/except
     from ctypes import wintypes as w
 
-    U = ctypes.windll.user32
+    U = windll.user32
     U.PostMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
     U.PostMessageW.restype = w.BOOL
     U.SendMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
@@ -108,7 +109,7 @@ def child_rects(top: int) -> list[tuple[int, tuple[int, int, int, int]]]:
     _require_windows()
     u = _u32()
     out = []
-    cb_t = ctypes.WINFUNCTYPE(w.BOOL, w.HWND, w.LPARAM)
+    cb_t = getattr(ctypes, "WINFUNCTYPE", ctypes.PYFUNCTYPE)(w.BOOL, w.HWND, w.LPARAM)
 
     def cb(h, _lp):
         if u.IsWindowVisible(h):
@@ -155,9 +156,10 @@ def post_text(
     """Click the editor at screen_pt and type `text` (+ Enter) with posted messages. No focus change.
     Returns True if every message was queued (this does NOT prove the page accepted it)."""
     _require_windows()
-    from .textutil import clean_text
     import ctypes
     from ctypes import wintypes as w
+
+    from .textutil import clean_text
 
     u = _u32()
     rects = child_rects(top)

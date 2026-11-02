@@ -63,7 +63,13 @@ $pyi = @("--noconfirm", "--onefile", "--noupx", "--windowed", "--name", $Name, "
          "run_autodj.py")
 & python -m PyInstaller @pyi   # same interpreter that was just checked (a `pyinstaller` on PATH may belong to another Python)
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) { throw "PyInstaller failed" }
-if (Test-Path config.toml) { Copy-Item config.toml dist\config.toml -Force; "copied config.toml -> dist\" }
+# Use config.example.toml as template for dist/config.toml (relative paths for portability)
+if (Test-Path config.example.toml) {
+    Copy-Item config.example.toml dist\config.toml -Force
+    # Ensure the copied config is writable (source may be read-only from git checkout)
+    if (Test-Path dist\config.toml) { (Get-Item dist\config.toml).IsReadOnly = $false }
+    "copied config.example.toml -> dist\config.toml" | Write-Host
+}
 # Copy mpv/ directory to dist/mpv/ so mpv.exe and yt-dlp.exe are available at runtime
 if (Test-Path mpv) {
     Copy-Item mpv dist\mpv -Recurse -Force

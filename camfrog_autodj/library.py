@@ -16,7 +16,7 @@ log = logging.getLogger("autodj")
 AUDIO = {".mp3", ".m4a", ".wav", ".flac", ".ogg", ".opus", ".aac"}
 VIDEO = {".mp4", ".mkv", ".webm", ".avi", ".mov"}
 MEDIA = AUDIO | VIDEO
-SEARCH_PREFIX = re.compile(r"^ytsearch\d*:", re.I)
+SEARCH_PREFIX = re.compile(r"^ytsearch\d*:", re.IGNORECASE)
 
 
 def is_url(s: str) -> bool:

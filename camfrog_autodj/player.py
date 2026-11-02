@@ -71,7 +71,7 @@ class MpvPlayer:
             if self.skipped or self.proc is None:
                 break
             current += vol_delta
-            self.set_volume(int(round(current)))
+            self.set_volume(round(current))
             time.sleep(step_duration)
         if not self.skipped and self.proc is not None:
             self.set_volume(target_vol)
@@ -157,6 +157,8 @@ class MpvPlayer:
             self._ipc = None
             if not hung:
                 ok = rc == 0 or self.skipped
+        # rc is always an int here: the loop above sets it, or the hung branch sets it via p.wait()
+        assert rc is not None
         self._report(ok, rc, source, logf)
         return ok
 
@@ -239,4 +241,4 @@ class MpvPlayer:
             kw["creationflags"] = (
                 0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
             )
-        subprocess.run(self._base() + ["--volume=100", "--", path], **kw)
+        subprocess.run(self._base() + ["--volume=100", "--", path], check=False, **kw)

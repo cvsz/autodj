@@ -1,7 +1,19 @@
 @echo off
-setlocal EnableDelayedEcho
+chcp 65001 >nul 2>&1
+
+rem Self-relaunch hidden via PowerShell so the CMD window does not show.
+rem First run: no marker -> relaunch hidden, then exit.
+rem Second run: marker set -> proceed normally with hidden window.
+if "%AUTODJ_HIDDEN%" neq "1" (
+    rem First run: relaunch hidden via PowerShell; if PowerShell is unavailable,
+    rem fall through and run with a visible CMD window instead of exiting.
+    powershell -NoProfile -WindowStyle Hidden -Command "Start-Process -FilePath '%~f0' -ArgumentList '' -WindowStyle Hidden" 2>nul
+    if not errorlevel 1 exit /b
+)
+set AUTODJ_HIDDEN=1
+setlocal EnableDelayedExpansion
 rem Camfrog AutoDJ - Launcher for Windows
-rem Double-click to open GUI, or run with arguments for other modes
+rem Double-click to open GUI (CMD window hidden)
 
 echo ============================================
 echo   Camfrog AutoDJ - Launcher
@@ -26,19 +38,8 @@ if not exist config.toml (
     exit /b 1
 )
 
-echo [1] เปิดหน้าต่างเดสก์ท็อป GUI (ค่าเริ่มต้น)
-echo [2] โหมดคอนโซล (พิมพ์คำสั่งผ่านแป้นพิมพ์)
-echo [3] ตรวจสอบการตั้งค่า (--check)
-echo [4] ค้นหาห้อง Camfrog อัตโนมัติ (--discover)
-echo [5] ออกจากโปรแกรม
-echo.
-set /p choice="เลือกหมายเลข (1-5): "
-
-if "%choice%"=="1" goto gui
-if "%choice%"=="2" goto console
-if "%choice%"=="3" goto check
-if "%choice%"=="4" goto discover
-if "%choice%"=="5" goto exit
+rem Go straight to GUI (menu is hidden when CMD window is hidden)
+goto gui
 
 :gui
 echo.

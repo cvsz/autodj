@@ -35,11 +35,11 @@
 ; -----------------------------------------------------------------------------
 Name "${APP_NAME} ${APP_VERSION}"
 OutFile "${INSTALLER_NAME}"
-InstallDir "$PROGRAMFILES64\Camfrog AutoDJ"
-InstallDirRegKey HKLM "Software\CamfrogAutoDJ" "InstallDir"
+InstallDir "$APPDATA\Camfrog AutoDJ"
+InstallDirRegKey HKCU "Software\CamfrogAutoDJ" "InstallDir"
 ShowInstDetails show
 ShowUninstDetails show
-RequestExecutionLevel admin
+RequestExecutionLevel user
 XPStyle on
 CRCCheck on
 
@@ -142,7 +142,7 @@ SectionEnd
 ; Check for existing installation and uninstall it first before installing new version
 Function CheckExistingInstall
     Push $R0
-    ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "UninstallString"
+    ReadRegStr $R0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "UninstallString"
     ${If} $R0 != ""
         DetailPrint "Existing installation found. Removing old version..."
         ExecWait "$R0 /S"
@@ -157,7 +157,7 @@ Function .onInit
 
     ; Verify we're on Windows 64-bit
     ${If} ${RunningX64}
-        StrCpy $INSTDIR "$PROGRAMFILES64\Camfrog AutoDJ"
+        StrCpy $INSTDIR "$APPDATA\Camfrog AutoDJ"
     ${Else}
         MessageBox MB_ICONSTOP "This installer requires a 64-bit version of Windows."
         Abort
@@ -185,28 +185,29 @@ Section -Post
     ; Desktop shortcut
     CreateShortcut "$DESKTOP\Camfrog AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
 
-    ; Registry entries for Add/Remove Programs
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayName" "Camfrog AutoDJ"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayVersion" "${APP_VERSION}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "Publisher" "${APP_PUBLISHER}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "URLInfoAbout" "${APP_WEBSITE}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "InstallLocation" "$INSTDIR"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "UninstallString" '"$INSTDIR\uninstall.exe"'
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayIcon" "$INSTDIR\app.ico"
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoModify" 1
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoRepair" 1
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "HelpLink" "${APP_WEBSITE}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "URLUpdateInfo" "${APP_WEBSITE}"
+    ; Registry entries for Add/Remove Programs (per-user)
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayName" "Camfrog AutoDJ"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayVersion" "${APP_VERSION}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "Publisher" "${APP_PUBLISHER}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "URLInfoAbout" "${APP_WEBSITE}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "InstallLocation" "$INSTDIR"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "UninstallString" '"$INSTDIR\uninstall.exe"'
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayIcon" "$INSTDIR\app.ico"
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoModify" 1
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoRepair" 1
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "HelpLink" "${APP_WEBSITE}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "URLUpdateInfo" "${APP_WEBSITE}"
     Call GetDate
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "InstallDate" $0
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "InstallDate" $0
 
-    ; App Paths for CLI access
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "" "$INSTDIR\AutoDJ.exe"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "Path" "$INSTDIR"
+    ; App Paths for CLI access (per-user)
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "" "$INSTDIR\AutoDJ.exe"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "Path" "$INSTDIR"
 
-    ; mpv path for AutoDJ to find mpv.exe
-    WriteRegStr HKLM "Software\CamfrogAutoDJ" "mpv_path" "$INSTDIR\mpv\mpv.exe"
-    WriteRegStr HKLM "Software\CamfrogAutoDJ" "ytdlp_path" "$INSTDIR\mpv\yt-dlp.exe"
+    ; mpv path for AutoDJ to find mpv.exe (per-user)
+    WriteRegStr HKCU "Software\CamfrogAutoDJ" "mpv_path" "$INSTDIR\mpv\mpv.exe"
+    WriteRegStr HKCU "Software\CamfrogAutoDJ" "ytdlp_path" "$INSTDIR\mpv\yt-dlp.exe"
+    WriteRegStr HKCU "Software\CamfrogAutoDJ" "InstallDir" "$INSTDIR"
 SectionEnd
 
 ; -----------------------------------------------------------------------------
@@ -225,9 +226,9 @@ Section Uninstall
     Delete "$APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\Camfrog AutoDJ.lnk"
 
     ; Remove registry entries
-    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ"
-    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe"
-    DeleteRegKey HKLM "Software\CamfrogAutoDJ"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe"
+    DeleteRegKey HKCU "Software\CamfrogAutoDJ"
 
     ; Remove files
     RMDir /r "$INSTDIR"
