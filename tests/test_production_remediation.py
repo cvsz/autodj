@@ -70,13 +70,11 @@ def _fake_subprocess_run(returncode=0, stdout=json.dumps(SEARCH_JSON), stderr=""
 
 # ---- P0-1: Valid certificate chain (yt-dlp exe with --certificate) ----
 
-def test_extract_exe_passes_ca_bundle_env_to_subprocess(monkeypatch, tmp_path):
-    """_extract_exe must set REQUESTS_CA_BUNDLE env var when ca_bundle is configured.
-    yt-dlp.exe has no --certificate flag, so the CA bundle is passed via env var."""
+def test_extract_exe_no_ca_bundle_env_var(monkeypatch, tmp_path):
+    """_extract_exe does not set REQUESTS_CA_BUNDLE env var (yt-dlp.exe ignores it).
+    Custom CA bundle is only supported via the yt_dlp Python module path."""
     calls = []
     envs = []
-    ca = tmp_path / "trusted.pem"
-    ca.write_text("-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----\n", "utf-8")
 
     def fake_run(cmd, **kw):
         calls.append(cmd)
@@ -86,18 +84,16 @@ def test_extract_exe_passes_ca_bundle_env_to_subprocess(monkeypatch, tmp_path):
     monkeypatch.setattr(subprocess, "run", fake_run)
     _extract_exe(
         "yt-dlp.exe",
-        "ytsearch1:test song",
+        "https://youtu.be/abc",
         playlist=False,
         limit=1,
-        ca_bundle=str(ca),
     )
-    assert "--certificate" not in calls[0]  # yt-dlp.exe has no --certificate flag
-    assert envs[0].get("REQUESTS_CA_BUNDLE") == str(ca.resolve())
+    assert "REQUESTS_CA_BUNDLE" not in envs[0]
 
 
 def test_extract_exe_skips_certificate_when_ca_bundle_missing(monkeypatch, tmp_path):
-    """If ca_bundle is set but the file does not exist, no --certificate flag is added
-    (fail closed: verification still uses system trust, never disabled)."""
+    """_extract_exe does not accept ca_bundle parameter (yt-dlp.exe has no --certificate flag).
+    Custom CA bundle is only supported via the yt_dlp Python module path."""
     calls = []
     missing = tmp_path / "does-not-exist.pem"
 
@@ -111,9 +107,9 @@ def test_extract_exe_skips_certificate_when_ca_bundle_missing(monkeypatch, tmp_p
         "https://youtu.be/abc",
         playlist=False,
         limit=1,
-        ca_bundle=str(missing),
     )
     assert "--certificate" not in calls[0]
+    assert "REQUESTS_CA_BUNDLE" not in calls[0]
 
 
 def test_extract_exe_no_ca_bundle_no_certificate_flag(monkeypatch):
@@ -147,8 +143,8 @@ def test_extract_exe_cert_failure_raises_runtime_error(monkeypatch):
 # ---- P0-3: Missing CA bundle ----
 
 def test_remote_tracks_with_missing_ca_bundle_falls_back_to_system_trust(monkeypatch, tmp_path):
-    """configured ca_bundle that points to a missing file: exe path skips --certificate,
-    module path uses system trust (certifi default)."""
+    """configured ca_bundle that points to a missing file: module path uses system trust
+    (certifi default) since ca_bundle file doesn't exist."""
     exe = tmp_path / "yt-dlp.exe"
     exe.write_text("x")
 
@@ -160,6 +156,7 @@ def test_remote_tracks_with_missing_ca_bundle_falls_back_to_system_trust(monkeyp
         raise OSError("exe not runnable")
 
     def fake_extract_module(target, playlist, limit, ca_bundle=""):
+        called["module_ca_bundle"] = ca_bundle
         return SEARCH_JSON
 
     monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
@@ -172,22 +169,23 @@ def test_remote_tracks_with_missing_ca_bundle_falls_back_to_system_trust(monkeyp
         "test song", "amy", ytdlp_path=str(exe), ca_bundle="/nonexistent/ca.pem"
     )
     assert tracks[0].title == "Song A"
-    assert called["kw"].get("ca_bundle") == "/nonexistent/ca.pem"
+    assert called["module_ca_bundle"] == "/nonexistent/ca.pem"
 
 
 # ---- P0-4: Explicit custom CA bundle ----
 
 def test_remote_tracks_passes_ca_bundle_through(monkeypatch, tmp_path):
-    """remote_tracks must forward ca_bundle to _extract_exe and _extract_module."""
+    """remote_tracks must forward ca_bundle to _extract_module (not _extract_exe,
+    since yt-dlp.exe has no --certificate flag)."""
     exe = tmp_path / "yt-dlp.exe"
     exe.write_text("x")
     ca = tmp_path / "custom.pem"
     ca.write_text("-----BEGIN CERTIFICATE-----\nCUSTOM\n-----END CERTIFICATE-----\n", "utf-8")
 
-    captured = {"exe_kw": None, "module_ca_bundle": None}
+    captured = {"exe_called": False, "module_ca_bundle": None}
 
     def fake_extract_exe(exe_path, target, playlist, limit, **kw):
-        captured["exe_kw"] = kw
+        captured["exe_called"] = True
         raise OSError("exe not runnable")
 
     def fake_extract_module(target, playlist, limit, ca_bundle=""):
@@ -201,8 +199,8 @@ def test_remote_tracks_passes_ca_bundle_through(monkeypatch, tmp_path):
     )
 
     remote_tracks("test song", "amy", ytdlp_path=str(exe), ca_bundle=str(ca))
-    assert captured["exe_kw"].get("ca_bundle") == str(ca)
-    assert captured["module_ca_bundle"] == str(ca)
+    assert captured["exe_called"] is True  # exe was tried first
+    assert captured["module_ca_bundle"] == str(ca)  # ca_bundle forwarded to module
 
 
 # ---- P0-5: Proxy environment behavior ----
@@ -236,11 +234,10 @@ def test_remote_tracks_respects_proxy_env_vars(monkeypatch, tmp_path):
 
 # ---- P0-6: Packaged executable certificate paths ----
 
-def test_extract_exe_skips_env_when_ca_bundle_missing(monkeypatch, tmp_path):
-    """If ca_bundle is set but the file does not exist, no REQUESTS_CA_BUNDLE env var is set."""
+def test_extract_exe_no_env_var_when_ca_bundle_missing(monkeypatch, tmp_path):
+    """_extract_exe does not set REQUESTS_CA_BUNDLE env var (yt-dlp.exe ignores it)."""
     calls = []
     envs = []
-    missing = tmp_path / "does-not-exist.pem"
 
     def fake_run(cmd, **kw):
         calls.append(cmd)
@@ -253,9 +250,60 @@ def test_extract_exe_skips_env_when_ca_bundle_missing(monkeypatch, tmp_path):
         "https://youtu.be/abc",
         playlist=False,
         limit=1,
-        ca_bundle=str(missing),
     )
     assert "REQUESTS_CA_BUNDLE" not in envs[0]
+
+
+# ---- P0-7: SSL fallback from yt-dlp.exe to Python module with CA bundle ----
+
+def test_remote_tracks_ssl_failure_falls_back_to_module_with_ca_bundle(monkeypatch, tmp_path):
+    """When yt-dlp.exe fails with SSL error and ca_bundle is configured,
+    fall back to yt_dlp Python module with the custom CA bundle."""
+    exe = tmp_path / "yt-dlp.exe"
+    exe.write_text("x")
+    ca = tmp_path / "custom.pem"
+    ca.write_text("-----BEGIN CERTIFICATE-----\nCUSTOM\n-----END CERTIFICATE-----\n", "utf-8")
+
+    module_called = {"ca_bundle": None}
+
+    def fake_extract_exe(exe_path, target, playlist, limit, **kw):
+        raise RuntimeError("yt-dlp failed: ERROR: SSL: CERTIFICATE_VERIFY_FAILED")
+
+    def fake_extract_module(target, playlist, limit, ca_bundle=""):
+        module_called["ca_bundle"] = ca_bundle
+        return SEARCH_JSON
+
+    monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
+    monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
+    monkeypatch.setattr(
+        "camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe)
+    )
+
+    tracks = remote_tracks("test song", "amy", ytdlp_path=str(exe), ca_bundle=str(ca))
+    assert tracks[0].title == "Song A"
+    assert module_called["ca_bundle"] == str(ca)
+
+
+def test_remote_tracks_ssl_failure_without_ca_bundle_raises(monkeypatch, tmp_path):
+    """When yt-dlp.exe fails with SSL error and NO ca_bundle is configured,
+    the error should propagate (no silent fallback)."""
+    exe = tmp_path / "yt-dlp.exe"
+    exe.write_text("x")
+
+    def fake_extract_exe(exe_path, target, playlist, limit, **kw):
+        raise RuntimeError("yt-dlp failed: ERROR: SSL: CERTIFICATE_VERIFY_FAILED")
+
+    def fake_extract_module(target, playlist, limit, ca_bundle=""):
+        return SEARCH_JSON
+
+    monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
+    monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
+    monkeypatch.setattr(
+        "camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe)
+    )
+
+    with pytest.raises(RuntimeError, match="CERTIFICATE_VERIFY_FAILED"):
+        remote_tracks("test song", "amy", ytdlp_path=str(exe))
 
 
 # ============================================================================
