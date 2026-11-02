@@ -47,9 +47,23 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
 
 
 def scan_folder(folder, requester: str = "AutoDJ") -> list[Track]:
-    files = sorted(
-        p for p in Path(folder).rglob("*") if p.is_file() and p.suffix.lower() in MEDIA
-    )
+    """Recursively scan *folder* for media files, skipping unreadable directories."""
+    files: list[Path] = []
+    root = Path(folder)
+    try:
+        entries = list(root.iterdir())
+    except (OSError, PermissionError):
+        log.warning("cannot read folder %r: permission denied", folder)
+        return []
+    for entry in entries:
+        try:
+            if entry.is_dir():
+                files.extend(scan_folder(str(entry), requester))
+            elif entry.is_file() and entry.suffix.lower() in MEDIA:
+                files.append(entry)
+        except (OSError, PermissionError):
+            continue
+    files.sort()
     return [local_track(p, requester) for p in files]
 
 
