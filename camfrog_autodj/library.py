@@ -7,11 +7,10 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-
-from .paths import resolve_executable
 from urllib.parse import urlparse
 
 from .models import Track, YtdlpMissing
+from .paths import resolve_executable
 
 log = logging.getLogger("autodj")
 

@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from camfrog_autodj import paths
 
 
