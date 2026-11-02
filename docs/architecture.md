@@ -1,55 +1,142 @@
-# Architecture
+# AutoDJ Architecture
 
 ## Purpose
 
-`ztemplate` is a language-agnostic repository foundation rather than an application runtime.
+Camfrog AutoDJ is a music bot for Camfrog rooms. It plays YouTube tracks and local audio files (mp3, mp4, flac, ogg, opus, aac, wav, mkv, webm, avi, mov) into a Camfrog room chat, responds to `!` commands (and Thai aliases), manages a request queue, and provides a desktop GUI. It runs on Windows (primary) and can be tested on Linux/macOS/WSL.
 
-Its architecture is intentionally layered so generated projects can replace application-specific pieces without weakening repository governance.
+## High-level structure
 
-## Layers
+```
+AutoDJ.exe (frozen PyInstaller binary)
+├── camfrog_autodj/__main__.py   — CLI entry point: --check, --discover, --windows, --dump, --say, --gui, --console
+├── camfrog_autodj/engine.py     — Engine: chat loop, player loop, command router, autoplay pool
+├── camfrog_autodj/commands.py   — Router: command registration, admin authorization, cooldowns, rate limits
+├── camfrog_autodj/config.py     — Config: TOML loading, validation, defaults
+├── camfrog_autodj/player.py     — MpvPlayer: one mpv process per track, IPC control, fade in/out
+├── camfrog_autodj/library.py    — Library: yt-dlp lookups (exe or module), local file scanning, URL parsing
+├── camfrog_autodj/playlist.py   — PlaylistStore: persistent playlist.json (atomic write, dedup by source)
+├── camfrog_autodj/playqueue.py  — PlayQueue: requests-first queue + autoplay pool, shuffle/repeat
+├── camfrog_autodj/discover.py   — Auto-discover: finds Camfrog room window and chat controls
+├── camfrog_autodj/adapters/     — Chat adapters: uia (UI Automation), webchat (embedded web panes), console
+├── camfrog_autodj/gui.py        — GUI: Tk-based studio window with queue/history/chat/TTS
+├── camfrog_autodj/doctor.py     --check: plain-language setup diagnostics
+├── camfrog_autodj/messages.py   — All user-facing strings (English + Thai)
+├── camfrog_autodj/textutil.py   — Text sanitisation (control characters stripped)
+├── camfrog_autodj/tts.py        — Text-to-speech via pyttsx3 (SAPI)
+├── camfrog_autodj/paths.py      — Executable path resolution (explicit > beside mpv > PATH)
+├── camfrog_autodj/windows.py    — Window enumeration and resolution for Camfrog discovery
+└── camfrog_autodj/winmsg.py     — Windows message posting for background chat sending
+```
 
-### Repository governance
+## Runtime layers
 
-Root policy documents define ownership, contribution, security, evidence, and release expectations:
+### 1. Configuration (`config.py`, `config.toml`)
 
-- `AGENTS.md`
-- `ZEAZ-INTRODUCTION.md`
-- `GOVERNANCE.md`
-- `SECURITY.md`
-- `CONTRIBUTING.md`
+`config.toml` is loaded with `tomllib` and validated against the `Config` dataclass:
+- Unknown keys are rejected with "did you mean" suggestions
+- Types are enforced (bool/int/float/str/list) with bool excluded from int checks
+- Choice fields (lang, chat_reader, view_kind, send_mode) are constrained
+- Ranges are validated (volume 0–100, max_duration 1–604800, etc.)
+- Regular expressions are compiled before acceptance
+- Relative log paths are resolved to `%APPDATA%\Camfrog AutoDJ\` so they are writable even when installed to Program Files
+- Non-writable `config.toml` is relocated to APPDATA at startup
 
-### GitHub control plane
+### 2. Chat I/O (`adapters/`, `webchat.py`, `winmsg.py`)
 
-`.github/` provides CI/security/community baselines.
+Two transport paths:
+- **uia** (Windows UI Automation via pywinauto): attaches to the Camfrog room window, reads chat history lines, posts messages via background (WM_SETTEXT / posted messages) or foreground (clipboard + paste) send modes
+- **console** (testing): stdin/stdout, always trusted as admin
+- **webchat**: handles Camfrog's embedded web-view chat panes (`wb-log-room-data`, `wb-edit-data`)
 
-`scripts/github_admin.py` handles repository settings that cannot be enforced by committed files alone and verifies effective provider state after mutation.
+Background sending verifies the message appeared in the room; after 2 unconfirmed sends it falls back to foreground mode. All UIA access is serialized with a COM re-entrancy lock.
 
-### Validation
+### 3. Command dispatch (`commands.py`)
 
-`scripts/validate_repo.py` checks required template structure and local Markdown links.
+Commands are registered with `@command(names, admin=False)`. The `Router`:
+- Requires messages to start with the configured prefix (`!` by default)
+- Authorizes admins by display nick (case-insensitive) — see security notes below
+- Enforces per-user cooldowns and sliding-window request limits (non-admin only)
+- Blocks listed users silently (no room reply)
+- Admin commands: pause, resume, vol, shuffle, repeat, clear, load, say, speak, block, unblock
+- User commands: play, np, next, queue, history, voteskip, remove, help
 
-`tests/` validates bootstrap behavior.
+### 4. Playback (`player.py`, `library.py`)
 
-Application-specific lint/test/build/security validation must be added by generated projects.
+One `mpv` process per track:
+- `--no-video --force-window=no --no-terminal --really-quiet` (no GUI flash)
+- IPC server for pause/volume control
+- Log file captured for failure diagnosis
+- Fade-in/fade-out via volume ramping thread
+- `mpv_timeout` is a grace period on top of known track length, never a hard cap
+- yt-dlp path is resolved once and passed to mpv via `--script-opts=ytdl_hook-ytdl_path`
+- On failure: exponential backoff (1s → 30s cap), max 3 failure announcements in the room, then log-only
 
-### Project initialization
+### 5. Library and lookups (`library.py`)
 
-`scripts/bootstrap.py` changes project identity/ownership routing only. It does not create application architecture or deploy infrastructure.
+yt-dlp resolution order:
+1. Explicit `ytdlp_path` from config (fail-closed if it doesn't exist)
+2. `yt-dlp.exe` next to `mpv.exe`
+3. `yt-dlp` on PATH
+4. `yt_dlp` Python module (for title lookups when no executable is available)
 
-### AI/agent execution
+Supports YouTube URLs, playlist URLs, `ytsearchN:` queries, and local file/folder scanning.
 
-`docs/ai/`, `skills/`, `components.d/`, and `plugins.d/` provide reusable agent execution guidance and discovery without making application-runtime assumptions.
+### 6. Auto-discovery (`discover.py`, `windows.py`)
 
-### Application placeholders
+At startup (`auto_discover = true`) or via `--discover`, scans visible Camfrog windows and identifies:
+- Chat history control (Document/Edit or web pane)
+- Message box input control
+- Writes `window_title_re`, `view_type/view_index`, `input_type/input_index` to `config.toml` atomically (tmp + replace, with `.bak` backup)
+- Never replaces a working config with invalid TOML
 
-The root Dockerfile and application Makefile targets are intentionally non-production placeholders. Generated projects replace them with stack-specific implementations.
+## Trust boundaries and security
 
-## Existing-repository adoption
+### Authentication / authorization
 
-The architecture is composable. Established repositories should use [repository rollout](repository-rollout.md) and port only compatible missing layers rather than copying the tree wholesale.
+Camfrog UI automation exposes only display nicks — there is no cryptographic identity. Admin authorization (`commands.py:32`) is nickname-based and case-insensitive:
+```python
+return msg.local or msg.user.lower() in self.e.admins
+```
 
-## Production boundary
+**Limitation:** anyone who can display the same nick (look-alike characters, a nick freed by disconnect) gains admin rights. Mitigations:
+- `admins = []` by default in `config.example.toml` — operator must add their nick
+- `doctor.py --check` warns when `admins` is empty
+- Blocked users cannot block themselves or other admins
+- Blocked users' commands are ignored silently (no room noise)
 
-Repository-foundation readiness and application production readiness are separate claims.
+### Input validation
 
-The template can verify repository controls, documentation structure, and baseline automation. A generated application must independently verify runtime architecture, deployment, data, recovery, observability, capacity, security, and incident-response gates that apply to it.
+- All outgoing text is sanitised by `clean_text()` (control characters stripped, whitespace collapsed)
+- Wrapped message continuations are prefixed with `…` so they never look like commands
+- `!load` rejects absolute paths outside configured `music_dirs`
+- `!play` restricts non-admin users to `allowed_hosts` (YouTube only by default)
+- Live streams and tracks exceeding `max_duration` are refused for non-admin users
+
+### Secrets hygiene
+
+- No credentials, tokens, or keys are committed
+- `build.ps1` copies `config.toml` into `dist\` — operators must not distribute `dist\` as-is
+- `AUTODJ_PFX_PASSWORD` environment variable preferred over `-Password` (shell history)
+
+## Installer and distribution
+
+- **NSIS installer** (`installer.nsi`): per-user install to `%APPDATA%\Camfrog AutoDJ`, preserves `config.toml` and `playlist.json` on upgrade, uninstaller removes only application-owned files
+- **PowerShell installers** (`install.ps1`, `install-full-auto.ps1`): staging-based installation with user-data backup/restore before any directory removal
+- **Build** (`build.ps1`): PyInstaller one-file exe, self-signing or real code-signing cert, `--noupx`, smoke-tested with `--version`
+- **Release workflow** (`.github/workflows/release.yml`): validation gate (tests, lint, typecheck, secret scan) before builder job; no automatic publish during remediation
+
+## Concurrency
+
+- `ThreadPoolExecutor(8)` for yt-dlp lookups so `!skip` and friends stay responsive
+- Chat reader thread polls at `poll_interval` (default 0.5 s)
+- Player loop processes the queue sequentially
+- Sender thread serializes all chat output with `send_interval` flood control
+- All UIA access is protected by a re-entrant COM lock
+- TTS uses a dedicated lock so overlapping clips don't un-duck music early
+
+## What is NOT tested
+
+- Real Camfrog client, mpv, yt-dlp, or TTS voices
+- `build.ps1` execution
+- Windows launch/URI handling
+- On-screen GUI appearance (Tk smoke test runs where a display exists)

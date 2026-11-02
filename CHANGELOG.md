@@ -5,6 +5,12 @@
 - Resolve MPV and yt-dlp executable paths consistently, including Windows environment variables and app-relative paths.
 - Preserve the user's `config.toml` across installer upgrades and retain user data during uninstall.
 - Make source-validation output explicit and keep `clean-all` from deleting the tracked PyInstaller spec.
+- **Security: removed default administrator** from `config.example.toml` (`admins = []`); Camfrog UI automation exposes only display nicks, so admin authorization is nickname-based and case-insensitive — operator must add their nick before running. Added authorization/spoofing regression tests (`tests/test_hardening.py`).
+- **Security: release workflow gated** — `.github/workflows/release.yml` now requires validation (tests, lint, typecheck, secret scan) before any build artifact is produced; no automatic release publication.
+- **Security: CodeQL analyzes Python** (was `actions` only); **Dependabot covers pip packages** (was GitHub Actions and Docker only).
+- **Security: CODEOWNERS** requires independent review (`@policedbc`) for security-sensitive paths (workflows, installer scripts, SECURITY.md, config).
+- **Docs: `docs/architecture.md` and `docs/release.md` rewritten** to describe AutoDJ (not the ztemplate template).
+- **Docs: `IMPLEMENTATION-CHECKLIST.md` changed to evidence-based status tracking** (VERIFIED/PARTIALLY VERIFIED/UNVERIFIED/BLOCKED with evidence references).
 
 ## 0.2.6
 

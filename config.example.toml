@@ -1,5 +1,8 @@
 bot_nick = "AutoDJ"            # nick the bot uses in the room (its own lines are ignored)
-admins = ["Seaza"]             # case-insensitive list of admin nicks
+admins = []                    # case-insensitive list of admin nicks — REQUIRED: add your Camfrog nick here before running
+                               # WARNING: Camfrog UI automation only exposes display nicks. Anyone who can show the same
+                               # nick (look-alike characters, a nick freed by a disconnect) gains admin rights. Keep this
+                               # list short, use unique nicks, and check how your room handles duplicate/similar nicks.
 prefix = "!"                   # command prefix
 lang = "th"                    # "en" | "th": bot replies + GUI (switchable live in the GUI)
 

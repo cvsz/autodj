@@ -1,9 +1,29 @@
-# Replace or extend ownership rules for generated repositories.
+# Code ownership for AutoDJ.
+# Security-sensitive paths require independent review (policedbc) — never self-approved.
+
+# Default owner for all files
 * @cvsz
 
-/.github/ @cvsz
-/SECURITY.md @cvsz
-/AGENTS.md @cvsz
+# Security-sensitive configuration — independent review required
+/.github/ @cvsz @policedbc
+/.github/workflows/ @cvsz @policedbc
+/SECURITY.md @cvsz @policedbc
+/AGENTS.md @cvsz @policedbc
+
+# Installer and build scripts — independent review required (data destruction risk)
+/installer.nsi @cvsz @policedbc
+/install.ps1 @cvsz @policedbc
+/install-full-auto.ps1 @cvsz @policedbc
+/build.ps1 @cvsz @policedbc
+
+# Application code — owner review
+/camfrog_autodj/ @cvsz
+
+# Configuration
+/config.example.toml @cvsz @policedbc
+/config.toml @cvsz @policedbc
+
+# Agent and governance documentation
 /CLAUDE.md @cvsz
 /OPENCODE.md @cvsz
 /ZEAZ-INTRODUCTION.md @cvsz
