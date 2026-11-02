@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import shutil
 import threading
 from datetime import datetime
@@ -23,6 +24,23 @@ from pathlib import Path
 from .models import Track
 
 log = logging.getLogger("autodj")
+
+# Valid source: http(s):// URL or yt-dlp search query (ytsearchN:...)
+_URL_RE = re.compile(r"^https?://", re.IGNORECASE)
+_SEARCH_RE = re.compile(r"^ytsearch\d+:", re.IGNORECASE)
+
+
+def _is_valid_source(source: str) -> bool:
+    """Return True if source is a valid URL, yt-dlp search query, or local file path."""
+    if not source or not isinstance(source, str):
+        return False
+    s = source.strip()
+    if not s:
+        return False
+    if _URL_RE.match(s) or _SEARCH_RE.match(s):
+        return True
+    # Local file path: contains path separator, starts with '.', or has a file extension
+    return "/" in s or "\\" in s or s.startswith(".") or bool(Path(s).suffix)
 
 
 def load_playlist(path: str) -> list[Track]:
@@ -44,6 +62,13 @@ def load_playlist(path: str) -> list[Track]:
         try:
             src = str(e.get("source") or "").strip()
             if not src:
+                continue
+            if not _is_valid_source(src):
+                log.warning(
+                    "playlist %r: skipping track with invalid source %r (must be http(s) URL or ytsearchN: query)",
+                    path,
+                    src,
+                )
                 continue
             dur = e.get("duration")
             t = Track(

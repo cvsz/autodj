@@ -77,6 +77,7 @@ class Config:
     log_file: str = ""  # also write the log to this file (rotating, 1 MB x 3)
     playlist_file: str = "playlist.json"  # user-requested tracks (!play / GUI request / !load) are appended here
     # (deduplicated) and join the autoplay pool (random); "" = disable persistence
+    playlist_dir: str = ""  # directory of *.json playlist files auto-loaded at startup; "" = disabled
     search_limit: int = 1  # YouTube text-search results fetched per non-admin !play (1 = first match only)
     mpv_timeout: float = 30.0  # seconds to wait for one mpv track before treating it as hung (0 = no timeout)
     # Audio Engineering
