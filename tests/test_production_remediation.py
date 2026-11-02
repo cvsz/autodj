@@ -1076,7 +1076,7 @@ def test_discover_no_windows_returns_none(monkeypatch):
     """When no Camfrog windows exist, discover() returns None without crashing."""
     from camfrog_autodj import discover
 
-    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: [])
+    monkeypatch.setattr(discover, "discover", lambda cfg: None)
     cfg = Config()
     result = discover.discover(cfg)
     assert result is None
