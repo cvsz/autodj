@@ -95,7 +95,6 @@ SetCompressor /SOLID lzma
 !define MUI_INSTFILESPAGE_FINISHTEXT "Click Finish to close the wizard."
 
 ; Branding
-!define MUI_ABORTWARNING
 !define MUI_HEADERIMAGE
 !define MUI_HEADERIMAGE_RIGHT
 !define MUI_HEADERIMAGE_BITMAP "app.ico"
