@@ -25,7 +25,7 @@ from .library import (
 from .messages import tr
 from .models import Track, UserError, YtdlpMissing
 from .player import MpvPlayer
-from .playlist import PlaylistStore
+from .playlist import PlaylistStore, load_playlist
 from .playqueue import PlayQueue
 from .textutil import clean_text, norm
 
@@ -460,6 +460,30 @@ class Engine:
                             queued_sources.add(t.source)
             except Exception:
                 log.exception("playlist load failed")
+        # Auto-load all *.json playlist files from playlist_dir (e.g. playlist/thai_pop.json)
+        if self.cfg.playlist_dir:
+            try:
+                pl_dir = Path(self.cfg.playlist_dir)
+                if pl_dir.is_dir():
+                    for pl_file in sorted(pl_dir.glob("*.json")):
+                        try:
+                            dir_tracks = load_playlist(str(pl_file))
+                            with self.queue.lock:
+                                queued_sources = {r.source for r in self.queue.requests}
+                                played_sources = {t.source for t in self.history}
+                                for t in dir_tracks:
+                                    if t.source not in queued_sources and t.source not in played_sources:
+                                        self.queue.add_request(t)
+                                        queued_sources.add(t.source)
+                            log.info(
+                                "playlist dir: loaded %d track(s) from %s",
+                                len(dir_tracks),
+                                pl_file,
+                            )
+                        except Exception:
+                            log.exception("failed to load playlist dir file: %s", pl_file)
+            except Exception:
+                log.exception("playlist dir scan failed: %s", self.cfg.playlist_dir)
         log.info("autoplay pool: %d tracks; queue: %d requests", len(self.queue.pool), len(self.queue.requests))
         self.wake.set()
         # Trigger background lookahead resolution for search tracks

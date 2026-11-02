@@ -1471,7 +1471,10 @@ class App(tk.Tk):
             log.exception("folder dialog failed")
             return
         if d:
-            self.e.load_async(d)
+            try:
+                self.e.load_async(d)
+            except Exception:
+                log.exception("load folder failed: %s", d)
 
     def remove_selected(self):
         # by object, not by position: the queue may have changed since the list box was last refreshed
