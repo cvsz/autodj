@@ -19,6 +19,8 @@ def application_dir() -> Path:
 def _expand_environment(value: str) -> str:
     """Expand POSIX and Windows environment-variable syntax on every host."""
     expanded = os.path.expanduser(os.path.expandvars(value))
+    if os.name != "nt":
+        expanded = expanded.replace("\\", os.sep)
 
     def replace(match: re.Match[str]) -> str:
         return os.environ.get(match.group(1), match.group(0))
