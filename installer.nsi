@@ -326,3 +326,4 @@ FunctionEnd
 ; -----------------------------------------------------------------------------
 ; The actual files will be copied from the build output directory
 ; Usage: makensis /DVERSION=0.2.3 /DSRCDIR=..\dist installer.nsi
+.
