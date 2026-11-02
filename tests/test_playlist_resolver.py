@@ -28,6 +28,19 @@ def test_find_ytdlp_uses_path_before_python_module(monkeypatch):
     assert resolver.find_ytdlp() == ["/usr/bin/yt-dlp"]
 
 
+def test_find_ytdlp_uses_windows_executable_name(monkeypatch):
+    calls = []
+
+    def fake_which(name):
+        calls.append(name)
+        return r"C:\tools\yt-dlp.exe" if name == "yt-dlp.exe" else None
+
+    monkeypatch.setattr(resolver.os, "name", "nt")
+    monkeypatch.setattr(resolver.shutil, "which", fake_which)
+    assert resolver.find_ytdlp() == [r"C:\tools\yt-dlp.exe"]
+    assert calls[0] == "yt-dlp.exe"
+
+
 def test_find_ytdlp_falls_back_to_current_python_module(monkeypatch):
     monkeypatch.setattr(resolver.shutil, "which", lambda name: None)
     monkeypatch.setattr(resolver.importlib.util, "find_spec", lambda name: object())
@@ -55,6 +68,8 @@ def test_configure_ca_uses_explicit_bundle_and_validates_it(monkeypatch, tmp_pat
 
 
 def test_configure_ca_uses_posix_system_store_by_default(monkeypatch):
+    monkeypatch.delenv("AUTODJ_YTDLP_CA_BUNDLE", raising=False)
+    monkeypatch.delenv("SSL_CERT_FILE", raising=False)
     monkeypatch.setattr(resolver.os, "name", "posix")
     env, use_system_ca, selected = resolver.configure_ca(None, None)
     assert use_system_ca is True
