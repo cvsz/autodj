@@ -6,16 +6,14 @@ Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now
 A full audit (see `AUDIT.md`) and a new look. Highlights: the bot no longer reads its own lines as commands; a broken track can no longer flood the room; `config.toml` mistakes are explained instead of crashing; YouTube lookups work with `yt-dlp.exe` or the bundled module; `AutoDJ.exe --check` diagnoses the setup; `!history`, `!block`, duplicate-request guard; and a redesigned GUI. Full list: `CHANGELOG.md`.
 
 ### New in 0.2.6
-- **YouTube Playlist Support**: Auto-detects YouTube playlist URLs (`youtube.com/playlist?list=...`, `watch?v=...&list=...`) and plays all videos in sequence
-- **Per-User Installation**: Installs to `%APPDATA%\Camfrog AutoDJ` (no admin rights required)
-- **Settings Tab**: New ⚙️ Settings button in the GUI header to edit all settings live and save to `config.toml`
+1. **YouTube Playlist Support**: Auto-detects YouTube playlist URLs (`youtube.com/playlist?list=...`, `watch?v=...&list=...`) and plays all videos in sequence
+2. **Per-User Installation**: Installs to `%APPDATA%\Camfrog AutoDJ` (no admin rights required)
+3. **Settings Tab**: New ⚙️ Settings button in the GUI header to edit all settings live and save to `config.toml`
 4. **Auto-Config Relocation**: If `config.toml` is in a protected location (e.g. Program Files), AutoDJ automatically copies it to `%APPDATA%\Camfrog AutoDJ\config.toml`
 5. **Log Directory Auto-Creation**: Log directory is created automatically on first run
-6. **Settings Button**: New ⚙️ gear icon in the header bar opens the Settings tab
-7. **Relative Config Paths**: `config.example.toml` uses `%APPDATA%\Camfrog AutoDJ\mpv\...` paths for portability
-8. **YouTube Playlist Support**: Auto-detects YouTube playlist URLs (`youtube.com/playlist?list=...`, `watch?v=...&list=...`) and plays all videos in sequence
-9. **Installer**: Per-user installation to `%APPDATA%\Camfrog AutoDJ` (no admin required)
-9. **NSIS Installer**: Per-user install to `%APPDATA%\Camfrog AutoDJ`, HKCU registry, no admin required
+6. **Relative Config Paths**: `config.example.toml` uses `%APPDATA%\Camfrog AutoDJ\mpv\...` paths for portability
+7. **Installer**: Per-user installation to `%APPDATA%\Camfrog AutoDJ` (no admin required)
+8. **NSIS Installer**: Per-user install to `%APPDATA%\Camfrog AutoDJ`, HKCU registry, no admin required
 
 ## Makefile (optional, for Linux/macOS/WSL/Git-Bash)
 `make help` lists every target: `install`, `run-gui`/`run-console`/`run-headless`, `check`/`discover`/`windows`/`say`, `test`/`test-one`/`coverage`, `lint`/`fmt`/`typecheck`, `build`/`build-clean`/`sign` (wrap `build.ps1` -- still Windows PowerShell only; a clear message elsewhere), `release` (test -> build+sign -> package, one command), `package`, `clean`/`clean-all`/`distclean`.
