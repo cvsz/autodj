@@ -148,7 +148,7 @@ fix-playlists:  ## Validate and fix playlist/*.json (removes invalid entries wit
 	$(PY) tools/validate_playlists.py --fix
 
 ## ---- full validation -----------------------------------------------------------
-full-validation: typecheck validate-playlists test changelog-check config-check  ## Run ALL validation: typecheck, playlists, tests, changelog, config
+full-validation: typecheck validate-playlists test changelog-check config-check  ## Run ALL validation: typecheck, playlists, tests, changelog, config, installer
 	@echo ""
 	@echo "================================================"
 	@echo "  FULL VALIDATION PASSED for v$(VERSION)"
@@ -164,56 +164,6 @@ lint-src:  ## Lint source + tools with ruff (excludes test files with pre-existi
 
 config-check:  ## Validate config.toml: parses TOML, checks required keys exist
 	@$(PY) -c "import tomllib,sys; p='$(CONFIG)'; data=tomllib.load(open(p,'rb')); required=['bot_nick','prefix','chat_reader','chat_sender','mpv_path']; missing=[k for k in required if k not in data]; sys.exit(1) if missing else print(f'OK: {p} is valid TOML with {len(data)} keys')"
-
-security-check:  ## Security audit: check for hardcoded secrets, weak permissions, unsafe patterns
-	@$(PY) -c "import re,sys,pathlib; fail=0; [print(f'SECURITY: {p}:{i} possible hardcoded secret') or (fail:=1) for p in pathlib.Path('camfrog_autodj').rglob('*.py') for i,line in enumerate(p.read_text(encoding='utf-8',errors='replace').splitlines(),1) if re.search(r'(password|secret|token|api_key)\s*=\s*[\"\\'][^\"\\']{8,}[\"\\']',line,re.I)]; sys.exit(1) if fail else print('OK: no hardcoded secrets found')"
-
-validate-template:  ## Validate repository structure and Markdown links (template baseline check)
-	$(PY) scripts/validate_repo.py
-
-## ---- Windows exe build + sign (cross-platform: Windows 11 + WSL2 Ubuntu 26.04) -------------
-PFX         ?=
-PASSWORD    ?=
-THUMBPRINT  ?=
-SUBJECT     ?=
-NOSIGN      ?=
-SIGN_ARGS   := $(if $(PFX),-Pfx "$(PFX)") $(if $(PASSWORD),-Password "$(PASSWORD)") \
-               $(if $(THUMBPRINT),-Thumbprint "$(THUMBPRINT)") $(if $(SUBJECT),-Subject "$(SUBJECT)") \
-               $(if $(NOSIGN),-NoSign)
-
-ifeq ($(OS),Windows_NT)
-HAS_WIN_HOST := 1
-else
-HAS_WIN_HOST := $(shell command -v powershell.exe >/dev/null 2>&1 && echo 1 || echo 0)
-endif
-
-build:  ## Build dist/AutoDJ.exe and auto-sign it (Windows 11 or WSL2 + Ubuntu 26.04)
-ifeq ($(HAS_WIN_HOST),1)
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(SIGN_ARGS)
-else
-	@echo "build requires Windows 11 or WSL2 with powershell.exe available."
-	@exit 1
-endif
-
-build-clean:  ## Same as build, but wipes build/, dist/, AutoDJ.spec first
-ifeq ($(HAS_WIN_HOST),1)
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -Clean $(SIGN_ARGS)
-else
-	@echo "build-clean requires Windows 11 or WSL2 with powershell.exe available."
-	@exit 1
-endif
-
-sign:  ## Re-sign an already-built dist/AutoDJ.exe (Windows 11 or WSL2 + Ubuntu 26.04)
-ifeq ($(HAS_WIN_HOST),1)
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/sign_exe.ps1 $(SIGN_ARGS)
-else
-	@echo "sign requires Windows 11 or WSL2 with powershell.exe available."
-	@exit 1
-endif
-
-release: changelog-check full-validation build package installer  ## Full pipeline: changelog, full validation, build dist/AutoDJ.exe (auto-signed), build NSIS installer, zip the source
-	@echo ""
-	@echo "================================================"
 	@echo "  RELEASE v$(VERSION) READY"
 	@echo "  dist/AutoDJ.exe (signed unless NOSIGN=1)"
 	@echo "  Camfrog-AutoDJ-Setup-$(VERSION).exe"

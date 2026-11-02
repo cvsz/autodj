@@ -124,13 +124,20 @@ SectionEnd
 
 Section /o "mpv + yt-dlp" SEC_MPV
     SetOutPath "$INSTDIR\mpv"
-    File /nonfatal "mpv\mpv.exe"
     File /nonfatal "mpv\mpv.com"
     File /nonfatal "mpv\yt-dlp.exe"
     File /nonfatal "mpv\mpv-register.bat"
     File /nonfatal "mpv\mpv-unregister.bat"
     SetOutPath "$INSTDIR\mpv\_internal"
     File /nonfatal /r "mpv\_internal\*.*"
+
+    ; Download mpv.exe from GitHub releases (too large for git)
+    SetOutPath "$INSTDIR\mpv"
+    !define MPV_VERSION "20261102"
+    $\{NSISdl::Download} "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/$\{MPV_VERSION}/mpv-x86_64-20261102-git-2137d21b2e.7z" "$INSTDIR\mpv\mpv-latest.7z"
+    ; Extract mpv.exe from the 7z archive
+    $\{7z} "x" "$INSTDIR\mpv\mpv-latest.7z" "-o$INSTDIR\mpv" "mpv.exe"
+    Delete "$INSTDIR\mpv\mpv-latest.7z"
 SectionEnd
 
 Section /o "VBCable Virtual Audio Driver" SEC_VBCABLE
