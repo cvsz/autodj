@@ -127,8 +127,8 @@ Section "!MainProgram" SEC_MAIN
     File "CHANGELOG.md"
     File "LICENSE"
     File "config.example.toml"
-    ; config.toml is created by install.ps1 on first run (interactive prompts)
-    ; do NOT bundle a machine-specific config.toml here
+    File /oname=config.toml /nonfatal "config.default.toml"
+    ; config.toml can be customized by install.ps1 on first run (interactive prompts)
     File "run_autodj.py"
 SectionEnd
 
