@@ -54,7 +54,6 @@ RequestExecutionLevel user
 XPStyle on
 CRCCheck on
 SetCompressor /SOLID lzma
-SetCompress /FINAL
 
 ; -----------------------------------------------------------------------------
 ; Modern UI 2
