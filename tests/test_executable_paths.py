@@ -44,6 +44,6 @@ def test_find_ytdlp_expands_appdata_environment_path(monkeypatch, tmp_path):
     executable.write_bytes(b"binary")
     monkeypatch.setenv("APPDATA", str(appdata))
 
-    assert find_ytdlp(r"%APPDATA%\\Camfrog AutoDJ\\mpv\\yt-dlp.exe") == str(
+    assert find_ytdlp(r"%APPDATA%\Camfrog AutoDJ\mpv\yt-dlp.exe") == str(
         executable.resolve()
     )
