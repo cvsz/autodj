@@ -15,7 +15,7 @@ build = ["pyinstaller"]
 [project.scripts]
 camfrog-autodj = "camfrog_autodj.__main__:main"
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=84.2.1"]
 build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["camfrog_autodj", "camfrog_autodj.adapters"]
