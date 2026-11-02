@@ -13,7 +13,7 @@ import subprocess
 import sys
 from typing import Any
 
-DEFAULT_REPO = "cvsz/ztemplate"
+DEFAULT_REPO = "cvsz/autodj"
 DEFAULT_BRANCH = "main"
 REQUIRED_CHECKS = (
     "repository-baseline",
