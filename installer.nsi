@@ -34,13 +34,6 @@
 
 ; -----------------------------------------------------------------------------
 ; Version info for the executable manifest
-; -----------------------------------------------------------------------------
-!define /IfNDef VI_PRODUCTVERSION "0.2.6"
-!define /IfNDef VI_FILEVERSION "0.2.6.0"
-!define /IfNDef VI_ADDVERSION_STRING ProductName "${APP_NAME}"
-!define /IfNDef VI_ADDVERSION_STRING FileDescription "${APP_NAME} Music Bot"
-!define /IfNDef VI_ADDVERSION_STRING CompanyName "${APP_PUBLISHER}"
-!define /IfNDef VI_ADDVERSION_STRING LegalCopyright "Copyright (C) 2026 ${APP_PUBLISHER}. All rights reserved."
 
 ; -----------------------------------------------------------------------------
 ; Manifest for Windows Vista+ (DPI awareness, UAC)
