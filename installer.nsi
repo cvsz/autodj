@@ -12,9 +12,9 @@
 ; - Start Menu shortcuts
 ; - Uninstaller
 ; - Registry entries for Add/Remove Programs
-; - Auto-uninstall of previous version before install
+; - In-place upgrade that preserves existing user configuration
 ; - mpv + yt-dlp + VBCable driver
-; - Per-user installation to %APPDATA% (no admin rights required)
+; - Per-user application installation; optional driver setup requires elevation
 
 ; -----------------------------------------------------------------------------
 ; Unicode & Compression
@@ -39,7 +39,6 @@
 ; Manifest for Windows Vista+ (DPI awareness, UAC)
 ; -----------------------------------------------------------------------------
 !define /IfNDef MANIFEST_INSTALL_DESC "${APP_NAME} ${APP_VERSION} Installer"
-!addplugindir "${NSISDIR}\Contrib\Addons"
 
 ; -----------------------------------------------------------------------------
 ; General Settings
@@ -53,7 +52,7 @@ ShowUninstDetails show
 RequestExecutionLevel user
 XPStyle on
 CRCCheck on
-SetCompressor /SOLID lzma
+; Compressor is controlled by NSIS nsisconf.nsh (/FINAL).
 
 ; -----------------------------------------------------------------------------
 ; Modern UI 2
@@ -94,17 +93,11 @@ SetCompressor /SOLID lzma
 !define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "Installation Complete"
 !define MUI_INSTFILESPAGE_FINISHTEXT "Click Finish to close the wizard."
 
-; Branding
-!define MUI_HEADERIMAGE
-!define MUI_HEADERIMAGE_RIGHT
-!define MUI_HEADERIMAGE_BITMAP "app.ico"
-
 ; Header images (optional - uncomment if you have banner images)
 ; !define MUI_WELCOMEFINISHPAGE_BITMAP "contrib\graphics\ws9x-50.bmp"
 ; !define MUI_UNWELCOMEFINISHPAGE_BITMAP "contrib\graphics\ws9x-50.bmp"
 
 ; License
-LicenseData "LICENSE"
 
 ; -----------------------------------------------------------------------------
 ; Components
@@ -127,23 +120,23 @@ SectionEnd
 
 Section /o "mpv + yt-dlp" SEC_MPV
     SetOutPath "$INSTDIR\mpv"
-    File /nonfatal "mpv\mpv.exe"
-    File /nonfatal "mpv\mpv.com"
-    File /nonfatal "mpv\yt-dlp.exe"
+    File "mpv\mpv.exe"
+    File "mpv\mpv.com"
+    File "mpv\yt-dlp.exe"
     File /nonfatal "mpv\mpv-register.bat"
     File /nonfatal "mpv\mpv-unregister.bat"
     SetOutPath "$INSTDIR\mpv\_internal"
-    File /nonfatal /r "mpv\_internal\*.*"
+    File /r "mpv\_internal\*.*"
 SectionEnd
 
 Section /o "VBCable Virtual Audio Driver" SEC_VBCABLE
     SetOutPath "$INSTDIR\mpv\VBCABLE_Driver_Pack45"
-    File /nonfatal "mpv\VBCABLE_Driver_Pack45\VBCABLE_Setup_x64.exe"
-    File /nonfatal "mpv\VBCABLE_Driver_Pack45\VBCABLE_ControlPanel.exe"
-    File /nonfatal "mpv\VBCABLE_Driver_Pack45\readme.txt"
-    File /nonfatal /r "mpv\VBCABLE_Driver_Pack45\*.inf"
-    File /nonfatal /r "mpv\VBCABLE_Driver_Pack45\*.cat"
-    File /nonfatal /r "mpv\VBCABLE_Driver_Pack45\*.sys"
+    File "mpv\VBCABLE_Driver_Pack45\VBCABLE_Setup_x64.exe"
+    File "mpv\VBCABLE_Driver_Pack45\VBCABLE_ControlPanel.exe"
+    File "mpv\VBCABLE_Driver_Pack45\readme.txt"
+    File /r "mpv\VBCABLE_Driver_Pack45\*.inf"
+    File /r "mpv\VBCABLE_Driver_Pack45\*.cat"
+    File /r "mpv\VBCABLE_Driver_Pack45\*.sys"
 SectionEnd
 
 Section "Documentation" SEC_DOCS
@@ -167,42 +160,20 @@ SectionEnd
 ; -----------------------------------------------------------------------------
 ; Installer Logic
 ; -----------------------------------------------------------------------------
-; Check for existing installation and uninstall it first before installing new version
-Function CheckExistingInstall
-    Push $R0
-    ReadRegStr $R0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "UninstallString"
-    ${If} $R0 != ""
-        DetailPrint "Existing installation found. Removing old version..."
-        ExecWait '"$R0" /S'
-        DetailPrint "Old version removed."
-    ${EndIf}
-    Pop $R0
-FunctionEnd
+; Upgrade in place. The previous uninstaller is intentionally not invoked:
+; automatic removal could destroy user configuration or interrupt a running app.
 
 Function .onInit
-    ; Check for existing installation and uninstall it first
-    Call CheckExistingInstall
-
-    ; Verify we're on Windows 64-bit
-    ${If} ${RunningX64}
-        StrCpy $INSTDIR "$APPDATA\Camfrog AutoDJ"
-    ${Else}
+    ; Verify we're on Windows 64-bit.
+    ${IfNot} ${RunningX64}
         MessageBox MB_ICONSTOP "This installer requires a 64-bit version of Windows."
         Abort
     ${EndIf}
 FunctionEnd
 
 Function .onInstSuccess
-    ; Register mpv with the system (run silently in background)
-    DetailPrint "Registering mpv..."
-    ExecWait '"$INSTDIR\mpv\mpv-register.bat"'
-
-    ; Install VBCable virtual audio driver silently
-    DetailPrint "Installing VBCable virtual audio driver..."
-    ExecWait '"$INSTDIR\mpv\VBCABLE_Driver_Pack45\VBCABLE_Setup_x64.exe" /S'
-
     HideWindow
-    MessageBox MB_ICONINFORMATION|MB_OK "Camfrog AutoDJ has been successfully installed!$\n$\nmpv and VBCable virtual audio driver have been registered. You can now run AutoDJ from the Start Menu or Desktop shortcut."
+    MessageBox MB_ICONINFORMATION|MB_OK "Camfrog AutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nIf you selected VBCable, its driver package is included under mpv\VBCABLE_Driver_Pack45. Driver installation requires Administrator approval; run VBCABLE_Setup_x64.exe manually using Run as administrator."
 FunctionEnd
 
 ; -----------------------------------------------------------------------------
@@ -233,13 +204,8 @@ Section -Post
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayIcon" "$INSTDIR\app.ico"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "HelpLink" "${APP_WEBSITE}"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "URLUpdateInfo" "${APP_WEBSITE}"
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "VersionMajor" 2
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "VersionMinor" 6
     WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoModify" 1
     WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoRepair" 1
-    Call GetDate
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "InstallDate" $0
-
     ; Save install directory for uninstaller to read ($INSTDIR may differ in uninstaller context)
     WriteRegStr HKCU "Software\CamfrogAutoDJ" "InstallDir" "$INSTDIR"
 
@@ -247,14 +213,28 @@ Section -Post
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "" "$INSTDIR\AutoDJ.exe"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "Path" "$INSTDIR"
 
-    ; mpv path for AutoDJ to find mpv.exe (per-user)
+    ; Register bundled media tools only when the optional component is present.
+    IfFileExists "$INSTDIR\mpv\mpv.exe" media_tools_present media_tools_absent
+media_tools_present:
     WriteRegStr HKCU "Software\CamfrogAutoDJ" "mpv_path" "$INSTDIR\mpv\mpv.exe"
     WriteRegStr HKCU "Software\CamfrogAutoDJ" "ytdlp_path" "$INSTDIR\mpv\yt-dlp.exe"
+    Goto media_tools_registry_done
+media_tools_absent:
+    DeleteRegValue HKCU "Software\CamfrogAutoDJ" "mpv_path"
+    DeleteRegValue HKCU "Software\CamfrogAutoDJ" "ytdlp_path"
+media_tools_registry_done:
 SectionEnd
 
 ; -----------------------------------------------------------------------------
 ; Uninstaller
 ; -----------------------------------------------------------------------------
+Function un.onInit
+    ReadRegStr $INSTDIR HKCU "Software\CamfrogAutoDJ" "InstallDir"
+    ${If} $INSTDIR == ""
+        StrCpy $INSTDIR "$APPDATA\Camfrog AutoDJ"
+    ${EndIf}
+FunctionEnd
+
 Section Uninstall
     ; Remove shortcuts
     Delete "$SMPROGRAMS\Camfrog AutoDJ\Camfrog AutoDJ.lnk"
@@ -267,10 +247,13 @@ Section Uninstall
     ; Remove Startup shortcut if exists
     Delete "$APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\Camfrog AutoDJ.lnk"
 
-    ; Remove registry entries
+    ; Remove application registration without deleting unrelated app settings.
     DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ"
     DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe"
-    DeleteRegKey HKCU "Software\CamfrogAutoDJ"
+    DeleteRegValue HKCU "Software\CamfrogAutoDJ" "InstallDir"
+    DeleteRegValue HKCU "Software\CamfrogAutoDJ" "mpv_path"
+    DeleteRegValue HKCU "Software\CamfrogAutoDJ" "ytdlp_path"
+    DeleteRegKey /ifempty HKCU "Software\CamfrogAutoDJ"
 
     ; Remove application-owned files and directories only.
     ; Keep config.toml, playlist.json, logs, playlists, and other user-created data.
@@ -290,30 +273,10 @@ Section Uninstall
 SectionEnd
 
 ; -----------------------------------------------------------------------------
-; Custom Functions
-; -----------------------------------------------------------------------------
-; Get current date in YYYYMMDD format for InstallDate registry value
-Function GetDate
-    Push $1
-    Push $2
-    Push $3
-    System::Call 'kernel32::GetLocalTime(i.r0)'
-    IntOp $0 $0 + 1900  ; year
-    IntOp $1 $1 + 1     ; month (0-based)
-    IntOp $2 $2 + 0     ; day
-    StrCpy $1 "0$1"
-    StrCpy $2 "0$2"
-    StrCpy $3 $0
-    StrCpy $0 "$3$1$2"
-    Pop $3
-    Pop $2
-    Pop $1
-FunctionEnd
-
-; -----------------------------------------------------------------------------
 ; Modern UI Pages
 ; -----------------------------------------------------------------------------
 !insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "LICENSE"
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
@@ -339,5 +302,4 @@ FunctionEnd
 ; Source Files (adjust paths as needed)
 ; -----------------------------------------------------------------------------
 ; The actual files will be copied from the build output directory
-; Usage: makensis /DVERSION=0.2.3 /DSRCDIR=..\dist installer.nsi
-.
+; Usage: makensis /DAPP_VERSION=0.2.6 installer.nsi
