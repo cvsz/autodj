@@ -135,8 +135,6 @@ def _extract_exe(
         cmd.extend(["--cookies", str(Path(cookies_file).resolve())])
     elif cookies_browser:
         cmd.extend(["--cookies-from-browser", str(cookies_browser).strip()])
-    if ca_bundle and Path(ca_bundle).is_file():
-        cmd.extend(["--certificate", str(Path(ca_bundle).resolve())])
     cmd.append(target)
     kw: dict = {
         "capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace", "timeout": 90
@@ -145,6 +143,13 @@ def _extract_exe(
         kw["creationflags"] = (
             0x08000000  # CREATE_NO_WINDOW: no console flash from the GUI build
         )
+    # yt-dlp.exe has no --certificate flag. Pass a custom CA bundle via the
+    # REQUESTS_CA_BUNDLE environment variable (best effort; yt-dlp may not
+    # honour it in all builds). Never disable certificate verification.
+    if ca_bundle and Path(ca_bundle).is_file():
+        env = dict(kw.pop("env", {}) if "env" in kw else os.environ.copy())
+        env["REQUESTS_CA_BUNDLE"] = str(Path(ca_bundle).resolve())
+        kw["env"] = env
     try:
         r = subprocess.run(cmd, check=False, **kw)
     except subprocess.TimeoutExpired:
@@ -160,19 +165,33 @@ def _extract_exe(
         raise RuntimeError("yt-dlp returned no usable result") from None
 
 
-def _extract_module(target: str, playlist: bool, limit: int) -> dict:
+def _extract_module(target: str, playlist: bool, limit: int, ca_bundle: str = "") -> dict:
     import yt_dlp
 
-    opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "skip_download": True,
-        "extract_flat": "in_playlist",
-        "noplaylist": not playlist,
-        "playlistend": limit,
-    }
-    with yt_dlp.YoutubeDL(opts) as y:
-        return y.extract_info(target, download=False) or {}
+    # yt_dlp uses certifi.where() for its CA bundle (see networking/_helper.py).
+    # Temporarily patch certifi.where() to return a custom bundle when configured.
+    # Certificate verification is always preserved; we never disable it.
+    _certifi_where = None
+    if ca_bundle and Path(ca_bundle).is_file():
+        import certifi
+
+        _certifi_where = certifi.where
+        certifi.where = lambda *a, **k: str(Path(ca_bundle).resolve())
+
+    try:
+        opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "extract_flat": "in_playlist",
+            "noplaylist": not playlist,
+            "playlistend": limit,
+        }
+        with yt_dlp.YoutubeDL(opts) as y:
+            return y.extract_info(target, download=False) or {}
+    finally:
+        if _certifi_where is not None:
+            certifi.where = _certifi_where
 
 
 def remote_tracks(
@@ -218,7 +237,7 @@ def remote_tracks(
             log.warning("cannot run %s (%s): trying the yt_dlp module", exe, ex)
     if info is None:
         try:
-            info = _extract_module(target, playlist, limit)
+            info = _extract_module(target, playlist, limit, ca_bundle=ca_bundle)
         except ImportError:
             raise YtdlpMissing(
                 "yt-dlp not found: there is no yt-dlp executable (next to mpv.exe or on PATH) and this build has no "

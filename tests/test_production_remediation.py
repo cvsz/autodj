@@ -70,14 +70,17 @@ def _fake_subprocess_run(returncode=0, stdout=json.dumps(SEARCH_JSON), stderr=""
 
 # ---- P0-1: Valid certificate chain (yt-dlp exe with --certificate) ----
 
-def test_extract_exe_passes_ca_bundle_to_yt_dlp(monkeypatch, tmp_path):
-    """_extract_exe must append --certificate <path> when ca_bundle is configured."""
+def test_extract_exe_passes_ca_bundle_env_to_subprocess(monkeypatch, tmp_path):
+    """_extract_exe must set REQUESTS_CA_BUNDLE env var when ca_bundle is configured.
+    yt-dlp.exe has no --certificate flag, so the CA bundle is passed via env var."""
     calls = []
+    envs = []
     ca = tmp_path / "trusted.pem"
     ca.write_text("-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----\n", "utf-8")
 
     def fake_run(cmd, **kw):
         calls.append(cmd)
+        envs.append(kw.get("env", {}))
         return subprocess.CompletedProcess(cmd, 0, json.dumps(SEARCH_JSON), "")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -88,9 +91,8 @@ def test_extract_exe_passes_ca_bundle_to_yt_dlp(monkeypatch, tmp_path):
         limit=1,
         ca_bundle=str(ca),
     )
-    assert "--certificate" in calls[0]
-    ca_idx = calls[0].index("--certificate")
-    assert calls[0][ca_idx + 1] == str(ca)
+    assert "--certificate" not in calls[0]  # yt-dlp.exe has no --certificate flag
+    assert envs[0].get("REQUESTS_CA_BUNDLE") == str(ca.resolve())
 
 
 def test_extract_exe_skips_certificate_when_ca_bundle_missing(monkeypatch, tmp_path):
@@ -157,7 +159,7 @@ def test_remote_tracks_with_missing_ca_bundle_falls_back_to_system_trust(monkeyp
         called["kw"] = kw
         raise OSError("exe not runnable")
 
-    def fake_extract_module(target, playlist, limit):
+    def fake_extract_module(target, playlist, limit, ca_bundle=""):
         return SEARCH_JSON
 
     monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
@@ -170,25 +172,26 @@ def test_remote_tracks_with_missing_ca_bundle_falls_back_to_system_trust(monkeyp
         "test song", "amy", ytdlp_path=str(exe), ca_bundle="/nonexistent/ca.pem"
     )
     assert tracks[0].title == "Song A"
-    assert "--certificate" not in called["kw"].get("cmd", [])
+    assert called["kw"].get("ca_bundle") == "/nonexistent/ca.pem"
 
 
 # ---- P0-4: Explicit custom CA bundle ----
 
 def test_remote_tracks_passes_ca_bundle_through(monkeypatch, tmp_path):
-    """remote_tracks must forward ca_bundle to _extract_exe."""
+    """remote_tracks must forward ca_bundle to _extract_exe and _extract_module."""
     exe = tmp_path / "yt-dlp.exe"
     exe.write_text("x")
     ca = tmp_path / "custom.pem"
     ca.write_text("-----BEGIN CERTIFICATE-----\nCUSTOM\n-----END CERTIFICATE-----\n", "utf-8")
 
-    captured = {}
+    captured = {"exe_kw": None, "module_ca_bundle": None}
 
     def fake_extract_exe(exe_path, target, playlist, limit, **kw):
-        captured["kw"] = kw
+        captured["exe_kw"] = kw
         raise OSError("exe not runnable")
 
-    def fake_extract_module(target, playlist, limit):
+    def fake_extract_module(target, playlist, limit, ca_bundle=""):
+        captured["module_ca_bundle"] = ca_bundle
         return SEARCH_JSON
 
     monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
@@ -198,7 +201,8 @@ def test_remote_tracks_passes_ca_bundle_through(monkeypatch, tmp_path):
     )
 
     remote_tracks("test song", "amy", ytdlp_path=str(exe), ca_bundle=str(ca))
-    assert captured["kw"].get("ca_bundle") == str(ca)
+    assert captured["exe_kw"].get("ca_bundle") == str(ca)
+    assert captured["module_ca_bundle"] == str(ca)
 
 
 # ---- P0-5: Proxy environment behavior ----
@@ -216,7 +220,7 @@ def test_remote_tracks_respects_proxy_env_vars(monkeypatch, tmp_path):
         called["env_proxy"] = os.environ.get("HTTPS_PROXY")
         raise OSError("exe not runnable")
 
-    def fake_extract_module(target, playlist, limit):
+    def fake_extract_module(target, playlist, limit, ca_bundle=""):
         return SEARCH_JSON
 
     monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
@@ -232,24 +236,26 @@ def test_remote_tracks_respects_proxy_env_vars(monkeypatch, tmp_path):
 
 # ---- P0-6: Packaged executable certificate paths ----
 
-def test_extract_exe_passes_absolute_ca_bundle_to_yt_dlp(monkeypatch, tmp_path):
-    """An absolute ca_bundle path must be passed to yt-dlp via --certificate."""
-    ca = tmp_path / "trusted.pem"
-    ca.write_text("-----BEGIN CERTIFICATE-----\nABSOLUTE\n-----END CERTIFICATE-----\n", "utf-8")
-
+def test_extract_exe_skips_env_when_ca_bundle_missing(monkeypatch, tmp_path):
+    """If ca_bundle is set but the file does not exist, no REQUESTS_CA_BUNDLE env var is set."""
     calls = []
+    envs = []
+    missing = tmp_path / "does-not-exist.pem"
 
     def fake_run(cmd, **kw):
         calls.append(cmd)
+        envs.append(kw.get("env", {}))
         return subprocess.CompletedProcess(cmd, 0, json.dumps(SEARCH_JSON), "")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     _extract_exe(
-        "yt-dlp.exe", "https://youtu.be/abc", playlist=False, limit=1, ca_bundle=str(ca)
+        "yt-dlp.exe",
+        "https://youtu.be/abc",
+        playlist=False,
+        limit=1,
+        ca_bundle=str(missing),
     )
-    assert "--certificate" in calls[0]
-    cert_idx = calls[0].index("--certificate")
-    assert calls[0][cert_idx + 1] == str(ca.resolve())
+    assert "REQUESTS_CA_BUNDLE" not in envs[0]
 
 
 # ============================================================================
