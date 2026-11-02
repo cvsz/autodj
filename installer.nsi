@@ -14,21 +14,39 @@
 ; - Registry entries for Add/Remove Programs
 ; - Auto-uninstall of previous version before install
 ; - mpv + yt-dlp + VBCable driver
-
-!include "MUI2.nsh"
-!include "LogicLib.nsh"
-!include "FileFunc.nsh"
-!include "x64.nsh"
+; - Per-user installation to %APPDATA% (no admin rights required)
 
 ; -----------------------------------------------------------------------------
-; Metadata
+; Unicode & Compression
 ; -----------------------------------------------------------------------------
-!define APP_NAME "Camfrog AutoDJ"
+!define Unicode true
+!define MUI_ABORTWARNING
+
+; -----------------------------------------------------------------------------
+; Metadata (overridable from command line)
+; -----------------------------------------------------------------------------
+!define /IfNDef APP_NAME "Camfrog AutoDJ"
 !define APP_VERSION "0.2.6"
-!define APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
-!define APP_WEBSITE "https://github.com/cvsz/autodj"
-!define APP_EXE "AutoDJ.exe"
-!define INSTALLER_NAME "Camfrog-AutoDJ-Setup-${APP_VERSION}.exe"
+!define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
+!define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
+!define /IfNDef APP_EXE "AutoDJ.exe"
+!define /IfNDef INSTALLER_NAME "Camfrog-AutoDJ-Setup-${APP_VERSION}.exe"
+
+; -----------------------------------------------------------------------------
+; Version info for the executable manifest
+; -----------------------------------------------------------------------------
+!define /IfNDef VI_PRODUCTVERSION "0.2.6"
+!define /IfNDef VI_FILEVERSION "0.2.6.0"
+!define /IfNDef VI_ADDVERSION_STRING ProductName "${APP_NAME}"
+!define /IfNDef VI_ADDVERSION_STRING FileDescription "${APP_NAME} Music Bot"
+!define /IfNDef VI_ADDVERSION_STRING CompanyName "${APP_PUBLISHER}"
+!define /IfNDef VI_ADDVERSION_STRING LegalCopyright "Copyright (C) 2026 ${APP_PUBLISHER}. All rights reserved."
+
+; -----------------------------------------------------------------------------
+; Manifest for Windows Vista+ (DPI awareness, UAC)
+; -----------------------------------------------------------------------------
+!define /IfNDef MANIFEST_INSTALL_DESC "${APP_NAME} ${APP_VERSION} Installer"
+!addplugindir "${NSISDIR}\Contrib\Addons"
 
 ; -----------------------------------------------------------------------------
 ; General Settings
@@ -42,20 +60,29 @@ ShowUninstDetails show
 RequestExecutionLevel user
 XPStyle on
 CRCCheck on
+SetCompressor /SOLID lzma
+SetCompress /FINAL
 
 ; -----------------------------------------------------------------------------
 ; Modern UI 2
 ; -----------------------------------------------------------------------------
+!include "MUI2.nsh"
+!include "LogicLib.nsh"
+!include "FileFunc.nsh"
+!include "x64.nsh"
+
 !define MUI_ICON "app.ico"
 !define MUI_UNICON "app.ico"
 !define MUI_WELCOMEPAGE_TITLE "Welcome to the ${APP_NAME} Setup Wizard"
 !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of ${APP_NAME} ${APP_VERSION}.\n\nClick Next to continue."
 !define MUI_FINISHPAGE_TITLE "Installation Complete"
-!define MUI_FINISHPAGE_TEXT "Setup has finished installing ${APP_NAME} ${APP_VERSION} on your computer.\n\nClick Finish to close this wizard."
-!define MUI_FINISHPAGE_RUN "AutoDJ.exe"
+!define MUI_FINISHPAGE_TEXT "Setup has finished installing ${APP_NAME} ${APP_VERSION} on your computer.\n\nClick Finish to close the wizard."
+!define MUI_FINISHPAGE_RUN "${APP_EXE}"
 !define MUI_FINISHPAGE_RUN_TEXT "Launch ${APP_NAME} now"
-!define MUI_FINISHPAGE_SHOWREADME "README.md"
 !define MUI_FINISHPAGE_RUN_NOTCHECKED
+!define MUI_FINISHPAGE_LINK "https://github.com/cvsz/autodj"
+!define MUI_FINISHPAGE_LINK_LOCATION "https://github.com/cvsz/autodj"
+!define MUI_FINISHPAGE_SHOWREADME "README.md"
 
 !define MUI_LICENSEPAGE_TEXT_TOP "Please review the license agreement before installing ${APP_NAME}."
 !define MUI_LICENSEPAGE_TEXT_BOTTOM "If you accept the terms, click I Agree to continue. You must accept the agreement to install ${APP_NAME}."
@@ -64,12 +91,26 @@ CRCCheck on
 !define MUI_COMPONENTSPAGE_TEXT_COMPLIST "Available components:"
 !define MUI_COMPONENTSPAGE_TEXT_DESCRIPTION_TITLE "Description"
 !define MUI_COMPONENTSPAGE_TEXT_DESCRIPTION_INFO "Hover over a component to see its description."
+!define MUI_COMPONENTSPAGE_SMALLDESC
 
 !define MUI_DIRECTORYPAGE_TEXT_TOP "Choose the installation folder for ${APP_NAME}."
 !define MUI_DIRECTORYPAGE_TEXT_DESTINATION "Destination Folder"
 
+!define MUI_STARTMENUPAGE_DEFAULTFOLDER "Camfrog AutoDJ"
+!define MUI_STARTMENUPAGE_NODISABLE
+
 !define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "Installation Complete"
 !define MUI_INSTFILESPAGE_FINISHTEXT "Click Finish to close the wizard."
+
+; Branding
+!define MUI_ABORTWARNING
+!define MUI_HEADERIMAGE
+!define MUI_HEADERIMAGE_RIGHT
+!define MUI_HEADERIMAGE_BITMAP "app.ico"
+
+; Header images (optional - uncomment if you have banner images)
+; !define MUI_WELCOMEFINISHPAGE_BITMAP "contrib\graphics\ws9x-50.bmp"
+; !define MUI_UNWELCOMEFINISHPAGE_BITMAP "contrib\graphics\ws9x-50.bmp"
 
 ; License
 LicenseData "LICENSE"
@@ -86,10 +127,9 @@ Section "!MainProgram" SEC_MAIN
     File "CHANGELOG.md"
     File "LICENSE"
     File "config.example.toml"
-    File /nonfatal "config.toml"
+    File /oname=config.toml /nonfatal "config.default.toml"
+    ; config.toml can be customized by install.ps1 on first run (interactive prompts)
     File "run_autodj.py"
-    ; config.toml is created by install.ps1 on first run (interactive prompts)
-    ; do NOT bundle a machine-specific config.toml here
 SectionEnd
 
 Section /o "mpv + yt-dlp" SEC_MPV
@@ -125,11 +165,6 @@ Section "Tools & Scripts" SEC_TOOLS
     File /r "tools\*.sh"
 SectionEnd
 
-Section "Tests (Development)" SEC_TESTS
-    SetOutPath "$INSTDIR\tests"
-    File /r "tests\*.py"
-SectionEnd
-
 Section "Install Scripts" SEC_SCRIPTS
     SetOutPath "$INSTDIR"
     File "install.ps1"
@@ -145,7 +180,7 @@ Function CheckExistingInstall
     ReadRegStr $R0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "UninstallString"
     ${If} $R0 != ""
         DetailPrint "Existing installation found. Removing old version..."
-        ExecWait "$R0 /S"
+        ExecWait '"$R0" /S'
         DetailPrint "Old version removed."
     ${EndIf}
     Pop $R0
@@ -186,19 +221,26 @@ Section -Post
     CreateShortcut "$DESKTOP\Camfrog AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
 
     ; Registry entries for Add/Remove Programs (per-user)
+    ; Required values per NSIS Appendix D
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayName" "Camfrog AutoDJ"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayVersion" "${APP_VERSION}"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "Publisher" "${APP_PUBLISHER}"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "URLInfoAbout" "${APP_WEBSITE}"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "InstallLocation" "$INSTDIR"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "UninstallString" '"$INSTDIR\uninstall.exe"'
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayIcon" "$INSTDIR\app.ico"
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoModify" 1
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoRepair" 1
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "HelpLink" "${APP_WEBSITE}"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "URLUpdateInfo" "${APP_WEBSITE}"
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "VersionMajor" 2
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "VersionMinor" 6
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoModify" 1
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoRepair" 1
     Call GetDate
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "InstallDate" $0
+
+    ; Save install directory for uninstaller to read ($INSTDIR may differ in uninstaller context)
+    WriteRegStr HKCU "Software\CamfrogAutoDJ" "InstallDir" "$INSTDIR"
 
     ; App Paths for CLI access (per-user)
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "" "$INSTDIR\AutoDJ.exe"
@@ -207,7 +249,6 @@ Section -Post
     ; mpv path for AutoDJ to find mpv.exe (per-user)
     WriteRegStr HKCU "Software\CamfrogAutoDJ" "mpv_path" "$INSTDIR\mpv\mpv.exe"
     WriteRegStr HKCU "Software\CamfrogAutoDJ" "ytdlp_path" "$INSTDIR\mpv\yt-dlp.exe"
-    WriteRegStr HKCU "Software\CamfrogAutoDJ" "InstallDir" "$INSTDIR"
 SectionEnd
 
 ; -----------------------------------------------------------------------------
@@ -237,6 +278,7 @@ SectionEnd
 ; -----------------------------------------------------------------------------
 ; Custom Functions
 ; -----------------------------------------------------------------------------
+; Get current date in YYYYMMDD format for InstallDate registry value
 Function GetDate
     Push $1
     Push $2
@@ -284,3 +326,4 @@ FunctionEnd
 ; -----------------------------------------------------------------------------
 ; The actual files will be copied from the build output directory
 ; Usage: makensis /DVERSION=0.2.3 /DSRCDIR=..\dist installer.nsi
+.

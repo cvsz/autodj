@@ -1,0 +1,73 @@
+bot_nick = "AutoDJ"            # nick the bot uses in the room (its own lines are ignored)
+admins = []                    # case-insensitive list of admin nicks -- add your nick here
+prefix = "!"                   # command prefix
+lang = "th"                    # "en" | "th": bot replies + GUI (switchable live in the GUI)
+
+# chat I/O: "uia" (Windows UI automation), "logtail" (read only), "console" (testing)
+chat_reader = "uia"
+chat_sender = "uia"
+window_title_re = ".*"         # room windows are titled "<room>: ห้องสนทนา"; auto_discover fills this in
+process_re = "(?i)camfrog"     # only windows of a process whose exe name matches (skips browser tabs etc.); "" = any
+# several windows can match (main client + room). Narrow it, or filter/choose:
+# window_exclude_re = "Video Chat$"    # drop the main client window by title
+# window_index = 0                     # pick the Nth remaining match
+auto_discover = true           # at startup: find the room window + chat/input controls and rewrite the 5 lines below
+view_kind = "auto"             # auto | web | text. Camfrog rooms are "web" (chat is an embedded web view)
+send_mode = "auto"             # background = post messages to the chat window, Camfrog stays in the background | foreground | auto (background, verify, fallback)
+send_verify = true             # auto: check the line really appeared in the room (else retry in foreground)
+web_strict_body = true         # web view: text right after a body, with no emoticon/link between, is a system/date line: ignored
+view_type = "Document"         # (filled in by auto_discover; or tools/inspect_ui.py)
+view_index = 0
+input_type = "Edit"
+input_index = -1
+# log_path = "C:/path/to/chat.log"
+# line_regex = '^(?P<user>[^:]{1,30}):\s(?P<text>.+)$'
+
+# mpv and yt-dlp are installed alongside AutoDJ by the NSIS installer:
+#   $INSTDIR/mpv/mpv.exe        (mpv player)
+#   $INSTDIR/mpv/yt-dlp.exe     (YouTube downloader for mpv + title lookups)
+mpv_path = "mpv/mpv.exe"       # relative to AutoDJ.exe install dir
+ytdlp_path = "mpv/yt-dlp.exe"  # relative to AutoDJ.exe install dir
+
+audio_device = ""              # e.g. "wasapi/{guid}" -> virtual cable input; list: mpv --audio-device=help
+volume = 70
+music_dirs = []                # local library: requestable by name, also autoplayed. Add your music folder paths here.
+                               # Example: ["C:/Users/YourName/Music", "D:/Music"]
+autoplay_sources = []          # extra YouTube playlist URLs / folders / files to autoplay
+                               # Example: ["https://www.youtube.com/playlist?list=...", "ytsearch20:thai pop"]
+shuffle = true
+
+allowed_hosts = ["youtube.com", "youtu.be", "music.youtube.com"]
+max_requests_per_user = 3
+max_queue = 50
+max_duration = 900             # seconds, non-admin requests
+voteskip_threshold = 3
+cooldown = 3.0
+send_interval = 1.5            # seconds between chat lines (flood control)
+max_msg_len = 180
+announce_next = true
+# msg_now / msg_next: leave unset to use the built-in text for `lang`; set to override (fields: {title} {duration} {requester})
+# msg_now = "Now playing: {title} [{duration}] - requested by {requester}"
+
+tts_voice = ""                 # substring of an installed voice name (Thai voice for Thai text)
+tts_rate = 170
+tts_duck = 25                  # music volume while speaking
+
+# --- auto launch (Windows). Off = you open Camfrog/the room yourself; AutoDJ waits for the window.
+auto_launch = false            # set true to have AutoDJ launch Camfrog and join the room automatically
+# camfrog_exe = "REPLACE_ME:/path/to/Camfrog Video Chat.exe"  # path to Camfrog exe, required if auto_launch = true
+# client_title_re = ".*"          # main client window
+# room = "My Room"                # your Camfrog room name, required if auto_launch = true
+# join_uri_template = ""          # URI your Camfrog build accepts for joining; {room} is URL-encoded
+# launch_timeout = 60
+
+# --- added in 0.2.0 ---------------------------------------------------------------------------------
+blocked_users = []             # nicks whose commands are ignored (admins cannot be blocked). Admins can also use !block / !unblock live
+poll_interval = 0.5            # seconds between chat reads; raise to 1.0 if AutoDJ uses too much CPU
+log_file = "autodj.log"                  # e.g. "autodj.log": also write the log to a rotating file (1 MB x 3). Same as --log-file.
+                                # Relative paths are resolved to %APPDATA%/Camfrog AutoDJ/ so they are
+                                # writable even when AutoDJ is installed to Program Files.
+playlist_file = "playlist.json"   # user-requested tracks (!play / GUI request / !load) are appended here
+                                  # (deduplicated) and join the autoplay pool (random); "" = disable persistence
+search_limit = 1               # YouTube text-search results fetched per non-admin !play (1 = first match only; max 50)
+mpv_timeout = 30               # seconds to wait for one mpv track before treating it as hung (0 = never)
