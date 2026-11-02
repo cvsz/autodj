@@ -227,6 +227,26 @@ def test_main_rejects_report_path_matching_existing_backup_before_processing(mon
     assert backup.read_bytes() == backup_original
 
 
+def test_main_rejects_report_path_matching_input_staging_file_before_processing(monkeypatch, tmp_path):
+    playlist = tmp_path / "playlist.json"
+    staging = playlist.with_name(playlist.name + ".tmp")
+    report_original = b"existing playlist staging data must be preserved\\n"
+    playlist.write_text('{"tracks": []}\\n', encoding="utf-8")
+    staging.write_bytes(report_original)
+
+    monkeypatch.setattr(
+        resolver,
+        "find_ytdlp",
+        lambda explicit=None: pytest.fail("report path validation must run before yt-dlp discovery"),
+    )
+
+    exit_code = resolver.main([str(playlist), "--dry-run", "--report-json", str(staging)])
+
+    assert exit_code == 2
+    assert staging.read_bytes() == report_original
+    assert playlist.read_text(encoding="utf-8") == '{"tracks": []}\\n'
+
+
 def test_main_rejects_report_staging_path_matching_another_input(monkeypatch, tmp_path):
     playlist = tmp_path / "playlist.json"
     staging_collision = tmp_path / "report.json.tmp"
