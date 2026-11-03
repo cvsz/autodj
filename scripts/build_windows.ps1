@@ -687,6 +687,13 @@ function Build-NSISInstaller {
             throw "Required installer source file missing: $f"
         }
     }
+    
+    # Copy mpv directory from repo root to worktree (mpv might not be in worktree if gitignored)
+    if (Test-Path (Join-Path $RepoRoot "mpv")) {
+        if (-not (Test-Path (Join-Path $WorktreeDir "mpv"))) {
+            Copy-Item (Join-Path $RepoRoot "mpv") (Join-Path $WorktreeDir "mpv") -Recurse -Force
+        }
+    }
     if (Test-Path (Join-Path $WorktreeDir "mpv")) {
         if (-not (Test-Path (Join-Path $WorktreeDir "dist\mpv"))) {
             Copy-Item (Join-Path $WorktreeDir "mpv") (Join-Path $WorktreeDir "dist\mpv") -Recurse -Force
