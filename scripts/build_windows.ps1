@@ -696,10 +696,9 @@ function Build-NSISInstaller {
     Step "Building NSIS installer"
     $installerName = "Camfrog-AutoDJ-Setup-$RequiredVersion.exe"
     $nsisLog = Join-Path $InstallerDir "nsis-build.log"
-    $cmdLine = "& `$nsisPath` /DAPP_VERSION=$RequiredVersion installer.nsi"
-    Write-Log "Running: $cmdLine" "INFO" "INSTALLER"
+    Write-Log "Running: & $nsisPath installer.nsi" "INFO" "INSTALLER"
 
-    $result = & $nsisPath /DAPP_VERSION=$RequiredVersion installer.nsi 2>&1 | Tee-Object -Variable nsisOutput
+    $result = & $nsisPath installer.nsi 2>&1 | Tee-Object -Variable nsisOutput
     $exitCode = $LASTEXITCODE
 
     $nsisOutput | Out-File $nsisLog -Encoding utf8
