@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import threading
 import time
@@ -1076,10 +1077,148 @@ def test_discover_no_windows_returns_none(monkeypatch):
     """When no Camfrog windows exist, discover() returns None without crashing."""
     from camfrog_autodj import discover
 
-    monkeypatch.setattr(discover, "discover", lambda cfg: None)
+    # Mock external dependencies only - not the function under test
+    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: [])
+    # Mock pywinauto.Desktop to avoid ImportError on non-Windows
+    mock_desktop = MagicMock()
+    mock_pywinauto = MagicMock()
+    mock_pywinauto.Desktop = lambda backend="uia": mock_desktop
+    monkeypatch.setitem(__import__("sys").modules, "pywinauto", mock_pywinauto)
+
     cfg = Config()
     result = discover.discover(cfg)
     assert result is None
+
+
+# ---- DISCOVERY-4: One valid candidate returns config updates ----
+
+def test_discover_one_valid_candidate(monkeypatch):
+    """When one valid Camfrog window with chat is found, discover() returns config updates."""
+    from camfrog_autodj import discover
+    from camfrog_autodj.windows import Cand
+
+    # Mock a valid candidate with chat-like content
+    fake_cand = Cand(
+        handle=12345,
+        title="Camfrog - Room A",
+        cls="CamfrogRoom",
+        pid=999,
+        exe="Camfrog.exe",
+    )
+
+    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: [fake_cand])
+
+    # Mock pywinauto.Desktop
+    mock_win = MagicMock()
+    mock_win.descendants.return_value = []
+
+    mock_desktop = MagicMock()
+    mock_desktop.window.return_value = mock_win
+
+    mock_pywinauto = MagicMock()
+    mock_pywinauto.Desktop = lambda backend="uia": mock_desktop
+    monkeypatch.setitem(__import__("sys").modules, "pywinauto", mock_pywinauto)
+
+    monkeypatch.setattr("camfrog_autodj.discover.scan_window", lambda win: [
+        discover.Ctl("Document", 0, "alice: hello\nbob: hi\n", 0, 0, 500, 200),
+        discover.Ctl("Edit", 0, "", 0, 210, 500, 30, enabled=True, visible=True),
+    ])
+
+    cfg = Config()
+    result = discover.discover(cfg)
+
+    assert result is not None
+    assert "window_title_re" in result
+    assert "view_type" in result
+    assert result["view_type"] == "Document"
+    assert result["view_index"] == 0
+    assert result["input_type"] == "Edit"
+    assert result["input_index"] == 0
+
+
+# ---- DISCOVERY-5: Multiple candidates picks best room ----
+
+def test_discover_multiple_candidates_picks_best(monkeypatch):
+    """When multiple Camfrog windows exist, discover() picks the one with most chat lines."""
+    from camfrog_autodj import discover
+    from camfrog_autodj.windows import Cand
+
+    fake_cand1 = Cand(
+        handle=111, title="Room A", cls="CamfrogRoom", pid=111, exe="Camfrog.exe"
+    )
+    fake_cand2 = Cand(
+        handle=222, title="Room B", cls="CamfrogRoom", pid=222, exe="Camfrog.exe"
+    )
+
+    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: [fake_cand1, fake_cand2])
+
+    mock_desktop = MagicMock()
+    mock_desktop.window.return_value = MagicMock()
+
+    mock_pywinauto = MagicMock()
+    mock_pywinauto.Desktop = lambda backend="uia": mock_desktop
+    monkeypatch.setitem(__import__("sys").modules, "pywinauto", mock_pywinauto)
+
+    # Room A: 2 chat lines, Room B: 5 chat lines -> Room B should win
+    def fake_scan_window(win):
+        if win is not None:
+            fake_scan_window.call_count += 1
+            if fake_scan_window.call_count == 1:
+                return [
+                    discover.Ctl("Document", 0, "a: 1\nb: 2\n", 0, 0, 100, 50),
+                    discover.Ctl("Edit", 0, "", 0, 60, 100, 30, True, True),
+                ]
+            else:
+                return [
+                    discover.Ctl("Document", 0, "x: 1\ny: 2\nz: 3\nw: 4\nv: 5\n", 0, 0, 100, 50),
+                    discover.Ctl("Edit", 0, "", 0, 60, 100, 30, True, True),
+                ]
+        return []
+
+    fake_scan_window.call_count = 0
+    monkeypatch.setattr("camfrog_autodj.discover.scan_window", fake_scan_window)
+
+    cfg = Config()
+    result = discover.discover(cfg)
+
+    assert result is not None
+    assert result["window_title_re"] == re.escape("Room B")
+
+
+# ---- DISCOVERY-6: Discovery dependency failure (pywinauto missing) ----
+
+def test_discover_pywinauto_missing_returns_none(monkeypatch):
+    """When pywinauto is not available, discover() returns None gracefully."""
+    from camfrog_autodj import discover
+
+    # Make pywinauto import fail
+    monkeypatch.delitem(__import__("sys").modules, "pywinauto", raising=False)
+    # Also ensure candidates isn't called
+    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: [])
+
+    cfg = Config()
+    result = discover.discover(cfg)
+
+    assert result is None
+
+
+# ---- DISCOVERY-7: Unsupported/unavailable Windows APIs ----
+
+def test_discover_candidates_raises_propagates(monkeypatch):
+    """When windows.candidates() raises (e.g., Windows API unavailable), 
+    the exception propagates (current behavior - could be improved to return None)."""
+    from camfrog_autodj import discover
+
+    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: (_ for _ in ()).throw(OSError("access denied")))
+
+    # Mock pywinauto so we get past the import
+    mock_pywinauto = MagicMock()
+    mock_pywinauto.Desktop = lambda backend="uia": MagicMock()
+    monkeypatch.setitem(__import__("sys").modules, "pywinauto", mock_pywinauto)
+
+    cfg = Config()
+    with pytest.raises(OSError, match="access denied"):
+        discover.discover(cfg)
 
 
 # ============================================================================
