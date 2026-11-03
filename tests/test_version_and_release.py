@@ -16,7 +16,8 @@ def test_version_consistency():
 
     # installer.nsi
     installer_nsi = (root / "installer.nsi").read_text(encoding="utf-8")
-    assert f'!define APP_VERSION "{version}"' in installer_nsi
+    # Support both !define APP_VERSION and !define /IfNDef APP_VERSION
+    assert f'!define APP_VERSION "{version}"' in installer_nsi or f'!define /IfNDef APP_VERSION "{version}"' in installer_nsi
 
     # version_info.txt
     version_info = (root / "version_info.txt").read_text(encoding="utf-8")
