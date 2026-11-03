@@ -1860,7 +1860,8 @@ class App(tk.Tk):
             self.v_title.configure(text=t.title)
             self.v_sub.configure(text=f"{t.requester}  ·  {t.dur}")
             self.bar.set(s["position"] / t.duration if t.duration else 0)
-            self.v_time.configure(text=f"{mmss(s['position'])} / {t.dur}")
+            remaining = max(0, t.duration - s["position"])
+            self.v_time.configure(text=f"-{mmss(remaining)} / {t.dur}")
         else:
             self.v_title.configure(text=self.e.t("g_nothing"))
             self.v_sub.configure(text="")
