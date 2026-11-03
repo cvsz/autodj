@@ -11,11 +11,7 @@ Tests:
 
 from __future__ import annotations
 
-import os
-import pathlib
 from pathlib import Path
-
-import pytest
 
 from camfrog_autodj.migrate import detect_placeholders, migrate_config, migration_needed
 

@@ -12,7 +12,7 @@ from . import __version__
 from .adapters import NullAdapter, build_adapter
 from .config import Config, ConfigError
 from .engine import Engine
-from .migrate import migrate_config, migration_needed
+from .migrate import migrate_config
 from .textutil import clean_text
 
 
@@ -182,7 +182,7 @@ def _run(a, level):
 
         try:
             ensure_room(cfg)
-        except Exception as ex:  # pragma: no cover - defensive; discovery is best-effort
+        except Exception as ex:  # pragma: no cover - defensive; discovery is best-effort  # noqa: BLE001
             log.warning(
                 "auto-launch failed; continuing without Camfrog: %s", ex
             )
