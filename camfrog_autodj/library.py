@@ -119,7 +119,6 @@ def _extract_exe(
     limit: int,
     cookies_file: str = "",
     cookies_browser: str = "",
-    ca_bundle: str = "",
 ) -> dict:
     cmd = [
         exe,
@@ -135,8 +134,6 @@ def _extract_exe(
         cmd.extend(["--cookies", str(Path(cookies_file).resolve())])
     elif cookies_browser:
         cmd.extend(["--cookies-from-browser", str(cookies_browser).strip()])
-    if ca_bundle and Path(ca_bundle).is_file():
-        cmd.extend(["--certificate", str(Path(ca_bundle).resolve())])
     cmd.append(target)
     kw: dict = {
         "capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace", "timeout": 90
@@ -145,6 +142,10 @@ def _extract_exe(
         kw["creationflags"] = (
             0x08000000  # CREATE_NO_WINDOW: no console flash from the GUI build
         )
+    # yt-dlp.exe has no --certificate flag and does not honour REQUESTS_CA_BUNDLE.
+    # Certificate verification is always preserved; we never disable it.
+    # Custom CA bundle support is handled by the yt_dlp Python module path
+    # (see _extract_module) which can patch certifi.where().
     try:
         r = subprocess.run(cmd, check=False, **kw)
     except subprocess.TimeoutExpired:
@@ -160,19 +161,33 @@ def _extract_exe(
         raise RuntimeError("yt-dlp returned no usable result") from None
 
 
-def _extract_module(target: str, playlist: bool, limit: int) -> dict:
+def _extract_module(target: str, playlist: bool, limit: int, ca_bundle: str = "") -> dict:
     import yt_dlp
 
-    opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "skip_download": True,
-        "extract_flat": "in_playlist",
-        "noplaylist": not playlist,
-        "playlistend": limit,
-    }
-    with yt_dlp.YoutubeDL(opts) as y:
-        return y.extract_info(target, download=False) or {}
+    # yt_dlp uses certifi.where() for its CA bundle (see networking/_helper.py).
+    # Temporarily patch certifi.where() to return a custom bundle when configured.
+    # Certificate verification is always preserved; we never disable it.
+    _certifi_where = None
+    if ca_bundle and Path(ca_bundle).is_file():
+        import certifi
+
+        _certifi_where = certifi.where
+        certifi.where = lambda *a, **k: str(Path(ca_bundle).resolve())
+
+    try:
+        opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "extract_flat": "in_playlist",
+            "noplaylist": not playlist,
+            "playlistend": limit,
+        }
+        with yt_dlp.YoutubeDL(opts) as y:
+            return y.extract_info(target, download=False) or {}
+    finally:
+        if _certifi_where is not None:
+            certifi.where = _certifi_where
 
 
 def remote_tracks(
@@ -188,12 +203,18 @@ def remote_tracks(
     cookies_browser: str = "",
     ca_bundle: str = "",
 ) -> list[Track]:
-    """YouTube URL, playlist URL, or plain search text -> tracks (metadata only).
+    """YouTube URL, playlist URL, or plain text search -> tracks (metadata only).
     Uses the yt-dlp executable when there is one (see find_ytdlp), else the yt_dlp Python module.
 
     *search_limit*: for plain-text queries, how many YouTube results to fetch (default 1 keeps
     backward-compatible behaviour for non-admin !play).  Admins can pass a higher value to get a
     playlist of search results.
+
+    *ca_bundle*: path to a custom PEM CA bundle for certificate verification.
+    yt-dlp.exe has no --certificate flag and does not honour REQUESTS_CA_BUNDLE, so when the
+    executable fails with a certificate error and a ca_bundle is configured, we fall back to
+    the yt_dlp Python module where certifi.where() can be patched.  Certificate verification
+    is always preserved; it is never disabled.
     """
     n = max(1, int(search_limit))
     # raw_target: operator-supplied yt-dlp search such as "ytsearch20:mandopop" (autoplay_sources) is used as is
@@ -203,6 +224,7 @@ def remote_tracks(
         target = f"ytsearch{n}:{query}"
     exe = find_ytdlp(ytdlp_path, mpv_path)
     info = None
+    exe_error = None
     if exe:
         try:
             info = _extract_exe(
@@ -212,14 +234,35 @@ def remote_tracks(
                 limit,
                 cookies_file=cookies_file,
                 cookies_browser=cookies_browser,
-                ca_bundle=ca_bundle,
             )
         except OSError as ex:  # cannot even start it: try the module instead
             log.warning("cannot run %s (%s): trying the yt_dlp module", exe, ex)
+        except RuntimeError as ex:
+            exe_error = ex
+            msg = str(ex)
+            # If the executable failed with a certificate error and a custom CA
+            # bundle is configured, fall back to the Python module where we can
+            # patch certifi.where() to use the bundle.  Verification stays on.
+            if ca_bundle and Path(ca_bundle).is_file() and (
+                "SSL" in msg or "CERTIFICATE" in msg or "certificate" in msg
+            ):
+                log.warning(
+                    "yt-dlp.exe certificate failure; falling back to yt_dlp module with custom CA bundle"
+                )
+            else:
+                # Non-SSL failure, or SSL without a CA bundle: report the error
+                raise
     if info is None:
         try:
-            info = _extract_module(target, playlist, limit)
+            info = _extract_module(target, playlist, limit, ca_bundle=ca_bundle)
         except ImportError:
+            if exe_error is not None:
+                raise YtdlpMissing(
+                    "yt-dlp not found: the yt-dlp executable failed "
+                    f"({exe_error}) and this build has no yt_dlp Python module. "
+                    "Put yt-dlp.exe next to mpv.exe (or set ytdlp_path in config.toml), "
+                    "or `pip install yt-dlp` and rebuild AutoDJ.exe."
+                ) from None
             raise YtdlpMissing(
                 "yt-dlp not found: there is no yt-dlp executable (next to mpv.exe or on PATH) and this build has no "
                 "yt_dlp Python module. Put yt-dlp.exe next to mpv.exe (or set ytdlp_path in config.toml), "

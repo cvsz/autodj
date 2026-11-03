@@ -12,6 +12,7 @@ from . import __version__
 from .adapters import NullAdapter, build_adapter
 from .config import Config, ConfigError
 from .engine import Engine
+from .migrate import migrate_config, migration_needed
 from .textutil import clean_text
 
 
@@ -117,6 +118,14 @@ def _run(a, level):
             "config file %s not found: running with built-in defaults (copy config.example.toml to config.toml)",
             os.path.abspath(a.config),
         )
+    # Migrate placeholder/invalid values before loading config
+    if os.path.exists(a.config):
+        try:
+            changes = migrate_config(a.config)
+            for change in changes:
+                log.info("config migration: %s", change)
+        except Exception:  # migration must never prevent startup
+            log.exception("config migration failed; continuing with existing config")
     cfg = Config.load(a.config)
     if a.log_file or cfg.log_file:
         log_path = a.log_file or cfg.log_file
@@ -150,7 +159,14 @@ def _run(a, level):
             )
         p = app_cfg_path
         a.config = str(p)
-        cfg = Config.load(str(p))  # re-load from new location
+        # Migrate the relocated config before loading
+        try:
+            changes = migrate_config(str(p))
+            for change in changes:
+                log.info("config migration: %s", change)
+        except Exception:  # migration must never prevent startup
+            log.exception("config migration failed; continuing with existing config")
+        cfg = Config.load(str(p))
     if a.lang:
         cfg.lang = a.lang
     if a.console:

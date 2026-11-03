@@ -57,7 +57,14 @@ $ErrorActionPreference = "Stop"
 # ---------------------------------------------------------------------------
 
 $runId = (Get-Date -Format "yyyyMMdd-HHmmss")
-$outputRoot = Resolve-Path $OutputDir -ErrorAction SilentlyContinue
+# Resolve output directory: if it exists, use Resolve-Path; otherwise construct it.
+# Join-Path returns the second argument as-is if it is already absolute, so
+# absolute paths are never concatenated with the script directory or CWD.
+if (Test-Path $OutputDir) {
+    $outputRoot = Resolve-Path $OutputDir -ErrorAction SilentlyContinue
+} else {
+    $outputRoot = $null
+}
 if (-not $outputRoot) {
     $outputRoot = Join-Path (Get-Location) $OutputDir
     New-Item -ItemType Directory -Path $outputRoot -ErrorAction Stop | Out-Null

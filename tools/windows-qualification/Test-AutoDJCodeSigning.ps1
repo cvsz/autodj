@@ -59,7 +59,7 @@ $ErrorActionPreference = "Stop"
 # Helpers
 # ---------------------------------------------------------------------------
 
-$script:Results = @[]
+$script:Results = @()
 $script:HasCriticalFailure = $false
 $script:HasPubliclyTrustedCert = $false
 
@@ -128,7 +128,7 @@ if (-not $certFound) {
     Write-Result -Check "Certificate source" -Status "BLOCKED" -Detail "No code-signing certificate configured (no PFX file, no thumbprint, no AUTODJ_PFX/AUTODJ_PFX_PASSWORD/AUTODJ_CERT_THUMBPRINT env vars)"
     $script:HasCriticalFailure = $true
     Write-Host ""
-    Write-Host "BLOCKED — PUBLICLY TRUSTED CODE-SIGNING CERTIFICATE REQUIRED" -ForegroundColor Red
+    Write-Host "BLOCKED - PUBLICLY TRUSTED CODE-SIGNING CERTIFICATE REQUIRED" -ForegroundColor Red
     Write-Host ""
     Write-Host "To resolve:" -ForegroundColor Cyan
     Write-Host "  1. Acquire a code-signing certificate from a public CA (DigiCert, Sectigo, GlobalSign, etc.)"
@@ -309,7 +309,7 @@ if ($script:HasCriticalFailure) {
     exit 1
 } elseif (-not $script:HasPubliclyTrustedCert) {
     Write-Host ""
-    Write-Host "Certificate readiness: BLOCKED — No publicly trusted certificate found" -ForegroundColor Red
+    Write-Host "Certificate readiness: BLOCKED - No publicly trusted certificate found" -ForegroundColor Red
     exit 2
 } else {
     Write-Host ""
