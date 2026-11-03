@@ -124,6 +124,8 @@ def test_placeholder_kept_when_no_valid_path(tmp_path, monkeypatch):
         migrate_mod, "application_dir", lambda: Path(tmp_path / "no-exe-here")
     )
     monkeypatch.setattr(migrate_mod, "COMMON_WINDOWS_PATHS", {})
+    # Mock registry to return empty dict (hermetic - no real registry access)
+    monkeypatch.setattr(migrate_mod, "_read_registry_values", dict)
 
     p = _write_config(
         tmp_path,

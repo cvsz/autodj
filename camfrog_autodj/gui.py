@@ -961,10 +961,6 @@ class App(tk.Tk):
             "<Configure>",
             lambda e: sp_canvas.configure(scrollregion=sp_canvas.bbox("all")),
         )
-        sp_canvas.bind(
-            "<Configure>",
-            lambda e: sp_canvas.itemconfig(sp_inner, width=e.width),
-        )
         sp_inner.columnconfigure(0, weight=1)
 
         row = 0
@@ -1194,8 +1190,16 @@ class App(tk.Tk):
         )
         cancel_btn.pack(side="left", padx=(px(8), 0))
 
-        # Place inner frame inside the canvas so it becomes visible
-        sp_canvas.create_window((0, 0), window=sp_inner, anchor="nw")
+        # Place inner frame inside the canvas so it becomes visible.
+        # Store the canvas window item ID for the resize binding.
+        sp_window_id = sp_canvas.create_window((0, 0), window=sp_inner, anchor="nw")
+
+        # Update the embedded frame width when the canvas resizes.
+        # Use the stored window item ID, not the widget itself.
+        sp_canvas.bind(
+            "<Configure>",
+            lambda e: sp_canvas.itemconfigure(sp_window_id, width=e.width),
+        )
 
         # Protocol handler for window close
         sp.protocol("WM_DELETE_WINDOW", self._settings_close)
