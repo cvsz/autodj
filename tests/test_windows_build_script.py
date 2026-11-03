@@ -9,10 +9,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-# Add project root to path
-REPO_ROOT = Path(__file__).parent.parent
-SCRIPTS_DIR = REPO_ROOT / "scripts"
-BUILD_SCRIPT = SCRIPTS_DIR / "build_windows.ps1"
+
+def get_build_script_path():
+    """Get the path to the build script, computed dynamically to avoid caching issues."""
+    return Path(__file__).parent.parent / "scripts" / "build_windows.ps1"
+
+
+def get_build_script_content():
+    """Get the build script content, read fresh each time to avoid caching issues."""
+    return get_build_script_path().read_text(encoding="utf-8")
 
 
 class TestBuildScriptSyntax(unittest.TestCase):
@@ -20,16 +25,16 @@ class TestBuildScriptSyntax(unittest.TestCase):
 
     def test_script_exists(self):
         """Build script exists at expected location."""
-        self.assertTrue(BUILD_SCRIPT.exists(), f"Build script not found at {BUILD_SCRIPT}")
+        self.assertTrue(get_build_script_path().exists(), f"Build script not found at {get_build_script_path()}")
 
     def test_script_readable(self):
         """Script is readable and non-empty."""
-        content = BUILD_SCRIPT.read_text(encoding="utf-8")
+        content = get_build_script_content()
         self.assertGreater(len(content), 1000, "Script appears empty or truncated")
 
     def test_required_functions_present(self):
         """Key functions are defined in the script."""
-        content = BUILD_SCRIPT.read_text(encoding="utf-8")
+        content = get_build_script_content()
         required_functions = [
             "Validate-SourceIntegrity",
             "Check-Prerequisites",
@@ -45,7 +50,7 @@ class TestBuildScriptSyntax(unittest.TestCase):
 
     def test_required_parameters_present(self):
         """Required parameters are defined."""
-        content = BUILD_SCRIPT.read_text(encoding="utf-8")
+        content = get_build_script_content()
         required_params = [
             "ApprovedSha",
             "OutputRoot",
@@ -59,7 +64,7 @@ class TestBuildScriptSyntax(unittest.TestCase):
 
     def test_approved_sha_validation(self):
         """ApprovedSha parameter has length validation."""
-        content = BUILD_SCRIPT.read_text(encoding="utf-8")
+        content = get_build_script_content()
         self.assertIn("ValidateLength(40,40)", content)
 
 
