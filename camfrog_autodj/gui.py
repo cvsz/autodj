@@ -957,10 +957,13 @@ class App(tk.Tk):
         sp_canvas.configure(yscrollcommand=sp_scroll.set)
         sp_scroll.configure(command=sp_canvas.yview)
         sp_inner = tk.Frame(sp_canvas, bg=SURFACE)
-        sp_canvas.create_window((0, 0), window=sp_inner, anchor="nw")
         sp_inner.bind(
             "<Configure>",
             lambda e: sp_canvas.configure(scrollregion=sp_canvas.bbox("all")),
+        )
+        sp_canvas.bind(
+            "<Configure>",
+            lambda e: sp_canvas.itemconfig(sp_inner, width=e.width),
         )
         sp_inner.columnconfigure(0, weight=1)
 
@@ -1190,6 +1193,9 @@ class App(tk.Tk):
             minw=100,
         )
         cancel_btn.pack(side="left", padx=(px(8), 0))
+
+        # Place inner frame inside the canvas so it becomes visible
+        sp_canvas.create_window((0, 0), window=sp_inner, anchor="nw")
 
         # Protocol handler for window close
         sp.protocol("WM_DELETE_WINDOW", self._settings_close)
