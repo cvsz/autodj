@@ -934,7 +934,7 @@ class App(tk.Tk):
 
         # header bar
         hdr = tk.Frame(sp, bg=SURFACE)
-        hdr.pack(fill="x", padx=px(16), pady=px(12))
+        hdr.pack(fill="x", padx=self.px(16), pady=self.px(12))
         tk.Label(
             hdr, bg=SURFACE, fg=TEXT, font=self.f_bold,
             text=self.e.t("g_settings"),
@@ -946,7 +946,7 @@ class App(tk.Tk):
 
         # scrollable content
         container = tk.Frame(sp, bg=SURFACE)
-        container.pack(fill="both", expand=True, padx=px(14), pady=(0, px(14)))
+        container.pack(fill="both", expand=True, padx=self.px(14), pady=(0, self.px(14)))
         container.columnconfigure(0, weight=1)
         container.rowconfigure(0, weight=1)
 
@@ -968,13 +968,20 @@ class App(tk.Tk):
         def _setting_row(label_key, widget, note_key=None, padx=None):
             nonlocal row
             if padx is None:
-                padx = (px(14), px(14))
+                padx = (self.px(14), self.px(14))
             lf = tk.Frame(sp_inner, bg=SURFACE)
-            lf.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(px(6), px(2)), padx=padx)
+            lf.grid(
+                row=row,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(self.px(6), self.px(2)),
+                padx=padx,
+            )
             lbl = tk.Label(lf, bg=SURFACE, fg=TEXT, font=self.f_body, anchor="w")
             lbl.pack(in_=lf, side="left")
             self._labels.append((lbl, label_key))
-            widget.pack(in_=lf, side="right", fill="x", expand=True, padx=(px(10), 0))
+            widget.pack(in_=lf, side="right", fill="x", expand=True, padx=(self.px(10), 0))
             if note_key:
                 note = tk.Label(
                     sp_inner, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w"
@@ -994,7 +1001,14 @@ class App(tk.Tk):
             font=self.f_bold,
             anchor="w",
             text=self.e.t("g_settings_lang") + " (use header pills)",
-        ).grid(row=row, column=0, columnspan=2, sticky="w", pady=(px(10), px(2)), padx=(px(14), px(14)))
+        ).grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(10), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
         row += 1
 
         # mpv_path
@@ -1120,7 +1134,14 @@ class App(tk.Tk):
             minw=200,
         )
         cb_auto_discover.set_active(self.e.cfg.auto_discover)
-        cb_auto_discover.grid(row=row, column=0, columnspan=2, sticky="w", pady=(px(6), px(2)), padx=(px(14), px(14)))
+        cb_auto_discover.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
         row += 1
 
         # auto_launch toggle
@@ -1136,7 +1157,14 @@ class App(tk.Tk):
             minw=200,
         )
         cb_auto_launch.set_active(self.e.cfg.auto_launch)
-        cb_auto_launch.grid(row=row, column=0, columnspan=2, sticky="w", pady=(px(6), px(2)), padx=(px(14), px(14)))
+        cb_auto_launch.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
         row += 1
 
         # camfrog_exe
@@ -1166,7 +1194,13 @@ class App(tk.Tk):
 
         # Save / Cancel buttons
         btn_row = tk.Frame(sp_inner, bg=SURFACE)
-        btn_row.grid(row=row, column=0, columnspan=2, pady=(px(18), px(14)), padx=(px(14), px(14)))
+        btn_row.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            pady=(self.px(18), self.px(14)),
+            padx=(self.px(14), self.px(14)),
+        )
         save_btn = self._btn(
             btn_row,
             "g_settings_save",
@@ -1188,7 +1222,7 @@ class App(tk.Tk):
             height=40,
             minw=100,
         )
-        cancel_btn.pack(side="left", padx=(px(8), 0))
+        cancel_btn.pack(side="left", padx=(self.px(8), 0))
 
         # Place inner frame inside the canvas so it becomes visible.
         # Store the canvas window item ID for the resize binding.
@@ -1669,6 +1703,28 @@ class App(tk.Tk):
         btn.set_active(getattr(self, attr))
         btn.set_icon("✓" if getattr(self, attr) else "")
 
+    @staticmethod
+    def _parse_int(entry: tk.Entry, field: str) -> int:
+        """Parse an entry as int; raise ValueError with a clear message on bad input."""
+        raw = entry.get().strip()
+        if not raw:
+            raise ValueError(f"{field} must not be empty")
+        try:
+            return int(raw)
+        except ValueError:
+            raise ValueError(f"{field} must be a whole number, got {raw!r}")
+
+    @staticmethod
+    def _parse_float(entry: tk.Entry, field: str) -> float:
+        """Parse an entry as float; raise ValueError with a clear message on bad input."""
+        raw = entry.get().strip()
+        if not raw:
+            raise ValueError(f"{field} must not be empty")
+        try:
+            return float(raw)
+        except ValueError:
+            raise ValueError(f"{field} must be a number, got {raw!r}")
+
     def save_settings(self):
         """Save settings from the settings tab back to config.toml."""
         try:
@@ -1694,19 +1750,19 @@ class App(tk.Tk):
             cfg.autoplay_sources = [a.strip() for a in self.s_autoplay_sources.get().split(",") if a.strip()]
 
             # Int fields
-            cfg.volume = int(self.s_volume.get())
-            cfg.max_queue = int(self.s_max_queue.get())
-            cfg.max_duration = int(self.s_max_duration.get())
-            cfg.search_limit = int(self.s_search_limit.get())
-            cfg.mpv_timeout = float(self.s_mpv_timeout.get())
-            cfg.tts_rate = int(self.s_tts_rate.get())
-            cfg.tts_duck = int(self.s_tts_duck.get())
-            cfg.launch_timeout = int(self.s_launch_timeout.get())
+            cfg.volume = self._parse_int(self.s_volume, "volume")
+            cfg.max_queue = self._parse_int(self.s_max_queue, "max queue length")
+            cfg.max_duration = self._parse_int(self.s_max_duration, "max track duration")
+            cfg.search_limit = self._parse_int(self.s_search_limit, "search limit")
+            cfg.tts_rate = self._parse_int(self.s_tts_rate, "TTS rate")
+            cfg.tts_duck = self._parse_int(self.s_tts_duck, "TTS duck volume")
+            cfg.launch_timeout = self._parse_int(self.s_launch_timeout, "launch timeout")
+            cfg.mpv_timeout = self._parse_float(self.s_mpv_timeout, "mpv timeout")
 
             # Float fields
-            cfg.cooldown = float(self.s_cooldown.get())
-            cfg.send_interval = float(self.s_send_interval.get())
-            cfg.poll_interval = float(self.s_poll_interval.get())
+            cfg.cooldown = self._parse_float(self.s_cooldown, "cooldown")
+            cfg.send_interval = self._parse_float(self.s_send_interval, "send interval")
+            cfg.poll_interval = self._parse_float(self.s_poll_interval, "poll interval")
 
             # Bool fields
             cfg.auto_discover = self.s_auto_discover
