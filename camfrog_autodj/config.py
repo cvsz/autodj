@@ -77,23 +77,37 @@ class Config:
     log_file: str = ""  # also write the log to this file (rotating, 1 MB x 3)
     playlist_file: str = "playlist.json"  # user-requested tracks (!play / GUI request / !load) are appended here
     # (deduplicated) and join the autoplay pool (random); "" = disable persistence
-    playlist_dir: str = ""  # directory of *.json playlist files auto-loaded at startup; "" = disabled
+    playlist_dir: str = (
+        ""  # directory of *.json playlist files auto-loaded at startup; "" = disabled
+    )
     search_limit: int = 1  # YouTube text-search results fetched per non-admin !play (1 = first match only)
     mpv_timeout: float = 30.0  # seconds to wait for one mpv track before treating it as hung (0 = no timeout)
     # Audio Engineering
     audio_fade: bool = True  # enable audio volume fade-in and fade-out
     audio_fade_in_sec: float = 1.2  # fade-in duration in seconds
     audio_fade_out_sec: float = 1.5  # fade-out duration on skip/stop in seconds
-    audio_normalize: bool = False  # enable dynamic audio loudness normalization (dynaudnorm)
+    audio_normalize: bool = (
+        False  # enable dynamic audio loudness normalization (dynaudnorm)
+    )
     # YouTube Authentication
     youtube_cookies_file: str = ""  # path to Netscape cookies.txt for yt-dlp
-    youtube_cookies_browser: str = ""  # browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
-    youtube_ca_bundle: str = ""  # path to custom CA bundle PEM file for yt-dlp certificate verification
+    youtube_cookies_browser: str = (
+        ""  # browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
+    )
+    youtube_ca_bundle: str = (
+        ""  # path to custom CA bundle PEM file for yt-dlp certificate verification
+    )
     # Dynamic Moderation
-    voteskip_dynamic: bool = False  # dynamic voteskip threshold based on participant count
+    voteskip_dynamic: bool = (
+        False  # dynamic voteskip threshold based on participant count
+    )
     voteskip_dynamic_pct: int = 30  # percentage of participants required to skip
-    user_request_limit: int = 5  # max song requests allowed per user within rate_limit_window
-    rate_limit_window: float = 300.0  # rolling time window for per-user request limit (seconds)
+    user_request_limit: int = (
+        5  # max song requests allowed per user within rate_limit_window
+    )
+    rate_limit_window: float = (
+        300.0  # rolling time window for per-user request limit (seconds)
+    )
 
     @classmethod
     def load(cls, path: str | None) -> Config:
