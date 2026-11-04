@@ -57,7 +57,9 @@ class UiaAdapter(ChatAdapter):
         self._view = self._input = None
         self._web = False
         self._bg_fails = 0  # consecutive unconfirmed background sends (auto mode only)
-        self._bg_fails_lock = threading.Lock()  # protects _bg_fails across reader/sender threads
+        self._bg_fails_lock = (
+            threading.Lock()
+        )  # protects _bg_fails across reader/sender threads
         self._attach()
 
     def _attach(self):
@@ -117,7 +119,9 @@ class UiaAdapter(ChatAdapter):
             except (OSError, RuntimeError) as e:
                 log.debug("chat read failed: %s", e)
                 with self.com_lock:  # protect _view/win against reader/sender race
-                    self._view = self.win = None  # drop everything: the next poll re-attaches fresh
+                    self._view = self.win = (
+                        None  # drop everything: the next poll re-attaches fresh
+                    )
                 time.sleep(1)
                 continue
             if prev is not None:
