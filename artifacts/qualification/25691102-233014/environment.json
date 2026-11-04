@@ -1,0 +1,10 @@
+{
+  "RunId": "25691102-233014",
+  "TimestampUtc": "2026-11-02T23:30:14.2818503+07:00",
+  "CollectedFrom": "live-system",
+  "WindowsEdition": "Microsoft Windows 11 Enterprise",
+  "WindowsBuild": "26300",
+  "PowerShellVersion": "7.6.9",
+  "PythonVersion": null,
+  "Notes": "Collected live; no doctor output provided"
+}

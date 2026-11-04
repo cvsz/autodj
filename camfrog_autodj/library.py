@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import re
-import shutil
+import shutil  # noqa: F401  re-exported for test monkeypatching of library.shutil
 import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
@@ -42,8 +42,10 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
             a = (f.get("artist") or [None])[0]
             if t:
                 title = f"{a} - {t}" if a else t
-    except Exception:
-        pass
+    except ImportError:
+        pass  # mutagen not installed; fall back to filename
+    except (OSError, mutagen.MutagenError):
+        pass  # metadata unavailable; fall back to filename
     return Track(str(p), title, dur, requester)
 
 

@@ -42,7 +42,7 @@ def _ytdlp_version(exe: str) -> str:
             if r.returncode == 0 and r.stdout.strip()
             else ""
         )
-    except Exception:
+    except (OSError, subprocess.SubprocessError, ValueError):
         return ""
 
 
@@ -163,6 +163,6 @@ def run_checks(cfg, check_window: bool = True) -> list[Result]:
                         f"no visible window matches window_title_re = {cfg.window_title_re!r} "
                         "(open the room window, or run AutoDJ.exe --windows to see what is open)",
                     )
-            except Exception as ex:
+            except (OSError, RuntimeError) as ex:
                 add("WARN", f"could not look for the Camfrog window: {ex}")
     return out

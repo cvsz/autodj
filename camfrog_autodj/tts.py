@@ -89,7 +89,7 @@ def synth(text: str, path: str, cfg) -> None:
                         break
             eng.save_to_file(text, path)  # NOT inside the voice loop/if: with tts_voice = "" (the default) nothing was synthesised
             eng.runAndWait()
-        except Exception as ex:
+        except (OSError, RuntimeError, ImportError) as ex:
             exc.append(ex)
         finally:
             done.set()

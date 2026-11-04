@@ -37,12 +37,12 @@ MAX_BACKOFF = 30.0  # seconds, ceiling of the pause between consecutive failed t
 ECHO_TTL = 120.0  # seconds a line we posted is remembered, to recognise it when it comes back from the room
 
 # Failure categories for structured diagnostics
-FAIL_RESOLVE = "resolve_failed"       # yt-dlp/search could not resolve the source
-FAIL_PLAYBACK = "playback_failed"     # mpv could not play the track
-FAIL_HUNG = "playback_hung"           # mpv did not exit within the expected time
-FAIL_CRASH = "playback_crashed"       # mpv exited with non-zero code
+FAIL_RESOLVE = "resolve_failed"  # yt-dlp/search could not resolve the source
+FAIL_PLAYBACK = "playback_failed"  # mpv could not play the track
+FAIL_HUNG = "playback_hung"  # mpv did not exit within the expected time
+FAIL_CRASH = "playback_crashed"  # mpv exited with non-zero code
 FAIL_DELIVERY = "chat_delivery_failed"  # chat message could not be delivered
-FAIL_CONFIG = "config_error"          # configuration problem
+FAIL_CONFIG = "config_error"  # configuration problem
 
 _req_ids = itertools.count()  # global request ID counter
 
@@ -82,13 +82,23 @@ class Engine:
         )  # n = consecutive failures so far
         self._sent: deque[tuple[float, str]] = deque(maxlen=64)
         self._sent_lock = threading.Lock()
-        self._speak_lock = threading.Lock()  # one TTS clip at a time: overlapping jobs would un-duck the music early
-        self._threads: list[threading.Thread] = []  # daemon threads started by start(), joined on shutdown()
+        self._speak_lock = (
+            threading.Lock()
+        )  # one TTS clip at a time: overlapping jobs would un-duck the music early
+        self._threads: list[
+            threading.Thread
+        ] = []  # daemon threads started by start(), joined on shutdown()
         # ---- observability --------------------------------------------------
         self._req_counter = itertools.count()  # per-engine request ID counter
-        self._delivery_counter = itertools.count()  # per-engine delivery attempt ID counter
-        self._active_requests: dict[str, dict] = {}  # request_id -> {user, arg, start, state}
-        self._delivery_attempts: dict[int, dict] = {}  # attempt_id -> {text, stage, confirmed}
+        self._delivery_counter = (
+            itertools.count()
+        )  # per-engine delivery attempt ID counter
+        self._active_requests: dict[
+            str, dict
+        ] = {}  # request_id -> {user, arg, start, state}
+        self._delivery_attempts: dict[
+            int, dict
+        ] = {}  # attempt_id -> {text, stage, confirmed}
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -129,14 +139,17 @@ class Engine:
             if not parsed.scheme or not parsed.netloc:
                 return False
             hostname = parsed.netloc.lower()
-            if not any(h == hostname or hostname.endswith("." + h) for h in ("youtube.com", "youtu.be", "music.youtube.com")):
+            if not any(
+                h == hostname or hostname.endswith("." + h)
+                for h in ("youtube.com", "youtu.be", "music.youtube.com")
+            ):
                 return False
             # Check for playlist URL patterns
             if parsed.path == "/playlist":
                 return True
             query = parse_qs(parsed.query)
             return "list" in query
-        except Exception:
+        except (ValueError, AttributeError):
             return False
 
     # ---- chat out -------------------------------------------------------
@@ -301,7 +314,7 @@ class Engine:
                 self.adapter.send(m)
                 self.confirm_delivery(attempt_id)
                 log.info("send ok: %r", m)
-            except Exception as ex:
+            except (OSError, RuntimeError) as ex:
                 self.fail_delivery(attempt_id, FAIL_DELIVERY)
                 log.warning("send failed (%s); retrying once in 2s", ex)
                 self.stop_evt.wait(2.0)
@@ -344,6 +357,11 @@ class Engine:
     def position(self) -> float:
         if not self.current:
             return 0.0
+        # Try to get actual playback position from mpv via IPC
+        mpv_pos = self.player.get_time_pos()
+        if mpv_pos is not None and mpv_pos >= 0:
+            return mpv_pos
+        # Fallback to wall-clock calculation (pauses excluded)
         end = self._paused_at or time.monotonic()
         return max(0.0, end - self.started_at - self._paused_total)
 
@@ -523,7 +541,9 @@ class Engine:
         self.exec.submit(job)
 
     def load_source(self, src: str) -> list[Track]:
-        if is_url(src) or SEARCH_PREFIX.match(src):  # "ytsearch20:text" works as an autoplay source
+        if is_url(src) or SEARCH_PREFIX.match(
+            src
+        ):  # "ytsearch20:text" works as an autoplay source
             return self._remote(src, playlist=True, raw_target=True)
         p = Path(src)
         if p.is_dir():
@@ -576,14 +596,18 @@ class Engine:
         except UserError:
             raise
         except Exception as ex:
-            log.warning("failed to dynamically resolve search track %r: %s", orig_src, ex)
+            log.warning(
+                "failed to dynamically resolve search track %r: %s", orig_src, ex
+            )
             raise UserError(str(ex)) from ex
 
     def _preload_search_tracks(self):
         """Asynchronously resolve upcoming search-backed tracks in the queue."""
         try:
             with self.queue.lock:
-                candidates = [t for t in self.queue.requests if SEARCH_PREFIX.match(t.source)][:3]
+                candidates = [
+                    t for t in self.queue.requests if SEARCH_PREFIX.match(t.source)
+                ][:3]
             for cand in candidates:
                 if self.stop_evt.is_set():
                     break
@@ -619,7 +643,10 @@ class Engine:
                     queued_sources = {r.source for r in self.queue.requests}
                     played_sources = {t.source for t in self.history}
                     for t in loaded:
-                        if t.source not in queued_sources and t.source not in played_sources:
+                        if (
+                            t.source not in queued_sources
+                            and t.source not in played_sources
+                        ):
                             self.queue.add_request(t)
                             queued_sources.add(t.source)
             except Exception:
@@ -636,7 +663,10 @@ class Engine:
                                 queued_sources = {r.source for r in self.queue.requests}
                                 played_sources = {t.source for t in self.history}
                                 for t in dir_tracks:
-                                    if t.source not in queued_sources and t.source not in played_sources:
+                                    if (
+                                        t.source not in queued_sources
+                                        and t.source not in played_sources
+                                    ):
                                         self.queue.add_request(t)
                                         queued_sources.add(t.source)
                             log.info(
@@ -645,10 +675,16 @@ class Engine:
                                 pl_file,
                             )
                         except Exception:
-                            log.exception("failed to load playlist dir file: %s", pl_file)
+                            log.exception(
+                                "failed to load playlist dir file: %s", pl_file
+                            )
             except Exception:
                 log.exception("playlist dir scan failed: %s", self.cfg.playlist_dir)
-        log.info("autoplay pool: %d tracks; queue: %d requests", len(self.queue.pool), len(self.queue.requests))
+        log.info(
+            "autoplay pool: %d tracks; queue: %d requests",
+            len(self.queue.pool),
+            len(self.queue.requests),
+        )
         self.wake.set()
         # Trigger background lookahead resolution for search tracks
         self.exec.submit(self._preload_search_tracks)

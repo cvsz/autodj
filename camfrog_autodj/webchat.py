@@ -80,12 +80,12 @@ def find_web_panes(win, view_title: str, input_title: str):
     view = inp = None
     try:
         panes = win.descendants(control_type="Pane")
-    except Exception:
+    except (AttributeError, RuntimeError):
         return None, None
     for p in panes:
         try:
             name = p.element_info.name or ""
-        except Exception:
+        except (AttributeError, RuntimeError):
             continue
         if view is None and view_title and view_title in name:
             view = p
@@ -121,7 +121,7 @@ def read_items(view, tail: int = 600) -> list[tuple[str, str]]:
     for k in kids[-tail:]:
         try:
             ct, name = k.control_type, k.name or ""
-        except Exception:
+        except (AttributeError, RuntimeError):
             continue
         if ct == "Image":
             items.append(("emo", name) if name else ("avatar", ""))

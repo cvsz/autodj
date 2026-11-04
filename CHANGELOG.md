@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Fix: Player music time countdown skipping** — The GUI now queries mpv via IPC (`get_property time-pos`) for the actual playback position instead of relying on wall-clock time. Added `MpvPlayer._cmd_get()` and `MpvPlayer.get_time_pos()` in `player.py`; `Engine.position()` in `engine.py` uses real mpv position with wall-clock fallback. Fixes the issue where the time display jumped (e.g., from 00:00 to 00:30) during playback.
 - Resolve MPV and yt-dlp executable paths consistently, including Windows environment variables and app-relative paths.
 - Preserve the user's `config.toml` across installer upgrades and retain user data during uninstall.
 - Make source-validation output explicit and keep `clean-all` from deleting the tracked PyInstaller spec.

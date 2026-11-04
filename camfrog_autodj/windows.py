@@ -42,8 +42,8 @@ def exe_name(pid: int) -> str:
                 return os.path.basename(buf.value)
         finally:
             k.CloseHandle(h)
-    except Exception:
-        pass
+    except (OSError, AttributeError):
+        pass  # cannot read process name; return empty string
     return ""
 
 

@@ -16,6 +16,7 @@ def _tk_module():
     m = types.ModuleType("tkinter")
     for n in (
         "Tk",
+        "Toplevel",
         "Frame",
         "Label",
         "Entry",
@@ -160,5 +161,104 @@ def test_refresh_survives_an_error_and_keeps_polling(monkeypatch):
         e.snapshot = lambda: (_ for _ in ()).throw(RuntimeError("boom"))
         app.refresh()
         assert len(app._after) == n + 1  # rescheduled despite the exception
+    finally:
+        sys.modules.pop("camfrog_autodj.gui", None)
+
+
+def test_settings_dialog_opens_and_saves(monkeypatch, tmp_path):
+    """The settings popup must open without NameError (px -> self.px) and persist changes."""
+    try:
+        _gui, e, app = _app(monkeypatch)
+        cfg_path = str(tmp_path / "config.toml")
+        e.cfg_path = cfg_path
+        # Write a starter config so save_settings has something to write
+        from camfrog_autodj.config import Config
+
+        starter = Config()
+        starter.music_dirs = []
+        starter.autoplay_sources = []
+        from pathlib import Path
+
+        Path(cfg_path).write_text(
+            f'bot_nick = "{starter.bot_nick}"\n'
+            f'admins = {starter.admins!r}\n'
+            f'prefix = "{starter.prefix}"\n'
+            f'lang = "{starter.lang}"\n'
+            f'chat_reader = "{starter.chat_reader}"\n'
+            f'chat_sender = "{starter.chat_sender}"\n'
+            f'window_title_re = "{starter.window_title_re}"\n'
+            f'process_re = "{starter.process_re}"\n'
+            f'window_exclude_re = "{starter.window_exclude_re}"\n'
+            f'window_index = {starter.window_index}\n'
+            f'auto_discover = {str(starter.auto_discover).lower()}\n'
+            f'view_kind = "{starter.view_kind}"\n'
+            f'send_mode = "{starter.send_mode}"\n'
+            f'send_verify = {str(starter.send_verify).lower()}\n'
+            f'web_strict_body = {str(starter.web_strict_body).lower()}\n'
+            f'view_type = "{starter.view_type}"\n'
+            f'view_index = {starter.view_index}\n'
+            f'input_type = "{starter.input_type}"\n'
+            f'input_index = {starter.input_index}\n'
+            f'mpv_path = "{starter.mpv_path}"\n'
+            f'ytdlp_path = "{starter.ytdlp_path}"\n'
+            f'audio_device = "{starter.audio_device}"\n'
+            f'volume = {starter.volume}\n'
+            f'music_dirs = {starter.music_dirs!r}\n'
+            f'autoplay_sources = {starter.autoplay_sources!r}\n'
+            f'shuffle = {str(starter.shuffle).lower()}\n'
+            f'allowed_hosts = {starter.allowed_hosts!r}\n'
+            f'max_requests_per_user = {starter.max_requests_per_user}\n'
+            f'max_queue = {starter.max_queue}\n'
+            f'max_duration = {starter.max_duration}\n'
+            f'voteskip_threshold = {starter.voteskip_threshold}\n'
+            f'cooldown = {starter.cooldown}\n'
+            f'send_interval = {starter.send_interval}\n'
+            f'max_msg_len = {starter.max_msg_len}\n'
+            f'announce_next = {str(starter.announce_next).lower()}\n'
+            f'tts_voice = "{starter.tts_voice}"\n'
+            f'tts_rate = {starter.tts_rate}\n'
+            f'tts_duck = {starter.tts_duck}\n'
+            f'auto_launch = {str(starter.auto_launch).lower()}\n'
+            f'camfrog_exe = "{starter.camfrog_exe}"\n'
+            f'client_title_re = "{starter.client_title_re}"\n'
+            f'room = "{starter.room}"\n'
+            f'join_uri_template = "{starter.join_uri_template}"\n'
+            f'launch_timeout = {starter.launch_timeout}\n'
+            f'blocked_users = {starter.blocked_users!r}\n'
+            f'poll_interval = {starter.poll_interval}\n'
+            f'log_file = "{starter.log_file}"\n'
+            f'playlist_file = "{starter.playlist_file}"\n'
+            f'search_limit = {starter.search_limit}\n'
+            f'mpv_timeout = {starter.mpv_timeout}\n',
+            "utf-8",
+        )
+        # Open the settings dialog (this used to raise NameError: name 'px' is not defined)
+        app.open_settings()
+        assert app._settings_win is not None and app._settings_win.winfo_exists()
+        # Change the volume and save
+        app.s_volume.delete(0, "end")
+        app.s_volume.insert(0, "85")
+        app.save_settings()
+        # Re-load and verify the change persisted
+        new_cfg = Config.load(cfg_path)
+        assert new_cfg.volume == 85
+        # Close the dialog
+        app._settings_close()
+        assert app._settings_win is None
+    finally:
+        sys.modules.pop("camfrog_autodj.gui", None)
+
+
+def test_settings_dialog_rejects_bad_int(monkeypatch):
+    """Entering a non-numeric volume must not crash: it shows g_settings_save_failed."""
+    try:
+        _gui, e, app = _app(monkeypatch)
+        app.open_settings()
+        app.s_volume.delete(0, "end")
+        app.s_volume.insert(0, "not-a-number")
+        app.save_settings()  # must not raise; errors are reported via say()
+        # Volume should remain unchanged
+        assert e.volume == 70
+        app._settings_close()
     finally:
         sys.modules.pop("camfrog_autodj.gui", None)
