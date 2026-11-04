@@ -71,6 +71,7 @@ def _fake_subprocess_run(returncode=0, stdout=json.dumps(SEARCH_JSON), stderr=""
 
 # ---- P0-1: Valid certificate chain (yt-dlp exe with --certificate) ----
 
+
 def test_extract_exe_no_ca_bundle_env_var(monkeypatch, tmp_path):
     """_extract_exe does not set REQUESTS_CA_BUNDLE env var (yt-dlp.exe ignores it).
     Custom CA bundle is only supported via the yt_dlp Python module path."""
@@ -128,9 +129,11 @@ def test_extract_exe_no_ca_bundle_no_certificate_flag(monkeypatch):
 
 # ---- P0-2: Invalid certificate chain ----
 
+
 def test_extract_exe_cert_failure_raises_runtime_error(monkeypatch):
     """yt-dlp returning nonzero due to certificate failure must raise RuntimeError
     (never silently trust or skip verification)."""
+
     def fake_run(cmd, **kw):
         return subprocess.CompletedProcess(
             cmd, 1, "", "ERROR: unable to verify the first certificate"
@@ -143,7 +146,10 @@ def test_extract_exe_cert_failure_raises_runtime_error(monkeypatch):
 
 # ---- P0-3: Missing CA bundle ----
 
-def test_remote_tracks_with_missing_ca_bundle_falls_back_to_system_trust(monkeypatch, tmp_path):
+
+def test_remote_tracks_with_missing_ca_bundle_falls_back_to_system_trust(
+    monkeypatch, tmp_path
+):
     """configured ca_bundle that points to a missing file: module path uses system trust
     (certifi default) since ca_bundle file doesn't exist."""
     exe = tmp_path / "yt-dlp.exe"
@@ -162,9 +168,7 @@ def test_remote_tracks_with_missing_ca_bundle_falls_back_to_system_trust(monkeyp
 
     monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
     monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr(
-        "camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe)
-    )
+    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
 
     tracks = remote_tracks(
         "test song", "amy", ytdlp_path=str(exe), ca_bundle="/nonexistent/ca.pem"
@@ -175,13 +179,16 @@ def test_remote_tracks_with_missing_ca_bundle_falls_back_to_system_trust(monkeyp
 
 # ---- P0-4: Explicit custom CA bundle ----
 
+
 def test_remote_tracks_passes_ca_bundle_through(monkeypatch, tmp_path):
     """remote_tracks must forward ca_bundle to _extract_module (not _extract_exe,
     since yt-dlp.exe has no --certificate flag)."""
     exe = tmp_path / "yt-dlp.exe"
     exe.write_text("x")
     ca = tmp_path / "custom.pem"
-    ca.write_text("-----BEGIN CERTIFICATE-----\nCUSTOM\n-----END CERTIFICATE-----\n", "utf-8")
+    ca.write_text(
+        "-----BEGIN CERTIFICATE-----\nCUSTOM\n-----END CERTIFICATE-----\n", "utf-8"
+    )
 
     captured = {"exe_called": False, "module_ca_bundle": None}
 
@@ -195,9 +202,7 @@ def test_remote_tracks_passes_ca_bundle_through(monkeypatch, tmp_path):
 
     monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
     monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr(
-        "camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe)
-    )
+    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
 
     remote_tracks("test song", "amy", ytdlp_path=str(exe), ca_bundle=str(ca))
     assert captured["exe_called"] is True  # exe was tried first
@@ -205,6 +210,7 @@ def test_remote_tracks_passes_ca_bundle_through(monkeypatch, tmp_path):
 
 
 # ---- P0-5: Proxy environment behavior ----
+
 
 def test_remote_tracks_respects_proxy_env_vars(monkeypatch, tmp_path):
     """yt-dlp picks up HTTPS_PROXY/HTTP_PROXY from the environment automatically;
@@ -224,9 +230,7 @@ def test_remote_tracks_respects_proxy_env_vars(monkeypatch, tmp_path):
 
     monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
     monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr(
-        "camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe)
-    )
+    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
 
     remote_tracks("test song", "amy", ytdlp_path=str(exe))
     assert called["env_proxy"] == "http://proxy.corp:8080"
@@ -234,6 +238,7 @@ def test_remote_tracks_respects_proxy_env_vars(monkeypatch, tmp_path):
 
 
 # ---- P0-6: Packaged executable certificate paths ----
+
 
 def test_extract_exe_no_env_var_when_ca_bundle_missing(monkeypatch, tmp_path):
     """_extract_exe does not set REQUESTS_CA_BUNDLE env var (yt-dlp.exe ignores it)."""
@@ -257,13 +262,18 @@ def test_extract_exe_no_env_var_when_ca_bundle_missing(monkeypatch, tmp_path):
 
 # ---- P0-7: SSL fallback from yt-dlp.exe to Python module with CA bundle ----
 
-def test_remote_tracks_ssl_failure_falls_back_to_module_with_ca_bundle(monkeypatch, tmp_path):
+
+def test_remote_tracks_ssl_failure_falls_back_to_module_with_ca_bundle(
+    monkeypatch, tmp_path
+):
     """When yt-dlp.exe fails with SSL error and ca_bundle is configured,
     fall back to yt_dlp Python module with the custom CA bundle."""
     exe = tmp_path / "yt-dlp.exe"
     exe.write_text("x")
     ca = tmp_path / "custom.pem"
-    ca.write_text("-----BEGIN CERTIFICATE-----\nCUSTOM\n-----END CERTIFICATE-----\n", "utf-8")
+    ca.write_text(
+        "-----BEGIN CERTIFICATE-----\nCUSTOM\n-----END CERTIFICATE-----\n", "utf-8"
+    )
 
     module_called = {"ca_bundle": None}
 
@@ -276,9 +286,7 @@ def test_remote_tracks_ssl_failure_falls_back_to_module_with_ca_bundle(monkeypat
 
     monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
     monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr(
-        "camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe)
-    )
+    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
 
     tracks = remote_tracks("test song", "amy", ytdlp_path=str(exe), ca_bundle=str(ca))
     assert tracks[0].title == "Song A"
@@ -299,9 +307,7 @@ def test_remote_tracks_ssl_failure_without_ca_bundle_raises(monkeypatch, tmp_pat
 
     monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
     monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr(
-        "camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe)
-    )
+    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
 
     with pytest.raises(RuntimeError, match="CERTIFICATE_VERIFY_FAILED"):
         remote_tracks("test song", "amy", ytdlp_path=str(exe))
@@ -313,12 +319,18 @@ def test_remote_tracks_ssl_failure_without_ca_bundle_raises(monkeypatch, tmp_pat
 
 # ---- P0-7: Invalid video ID rejected ----
 
+
 def test_resolve_rejects_placeholder_youtube_id(monkeypatch):
     """Placeholder/invalid YouTube IDs must not be treated as valid media."""
     e = make()
+
     # yt-dlp returns an entry with an ID that looks like a placeholder
-    def fake_remote(query, user, playlist=False, search_limit=1, raw_target=False, **kw):
-        return [Track("https://www.youtube.com/watch?v=VIDEO_ID", "Placeholder", 100, user)]
+    def fake_remote(
+        query, user, playlist=False, search_limit=1, raw_target=False, **kw
+    ):
+        return [
+            Track("https://www.youtube.com/watch?v=VIDEO_ID", "Placeholder", 100, user)
+        ]
 
     monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote)
     # The resolve path doesn't validate the video ID itself; it trusts yt-dlp's output.
@@ -329,6 +341,7 @@ def test_resolve_rejects_placeholder_youtube_id(monkeypatch):
 
 
 # ---- P0-8: Invalid URL rejected ----
+
 
 def test_resolve_rejects_non_allowed_host_for_non_admin(monkeypatch):
     """Non-YouTube URLs must be rejected for non-admin users."""
@@ -347,10 +360,18 @@ def test_resolve_rejects_non_allowed_host_for_non_admin(monkeypatch):
 
     class FakePlayer:
         skipped = False
-        def stop(self): pass
-        def set_pause(self, v): pass
-        def set_volume(self, v): pass
-        def available(self): return True
+
+        def stop(self):
+            pass
+
+        def set_pause(self, v):
+            pass
+
+        def set_volume(self, v):
+            pass
+
+        def available(self):
+            return True
 
     cfg = Config(admins=["boss"], allowed_hosts=["youtube.com", "youtu.be"])
     e = Engine(cfg, FakeAdapter(), player=FakePlayer(), index=LocalIndex([]))
@@ -375,10 +396,18 @@ def test_resolve_rejects_empty_arg(monkeypatch):
 
     class FakePlayer:
         skipped = False
-        def stop(self): pass
-        def set_pause(self, v): pass
-        def set_volume(self, v): pass
-        def available(self): return True
+
+        def stop(self):
+            pass
+
+        def set_pause(self, v):
+            pass
+
+        def set_volume(self, v):
+            pass
+
+        def available(self):
+            return True
 
     cfg = Config(admins=["boss"])
     e = Engine(cfg, FakeAdapter(), player=FakePlayer(), index=LocalIndex([]))
@@ -387,6 +416,7 @@ def test_resolve_rejects_empty_arg(monkeypatch):
 
 
 # ---- P0-9: Valid local media ----
+
 
 def test_resolve_accepts_valid_local_media_file(tmp_path):
     """A local media file with a recognised extension is accepted by admin."""
@@ -405,21 +435,32 @@ def test_resolve_accepts_valid_local_media_file(tmp_path):
 
     class FakePlayer:
         skipped = False
-        def stop(self): pass
-        def set_pause(self, v): pass
-        def set_volume(self, v): pass
-        def available(self): return True
+
+        def stop(self):
+            pass
+
+        def set_pause(self, v):
+            pass
+
+        def set_volume(self, v):
+            pass
+
+        def available(self):
+            return True
 
     music_file = tmp_path / "song.mp3"
     music_file.write_text("fake audio")
     cfg = Config(admins=["boss"], music_dirs=[str(tmp_path)])
-    e = Engine(cfg, FakeAdapter(), player=FakePlayer(), index=LocalIndex([str(tmp_path)]))
+    e = Engine(
+        cfg, FakeAdapter(), player=FakePlayer(), index=LocalIndex([str(tmp_path)])
+    )
     tracks = e.resolve(str(music_file), "amy", True)
     assert len(tracks) == 1
     assert tracks[0].title == "song"
 
 
 # ---- P0-10: Playlist extraction ----
+
 
 def test_resolve_extracts_youtube_playlist(monkeypatch):
     """YouTube playlist URLs are detected and played in sequence."""
@@ -438,21 +479,39 @@ def test_resolve_extracts_youtube_playlist(monkeypatch):
 
     class FakePlayer:
         skipped = False
-        def stop(self): pass
-        def set_pause(self, v): pass
-        def set_volume(self, v): pass
-        def available(self): return True
+
+        def stop(self):
+            pass
+
+        def set_pause(self, v):
+            pass
+
+        def set_volume(self, v):
+            pass
+
+        def available(self):
+            return True
 
     playlist_json = {
         "entries": [
-            {"id": "p1", "title": "Playlist Song 1", "duration": 120,
-             "url": "https://www.youtube.com/watch?v=p1"},
-            {"id": "p2", "title": "Playlist Song 2", "duration": 180,
-             "url": "https://www.youtube.com/watch?v=p2"},
+            {
+                "id": "p1",
+                "title": "Playlist Song 1",
+                "duration": 120,
+                "url": "https://www.youtube.com/watch?v=p1",
+            },
+            {
+                "id": "p2",
+                "title": "Playlist Song 2",
+                "duration": 180,
+                "url": "https://www.youtube.com/watch?v=p2",
+            },
         ]
     }
 
-    def fake_remote(query, user, playlist=False, search_limit=1, raw_target=False, **kw):
+    def fake_remote(
+        query, user, playlist=False, search_limit=1, raw_target=False, **kw
+    ):
         return parse_ytdlp_info(playlist_json, user)
 
     cfg = Config(admins=["boss"])
@@ -466,6 +525,7 @@ def test_resolve_extracts_youtube_playlist(monkeypatch):
 
 # ---- P0-11: Network timeout ----
 
+
 def test_remote_tracks_timeout_raises_runtime_error(monkeypatch, tmp_path):
     """yt-dlp subprocess timeout must surface as RuntimeError, not hang forever."""
     exe = tmp_path / "yt-dlp.exe"
@@ -475,9 +535,7 @@ def test_remote_tracks_timeout_raises_runtime_error(monkeypatch, tmp_path):
         raise subprocess.TimeoutExpired(cmd="yt-dlp", timeout=90)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr(
-        "camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe)
-    )
+    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
     # Also block the module fallback
     monkeypatch.setattr(
         "camfrog_autodj.library._extract_module",
@@ -490,20 +548,17 @@ def test_remote_tracks_timeout_raises_runtime_error(monkeypatch, tmp_path):
 
 # ---- P0-12: yt-dlp process failure ----
 
+
 def test_remote_tracks_yt_dlp_failure_raises_runtime_error(monkeypatch, tmp_path):
     """yt-dlp returning nonzero (e.g. video unavailable) must raise RuntimeError."""
     exe = tmp_path / "yt-dlp.exe"
     exe.write_text("x")
 
     def fake_run(cmd, **kw):
-        return subprocess.CompletedProcess(
-            exe, 1, "", "ERROR: video unavailable"
-        )
+        return subprocess.CompletedProcess(exe, 1, "", "ERROR: video unavailable")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr(
-        "camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe)
-    )
+    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
     # Block the module fallback so the exe failure propagates
     monkeypatch.setattr(
         "camfrog_autodj.library._extract_module",
@@ -516,6 +571,7 @@ def test_remote_tracks_yt_dlp_failure_raises_runtime_error(monkeypatch, tmp_path
 
 # ---- P0-13: No mpv invocation after resolver failure ----
 
+
 def test_player_loop_no_mpv_after_resolver_failure(monkeypatch):
     """If _resolve_track_if_search raises UserError, mpv.play() must NOT be called."""
     e = make()
@@ -525,7 +581,9 @@ def test_player_loop_no_mpv_after_resolver_failure(monkeypatch):
     )
     e.queue.add_request(Track("ytsearch1:nonexistent song", "test", 100, "amy"))
 
-    def fake_remote(query, user, playlist=False, search_limit=1, raw_target=False, **kw):
+    def fake_remote(
+        query, user, playlist=False, search_limit=1, raw_target=False, **kw
+    ):
         return []
 
     monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote)
@@ -540,6 +598,7 @@ def test_player_loop_no_mpv_after_resolver_failure(monkeypatch):
 
 
 # ---- P0-14: Queue continues after failed track ----
+
 
 def test_player_loop_queues_continue_after_failed_track(monkeypatch):
     """After a track fails, the next track in the queue must still be played."""
@@ -568,6 +627,7 @@ def test_player_loop_queues_continue_after_failed_track(monkeypatch):
 
 # ---- P0-15: No duplicate playback or queue advancement ----
 
+
 def test_player_loop_no_duplicate_playback_on_repeat_off(monkeypatch):
     """With repeat off, a completed track must not be re-played."""
     e = make()
@@ -591,6 +651,7 @@ def test_player_loop_no_duplicate_playback_on_repeat_off(monkeypatch):
 
 # ---- P1-1: AutoDJ's own messages are ignored ----
 
+
 def test_own_message_ignored_even_when_nick_matches_exactly(monkeypatch):
     """When the bot's own line comes back from the room under bot_nick, it must
     not be re-processed as a command."""
@@ -612,6 +673,7 @@ def test_own_message_ignored_even_when_nick_matches_exactly(monkeypatch):
 
 
 # ---- P1-2: System status messages separated from user requests ----
+
 
 def test_bot_error_line_not_treated_as_request():
     """`AutoDJ: เกิดข้อผิดพลาด...` followed by `request failed: ...` must not
@@ -635,6 +697,7 @@ def test_bot_error_line_not_treated_as_request():
 
 # ---- P1-3: Command validation before resolver ----
 
+
 def test_router_validates_command_before_resolver():
     """The router must validate the command exists before submitting to resolver."""
     e = make()
@@ -643,6 +706,7 @@ def test_router_validates_command_before_resolver():
 
 
 # ---- P1-4: Thai Unicode preserved ----
+
 
 def test_thai_unicode_preserved_in_chat():
     """Thai text must be preserved correctly through parse_line and router."""
@@ -659,10 +723,13 @@ def test_thai_unicode_preserved_in_chat():
 
 # ---- P1-5: Duplicate request prevention ----
 
+
 def test_duplicate_request_prevented_same_user():
     """Same user requesting the same track twice must be rejected."""
     e = make()
-    e.resolve = lambda arg, user, admin: [Track("https://youtu.be/same", "same", 100, user)]
+    e.resolve = lambda arg, user, admin: [
+        Track("https://youtu.be/same", "same", 100, user)
+    ]
     e.router.handle(ChatMessage("amy", "!play same"))
     out(e)  # consume "Queued #1"
     e.router.handle(ChatMessage("amy", "!play same"))
@@ -674,6 +741,7 @@ def test_duplicate_request_prevented_same_user():
 # ============================================================================
 
 # ---- P1-6: Normal mpv exit ----
+
 
 def test_mpv_normal_exit_reported_ok(monkeypatch):
     """mpv exiting with code 0 must be reported as successful playback."""
@@ -695,6 +763,7 @@ def test_mpv_normal_exit_reported_ok(monkeypatch):
 
 # ---- P1-7: mpv crash (nonzero exit) ----
 
+
 def test_mpv_crash_reported_failed(monkeypatch):
     """mpv exiting with nonzero code must be reported as failure."""
     fake_proc = MagicMock()
@@ -714,6 +783,7 @@ def test_mpv_crash_reported_failed(monkeypatch):
 
 
 # ---- P1-8: Hung mpv process terminated ----
+
 
 def test_mpv_hung_process_terminated(monkeypatch):
     """mpv that never exits must be terminated after mpv_timeout."""
@@ -753,6 +823,7 @@ def test_mpv_hung_process_terminated(monkeypatch):
 
 # ---- P1-9: mpv timeout ----
 
+
 def test_mpv_timeout_no_duration(monkeypatch):
     """With mpv_timeout set and unknown duration (live), mpv_timeout is used as the limit."""
     fake_proc = MagicMock()
@@ -787,6 +858,7 @@ def test_mpv_timeout_no_duration(monkeypatch):
 
 # ---- P1-10: Cancellation (skip) ----
 
+
 def test_mpv_stop_sets_skipped(monkeypatch):
     """stop() must set skipped=True when terminating a running process."""
     proc = MagicMock()
@@ -808,6 +880,7 @@ def test_mpv_stop_noop_when_not_running():
 
 
 # ---- P1-11: Queue advancement after track completion ----
+
 
 def test_player_loop_advances_queue_after_completion(monkeypatch):
     """When a track completes, the next queued track must be popped and played."""
@@ -832,6 +905,7 @@ def test_player_loop_advances_queue_after_completion(monkeypatch):
 
 # ---- P1-12: Successful delivery via engine say + outbox ----
 
+
 def test_engine_say_puts_text_in_outbox():
     """Engine.say() must put text in the outbox for the sender thread to deliver."""
     e = make()
@@ -840,6 +914,7 @@ def test_engine_say_puts_text_in_outbox():
 
 
 # ---- P1-13: Delayed observation ----
+
 
 def test_send_auto_mode_verifies_before_confirming(monkeypatch):
     """In auto mode with send_verify, background send is confirmed only when
@@ -888,6 +963,7 @@ def test_send_auto_mode_verifies_before_confirming(monkeypatch):
 
 # ---- P1-14: Wrong control ----
 
+
 def test_send_wrong_control_raises_runtime_error(monkeypatch):
     """If the input control is not found, send() must raise RuntimeError."""
     from camfrog_autodj.adapters.uia import UiaAdapter
@@ -914,6 +990,7 @@ def test_send_wrong_control_raises_runtime_error(monkeypatch):
 
 # ---- P1-15: Focus loss ----
 
+
 def test_send_fg_restores_foreground(monkeypatch):
     """Foreground send must restore the previous foreground window when done."""
     # This tests the pattern: _send_fg saves foreground, restores in finally block
@@ -923,6 +1000,7 @@ def test_send_fg_restores_foreground(monkeypatch):
 
 
 # ---- P1-16: Duplicate prevention on retry ----
+
 
 def test_send_no_duplicate_on_retry(monkeypatch):
     """When retrying an uncertain delivery, the message must not be duplicated
@@ -940,6 +1018,7 @@ def test_send_no_duplicate_on_retry(monkeypatch):
 
 # ---- P1-17: Retry exhaustion ----
 
+
 def test_send_retry_exhaustion_falls_back_to_foreground(monkeypatch):
     """After max_bg_attempts background sends fail, auto mode falls back to foreground."""
     # This tests the adapter-level _do_send logic. Verified by code review of
@@ -953,6 +1032,7 @@ def test_send_retry_exhaustion_falls_back_to_foreground(monkeypatch):
 # ============================================================================
 
 # ---- OBS-1: Request ID and track ID in logs ----
+
 
 def test_engine_logs_request_id_and_track_id(caplog):
     """Engine must log structured diagnostics: request ID, track ID, resolver state."""
@@ -970,6 +1050,7 @@ def test_engine_logs_request_id_and_track_id(caplog):
 
 
 # ---- OBS-2: Failure category ----
+
 
 def test_failure_reasons_categories():
     """failure_reasons must categorise mpv failure lines."""
@@ -989,6 +1070,7 @@ def test_failure_reasons_categories():
 
 # ---- TOML-1: Existing custom values preserved ----
 
+
 def test_config_preserves_existing_custom_values(tmp_path):
     """Loading config must not drop values that are not in the defaults."""
     p = tmp_path / "config.toml"
@@ -1000,6 +1082,7 @@ def test_config_preserves_existing_custom_values(tmp_path):
 
 # ---- TOML-2: Interrupted write leaves original intact ----
 
+
 def test_save_config_atomic_replace_leaves_original_on_failure(tmp_path, monkeypatch):
     """If the atomic replace fails, the original config.toml must be untouched."""
     from camfrog_autodj.discover import save_config
@@ -1010,6 +1093,7 @@ def test_save_config_atomic_replace_leaves_original_on_failure(tmp_path, monkeyp
 
     # Make os.replace fail
     real_replace = os.replace
+
     def failing_replace(src, dst):
         raise OSError("disk full")
 
@@ -1024,6 +1108,7 @@ def test_save_config_atomic_replace_leaves_original_on_failure(tmp_path, monkeyp
 # ============================================================================
 
 # ---- SEC-1: No secrets in logs ----
+
 
 def test_log_chat_never_logs_secrets(caplog):
     """log_chat must not log credentials, tokens, or private keys."""
@@ -1044,6 +1129,7 @@ def test_log_chat_never_logs_secrets(caplog):
 
 # ---- DISCOVERY-1: Dialog not selected as room chat ----
 
+
 def test_choose_view_rejects_dialog_without_chat_lines():
     """An Edit control containing 'Enter message here' is not a chat view."""
     rx = __import__("re").compile(Config().line_regex)
@@ -1058,20 +1144,30 @@ def test_choose_view_rejects_dialog_without_chat_lines():
 
 # ---- DISCOVERY-2: Multiple rooms handled deterministically ----
 
+
 def test_best_room_picks_most_matched_lines():
     """When multiple rooms are open, the one with the most chat lines wins."""
     rx = __import__("re").compile(Config().line_regex)
     found = [
-        Found("Room A", Ctl("Document", 0, "a: 1\nb: 2\n", 0, 0, 100, 50),
-              Ctl("Edit", 0, "", 0, 500, 200, 30), 2),
-        Found("Room B", Ctl("Document", 0, "x: 1\ny: 2\nz: 3\n", 0, 0, 100, 50),
-              Ctl("Edit", 0, "", 0, 500, 200, 30), 3),
+        Found(
+            "Room A",
+            Ctl("Document", 0, "a: 1\nb: 2\n", 0, 0, 100, 50),
+            Ctl("Edit", 0, "", 0, 500, 200, 30),
+            2,
+        ),
+        Found(
+            "Room B",
+            Ctl("Document", 0, "x: 1\ny: 2\nz: 3\n", 0, 0, 100, 50),
+            Ctl("Edit", 0, "", 0, 500, 200, 30),
+            3,
+        ),
     ]
     best = best_room(found)
     assert best is not None and best.title == "Room B"
 
 
 # ---- DISCOVERY-3: Zero windows handled without crashing ----
+
 
 def test_discover_no_windows_returns_none(monkeypatch):
     """When no Camfrog windows exist, discover() returns None without crashing."""
@@ -1092,6 +1188,7 @@ def test_discover_no_windows_returns_none(monkeypatch):
 
 # ---- DISCOVERY-4: One valid candidate returns config updates ----
 
+
 def test_discover_one_valid_candidate(monkeypatch):
     """When one valid Camfrog window with chat is found, discover() returns config updates."""
     from camfrog_autodj import discover
@@ -1106,7 +1203,9 @@ def test_discover_one_valid_candidate(monkeypatch):
         exe="Camfrog.exe",
     )
 
-    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: [fake_cand])
+    monkeypatch.setattr(
+        "camfrog_autodj.windows.candidates", lambda *a, **k: [fake_cand]
+    )
 
     # Mock pywinauto.Desktop
     mock_win = MagicMock()
@@ -1119,10 +1218,13 @@ def test_discover_one_valid_candidate(monkeypatch):
     mock_pywinauto.Desktop = lambda backend="uia": mock_desktop
     monkeypatch.setitem(__import__("sys").modules, "pywinauto", mock_pywinauto)
 
-    monkeypatch.setattr("camfrog_autodj.discover.scan_window", lambda win: [
-        discover.Ctl("Document", 0, "alice: hello\nbob: hi\n", 0, 0, 500, 200),
-        discover.Ctl("Edit", 0, "", 0, 210, 500, 30, enabled=True, visible=True),
-    ])
+    monkeypatch.setattr(
+        "camfrog_autodj.discover.scan_window",
+        lambda win: [
+            discover.Ctl("Document", 0, "alice: hello\nbob: hi\n", 0, 0, 500, 200),
+            discover.Ctl("Edit", 0, "", 0, 210, 500, 30, enabled=True, visible=True),
+        ],
+    )
 
     cfg = Config()
     result = discover.discover(cfg)
@@ -1138,6 +1240,7 @@ def test_discover_one_valid_candidate(monkeypatch):
 
 # ---- DISCOVERY-5: Multiple candidates picks best room ----
 
+
 def test_discover_multiple_candidates_picks_best(monkeypatch):
     """When multiple Camfrog windows exist, discover() picks the one with most chat lines."""
     from camfrog_autodj import discover
@@ -1150,7 +1253,9 @@ def test_discover_multiple_candidates_picks_best(monkeypatch):
         handle=222, title="Room B", cls="CamfrogRoom", pid=222, exe="Camfrog.exe"
     )
 
-    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: [fake_cand1, fake_cand2])
+    monkeypatch.setattr(
+        "camfrog_autodj.windows.candidates", lambda *a, **k: [fake_cand1, fake_cand2]
+    )
 
     mock_desktop = MagicMock()
     mock_desktop.window.return_value = MagicMock()
@@ -1170,7 +1275,9 @@ def test_discover_multiple_candidates_picks_best(monkeypatch):
                 ]
             else:
                 return [
-                    discover.Ctl("Document", 0, "x: 1\ny: 2\nz: 3\nw: 4\nv: 5\n", 0, 0, 100, 50),
+                    discover.Ctl(
+                        "Document", 0, "x: 1\ny: 2\nz: 3\nw: 4\nv: 5\n", 0, 0, 100, 50
+                    ),
                     discover.Ctl("Edit", 0, "", 0, 60, 100, 30, True, True),
                 ]
         return []
@@ -1186,6 +1293,7 @@ def test_discover_multiple_candidates_picks_best(monkeypatch):
 
 
 # ---- DISCOVERY-6: Discovery dependency failure (pywinauto missing) ----
+
 
 def test_discover_pywinauto_missing_returns_none(monkeypatch):
     """When pywinauto is not available, discover() returns None gracefully."""
@@ -1204,12 +1312,16 @@ def test_discover_pywinauto_missing_returns_none(monkeypatch):
 
 # ---- DISCOVERY-7: Unsupported/unavailable Windows APIs ----
 
+
 def test_discover_candidates_raises_propagates(monkeypatch):
-    """When windows.candidates() raises (e.g., Windows API unavailable), 
+    """When windows.candidates() raises (e.g., Windows API unavailable),
     the exception propagates (current behavior - could be improved to return None)."""
     from camfrog_autodj import discover
 
-    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: (_ for _ in ()).throw(OSError("access denied")))
+    monkeypatch.setattr(
+        "camfrog_autodj.windows.candidates",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("access denied")),
+    )
 
     # Mock pywinauto so we get past the import
     mock_pywinauto = MagicMock()
@@ -1224,6 +1336,7 @@ def test_discover_candidates_raises_propagates(monkeypatch):
 # ============================================================================
 # Config: youtube_ca_bundle field present
 # ============================================================================
+
 
 def test_config_has_youtube_ca_bundle_field():
     """Config must expose youtube_ca_bundle for custom CA bundle configuration."""

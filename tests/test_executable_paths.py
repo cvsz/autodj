@@ -26,7 +26,9 @@ def test_resolve_relative_path_from_application_directory(monkeypatch, tmp_path)
 def test_resolve_bare_command_from_path(monkeypatch, tmp_path):
     executable = tmp_path / "mpv"
     executable.write_bytes(b"binary")
-    monkeypatch.setattr(paths.shutil, "which", lambda name: str(executable) if name == "mpv" else None)
+    monkeypatch.setattr(
+        paths.shutil, "which", lambda name: str(executable) if name == "mpv" else None
+    )
 
     assert paths.resolve_executable("mpv") == str(executable.resolve())
 
