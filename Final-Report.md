@@ -242,17 +242,18 @@ Exact commands, environment, and outcomes:
 - CI workflows present: `ci.yml` (ubuntu: baseline + bootstrap unittest + secret scan + YAML validation), `tests.yml` (windows-latest + ubuntu-latest × Python 3.11/3.12, pytest), `codeql.yml` (Python, push/PR to main + weekly), `dependency-review.yml`, `release.yml` (gated; no auto-publish).
 - Locally run CI-equivalent checks: pytest pass (288); ruff clean (0 errors); mypy 2 env-related stub errors (pywinauto, Windows-only).
 - CODEOWNERS: default `@cvsz`; security-sensitive paths require `@cvsz` + `@policedbc`.
-- PR #102 created from branch `fix/sec-001-signing-integrity` to `main`:
-  - Authored by `cvsz` (developer)
-  - Independently reviewed and **approved** by `policedbc` (Exec Reviewer)
-  - **Merged to `main`** by `cvsz` (merge commit `6f81ca7852e30ab86e33064d232e954ff0282fe7`)
-- GPG signing configured and verified; commit `6169dd8` GPG-signed with key `0C54E869DE49D872`.
+- All Dependabot PRs merged to `main` (each independently reviewed & approved by `policedbc`, merged by `cvsz`):
+  - PR #80: `chore(deps-dev): update setuptools requirement from >=68 to >=84.2.1`
+  - PR #81: `chore(deps): bump actions/attest-build-provenance`
+  - PR #82: `chore(deps): bump actions/upload-artifact from 4.6.2 to 7.0.2` (fixed test consistency via PR #104)
+  - PR #104: `fix(test): update upload-artifact SHA for v7.0.2 in release consistency test`
+- GPG signing configured and verified; commits GPG-signed with key `0C54E869DE49D872`.
 
 ---
 
 ## 10. Deployment / Release Status
 
-- **PR #102 merged to `main`** — commit `6169dd8` (GPG-signed) now on `main` via merge commit `6f81ca7852e30ab86e33064d232e954ff0282fe7`.
+- All PRs merged to `main`: PR #102 (player countdown fix), PR #80 (setuptools), PR #81 (attest-build-provenance), PR #82 (upload-artifact v7 via PR #104 test fix), PR #104 (test consistency fix). Latest HEAD: `69e6feb`.
 - Release workflow (`release.yml`) is gated: `validate-release` (tests, lint, typecheck, secret scan) → `build-installer` (Windows, NSIS, PyInstaller, CycloneDX SBOM, SHA256SUMS, attest-build-provenance, upload-artifact). Release publication step is intentionally omitted (maintainer must explicitly create the GitHub Release).
 - Release gate unblocked: `ruff check camfrog_autodj/` passes (0 errors); pytest passes (288).
 - Tag `v*` and GitHub Release publication **pending maintainer authorization** (no release authorization was requested or granted in this session).
