@@ -277,7 +277,7 @@ def _load(e, m, a, admin):
         p = Path(src)
         try:
             p = p.resolve()
-        except Exception:
+        except (OSError, ValueError):
             raise UserError(e.t("load_failed", err="invalid path"))
         if not any(p.is_relative_to(d) for d in (Path(d).resolve() for d in e.cfg.music_dirs)):
             raise UserError(e.t("folders_admin"))

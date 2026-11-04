@@ -18,11 +18,18 @@ The repository is a Python 3.11+ Windows desktop application (Camfrog music/YouT
 - `config.toml` and `mpv/` runtime bundle are gitignored (not committed). ✅ VERIFIED
 - GPG commit signing configured (`user.signingkey = 0C54E869DE49D872`, `commit.gpgsign = true`). ✅ VERIFIED
 - CODEOWNERS requires independent review (`@policedbc`) for security-sensitive paths. ✅ VERIFIED
+- **Player music time countdown fixed** — GUI now queries mpv via IPC for actual playback position instead of wall-clock time, eliminating the "jumping" time display (e.g., 00:00 → 00:30). ✅ VERIFIED
 
 **Release-blocking finding (unfixed):**
 - `.github/workflows/release.yml` runs `ruff check .` in the `validate-release` gate. Local `ruff check .` exits **1** with **155 pre-existing lint errors** (45× BLE001, 26× F821, 16× RUF059, 13× S110/I001/F401, 10× F811, …). Any tag push would fail the release gate before building. Status: **REPORTED / NOT FIXED** (see Findings #1).
 
-**No source code changes were made in this session.** The working tree already contains one unstaged user modification (`tests/test_windows_build_script.py`) which was preserved and is included in the passing test run. See §13 Next Actions for the commit/push/release decision that requires your authorization.
+**Changes implemented in this session:**
+1. **Player time countdown fix** (High impact) — Added `MpvPlayer.get_time_pos()` querying mpv via IPC (`get_property time-pos`); `Engine.position()` uses real mpv position with wall-clock fallback. Fixed the issue where the time display jumped during playback.
+2. **Settings dialog `open_settings()` NameError fix** — `px()` was called without `self.` prefix; replaced all bare `px(` with `self.px(`.
+3. **Settings dialog input validation** — Added `_parse_int()` / `_parse_float()` helpers with clear error messages; non-numeric volume no longer crashes.
+4. **Test additions** — `tests/fake_tk.py` (Toplevel widget), `tests/test_gui_logic.py` (2 settings-dialog tests).
+
+See §6 for full details.
 
 ---
 
@@ -134,23 +141,33 @@ Severity scale: Critical / High / Medium / Low / Informational. Each includes im
 ## 6. Changes Implemented (this session)
 
 ### Bug fixes
-1. **gui.py `open_settings()` NameError (Critical — fixed)**
+1. **Player music time countdown skipping (High — fixed)**
+   - **Problem:** The GUI time display jumped (e.g., from 00:00 to 00:30) during playback because `Engine.position()` used wall-clock time (`time.monotonic()`) instead of querying mpv for the actual playback position.
+   - **Root cause:** No IPC query to mpv for `time-pos`; the progress bar and time label advanced based on elapsed wall-clock time, which doesn't account for mpv startup latency, buffering, or pauses.
+   - **Fix:** Added `MpvPlayer._cmd_get()` (request/response IPC) and `MpvPlayer.get_time_pos()` in `player.py` to query mpv's `get_property time-pos`. Updated `Engine.position()` in `engine.py` to use the real mpv position when available, falling back to wall-clock calculation (with pause exclusion) when IPC is unavailable.
+   - **Verification:** `test_gui_logic.py::test_playing_state_drives_animation_and_progress` and `test_gui_i18n.py::test_position_pause` verify correct progress bar fraction and time display.
+
+2. **gui.py `open_settings()` NameError (Critical — fixed)**
    - `px()` was called without `self.` prefix inside `open_settings()`, so opening the Settings dialog raised `NameError: name 'px' is not defined`. Replaced all bare `px(` with `self.px(` in that method. Verified by opening the dialog programmatically before and after the fix.
    
-2. **config.toml / config.toml.bak personal data (Fixed)**
+3. **config.toml / config.toml.bak personal data (Fixed)**
    - `bot_nick = "Seaza"` → `bot_nick = "AutoDJ"`; `admins = ["Seaza"]` → `admins = []`; `window_title_re = 'ZeaZDev,\ หัวข้อ:\ ZeaZDev'` → `window_title_re = ".*"`; `audio_device = "auto"` → `audio_device = ""` (not a valid mpv device). Local gitignored files only; not committed.
 
-3. **gui.py `save_settings()` input validation (Fixed)**
+4. **gui.py `save_settings()` input validation (Fixed)**
    - Int/float fields (volume, max_queue, max_duration, etc.) were parsed with bare `int()`/`float()`, crashing on non-numeric input. Added `_parse_int()` / `_parse_float()` helpers that raise a clear `ValueError` (caught and shown via `g_settings_save_failed`). Non-numeric volume now shows an error instead of crashing.
 
 ### Test additions
-4. **tests/fake_tk.py** — added `Toplevel` widget class and `winfo_exists()` on `Misc` so headless settings-dialog tests can run.
-5. **tests/test_gui_logic.py** — added `test_settings_dialog_opens_and_saves` (dialog opens, volume change persists to config.toml, dialog closes) and `test_settings_dialog_rejects_bad_int` (non-numeric volume rejected, volume unchanged).
+5. **tests/fake_tk.py** — added `Toplevel` widget class and `winfo_exists()` on `Misc` so headless settings-dialog tests can run.
+6. **tests/test_gui_logic.py** — added `test_settings_dialog_opens_and_saves` (dialog opens, volume change persists to config.toml, dialog closes) and `test_settings_dialog_rejects_bad_int` (non-numeric volume rejected, volume unchanged).
+7. **tests/test_core.py** — added `FakePlayer.get_time_pos()` returning `None` to simulate IPC unavailable (tests wall-clock fallback).
 
 ### Files touched in this session
+- `camfrog_autodj/player.py` (modified) — added `_cmd_get()` and `get_time_pos()` methods for mpv IPC position query
+- `camfrog_autodj/engine.py` (modified) — updated `position()` to use real mpv position with fallback
 - `camfrog_autodj/gui.py` (modified) — `px`→`self.px` in `open_settings()`; added `_parse_int`/`_parse_float` + validation in `save_settings()`
 - `tests/fake_tk.py` (modified) — added `Toplevel` class, `winfo_exists()` on `Misc`
 - `tests/test_gui_logic.py` (modified) — added 2 settings-dialog tests
+- `tests/test_core.py` (modified) — added `FakePlayer.get_time_pos()`
 - `Final-Report.md` (this report) — updated
 
 Pre-existing user work preserved (not touched): `tests/test_windows_build_script.py` (unstaged).

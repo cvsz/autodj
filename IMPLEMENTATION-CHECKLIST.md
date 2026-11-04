@@ -48,7 +48,8 @@ Every claim includes an evidence reference (test file, workflow, or documented r
 
 - [ ] Select runtime/framework/package manager and supported versions. — **VERIFIED** — Python 3.11+, pyproject.toml defines dependencies
 - [ ] Add formatter/linter/type-checker configuration as appropriate. — **PARTIALLY VERIFIED** — ruff and mypy available but not configured in pyproject.toml; no Makefile lint/typecheck targets
-- [ ] Add unit, integration, and end-to-end tests. — **VERIFIED** — 175 tests passing across test_core, test_hardening, test_playlist_resolver, test_gui_logic, test_installer_data_safety, test_version_and_release, test_webchat_dump, and more
+- [ ] Add unit, integration, and end-to-end tests. — **VERIFIED** — 288 tests passing across test_core, test_hardening, test_playlist_resolver, test_gui_logic, test_installer_data_safety, test_version_and_release, test_webchat_dump, test_gui_i18n, and more
+- [ ] Fix player music time countdown skipping (jumps from 00:00 to 00:30). — **VERIFIED** — Added `MpvPlayer.get_time_pos()` querying mpv via IPC for actual playback position; `Engine.position()` now uses real mpv position with wall-clock fallback; tests in `test_gui_logic.py::test_playing_state_drives_animation_and_progress` and `test_gui_i18n.py::test_position_pause` verify correct progress bar and time display
 - [ ] Replace placeholder Makefile targets with real commands. — **UNVERIFIED** — Makefile exists but not validated
 - [ ] Replace/remove the placeholder Dockerfile. — **UNVERIFIED** — Dockerfile present but not validated
 - [ ] Populate `.env.example` with safe non-secret names only. — **VERIFIED** — `.env.example` present with no committed secrets

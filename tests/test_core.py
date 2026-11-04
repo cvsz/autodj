@@ -80,6 +80,10 @@ class FakePlayer:
     def set_volume(self, v):
         self.vol = v
 
+    def get_time_pos(self):
+        # Simulate IPC unavailable -> engine falls back to wall-clock
+        return None
+
 
 def make():
     e = Engine(

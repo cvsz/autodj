@@ -20,8 +20,8 @@ def _read(ctrl) -> str:
             t = fn()
             if t:
                 return t
-        except Exception:
-            pass
+        except (AttributeError, RuntimeError):
+            pass  # try the next read method
     return ""
 
 
@@ -114,7 +114,7 @@ class UiaAdapter(ChatAdapter):
         while True:
             try:
                 lines = self._lines()
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 log.debug("chat read failed: %s", e)
                 with self.com_lock:  # protect _view/win against reader/sender race
                     self._view = self.win = None  # drop everything: the next poll re-attaches fresh
@@ -149,7 +149,7 @@ class UiaAdapter(ChatAdapter):
             try:
                 lines = self._lines()
                 new = diff_lines(before, lines) if before else lines
-            except Exception:
+            except (OSError, RuntimeError):
                 return True
             for l in new:
                 norm_l = self._norm(l)
@@ -178,7 +178,7 @@ class UiaAdapter(ChatAdapter):
             if winmsg.post_text_rich(top, pt, text, enter=True, click=True):
                 log.debug("sent via WM_SETTEXT (rich)")
                 return True
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             log.debug("WM_SETTEXT failed: %s", e)
 
         # Strategy 2: UIA ValuePattern SetValue
@@ -190,7 +190,7 @@ class UiaAdapter(ChatAdapter):
                 if winmsg.post_text(top, pt, "", enter=True, click=False):
                     log.debug("sent via UIA SetValue + Enter")
                     return True
-        except Exception as e:
+        except (OSError, RuntimeError, AttributeError) as e:
             log.debug("UIA SetValue failed: %s", e)
 
         # Strategy 3: Posted WM_CHAR with IME composition (fallback)
@@ -198,7 +198,7 @@ class UiaAdapter(ChatAdapter):
             if winmsg.post_text(top, pt, text, enter=True, click=True):
                 log.debug("sent via posted WM_CHAR")
                 return True
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             log.debug("posted WM_CHAR failed: %s", e)
 
         return False
@@ -212,14 +212,14 @@ class UiaAdapter(ChatAdapter):
         prev = winmsg.foreground()
         try:
             old_clip = pyperclip.paste()
-        except Exception:
+        except (pyperclip.PyperclipException, OSError):
             old_clip = None
         try:
             try:
                 if self.win.is_minimized():
                     self.win.restore()
-            except Exception:
-                pass
+            except (RuntimeError, AttributeError):
+                pass  # window may have closed; proceed with foreground send
             self.win.set_focus()  # keystrokes go to the foreground window, so bring Camfrog up first
             if self._web:
                 self._input.click_input()  # the message box is a web editor: only a click focuses it
@@ -234,8 +234,8 @@ class UiaAdapter(ChatAdapter):
             if old_clip is not None:
                 try:
                     pyperclip.copy(old_clip)
-                except Exception:
-                    pass
+                except (pyperclip.PyperclipException, OSError):
+                    pass  # clipboard restore is best-effort
             if prev and prev != int(self.win.handle):
                 winmsg.restore_foreground(prev)  # give the user their window back
 
@@ -246,7 +246,7 @@ class UiaAdapter(ChatAdapter):
         with self.com_lock:
             try:
                 self._do_send(text)
-            except Exception:
+            except (OSError, RuntimeError):
                 self.win = self._view = self._input = (
                     None  # re-attach + re-resolve everything next time
                 )
@@ -270,7 +270,7 @@ class UiaAdapter(ChatAdapter):
                     if mode == "auto" and self.cfg.send_verify:
                         try:
                             before = self._lines()
-                        except Exception:
+                        except (OSError, RuntimeError):
                             before = None
 
                     # Try up to 2 times with different strategies
@@ -279,7 +279,7 @@ class UiaAdapter(ChatAdapter):
                     for attempt in range(max_bg_attempts):
                         try:
                             ok = self._send_bg(text)
-                        except Exception as e:
+                        except (OSError, RuntimeError) as e:
                             log.warning(
                                 "background send attempt %d failed: %s", attempt + 1, e
                             )

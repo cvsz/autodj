@@ -47,7 +47,9 @@ FPS_MS = 33
 
 
 def mmss(sec: float) -> str:
-    s = int(sec)
+    """Format seconds as M:SS. Uses round() so 0.9s shows as 0:01 instead of jumping
+    straight from 0:00 to 0:01 on the next poll — avoids the countdown 'skip' effect."""
+    s = round(sec)
     return f"{s // 60}:{s % 60:02d}"
 
 
@@ -466,10 +468,10 @@ class App(tk.Tk):
 
                 try:
                     ctypes.windll.shcore.SetProcessDpiAwareness(1)
-                except Exception:
+                except (AttributeError, OSError):
                     ctypes.windll.user32.SetProcessDPIAware()
-            except Exception:
-                pass
+            except (AttributeError, OSError):
+                pass  # best-effort DPI awareness; falls back to default scaling
 
     def px(self, n: float) -> int:
         return round(n * self.k)
@@ -493,8 +495,8 @@ class App(tk.Tk):
                     == 0
                 ):
                     break
-        except Exception:
-            pass
+        except (AttributeError, OSError):
+            pass  # best-effort dark titlebar; not critical on older Windows
 
     def _set_icon(self):
         import sys
@@ -507,8 +509,8 @@ class App(tk.Tk):
         if os.name == "nt" and ico.exists():
             try:
                 self.iconbitmap(default=str(ico))
-            except Exception:
-                pass
+            except (tk.TclError, OSError):
+                pass  # best-effort window icon; not critical
 
     # ---- construction ----------------------------------------------------
     def _fonts(self):
@@ -909,9 +911,6 @@ class App(tk.Tk):
         cs.configure(command=self.chat.yview)
         self.chat.tag_configure("bot", foreground=CYAN)
         self.chat.tag_configure("who", foreground="#b79cff", font=self.f_bold)
-
-        # ---- (settings moved to popup window opened via settings button) ----
-        pass
 
     # ---- settings popup ------------------------------------------------------
     def open_settings(self):
@@ -1896,8 +1895,8 @@ class App(tk.Tk):
             if timer_id:
                 try:
                     self.after_cancel(timer_id)
-                except Exception:
-                    pass
+                except (tk.TclError, ValueError):
+                    pass  # timer may already be canceled
                 setattr(self, attr, None)
         self.e.shutdown()
         self.destroy()
@@ -1906,9 +1905,7 @@ class App(tk.Tk):
     def refresh(self):
         try:
             self._refresh()
-        except (
-            Exception
-        ):  # one bad frame must not freeze the window: log it and keep polling
+        except Exception:  # one bad frame must not freeze the window: log it and keep polling
             log.exception("GUI refresh failed")
         finally:
             if not self._closing:
@@ -1926,8 +1923,14 @@ class App(tk.Tk):
             self.v_title.configure(text=t.title)
             self.v_sub.configure(text=f"{t.requester}  ·  {t.dur}")
             self.bar.set(s["position"] / t.duration if t.duration else 0)
-            remaining = max(0, t.duration - s["position"])
-            self.v_time.configure(text=f"-{mmss(remaining)} / {t.dur}")
+            # Elapsed position from the player loop (monotonic clock, excludes pauses).
+            # round() keeps the countdown smooth: no more skipping from 0:00 to 0:01.
+            elapsed = max(0.0, s["position"])
+            self.v_time.configure(
+                text=f"{mmss(elapsed)} / {t.dur}"
+                if t.duration
+                else f"{mmss(elapsed)} / --:--"
+            )
         else:
             self.v_title.configure(text=self.e.t("g_nothing"))
             self.v_sub.configure(text="")

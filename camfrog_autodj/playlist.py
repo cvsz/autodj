@@ -81,7 +81,7 @@ def load_playlist(path: str) -> list[Track]:
                 e.get("added") or ""
             )  # not a Track field: plain attribute, kept for !last
             out.append(t)
-        except Exception:
+        except (KeyError, TypeError, ValueError):
             continue
     return out
 
@@ -93,7 +93,7 @@ def _unreadable(path: str) -> bool:
         return False
     except FileNotFoundError:
         return False
-    except Exception:
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
         return True
 
 

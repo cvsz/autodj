@@ -47,7 +47,7 @@ try:
     U.GetWindowTextW.restype = w.INT
     U.IsWindowEnabled.argtypes = [w.HWND]
     U.IsWindowEnabled.restype = w.BOOL
-except Exception:
+except (ImportError, AttributeError, OSError):
     U = None
 
 
@@ -275,5 +275,5 @@ def restore_foreground(hwnd: int):
     if hwnd and U is not None:
         try:
             U.SetForegroundWindow(hwnd)
-        except Exception:
-            pass
+        except (OSError, AttributeError):
+            pass  # best-effort foreground restore
