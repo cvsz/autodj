@@ -87,6 +87,10 @@ test_mpv.ps1
 test_ps_check*.bat
 test_regex*.bat
 
+# Build wrapper scripts (local dev, not source)
+scripts/build_installer_wrapper.ps1
+scripts/build-all-hybrid.ps1
+
 # Forensic / RE reference artifacts (do not distribute)
 docs/rea/
 *.pcap
