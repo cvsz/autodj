@@ -138,7 +138,11 @@ def _extract_exe(
         cmd.extend(["--cookies-from-browser", str(cookies_browser).strip()])
     cmd.append(target)
     kw: dict = {
-        "capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace", "timeout": 90
+        "capture_output": True,
+        "text": True,
+        "encoding": "utf-8",
+        "errors": "replace",
+        "timeout": 90,
     }
     if os.name == "nt":
         kw["creationflags"] = (
@@ -163,7 +167,9 @@ def _extract_exe(
         raise RuntimeError("yt-dlp returned no usable result") from None
 
 
-def _extract_module(target: str, playlist: bool, limit: int, ca_bundle: str = "") -> dict:
+def _extract_module(
+    target: str, playlist: bool, limit: int, ca_bundle: str = ""
+) -> dict:
     import yt_dlp
 
     # yt_dlp uses certifi.where() for its CA bundle (see networking/_helper.py).
@@ -245,8 +251,10 @@ def remote_tracks(
             # If the executable failed with a certificate error and a custom CA
             # bundle is configured, fall back to the Python module where we can
             # patch certifi.where() to use the bundle.  Verification stays on.
-            if ca_bundle and Path(ca_bundle).is_file() and (
-                "SSL" in msg or "CERTIFICATE" in msg or "certificate" in msg
+            if (
+                ca_bundle
+                and Path(ca_bundle).is_file()
+                and ("SSL" in msg or "CERTIFICATE" in msg or "certificate" in msg)
             ):
                 log.warning(
                     "yt-dlp.exe certificate failure; falling back to yt_dlp module with custom CA bundle"

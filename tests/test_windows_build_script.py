@@ -25,7 +25,10 @@ class TestBuildScriptSyntax(unittest.TestCase):
 
     def test_script_exists(self):
         """Build script exists at expected location."""
-        self.assertTrue(get_build_script_path().exists(), f"Build script not found at {get_build_script_path()}")
+        self.assertTrue(
+            get_build_script_path().exists(),
+            f"Build script not found at {get_build_script_path()}",
+        )
 
     def test_script_readable(self):
         """Script is readable and non-empty."""
@@ -79,25 +82,38 @@ class TestBuildScriptLogic(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def _init_git_repo(self):
         """Initialize a test git repository."""
-        subprocess.run(["git", "init"], cwd=self.repo_root, check=True, capture_output=True)
-        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=self.repo_root, check=True)
-        subprocess.run(["git", "config", "user.name", "Test User"], cwd=self.repo_root, check=True)
+        subprocess.run(
+            ["git", "init"], cwd=self.repo_root, check=True, capture_output=True
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=self.repo_root,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test User"], cwd=self.repo_root, check=True
+        )
 
         # Create minimal repo structure
         (self.repo_root / "camfrog_autodj").mkdir(parents=True)
-        (self.repo_root / "camfrog_autodj" / "__init__.py").write_text('__version__ = "0.2.6"\n')
+        (self.repo_root / "camfrog_autodj" / "__init__.py").write_text(
+            '__version__ = "0.2.6"\n'
+        )
         (self.repo_root / "run_autodj.py").write_text("print('test')\n")
         (self.repo_root / "app.ico").write_bytes(b"fake_ico")
         (self.repo_root / "version_info.txt").write_text("VSVersionInfo(...)")
-        (self.repo_root / "config.example.toml").write_text("mpv_path = \"\"\n")
+        (self.repo_root / "config.example.toml").write_text('mpv_path = ""\n')
         (self.repo_root / "mpv").mkdir(exist_ok=True)
         (self.repo_root / "mpv" / "mpv.exe").write_bytes(b"fake_mpv")
         (self.repo_root / "tools").mkdir(exist_ok=True)
-        (self.repo_root / "tools" / "check_build_env.py").write_text("print('OK')\nimport sys; sys.exit(0)\n")
+        (self.repo_root / "tools" / "check_build_env.py").write_text(
+            "print('OK')\nimport sys; sys.exit(0)\n"
+        )
 
         # Create installer.nsi
         (self.repo_root / "installer.nsi").write_text("""
@@ -108,12 +124,17 @@ OutFile "Test.exe"
 
         # Commit
         subprocess.run(["git", "add", "."], cwd=self.repo_root, check=True)
-        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=self.repo_root, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "Initial commit"], cwd=self.repo_root, check=True
+        )
 
     def _get_head_sha(self, repo_path: Path) -> str:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            cwd=repo_path, capture_output=True, text=True, check=True
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
         )
         return result.stdout.strip()
 
@@ -204,6 +225,7 @@ class TestEvidenceManifestVerification(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_manifest_creation(self):
@@ -220,6 +242,7 @@ class TestEvidenceManifestVerification(unittest.TestCase):
         lines = []
         for f in files:
             import hashlib
+
             hash_val = hashlib.sha256(f.read_bytes()).hexdigest()
             rel = f.name
             lines.append(f"{hash_val}  {rel}")
@@ -232,6 +255,7 @@ class TestEvidenceManifestVerification(unittest.TestCase):
         """Manifest self-hash is recorded separately."""
         manifest_content = "a" * 64 + "  file.txt"
         import hashlib
+
         manifest_hash = hashlib.sha256(manifest_content.encode()).hexdigest()
         self.assertEqual(len(manifest_hash), 64)
 

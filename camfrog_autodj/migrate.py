@@ -46,9 +46,7 @@ COMMON_WINDOWS_PATHS: dict[str, tuple[str, ...]] = {
         "C:/mpv/mpv.exe",
         "C:/Program Files/mpv/mpv.exe",
     ),
-    "ytdlp_path": (
-        "C:/mpv/yt-dlp.exe",
-    ),
+    "ytdlp_path": ("C:/mpv/yt-dlp.exe",),
 }
 
 
@@ -63,7 +61,9 @@ def _is_placeholder(value: str) -> bool:
     return False
 
 
-def _discover_path(key: str, config_dir: Path, registry_value: str | None = None) -> str | None:
+def _discover_path(
+    key: str, config_dir: Path, registry_value: str | None = None
+) -> str | None:
     """Discover a valid executable path for a config key.
 
     Search order:
@@ -215,9 +215,7 @@ def migrate_config(config_path: str | Path) -> list[str]:
     # save_config() handles backup (.bak), atomic write (.tmp + replace),
     # comment preservation, and TOML re-validation.
     if save_config(str(p), updates):
-        log.info(
-            "config migrated: %d change(s) in %s", len(updates), p
-        )
+        log.info("config migrated: %d change(s) in %s", len(updates), p)
         return changes
 
     log.warning("config migration write failed for %r", p)
