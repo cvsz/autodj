@@ -98,18 +98,25 @@ def test_configure_ca_uses_posix_system_store_by_default(monkeypatch):
 def test_tls_failures_are_never_classified_as_transient():
     message = "CERTIFICATE_VERIFY_FAILED: self-signed certificate in certificate chain"
     assert resolver.classify_failure(message) == "tls_certificate"
-    assert resolver.classify_failure("HTTP Error 503: Service Unavailable") == "transient_network"
+    assert (
+        resolver.classify_failure("HTTP Error 503: Service Unavailable")
+        == "transient_network"
+    )
     assert resolver.classify_failure("HTTP Error 403: Forbidden") == "permanent"
 
 
 def test_search_retries_only_transient_network_failures(monkeypatch):
     calls = []
-    payload = json.dumps({"entries": [{"id": "abcdefghijk", "title": "Track", "duration": 120}]})
+    payload = json.dumps(
+        {"entries": [{"id": "abcdefghijk", "title": "Track", "duration": 120}]}
+    )
 
     def fake_run(cmd, **kwargs):
         calls.append(cmd)
         if len(calls) < 3:
-            return subprocess.CompletedProcess(cmd, 1, "", "HTTP Error 503: Service Unavailable")
+            return subprocess.CompletedProcess(
+                cmd, 1, "", "HTTP Error 503: Service Unavailable"
+            )
         return subprocess.CompletedProcess(cmd, 0, payload, "")
 
     monkeypatch.setattr(resolver.subprocess, "run", fake_run)
@@ -134,7 +141,11 @@ def test_search_does_not_retry_tls_verification_failure(monkeypatch):
         )
 
     monkeypatch.setattr(resolver.subprocess, "run", fake_run)
-    monkeypatch.setattr(resolver.time, "sleep", lambda seconds: pytest.fail("TLS errors must not be retried"))
+    monkeypatch.setattr(
+        resolver.time,
+        "sleep",
+        lambda seconds: pytest.fail("TLS errors must not be retried"),
+    )
     with pytest.raises(resolver.ResolverError) as error:
         resolver.search("EDM", ["yt-dlp"], {}, True, retries=3, retry_delay=0)
     assert error.value.category == "tls_certificate"
@@ -158,7 +169,9 @@ def test_search_does_not_retry_permanent_http_errors(monkeypatch):
 def test_tls_failure_is_reported_in_json_and_exit_status(monkeypatch, tmp_path):
     playlist = tmp_path / "edm_house.json"
     playlist.write_text(
-        json.dumps({"tracks": [{"source": "ytsearch1:EDM festival hits official music video"}]}),
+        json.dumps(
+            {"tracks": [{"source": "ytsearch1:EDM festival hits official music video"}]}
+        ),
         encoding="utf-8",
     )
     report_path = tmp_path / "reports" / "playlist-report.json"
@@ -188,7 +201,9 @@ def test_tls_failure_is_reported_in_json_and_exit_status(monkeypatch, tmp_path):
     )
 
 
-def test_main_rejects_report_path_matching_input_before_processing(monkeypatch, tmp_path):
+def test_main_rejects_report_path_matching_input_before_processing(
+    monkeypatch, tmp_path
+):
     playlist = tmp_path / "playlist.json"
     original = b'{"tracks": [{"source": "ytsearch1:EDM"}]}\n'
     playlist.write_bytes(original)
@@ -196,7 +211,9 @@ def test_main_rejects_report_path_matching_input_before_processing(monkeypatch, 
     monkeypatch.setattr(
         resolver,
         "find_ytdlp",
-        lambda explicit=None: pytest.fail("report path validation must run before yt-dlp discovery"),
+        lambda explicit=None: pytest.fail(
+            "report path validation must run before yt-dlp discovery"
+        ),
     )
 
     exit_code = resolver.main([str(playlist), "--report-json", str(playlist)])
@@ -206,7 +223,9 @@ def test_main_rejects_report_path_matching_input_before_processing(monkeypatch, 
     assert not playlist.with_name(playlist.name + ".bak").exists()
 
 
-def test_main_rejects_report_path_matching_existing_backup_before_processing(monkeypatch, tmp_path):
+def test_main_rejects_report_path_matching_existing_backup_before_processing(
+    monkeypatch, tmp_path
+):
     playlist = tmp_path / "playlist.json"
     backup = playlist.with_name(playlist.name + ".bak")
     original = b'{"tracks": [{"source": "ytsearch1:EDM"}]}\n'
@@ -217,7 +236,9 @@ def test_main_rejects_report_path_matching_existing_backup_before_processing(mon
     monkeypatch.setattr(
         resolver,
         "find_ytdlp",
-        lambda explicit=None: pytest.fail("report path validation must run before yt-dlp discovery"),
+        lambda explicit=None: pytest.fail(
+            "report path validation must run before yt-dlp discovery"
+        ),
     )
 
     exit_code = resolver.main([str(playlist), "--report-json", str(backup)])
@@ -227,7 +248,9 @@ def test_main_rejects_report_path_matching_existing_backup_before_processing(mon
     assert backup.read_bytes() == backup_original
 
 
-def test_main_rejects_report_path_matching_input_staging_file_before_processing(monkeypatch, tmp_path):
+def test_main_rejects_report_path_matching_input_staging_file_before_processing(
+    monkeypatch, tmp_path
+):
     playlist = tmp_path / "playlist.json"
     staging = playlist.with_name(playlist.name + ".tmp")
     report_original = b"existing playlist staging data must be preserved\\n"
@@ -237,10 +260,14 @@ def test_main_rejects_report_path_matching_input_staging_file_before_processing(
     monkeypatch.setattr(
         resolver,
         "find_ytdlp",
-        lambda explicit=None: pytest.fail("report path validation must run before yt-dlp discovery"),
+        lambda explicit=None: pytest.fail(
+            "report path validation must run before yt-dlp discovery"
+        ),
     )
 
-    exit_code = resolver.main([str(playlist), "--dry-run", "--report-json", str(staging)])
+    exit_code = resolver.main(
+        [str(playlist), "--dry-run", "--report-json", str(staging)]
+    )
 
     assert exit_code == 2
     assert staging.read_bytes() == report_original
@@ -258,7 +285,9 @@ def test_main_rejects_report_staging_path_matching_another_input(monkeypatch, tm
     monkeypatch.setattr(
         resolver,
         "find_ytdlp",
-        lambda explicit=None: pytest.fail("report path validation must run before yt-dlp discovery"),
+        lambda explicit=None: pytest.fail(
+            "report path validation must run before yt-dlp discovery"
+        ),
     )
 
     exit_code = resolver.main(
