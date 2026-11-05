@@ -1,5 +1,8 @@
 bot_nick = "AutoDJ"            # nick the bot uses in the room (its own lines are ignored)
-admins = ["Seaza"]             # case-insensitive list of admin nicks
+# admins = []                  # case-insensitive list of admin nicks (no default; configure operator nicks only)
+# WARNING: Nickname-based authorization is spoofable. Prefer immutable authenticated
+# account identifiers where the chat protocol supports them.
+admins = []
 prefix = "!"                   # command prefix
 lang = "th"                    # "en" | "th": bot replies + GUI (switchable live in the GUI)
 

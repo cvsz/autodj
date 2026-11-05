@@ -29,7 +29,16 @@ class Router:
         self.user_requests: dict[str, list[float]] = {}
 
     def is_admin(self, msg) -> bool:
-        return msg.local or msg.user.lower() in self.e.admins
+        # NOTE: Nickname-based authorization is spoofable — any user can adopt an
+        # operator's nick and gain admin privileges. Prefer immutable authenticated
+        # account identifiers where the chat protocol supports them.
+        # `msg.local` is trusted only for local/development execution.
+        if msg.local:
+            return True
+        if not self.e.admins:
+            # Empty admin list -> fail-closed: no nickname-based admin access.
+            return False
+        return msg.user.lower() in self.e.admins
 
     def handle(self, msg):
         e, p = self.e, self.e.cfg.prefix
