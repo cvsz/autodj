@@ -27,7 +27,9 @@ class Track:
     duration: float | None = None
     requester: str = "AutoDJ"
     added: str = ""
-    state: str = "QUEUED"  # QUEUED, RESOLVING, READY, PLAYING, COMPLETED, FAILED, CANCELLED
+    state: str = (
+        "QUEUED"  # QUEUED, RESOLVING, READY, PLAYING, COMPLETED, FAILED, CANCELLED
+    )
 
     @property
     def dur(self) -> str:

@@ -49,7 +49,7 @@ foreach ($file in $requiredFiles) {
     if (-not (Test-Path $path)) {
         Write-Warning "Missing required file: $path"
     } else {
-        Write-Host "  ✓ Found: $file"
+        Write-Host "  Found: $file"
     }
 }
 
@@ -58,7 +58,7 @@ $optionalDirs = @("camfrog_autodj", "docs", "tools", "tests")
 foreach ($dir in $optionalDirs) {
     $path = Join-Path (Get-Location) $dir
     if (Test-Path $path) {
-        Write-Host "  ✓ Found directory: $dir"
+        Write-Host "  Found directory: $dir"
     }
 }
 
@@ -72,20 +72,22 @@ Write-Host "Generated installer.nsi with version $Version"
 
 # Build installer
 $installerName = "Camfrog-AutoDJ-Setup-$Version.exe"
-$outPath = Join-Path $OutDir $installerName
+$outPath = Join-Path (Get-Location) $installerName
 
 Write-Host "Building installer: $installerName"
-$proc = Start-Process "makensis" -ArgumentList "/DVERSION=$Version", "/DSRCDIR=.", "/DOUTDIR=.", "installer.nsi" -WorkingDirectory $SrcDir -Wait -PassThru -NoNewWindow
+# Run makensis from repo root so installer.nsi paths work correctly
+$repoRoot = (Get-Location).Path
+$proc = Start-Process "makensis" -ArgumentList "/DVERSION=$Version", "/DSRCDIR=.", "/DOUTDIR=.", "installer.nsi" -WorkingDirectory $repoRoot -Wait -PassThru -NoNewWindow
 
 if ($proc.ExitCode -ne 0) {
     Write-Error "NSIS build failed with exit code $($proc.ExitCode)"
     exit 1
 }
 
-$installerPath = Join-Path $OutDir $installerName
+$installerPath = Join-Path $repoRoot $installerName
 if (Test-Path $installerPath) {
     $sizeMB = [math]::Round((Get-Item $installerPath).Length / 1MB, 1)
-    Write-Host "✓ Installer built successfully!" -ForegroundColor Green
+    Write-Host "Installer built successfully!" -ForegroundColor Green
     Write-Host "  File: $installerPath"
     Write-Host "  Size: $sizeMB MB"
 
@@ -96,7 +98,7 @@ if (Test-Path $installerPath) {
         if ($cert) {
             $sig = Set-AuthenticodeSignature -FilePath $installerPath -Certificate $cert -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com"
             if ($sig.SignerCertificate) {
-                Write-Host "  ✓ Signed successfully" -ForegroundColor Green
+                Write-Host "  Signed successfully" -ForegroundColor Green
             } else {
                 Write-Warning "Signing failed: $($sig.StatusMessage)"
             }
