@@ -66,12 +66,16 @@ jobs:
 
       - name: Determine if auto-approve is safe
         id: safety
+        env:
+          GH_TOKEN: ${{ secrets.POLIEDBC_PAT }}
         run: |
           # Security-sensitive paths require human review (per CODEOWNERS).
           # Auto-approve ONLY if audit passed AND no security-sensitive paths changed.
           SECURE_PATHS='^(\.github/|SECURITY\.md|AGENTS\.md|installer\.nsi|install\.ps1|install-full-auto\.ps1|build\.ps1|config\.toml|config\.example\.toml)'
-          CHANGED_FILES="$(git diff --name-only HEAD ${{ github.event.pull_request.merge_commit_sha || github.event.pull_request.head.sha }} 2>/dev/null || git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})"
-
+          
+          # Use GitHub API to get changed files (more reliable than git diff in PR context)
+          CHANGED_FILES="$(gh api /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files --jq '.[].filename' 2>/dev/null || true)"
+          
           SECURITY_CHANGED=0
           if echo "$CHANGED_FILES" | grep -Eq "$SECURE_PATHS"; then
             SECURITY_CHANGED=1
