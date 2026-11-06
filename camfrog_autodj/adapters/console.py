@@ -18,6 +18,12 @@ class ConsoleAdapter(ChatAdapter):
                 continue
             if line.startswith(self.prefix):
                 yield ChatMessage("console", line, local=True)
+            elif line.startswith("im "):
+                # `im nick: text` — an instant/private message; no room prefix required
+                rest = line[3:].strip()
+                if ": " in rest:
+                    u, t = rest.split(": ", 1)
+                    yield ChatMessage(u, t, is_im=True)
             elif ": " in line:
                 u, t = line.split(": ", 1)
                 yield ChatMessage(u, t)

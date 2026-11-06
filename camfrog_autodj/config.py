@@ -81,7 +81,7 @@ class Config:
         ""  # directory of *.json playlist files auto-loaded at startup; "" = disabled
     )
     search_limit: int = 1  # YouTube text-search results fetched per non-admin !play (1 = first match only)
-    mpv_timeout: float = 30.0  # seconds to wait for one mpv track before treating it as hung (0 = no timeout)
+    mpv_timeout: float = 0.0  # seconds to wait for one mpv track before treating it as hung (0 = no timeout)
     # Audio Engineering
     audio_fade: bool = True  # enable audio volume fade-in and fade-out
     audio_fade_in_sec: float = 1.2  # fade-in duration in seconds
@@ -108,6 +108,10 @@ class Config:
     rate_limit_window: float = (
         300.0  # rolling time window for per-user request limit (seconds)
     )
+    # Auto-reply: scheduled messages sent to the room from ads-list.json
+    auto_reply_enabled: bool = False  # enable scheduled auto-reply messages
+    auto_reply_interval: float = 300.0  # seconds between auto-reply messages (5 minutes)
+    auto_reply_file: str = "ads-list.json"  # JSON file with messages to rotate through
 
     @classmethod
     def load(cls, path: str | None) -> Config:
@@ -177,6 +181,7 @@ _RANGES = {
     "voteskip_dynamic_pct": (1, 100),
     "user_request_limit": (1, 1000),
     "rate_limit_window": (10.0, 86400.0),
+    "auto_reply_interval": (60.0, 86400.0),
 }
 
 

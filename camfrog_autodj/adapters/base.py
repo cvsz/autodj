@@ -11,6 +11,7 @@ class ChatMessage:
     user: str
     text: str
     local: bool = False  # from the local console: always trusted as admin
+    is_im: bool = False  # instant/private message: can control the bot without room prefix
 
 
 class ChatAdapter(ABC):
@@ -24,9 +25,9 @@ class ChatAdapter(ABC):
         pass
 
 
-def parse_line(line: str, rx: re.Pattern[str]) -> ChatMessage | None:
+def parse_line(line: str, rx: re.Pattern[str], is_im: bool = False) -> ChatMessage | None:
     m = rx.match(line.strip())
-    return ChatMessage(m["user"].strip(), m["text"].strip()) if m else None
+    return ChatMessage(m["user"].strip(), m["text"].strip(), is_im=is_im) if m else None
 
 
 def diff_lines(prev: list[str], cur: list[str]) -> list[str]:

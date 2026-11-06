@@ -126,7 +126,9 @@ class UiaAdapter(ChatAdapter):
                 continue
             if prev is not None:
                 for line in diff_lines(prev, lines):
-                    m = parse_line(line, self.rx)
+                    # IM (private) messages in Camfrog are marked with an [IM] tag or "IM " prefix
+                    is_im = line.startswith(("IM ", "[IM]")) or " [IM] " in line
+                    m = parse_line(line, self.rx, is_im=is_im)
                     if m:
                         yield m
             prev = lines  # first poll only sets the baseline: old history is never replayed
