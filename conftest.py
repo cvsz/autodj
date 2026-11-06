@@ -17,9 +17,8 @@ if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
 
             if isinstance(excinfo.value, _pytest.nodes.ConftestImportFailure):
                 excinfo = _pytest.ExceptionInfo.from_exception(excinfo.value.cause)
-            if isinstance(excinfo.value, fail.Exception):
-                if not excinfo.value.pytrace:
-                    style = "value"
+            if isinstance(excinfo.value, fail.Exception) and not excinfo.value.pytrace:
+                style = "value"
             if isinstance(excinfo.value, FixtureLookupError):
                 return excinfo.value.formatrepr()
 
@@ -61,8 +60,9 @@ if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
                 os.name = previous_os_name
 
         _pytest.nodes.Node._repr_failure_py = patched_repr_failure_py
-    except Exception:
-        # If patching fails, continue without it
+    except Exception:  # noqa: BLE001, S110
+        # Best-effort import-time monkey-patch: keep pytest usable even if
+        # patching fails on an unsupported pytest release.
         pass
 
 

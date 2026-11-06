@@ -14,7 +14,6 @@ Camfrog AutoDJ - Launcher
 from __future__ import annotations
 
 import argparse
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -73,9 +72,7 @@ def main() -> None:
     if not config_path.exists():
         example = Path("config.example.toml")
         if example.exists():
-            print(
-                f"[!] ไม่พบไฟล์ {args.config} พบไฟล์ตัวอย่าง {example} แทน"
-            )
+            print(f"[!] ไม่พบไฟล์ {args.config} พบไฟล์ตัวอย่าง {example} แทน")
             print(f"    แนะนำให้คัดลอก: copy {example} {args.config}")
         else:
             print(f"[!] ไม่พบไฟล์ตั้งค่า {args.config}")
@@ -109,7 +106,9 @@ def main() -> None:
         subprocess.run(cmd, check=False)
     except KeyboardInterrupt:
         print("\n[AUTO DJ] ผู้ใช้หยุดการทำงาน")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
+        # Top-level launcher handler: report a friendly message and exit cleanly
+        # instead of dumping a traceback to the end user.
         print(f"\n[AUTO DJ] เกิดข้อผิดพลาด: {exc}")
         sys.exit(1)
 
