@@ -30,8 +30,15 @@ echo "DEPLOY: Auto Audit + Review + Approve workflow to all cvsz repos"
 echo "Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 echo "============================================================"
 
-# List public repos owned by cvsz (not forks)
-REPO_LIST="$(gh api user/repos --jq '.[] | select(.fork == false and .private == false) | .full_name' 2>/dev/null || true)"
+# List ALL public repos owned by cvsz (not forks) - with pagination
+REPO_LIST=""
+for page in 1 2 3 4 5 6 7 8 9 10; do
+  page_repos="$(gh api "user/repos?per_page=100&page=$page" --jq '.[] | select(.fork == false and .private == false) | .full_name' 2>/dev/null || true)"
+  if [ -z "$page_repos" ]; then
+    break
+  fi
+  REPO_LIST="${REPO_LIST}${REPO_LIST:+$'\n'}${page_repos}"
+done
 
 if [ -z "$REPO_LIST" ]; then
   echo "ERROR: Could not list repos"
