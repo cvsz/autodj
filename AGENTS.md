@@ -1,5 +1,7 @@
 # AGENTS.md — Repository Agent Contract
 
+> **READ FIRST — Canonical organization-wide policy:** https://github.com/cvsz/zeaz/blob/main/zeaz.md (SUPER ULTRA AI ORC v2.1). This reference is required reading and takes precedence per Section 13.3 instruction precedence. Local rules below may be stricter but must not weaken mandatory security, safety, evidence, validation, or release requirements.
+
 ## Purpose
 This repository is a reusable GitHub project template. Changes must remain generic, secure by default, easy to customize, and safe to inherit into a newly generated repository.
 

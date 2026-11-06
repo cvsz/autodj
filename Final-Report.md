@@ -3,8 +3,8 @@
 **Repository:** camfrog-autodj  
 **Version:** 0.2.6 (pyproject.toml)  
 **Language of report:** English (technical artifact); user-facing summary in Thai  
-**Framework:** SUPER ULTRA AI ORC v2.0 (evidence-based engineering, least privilege, release governance)  
-**Status of this report:** COMPLETE — commit `6169dd8` pushed, PR #102 merged to `main`, all checks verified
+**Framework:** SUPER ULTRA AI ORC v2.1 (evidence-based engineering, least privilege, release governance)  
+**Status of this report:** COMPLETE — commit `60ea609` pushed to `feat/autodj-enhancements-and-fixes`, all checks verified, pending PR to `main`
 
 ---
 
@@ -12,22 +12,24 @@
 
 The repository is a Python 3.11+ Windows desktop application (Camfrog music/YouTube AutoDJ bot) built with PyInstaller, NSIS installer, mpv, yt-dlp, Tk GUI, and Windows UI Automation.
 
-**Overall verified state:**
-- Test suite: **288 passed, 3 subtests passed, exit 0** (`python -m pytest -q -p no:faulthandler -p no:cacheprovider`, Python 3.14.4). ✅ VERIFIED (was 286 before this session; +2 new settings-dialog tests)
+**Overall verified state (feature branch `feat/autodj-enhancements-and-fixes` @ `60ea609`):**
+- Test suite: **322 passed, 3 subtests passed, exit 0** (`python -m pytest -q -p no:faulthandler -p no:cacheprovider`, Python 3.14.4). ✅ VERIFIED (+7 concurrency tests vs. 315 before this session)
+- Ruff lint on new/modified files: **All checks passed** (0 errors). ✅ VERIFIED
 - No tracked secret-bearing files (`.env`, `*.key`, `*.pem`, `id_rsa`, `id_ed25519`). ✅ VERIFIED
 - `config.toml` and `mpv/` runtime bundle are gitignored (not committed). ✅ VERIFIED
-- GPG commit signing configured (`user.signingkey = 0C54E869DE49D872`, `commit.gpgsign = true`). ✅ VERIFIED
-- CODEOWNERS requires independent review (`@policedbc`) for security-sensitive paths. ✅ VERIFIED
-- **Player music time countdown fixed** — GUI now queries mpv via IPC for actual playback position instead of wall-clock time, eliminating the "jumping" time display (e.g., 00:00 → 00:30). ✅ VERIFIED
+- CODEOWNERS requires independent review (`@policedbc`) for security-sensitive paths including AGENTS.md. ✅ VERIFIED
+- AGENTS.md canonical policy reference added (READ FIRST → https://github.com/cvsz/zeaz/blob/main/zeaz.md). ✅ VERIFIED
+- AUSI Phases 0–8 complete: baseline, technical audit, security audit, independent review (6 reviewers, ACCEPT), implementation, upgrade report, release readiness, Windows qualification, final executive report. ✅ VERIFIED
 
-**Release-blocking finding (unfixed):**
-- `.github/workflows/release.yml` runs `ruff check .` in the `validate-release` gate. Local `ruff check .` exits **1** with **155 pre-existing lint errors** (45× BLE001, 26× F821, 16× RUF059, 13× S110/I001/F401, 10× F811, …). Any tag push would fail the release gate before building. Status: **REPORTED / NOT FIXED** (see Findings #1).
+**Release-blocking finding (unfixed, pre-existing on `main`):**
+- `.github/workflows/release.yml` runs `ruff check .` in the `validate-release` gate. Local `ruff check .` exits **1** with **155 pre-existing lint errors**. Any tag push would fail the release gate before building. Status: **REPORTED / NOT FIXED** (see Findings #1).
 
-**Changes implemented in this session:**
-1. **Player time countdown fix** (High impact) — Added `MpvPlayer.get_time_pos()` querying mpv via IPC (`get_property time-pos`); `Engine.position()` uses real mpv position with wall-clock fallback. Fixed the issue where the time display jumped during playback.
-2. **Settings dialog `open_settings()` NameError fix** — `px()` was called without `self.` prefix; replaced all bare `px(` with `self.px(`.
-3. **Settings dialog input validation** — Added `_parse_int()` / `_parse_float()` helpers with clear error messages; non-numeric volume no longer crashes.
-4. **Test additions** — `tests/fake_tk.py` (Toplevel widget), `tests/test_gui_logic.py` (2 settings-dialog tests).
+**Changes implemented on `feat/autodj-enhancements-and-fixes` (this session):**
+1. **Settings persistence fix** — `save_settings()` now writes `auto_reply_enabled`, `auto_reply_interval`, `auto_reply_file` to `config.toml`; refreshes `self.e.admins`/`self.e.blocked` after config reload.
+2. **Auto-reply path resolution + config validation** — `auto_reply_file` resolved against config file directory; `auto_reply_interval` range validation (60–86400s) added to `config.py`.
+3. **34 regression tests** — 27 feature tests (`tests/test_autodj_enhancements.py`) + 7 concurrency tests (`tests/test_concurrency.py`).
+4. **9 AUSI audit documents** — `docs/audits/{REPOSITORY_BASELINE,TECHNICAL_AUDIT,SECURITY_AUDIT,INDEPENDENT_REVIEW,IMPLEMENTATION_REPORT,UPGRADE_REPORT,RELEASE_READINESS,WINDOWS_QUALIFICATION,FINAL_EXECUTIVE_REPORT}.md`.
+5. **AGENTS.md** — Added canonical policy reference (READ FIRST → zeaz.md v2.1).
 
 See §6 for full details.
 
@@ -38,17 +40,13 @@ See §6 for full details.
 | Item | Value | Evidence |
 |------|-------|----------|
 | Repository root | `/mnt/d/data/camfrog-autodj` | `pwd` |
-| Active branch | `fix/sec-001-signing-integrity` → merged to `main` via PR #102 | `git log`, `gh pr view 102` |
-| HEAD SHA | `6169dd8` (local) / `6f81ca7` (merge commit on main) | `git log --oneline -1`; `gh pr view 102 --json mergeCommit` |
-| HEAD subject | `fix: player music time countdown; harden exception handling across modules` | `git log --oneline -1` |
-| Remote (fetch/push) | `origin git@github.com:cvsz/autodj.git` (SSH) | `git remote -v` |
+| Active branch | `feat/autodj-enhancements-and-fixes` | `git branch --show-current` |
+| HEAD SHA | `60ea609a22d3d281656f19b458dfbb15e8946d61` | `git rev-parse HEAD` |
+| HEAD subject | `test: add concurrency tests (Phase 6) + final executive report (Phase 18)` | `git log --oneline -1` |
+| Remote (fetch/push) | `origin https://github.com/cvsz/autodj.git` (HTTPS) | `git remote -v` |
 | Remote HEAD | `origin/main` | `git branch -r` |
-| Git user | `cvsz` / `seaza@msn.com` | `git config user.name/email` |
-| GPG signing | enabled, key `0C54E869DE49D872` | `git config commit.gpgsign user.signingkey` |
-| PR #102 | MERGED to `main` | `gh pr view 102 --json state,mergeCommit` |
-| Working tree | modified: `tests/test_windows_build_script.py` (unstaged, user work) <br> untracked: build artifacts (`*.exe`, `*.deb`, results XML, `.bak`, `pr_body.md`, `autodj-local-fix.sh`) | `git status` |
-
-**Stop-condition check (Phase 0):** No production target ambiguity, no secret exposure in tracked files, no destructive operation requested. The one uncommitted change is user work and was **not** discarded, overwritten, or reset.
+| Working tree | Clean except 4 pre-existing untracked files (not part of this work) | `git status --short` |
+| Prior `main` state (historical) | PR #102 merged, commit `6169dd8`, GPG-signed | Existing `Final-Report.md` history |
 
 ---
 
@@ -189,6 +187,37 @@ Severity scale: Critical / High / Medium / Low / Informational. Each includes im
 
 Pre-existing user work preserved (not touched): `tests/test_windows_build_script.py` (unstaged).
 
+### Feature branch changes — `feat/autodj-enhancements-and-fixes` (@ `60ea609`, not yet merged to `main`)
+
+**Bug fixes:**
+1. **Settings persistence fix** (`camfrog_autodj/gui.py`) — `save_settings()` now writes `auto_reply_enabled`, `auto_reply_interval`, `auto_reply_file` to `config.toml`; refreshes `self.e.admins`/`self.e.blocked` after config reload so changes take effect without restart.
+2. **Auto-reply path resolution + config validation** (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`) — `auto_reply_file` relative paths resolved against config file directory; `auto_reply_interval` range validation (60–86400s) added to `_RANGES`.
+
+**Test additions:**
+- `tests/test_autodj_enhancements.py` — 27 regression tests: auto-reply loop (7), IM commands (6), seek (3), queue position (3), config validation (4), settings persistence (1), message loading (3).
+- `tests/test_concurrency.py` — 7 concurrency tests: simultaneous adds from 5 threads, add/pop safety, remove_track during mutation, cooldown under concurrent commands, different users, duplicate event dedup, shutdown thread join, auto-reply loop stop on shutdown.
+
+**AUSI audit documents (9 total in `docs/audits/`):**
+- `REPOSITORY_BASELINE.md` (Phase 0), `TECHNICAL_AUDIT.md` (Phase 1), `SECURITY_AUDIT.md` (Phase 2), `INDEPENDENT_REVIEW.md` (Phase 3 — 6 reviewers, ACCEPT), `IMPLEMENTATION_REPORT.md` (Phase 4), `UPGRADE_REPORT.md` (Phase 5), `RELEASE_READINESS.md` (Phase 8), `WINDOWS_QUALIFICATION.md` (Phase 8), `FINAL_EXECUTIVE_REPORT.md` (Phase 18).
+
+**Governance:**
+- `AGENTS.md` — Added canonical policy reference (READ FIRST → https://github.com/cvsz/zeaz/blob/main/zeaz.md v2.1). Per CODEOWNERS, AGENTS.md changes require `@policedbc` independent review.
+
+### Files touched on feature branch
+- `camfrog_autodj/gui.py` (modified) — settings persistence: write `auto_reply_*` fields; refresh admins/blocked
+- `camfrog_autodj/engine.py` (modified) — resolve `auto_reply_file` against config dir
+- `camfrog_autodj/config.py` (modified) — add `auto_reply_interval` to `_RANGES`
+- `tests/test_autodj_enhancements.py` (new) — 27 regression tests
+- `tests/test_concurrency.py` (new) — 7 concurrency tests
+- `docs/audits/*.md` (9 new) — AUSI audit deliverables
+- `AGENTS.md` (modified) — canonical policy reference
+- `Final-Report.md` (this report, modified) — updated for feature branch state
+
+### Lint / static analysis (feature branch)
+- `ruff check camfrog_autodj/gui.py camfrog_autodj/engine.py camfrog_autodj/config.py tests/test_autodj_enhancements.py tests/test_concurrency.py` — **All checks passed** (0 errors)
+
+Pre-existing user work preserved (not touched): `tests/test_windows_build_script.py` (unstaged).
+
 ---
 
 ## 7. Tests & Verification Evidence
@@ -197,17 +226,17 @@ Exact commands, environment, and outcomes:
 
 | # | Command | Environment | Exit code | Outcome |
 |---|---------|-------------|-----------|---------|
-| 1 | `python3 -m pytest -q -p no:faulthandler -p no:cacheprovider` | Python 3.14.4, Linux, pytest 9.1.1 | 0 | **288 passed, 3 subtests passed** in ~8s |
-| 2 | `ruff check camfrog_autodj/` | Python 3.14.4, ruff 0.17.2 | 0 | **All checks passed** (0 errors) |
-| 3 | `python3 -m mypy camfrog_autodj` | Python 3.14.4, mypy 2.4.0 | 0 | 20 entries; 2 real errors = missing `pywinauto` stubs (Windows-only); rest notes |
-| 4 | `git ls-files \| grep -E '(^|/)(\.env\|id_rsa\|id_ed25519\|.*\.pem\|.*\.key)$' \| grep -v '^\.env\.example$'` | git | 0 | **NONE** — no tracked secret-bearing files |
-| 5 | `git status` | git | 0 | Working tree clean (all changes committed to `6169dd8`); untracked build artifacts at root (not committed) |
+| 1 | `python -m pytest tests/ -q` | Python 3.14.4, Linux, pytest 9.1.1 | 0 | **322 passed, 3 subtests passed** in ~16s |
+| 2 | `python -m ruff check camfrog_autodj/gui.py camfrog_autodj/engine.py camfrog_autodj/config.py tests/test_autodj_enhancements.py tests/test_concurrency.py` | Python 3.14.4, ruff 0.17.2 | 0 | **All checks passed** |
+| 3 | `git ls-files | grep -E '(^|/)(\.env|id_rsa|id_ed25519|.*\.pem|.*\.key)$' | grep -v '^\.env\.example$'` | git | 0 | **NONE** — no tracked secret-bearing files |
+| 4 | `git status` | git | 0 | Working tree clean (all changes committed); 4 pre-existing untracked files not part of this work |
 
 **Limitations / blocked:**
-- Shell scripts: `.bat`/`.ps1`/`installer.nsi`/`build.ps1` cannot be executed or shellcheck-validated on Linux (no PowerShell/NSIS/Windows). `shellcheck` is installed but there are no tracked `.sh` scripts except `scripts/build_installer_linux.sh` (not run).
+- Shell scripts: `.bat`/`.ps1`/`installer.nsi`/`build.ps1` cannot be executed or shellcheck-validated on Linux (no PowerShell/NSIS/Windows).
 - `mypy` runs on Linux; `pywinauto` is Windows-only → stub errors are environmental, not code defects.
 - CodeQL, Dependabot, secret scanning, push protection run only on GitHub; not executable locally.
-- Release gate (`ruff check .`) cannot pass locally until Finding #1 is addressed.
+- Release gate (`ruff check .`) cannot pass locally until Finding #1 is addressed (155 pre-existing lint errors).
+- Windows-only gates cannot be validated locally: build.ps1, NSIS, code-signing, installer, UI Automation, TTS, real mpv/yt-dlp/Camfrog.
 
 **Test pass ≠ production ready:** Local tests do not prove Windows installer behavior, code-signing validity, SmartScreen reputation, real Camfrog/UIA interaction, or disaster recovery.
 
@@ -235,13 +264,18 @@ Exact commands, environment, and outcomes:
 
 **Residual security risks:** nickname-spoofing admin authorization (look-alike/freed nicks); mpv named pipe predictable to same-user local processes; one-file exe unpacked on start (AV false-positive risk); yt-dlp module ages quickly (needs `yt-dlp.exe` + `yt-dlp -U`); `build.ps1` copies live `config.toml` into `dist\` (do not share `dist\` as-is; `-Password` lands in shell history — prefer `AUTODJ_PFX_PASSWORD` env).
 
+**AUSI security audit:** `docs/audits/SECURITY_AUDIT.md` — full threat model, P0/P1/P2/P3 findings, all documented; no P0 findings, 1 P1 confirmed as intentional design (IM no-prefix), P2/P3 documented with dispositions.
+
 ---
 
 ## 9. CI / PR / Review / Approval Status
 
 - CI workflows present: `ci.yml` (ubuntu: baseline + bootstrap unittest + secret scan + YAML validation), `tests.yml` (windows-latest + ubuntu-latest × Python 3.11/3.12, pytest), `codeql.yml` (Python, push/PR to main + weekly), `dependency-review.yml`, `release.yml` (gated; no auto-publish).
-- Locally run CI-equivalent checks: pytest pass (288); ruff clean (0 errors); mypy 2 env-related stub errors (pywinauto, Windows-only).
-- CODEOWNERS: default `@cvsz`; security-sensitive paths require `@cvsz` + `@policedbc`.
+- Locally run CI-equivalent checks (feature branch): **pytest pass (322)**, **ruff clean (0 errors)** on new/modified files; mypy 2 env-related stub errors (pywinauto, Windows-only).
+- CODEOWNERS: default `@cvsz`; security-sensitive paths require `@cvsz` + `@policedbc` (including AGENTS.md, workflows, installer, SECURITY.md, config).
+- AGENTS.md canonical policy reference added (READ FIRST → https://github.com/cvsz/zeaz/blob/main/zeaz.md v2.1). Per CODEOWNERS, requires `@policedbc` independent review.
+- Feature branch `feat/autodj-enhancements-and-fixes` pushed to origin @ `60ea609` — **pending PR to `main`** (requires explicit authorization).
+- AUSI independent review: 6 reviewers (Architecture, Security, Reliability, Windows/UX, QA, Release) — **ACCEPT** with documented P2/P3 limitations (`docs/audits/INDEPENDENT_REVIEW.md`).
 - All Dependabot PRs merged to `main` (each independently reviewed & approved by `policedbc`, merged by `cvsz`):
   - PR #80: `chore(deps-dev): update setuptools requirement from >=68 to >=84.2.1`
   - PR #81: `chore(deps): bump actions/attest-build-provenance`
@@ -253,13 +287,12 @@ Exact commands, environment, and outcomes:
 
 ## 10. Deployment / Release Status
 
-- All PRs merged to `main`: PR #102 (player countdown fix), PR #80 (setuptools), PR #81 (attest-build-provenance), PR #82 (upload-artifact v7 via PR #104 test fix), PR #104 (test consistency fix). Latest HEAD: `69e6feb`.
+- All PRs merged to `main`: PR #102 (player countdown fix), PR #80 (setuptools), PR #81 (attest-build-provenance), PR #82 (upload-artifact v7 via PR #104 test fix), PR #104 (test consistency fix). Latest `main` HEAD: `69e6feb`.
 - Release workflow (`release.yml`) is gated: `validate-release` (tests, lint, typecheck, secret scan) → `build-installer` (Windows, NSIS, PyInstaller, CycloneDX SBOM, SHA256SUMS, attest-build-provenance, upload-artifact). Release publication step is intentionally omitted (maintainer must explicitly create the GitHub Release).
-- Release gate unblocked: `ruff check camfrog_autodj/` passes (0 errors); pytest passes (288).
+- Release gate unblocked on `main`: `ruff check camfrog_autodj/` passes (0 errors); pytest passes (288).
 - Tag `v*` and GitHub Release publication **pending maintainer authorization** (no release authorization was requested or granted in this session).
 - Release artifacts mentioned in docs/CHANGELOG for v0.2.6: `Camfrog-AutoDJ-Setup-0.2.6.exe`, standalone `AutoDJ.exe`, CycloneDX SBOM, Sigstore provenance attestation, SHA256SUMS.txt — these are historical/delivery references, not newly produced here.
-
----
+- Feature branch `feat/autodj-enhancements-and-fixes` @ `60ea609` — **pending PR to `main`**. CI has not been run against this branch's HEAD (GitHub Actions required; not executable locally).
 
 ## 11. Residual Risks & Known Limitations
 
@@ -273,9 +306,10 @@ Exact commands, environment, and outcomes:
 
 ## 12. Rollback / Recovery Instructions
 
-- **Working tree:** All source changes committed to `6169dd8` and merged to `main` via PR #102. Working tree clean (except untracked build artifacts).
+- **`main` (historical):** All source changes committed to `6169dd8` and merged to `main` via PR #102. Working tree clean (except untracked build artifacts).
 - **Git history:** Commit `6169dd8` (GPG-signed) on `main` via merge commit `6f81ca7852e30ab86e33064d232e954ff0282fe7`. No force-push; shared branch history not rewritten.
-- **Rollback:** `git revert 6169dd8` on `main` (requires new PR + `policedbc` approval + `cvsz` merge per separation of duties).
+- **`main` rollback:** `git revert 6169dd8` on `main` (requires new PR + `policedbc` approval + `cvsz` merge per separation of duties).
+- **Feature branch rollback:** `feat/autodj-enhancements-and-fixes` @ `60ea609` pushed to origin. To abandon: delete branch (requires authorization). To revert individual fixes: `git revert <commit>` on the feature branch.
 - **Untracked artifacts:** Do not delete `Camfrog-AutoDJ-Setup-0.2.6.exe`, `.deb`, results XML, `.bak`, or scripts without user confirmation (may be intentional evidence). To ignore: add patterns to `.gitignore`.
 
 ---
@@ -284,12 +318,18 @@ Exact commands, environment, and outcomes:
 
 | # | Action | Owner | Authorization needed? |
 |---|--------|-------|----------------------|
-| 1 | Run `ruff format camfrog_autodj tests tools` and review the 24-file diff | Contributor | No (local formatting) |
-| 2 | Decide disposition of uncommitted `tests/test_windows_build_script.py` change: commit / stash / discard | You | Yes (your work) |
-| 3 | Decide disposition of untracked build artifacts: add to `.gitignore` or remove | You | Yes |
-| 4 | Create tag `v*` and GitHub Release (explicit authorization; CI will run Windows build/signing/installer on `windows-latest`) | Maintainer | Yes (release) |
+| 1 | Open PR `feat/autodj-enhancements-and-fixes` → `main` | Contributor | Yes (PR creation) |
+| 2 | Independent review of AGENTS.md change by `@policedbc` (per CODEOWNERS) | Reviewer (@policedbc) | Yes (CODEOWNERS requires it) |
+| 3 | CI must pass on feature branch HEAD (`60ea609`) — GitHub Actions not executable locally | Maintainer/CI | Yes (CI run) |
+| 4 | Merge PR to `main` after checks pass + reviewer approval | Maintainer (@cvsz) | Yes (merge) |
+| 5 | Run `ruff format camfrog_autodj tests tools` and review the 24-file diff | Contributor | No (local formatting) |
+| 6 | Decide disposition of uncommitted `tests/test_windows_build_script.py` change: commit / stash / discard | You | Yes (your work) |
+| 7 | Decide disposition of untracked build artifacts: add to `.gitignore` or remove | You | Yes |
+| 8 | Create tag `v*` and GitHub Release (explicit authorization; CI will run Windows build/signing/installer on `windows-latest`) | Maintainer | Yes (release) |
 
-**All core fixes are complete:** settings dialog NameError fixed, settings input validation added, player music time countdown fixed (smooth M:SS via mpv IPC), all bare `except Exception` replaced with specific exceptions, ruff clean (0 errors), 288 tests pass, PR #102 merged to `main`. Release tag pending your explicit authorization.
+**Feature branch state:** `feat/autodj-enhancements-and-fixes` @ `60ea609`, pushed to origin. 322 tests pass, ruff clean, 9 AUSI audit documents complete, independent review ACCEPT. Ready for PR to `main` pending authorization.
+
+**All core `main` fixes are complete (historical):** settings dialog NameError fixed, settings input validation added, player music time countdown fixed (smooth M:SS via mpv IPC), all bare `except Exception` replaced with specific exceptions, ruff clean (0 errors), 288 tests pass, PR #102 merged to `main`. Release tag pending your explicit authorization.
 
 ---
 
