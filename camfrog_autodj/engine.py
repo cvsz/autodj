@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import json
 import logging
 import os
 import queue
@@ -364,6 +365,13 @@ class Engine:
         # Fallback to wall-clock calculation (pauses excluded)
         end = self._paused_at or time.monotonic()
         return max(0.0, end - self.started_at - self._paused_total)
+
+    def seek(self, seconds: float) -> bool:
+        """Seek to an absolute position (seconds) in the current track.
+        Returns True if the seek command was sent successfully."""
+        if not self.current:
+            return False
+        return self.player.seek(seconds)
 
     def set_volume(self, v: int):
         self.volume = max(0, min(100, int(v)))
@@ -818,10 +826,52 @@ class Engine:
                 "in config.toml; nothing will play until then.",
                 self.cfg.mpv_path,
             )
-        for fn in (self._sender, self._player_loop, self._load_all, self._chat_loop):
+        for fn in (self._sender, self._player_loop, self._load_all, self._chat_loop, self._auto_reply_loop):
             t = threading.Thread(target=fn, daemon=True, name=f"autodj-{fn.__name__}")
             self._threads.append(t)
             t.start()
+
+    def _auto_reply_loop(self):
+        """Send scheduled auto-reply messages from ads-list.json to the room."""
+        if not self.cfg.auto_reply_enabled:
+            log.debug("auto-reply disabled; loop not started")
+            return
+        path = self.cfg.auto_reply_file
+        messages = self._load_auto_reply_messages(path)
+        if not messages:
+            log.warning("auto-reply enabled but no messages found in %r", path)
+            return
+        idx = 0
+        interval = max(60.0, self.cfg.auto_reply_interval)  # minimum 60s to avoid spam
+        while not self.stop_evt.is_set():
+            # Wait between messages, but wake up immediately on shutdown
+            if self.stop_evt.wait(interval):
+                break
+            if self.stop_evt.is_set():
+                break
+            msg = messages[idx % len(messages)]
+            idx += 1
+            try:
+                self.say(msg)
+                log.info("auto-reply sent: %r", msg[:60])
+            except Exception:
+                log.exception("auto-reply send failed")
+
+    @staticmethod
+    def _load_auto_reply_messages(path: str) -> list[str]:
+        """Load messages from ads-list.json. Returns a list of message strings."""
+        try:
+            data = json.loads(Path(path).read_text("utf-8-sig"))
+        except FileNotFoundError:
+            log.debug("auto-reply file %r not found", path)
+            return []
+        except Exception:
+            log.warning("cannot read auto-reply file %r", path, exc_info=True)
+            return []
+        entries = data.get("messages", []) if isinstance(data, dict) else data
+        if not isinstance(entries, list):
+            return []
+        return [str(m) for m in entries if m]
 
     def run(self):
         self.start()

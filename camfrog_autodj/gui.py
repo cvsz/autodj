@@ -265,14 +265,27 @@ class PillButton(tk.Canvas):
 
 
 class GlowBar(tk.Canvas):
-    """Track progress: rounded track, gradient-coloured fill and a glowing head."""
+    """Track progress: rounded track, gradient-coloured fill and a glowing head.
+    Clicking on the bar seeks to that fraction of the current track (via *command*)."""
 
-    def __init__(self, parent, height=18, bg=SURFACE):
+    def __init__(self, parent, height=18, bg=SURFACE, command=None):
         tk.Canvas.__init__(
             self, parent, height=height, bg=bg, highlightthickness=0, bd=0
         )
         self._h, self._frac, self._bg = height, 0.0, bg
+        self._cmd = command
         self.bind("<Configure>", lambda _e: self._draw())
+        self.bind("<Button-1>", self._on_click)
+
+    def _on_click(self, e):
+        """Convert a click x-position into a track fraction and invoke the command."""
+        if not self._cmd:
+            return
+        w = self.winfo_width()
+        if w < 12:
+            return
+        frac = max(0.0, min(1.0, (e.x - 6) / (w - 12)))
+        self._cmd(frac)
 
     def set(self, frac: float):
         frac = max(0.0, min(1.0, frac))
@@ -733,7 +746,7 @@ class App(tk.Tk):
         self.v_title.pack(fill="x")
         self.v_sub = tk.Label(info, bg=SURFACE, fg=CYAN, font=self.f_body, anchor="w")
         self.v_sub.pack(fill="x", pady=(px(2), px(10)))
-        self.bar = GlowBar(info, height=px(22), bg=SURFACE)
+        self.bar = GlowBar(info, height=px(22), bg=SURFACE, command=self._on_seek)
         self.bar.pack(fill="x")
         self.v_time = tk.Label(
             info, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w"
@@ -866,6 +879,7 @@ class App(tk.Tk):
         self.lb.pack(side="left", fill="both", expand=True)
         self.lb.configure(yscrollcommand=sb.set)
         sb.configure(command=self.lb.yview)
+        self.lb.bind("<Double-Button-1>", self._on_queue_double_click)
 
         hp = self.pages["history"]
         hb = ttk.Scrollbar(hp, orient="vertical")
@@ -1135,7 +1149,46 @@ class App(tk.Tk):
         self.s_mpv_timeout = self._entry(sp_inner)
         self.s_mpv_timeout.insert(0, str(self.e.cfg.mpv_timeout))
         _setting_row(
-            "g_settings_mpv_timeout", self.s_mpv_timeout, "g_settings_tts_voice"
+            "g_settings_mpv_timeout", self.s_mpv_timeout, "g_settings_auto_reply_enabled"
+        )
+
+        # auto_reply_enabled toggle (placed at the current row, then row advances)
+        self.s_auto_reply_enabled = self.e.cfg.auto_reply_enabled
+        cb_auto_reply = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_auto_reply_enabled", cb_auto_reply),
+            "chip",
+            icon="✓" if self.e.cfg.auto_reply_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_auto_reply.set_active(self.e.cfg.auto_reply_enabled)
+        cb_auto_reply.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+
+        # auto_reply_interval
+        self.s_auto_reply_interval = self._entry(sp_inner)
+        self.s_auto_reply_interval.insert(0, str(self.e.cfg.auto_reply_interval))
+        _setting_row(
+            "g_settings_auto_reply_interval",
+            self.s_auto_reply_interval,
+            "g_settings_auto_reply_file",
+        )
+
+        # auto_reply_file
+        self.s_auto_reply_file = self._entry(sp_inner)
+        self.s_auto_reply_file.insert(0, self.e.cfg.auto_reply_file)
+        _setting_row(
+            "g_settings_auto_reply_file", self.s_auto_reply_file, "g_settings_tts_voice"
         )
 
         # tts_voice
@@ -1578,6 +1631,12 @@ class App(tk.Tk):
     def toggle_pause(self):
         self.e.resume() if self.e.paused else self.e.pause()
 
+    def _on_seek(self, frac: float):
+        """Seek to a fraction of the current track when the progress bar is clicked."""
+        t = self.e.current
+        if t and t.duration:
+            self.e.seek(t.duration * frac)
+
     def _launch_confetti(self):
         if not self._vc:
             return
@@ -1694,6 +1753,21 @@ class App(tk.Tk):
         for i in self.lb.curselection():
             if i < len(self._q_tracks):
                 self.e.queue.remove_track(self._q_tracks[i])
+
+    def _on_queue_double_click(self, _e):
+        """Double-click a queue item to play it immediately (move it to the front)."""
+        sel = self.lb.curselection()
+        if not sel:
+            return
+        i = sel[0]
+        if i >= len(self._q_tracks):
+            return
+        t = self._q_tracks[i]
+        # Remove from current position and re-add to the front of the queue so it plays next
+        self.e.queue.remove_track(t)
+        self.e.queue.add_request(t, position=0)
+        self.e.wake.set()
+        self.e.say(self.e.t("queued_one", pos=1, title=t.title, dur=t.dur, user="you"))
 
     def on_shuffle(self):
         self.e.queue.set_shuffle(not self.e.queue.shuffle)

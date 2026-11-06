@@ -23,7 +23,10 @@ class LogTailAdapter(ChatAdapter):
                 if not line:
                     time.sleep(0.3)
                     continue
-                m = parse_line(line.rstrip("\r\n"), self.rx)
+                line = line.rstrip("\r\n")
+                # IM (private) messages in the log are marked with an [IM] tag or "IM " prefix
+                is_im = line.startswith(("IM ", "[IM]")) or " [IM] " in line
+                m = parse_line(line, self.rx, is_im=is_im)
                 if m:
                     yield m
 

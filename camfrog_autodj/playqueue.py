@@ -19,9 +19,14 @@ class PlayQueue:
         self._last: str | None = None
         self.lock = threading.RLock()
 
-    def add_request(self, t: Track) -> int:
+    def add_request(self, t: Track, position: int | None = None) -> int:
         with self.lock:
-            self.requests.append(t)
+            if position is not None:
+                # Clamp position to valid range and insert at the front of the requests list
+                pos = max(0, min(position, len(self.requests)))
+                self.requests.insert(pos, t)
+            else:
+                self.requests.append(t)
             return len(self.requests)
 
     def add_pool(self, tracks: list[Track]):

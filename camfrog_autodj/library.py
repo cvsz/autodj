@@ -44,8 +44,8 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
                 title = f"{a} - {t}" if a else t
     except ImportError:
         pass  # mutagen not installed; fall back to filename
-    except (OSError, mutagen.MutagenError):
-        pass  # metadata unavailable; fall back to filename
+    except Exception:  # nosec B110  # any metadata error: fall back to filename, never crash the folder scan  # noqa: S110, BLE001
+        pass
     return Track(str(p), title, dur, requester)
 
 
@@ -67,7 +67,13 @@ def scan_folder(folder, requester: str = "AutoDJ") -> list[Track]:
         except (OSError, PermissionError):
             continue
     files.sort()
-    return [local_track(p, requester) for p in files]
+    tracks = []
+    for p in files:
+        try:
+            tracks.append(local_track(p, requester))
+        except Exception:  # nosec B110  # one bad file must not abort the whole folder load  # noqa: BLE001
+            log.warning("skipping unreadable media file %s", p)
+    return tracks
 
 
 def find_ytdlp(ytdlp_path: str = "", mpv_path: str = "") -> str:

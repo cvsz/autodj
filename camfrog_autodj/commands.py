@@ -34,25 +34,42 @@ class Router:
     def handle(self, msg):
         e, p = self.e, self.e.cfg.prefix
         text = msg.text.strip()
-        if not text.startswith(p):
-            return
-        name, _, arg = text[len(p) :].partition(" ")
-        entry = COMMANDS.get(name.lower())
+        is_im = getattr(msg, "is_im", False)
+
+        if is_im:
+            # IM / private message: no prefix required, but still subject to cooldown/limits
+            name, _, arg = text.partition(" ")
+            entry = COMMANDS.get(name.lower())
+            admin = self.is_admin(msg)
+            log.info(
+                "im command %s (%s) from %s%s",
+                name,
+                arg,
+                msg.user,
+                ", admin" if admin else "",
+            )
+        else:
+            # Room message: must start with the command prefix
+            if not text.startswith(p):
+                return
+            name, _, arg = text[len(p) :].partition(" ")
+            entry = COMMANDS.get(name.lower())
+            admin = self.is_admin(msg)
+            log.info(
+                "command %s%s (%s) from %s%s",
+                p,
+                name,
+                arg,
+                msg.user,
+                ", admin" if admin else "",
+            )
+
         if not entry:
             return
         fn, need_admin = entry
-        admin = self.is_admin(msg)
-        log.info(
-            "command %s%s (%s) from %s%s",
-            p,
-            name,
-            arg,
-            msg.user,
-            ", admin" if admin else "",
-        )
         if not admin and msg.user.lower() in e.blocked:
-            log.info("blocked: ignoring %s's %s%s", msg.user, p, name)
-            return  # blocked users get no reply at all (a reply would just be more room noise)
+            log.info("blocked: ignoring %s's command from %s", msg.user, "IM" if is_im else "room")
+            return  # blocked users get no reply at all
         if need_admin and not admin:
             e.say(f"{msg.user}: {e.t('admin_only')}")
             return
@@ -61,10 +78,9 @@ class Router:
             who = msg.user.lower()  # "Bob" and "bob" are one person: changing case must not dodge the cooldown
             if now - self.last.get(who, -1e9) < e.cfg.cooldown:
                 log.info(
-                    "cooldown: dropping %s's %s%s (%.1fs to go)",
+                    "cooldown: dropping %s's command from %s (%.1fs to go)",
                     msg.user,
-                    p,
-                    name,
+                    "IM" if is_im else "room",
                     e.cfg.cooldown - (now - self.last[who]),
                 )
                 return
@@ -274,6 +290,13 @@ def _repeat(e, m, a, admin):
 @command("clear", "ล้างคิว", admin=True)
 def _clear(e, m, a, admin):
     e.say(e.t("cleared", n=e.queue.clear()))
+
+
+@command("clearhistory", "ล้างประวัติ", admin=True)
+def _clearhistory(e, m, a, admin):
+    n = len(e.history)
+    e.history.clear()
+    e.say(e.t("history_cleared", n=n))
 
 
 @command("load", "โหลด", admin=True)

@@ -293,6 +293,11 @@ class MpvPlayer:
         """Get the current playback position in seconds from mpv via IPC. Returns None if unavailable."""
         return self._cmd_get("get_property", "time-pos")
 
+    def seek(self, seconds: float) -> bool:
+        """Seek to an absolute position (seconds) in the current track via mpv IPC.
+        Returns True if the seek command was sent successfully."""
+        return self._cmd("seek", seconds, "absolute")
+
     def set_pause(self, v: bool) -> bool:
         return self._cmd("set_property", "pause", v)
 
