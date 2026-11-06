@@ -300,7 +300,7 @@ def test_settings_save_preserves_all_fields(monkeypatch, tmp_path):
         # Fields the settings dialog does NOT expose, plus web/playlist fields
         cfg.web_view_title = "wb-log-room-data.inside/"
         cfg.web_input_title = "wb-edit-data.inside/"
-        cfg.line_regex = r'^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$'
+        cfg.line_regex = r"^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$"
         cfg.playlist_dir = "playlist"
         # Fields the dialog DOES expose, set to non-defaults too
         cfg.volume = 85
@@ -403,7 +403,7 @@ def test_settings_save_preserves_all_fields(monkeypatch, tmp_path):
             "log_encoding": "utf-16",
             "web_view_title": "wb-log-room-data.inside/",
             "web_input_title": "wb-edit-data.inside/",
-            "line_regex": r'^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$',
+            "line_regex": r"^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$",
             "playlist_dir": "playlist",
             "volume": 85,
             "max_duration": 1200,

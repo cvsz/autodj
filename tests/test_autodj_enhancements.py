@@ -21,7 +21,9 @@ from camfrog_autodj.playqueue import PlayQueue
 # ============================================================================
 
 
-def _make_auto_reply_engine(tmp_path, enabled=True, interval=60, file_name="ads-list.json"):
+def _make_auto_reply_engine(
+    tmp_path, enabled=True, interval=60, file_name="ads-list.json"
+):
     """Create an engine with auto-reply config and a temp ads-list.json."""
     ads = tmp_path / file_name
     ads.write_text(
@@ -70,8 +72,12 @@ def test_auto_reply_rotation_order(tmp_path):
     # Simulate the loop's rotation formula: messages[idx % len(messages)]
     rotated = [messages[i % len(messages)] for i in range(6)]
     assert rotated == [
-        "msg one", "msg two", "msg three",
-        "msg one", "msg two", "msg three",
+        "msg one",
+        "msg two",
+        "msg three",
+        "msg one",
+        "msg two",
+        "msg three",
     ]
 
 
@@ -88,9 +94,7 @@ def test_auto_reply_relative_path_resolved_against_config_dir(tmp_path):
     cfg_dir = tmp_path / "cfgdir"
     cfg_dir.mkdir()
     ads = cfg_dir / "ads-list.json"
-    ads.write_text(
-        json.dumps({"messages": ["resolved message"]}), "utf-8"
-    )
+    ads.write_text(json.dumps({"messages": ["resolved message"]}), "utf-8")
     cfg_path = cfg_dir / "config.toml"
 
     cfg = Config(
@@ -294,9 +298,7 @@ def test_add_request_negative_position_clamped_to_zero():
 def test_auto_reply_interval_below_min_rejected(tmp_path):
     """auto_reply_interval < 60 is rejected by config validation."""
     with pytest.raises(ConfigError) as ei:
-        Config.load(
-            _cfg(tmp_path, "auto_reply_interval = 10\n")
-        )
+        Config.load(_cfg(tmp_path, "auto_reply_interval = 10\n"))
     assert "auto_reply_interval" in str(ei.value)
 
 
@@ -344,8 +346,8 @@ def test_save_settings_writes_auto_reply_fields(tmp_path, monkeypatch):
 
     # Manually build the TOML lines that save_settings() would write
     lines = []
-    lines.append(f'auto_reply_enabled = {str(cfg.auto_reply_enabled).lower()}')
-    lines.append(f'auto_reply_interval = {cfg.auto_reply_interval}')
+    lines.append(f"auto_reply_enabled = {str(cfg.auto_reply_enabled).lower()}")
+    lines.append(f"auto_reply_interval = {cfg.auto_reply_interval}")
     lines.append(f'auto_reply_file = "{cfg.auto_reply_file}"')
     new_text = "\n".join(lines) + "\n"
 
@@ -361,9 +363,7 @@ def test_save_settings_writes_auto_reply_fields(tmp_path, monkeypatch):
 def test_load_auto_reply_messages_dict_format(tmp_path):
     """_load_auto_reply_messages handles {'messages': [...]} format."""
     ads = tmp_path / "ads-list.json"
-    ads.write_text(
-        json.dumps({"version": 1, "messages": ["a", "b", "c"]}), "utf-8"
-    )
+    ads.write_text(json.dumps({"version": 1, "messages": ["a", "b", "c"]}), "utf-8")
     result = Engine._load_auto_reply_messages(str(ads))
     assert result == ["a", "b", "c"]
 

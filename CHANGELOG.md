@@ -12,6 +12,10 @@
 - **Security: CODEOWNERS** requires independent review (`@policedbc`) for security-sensitive paths (workflows, installer scripts, SECURITY.md, config).
 - **Docs: `docs/architecture.md` and `docs/release.md` rewritten** to describe AutoDJ (not the ztemplate template).
 - **Docs: `IMPLEMENTATION-CHECKLIST.md` changed to evidence-based status tracking** (VERIFIED/PARTIALLY VERIFIED/UNVERIFIED/BLOCKED with evidence references).
+- **Infra: replaced placeholder Dockerfile with local audit image `zpostgresql`** — `python:3.11-slim` based image (`zpostgresql:latest` / `zpostgresql:audit`) that installs the project with dev tools and self-verifies (ruff check/format, pytest) at build time; mirrors Linux CI (`git`, `python3-tk`, `xvfb`, `xauth`) and runs as non-root user `autodj`. Replaces the unusable `alpine:3.24` placeholder.
+- **Fix: release typecheck gate** — `mypy camfrog_autodj` (release.yml Gate 1) failed on the release head due to unstubbed third-party dependencies (`pywinauto`, `pyttsx3`, `mutagen`, `yt_dlp`, `pyperclip`); added `[tool.mypy] ignore_missing_imports = true` to `pyproject.toml` so the gate validates AutoDJ's own code.
+- **Fix: unused noqa on blind `Exception` catch** in `camfrog_autodj/__main__.py` — `ruff format` had stranded the `# noqa: BLE001` directive; directive moved onto the `Exception` line so `ruff check` and `ruff format --check` both pass.
+- **Docs: ADR 0001** — documents the local audit Docker image and mypy CI gate configuration (`docs/adr/0001-local-audit-docker-image-and-mypy-gate.md`).
 
 ## 0.2.6
 

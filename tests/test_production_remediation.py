@@ -62,6 +62,7 @@ SEARCH_JSON = {
 def _fake_subprocess_run(returncode=0, stdout=None, stderr=""):
     if stdout is None:
         stdout = json.dumps(SEARCH_JSON)
+
     def fake_run(cmd, **kw):
         return subprocess.CompletedProcess(cmd, returncode, stdout, stderr)
 
@@ -96,6 +97,7 @@ def test_extract_exe_skips_certificate_when_ca_bundle_missing(monkeypatch, tmp_p
     """_extract_exe does not accept ca_bundle parameter (yt-dlp.exe has no --certificate flag).
     Custom CA bundle is only supported via the yt_dlp Python module path."""
     calls = []
+
     def fake_run(cmd, **kw):
         calls.append(cmd)
         return subprocess.CompletedProcess(cmd, 0, json.dumps(SEARCH_JSON), "")

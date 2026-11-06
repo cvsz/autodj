@@ -309,7 +309,6 @@ def test_tts_synth_is_callable_and_thread_safe(monkeypatch):
     fake_mod = types.ModuleType("pyttsx3")
     fake_mod.init = lambda: FakeEngine()
 
-
     monkeypatch.setitem(sys.modules, "pyttsx3", fake_mod)
 
     # Reset TTS worker between test runs

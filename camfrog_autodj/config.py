@@ -110,7 +110,9 @@ class Config:
     )
     # Auto-reply: scheduled messages sent to the room from ads-list.json
     auto_reply_enabled: bool = False  # enable scheduled auto-reply messages
-    auto_reply_interval: float = 300.0  # seconds between auto-reply messages (5 minutes)
+    auto_reply_interval: float = (
+        300.0  # seconds between auto-reply messages (5 minutes)
+    )
     auto_reply_file: str = "ads-list.json"  # JSON file with messages to rotate through
 
     @classmethod

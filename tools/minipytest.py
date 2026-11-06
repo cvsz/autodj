@@ -168,7 +168,16 @@ def main(argv):
                 except Skip as s:
                     skip += 1
                     print(f"SKIP {f.name}::{name} ({s})")
-                except (AssertionError, TypeError, ValueError, KeyError, IndexError, RuntimeError, OSError, ImportError):
+                except (
+                    AssertionError,
+                    TypeError,
+                    ValueError,
+                    KeyError,
+                    IndexError,
+                    RuntimeError,
+                    OSError,
+                    ImportError,
+                ):
                     fail += 1
                     print(f"FAIL {f.name}::{name}")
                     traceback.print_exc()
