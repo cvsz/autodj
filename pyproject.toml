@@ -22,3 +22,10 @@ packages = ["camfrog_autodj", "camfrog_autodj.adapters"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # pythonpath = ["."]  # removed to avoid path resolution issues on CI
+
+[tool.mypy]
+# Third-party dependencies used by AutoDJ ship without type stubs
+# (pywinauto, pyttsx3, mutagen, yt_dlp, pyperclip). Missing stubs are
+# ignored so the release typecheck gate validates AutoDJ's own code
+# instead of failing on unstubbed dependencies.
+ignore_missing_imports = true

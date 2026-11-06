@@ -95,7 +95,7 @@ def _run(a, level):
             print(f"exe={c.exe!r} pid={c.pid} class={c.cls!r} title={c.title!r}")
         return
     if a.dump:
-        from pywinauto import Desktop
+        from pywinauto import Desktop  # type: ignore[import-untyped]  # pywinauto ships no py.typed stubs
 
         from .windows import candidates
 
@@ -182,7 +182,9 @@ def _run(a, level):
 
         try:
             ensure_room(cfg)
-        except Exception as ex:  # pragma: no cover - defensive; discovery is best-effort  # noqa: BLE001
+        except (
+            Exception  # noqa: BLE001 -- defensive; auto-launch must not crash the bot
+        ) as ex:  # pragma: no cover - defensive; discovery is best-effort
             log.warning("auto-launch failed; continuing without Camfrog: %s", ex)
     uses_uia = "uia" in (cfg.chat_reader, cfg.chat_sender)
     if uses_uia and (a.discover or (cfg.auto_discover and not a.no_discover)):

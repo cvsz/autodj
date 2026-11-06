@@ -68,7 +68,11 @@ class Router:
             return
         fn, need_admin = entry
         if not admin and msg.user.lower() in e.blocked:
-            log.info("blocked: ignoring %s's command from %s", msg.user, "IM" if is_im else "room")
+            log.info(
+                "blocked: ignoring %s's command from %s",
+                msg.user,
+                "IM" if is_im else "room",
+            )
             return  # blocked users get no reply at all
         if need_admin and not admin:
             e.say(f"{msg.user}: {e.t('admin_only')}")

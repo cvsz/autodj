@@ -1,0 +1,41 @@
+# Git
+.git/
+
+# Python caches and bytecode
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtualenvs
+.venv/
+.venv-linux/
+
+# Caches / reports
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.tmp/
+.coverage
+htmlcov/
+
+# Local environment and state (never ship local config/logs into the image)
+.env
+.env.*
+config.toml
+config.toml.bak
+config.toml.tmp
+autodj.log
+*.log
+
+# Build artifacts
+build/
+dist/
+dist_staging/
+artifacts/
+AutoDJ.spec
+*.exe
+*.nsis
+*.zip
+
+# OS
+.DS_Store

@@ -92,10 +92,9 @@ def test_remove_track_survives_concurrent_modification():
 
     assert target not in q.requests
 
-
-# ============================================================================
-# Concurrent command handling + cooldown
-# ============================================================================
+    # ============================================================================
+    # Concurrent command handling + cooldown
+    # ============================================================================
     """Concurrent commands from the same user must respect cooldown."""
     e = make()
     e.cfg.cooldown = 5.0
@@ -131,7 +130,9 @@ def test_concurrent_commands_different_users():
         with lock:
             results.append(out(e))
 
-    threads = [threading.Thread(target=fire_cmd, args=(f"user{i}", i)) for i in range(10)]
+    threads = [
+        threading.Thread(target=fire_cmd, args=(f"user{i}", i)) for i in range(10)
+    ]
     for t in threads:
         t.start()
     for t in threads:

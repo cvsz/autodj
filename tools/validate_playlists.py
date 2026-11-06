@@ -41,7 +41,7 @@ def validate_file(path: Path) -> tuple[int, int, list[tuple[int, str, str]]]:
     """
     try:
         data = json.loads(path.read_text("utf-8-sig"))
-    except Exception as exc:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         return 0, 1, [(0, str(path), f"invalid JSON: {exc}")]
 
     tracks = data.get("tracks", []) if isinstance(data, dict) else data
@@ -64,7 +64,7 @@ def fix_file(path: Path, dry_run: bool = False) -> int:
     """Remove invalid entries from a playlist file. Returns number removed."""
     try:
         data = json.loads(path.read_text("utf-8-sig"))
-    except Exception:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return 0
 
     tracks = data.get("tracks", []) if isinstance(data, dict) else data

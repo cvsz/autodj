@@ -132,7 +132,7 @@ def main(argv):
         sys.modules[f.stem] = m
         try:
             spec.loader.exec_module(m)
-        except Exception:
+        except (ImportError, SyntaxError, TypeError, AttributeError, OSError):
             print(f"ERROR collecting {f.name}")
             traceback.print_exc()
             fail += 1
@@ -168,7 +168,16 @@ def main(argv):
                 except Skip as s:
                     skip += 1
                     print(f"SKIP {f.name}::{name} ({s})")
-                except Exception:
+                except (
+                    AssertionError,
+                    TypeError,
+                    ValueError,
+                    KeyError,
+                    IndexError,
+                    RuntimeError,
+                    OSError,
+                    ImportError,
+                ):
                     fail += 1
                     print(f"FAIL {f.name}::{name}")
                     traceback.print_exc()

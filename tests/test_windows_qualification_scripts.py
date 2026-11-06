@@ -6,8 +6,6 @@ without requiring a Windows execution environment.
 
 from pathlib import Path
 
-import pytest
-
 QUAL_DIR = Path(__file__).resolve().parent.parent / "tools" / "windows-qualification"
 CAMELFROG_DIR = (
     Path(__file__).resolve().parent.parent / "tools" / "camfrog-qualification"

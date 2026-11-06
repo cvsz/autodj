@@ -135,6 +135,7 @@ def test_play_includes_resolved_ytdlp_hook_even_when_ytdlp_path_empty(monkeypatc
 def test_play_terminates_hung_mpv_after_timeout(monkeypatch):
     """mpv that never exits must be terminated after mpv_timeout, not block the player loop forever."""
     import time
+
     from camfrog_autodj.player import MpvPlayer
 
     killed = []

@@ -826,7 +826,13 @@ class Engine:
                 "in config.toml; nothing will play until then.",
                 self.cfg.mpv_path,
             )
-        for fn in (self._sender, self._player_loop, self._load_all, self._chat_loop, self._auto_reply_loop):
+        for fn in (
+            self._sender,
+            self._player_loop,
+            self._load_all,
+            self._chat_loop,
+            self._auto_reply_loop,
+        ):
             t = threading.Thread(target=fn, daemon=True, name=f"autodj-{fn.__name__}")
             self._threads.append(t)
             t.start()
