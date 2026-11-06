@@ -51,7 +51,7 @@ Every claim includes an evidence reference (test file, workflow, or documented r
 - [ ] Add unit, integration, and end-to-end tests. — **VERIFIED** — 288 tests passing across test_core, test_hardening, test_playlist_resolver, test_gui_logic, test_installer_data_safety, test_version_and_release, test_webchat_dump, test_gui_i18n, and more
 - [ ] Fix player music time countdown skipping (jumps from 00:00 to 00:30). — **VERIFIED** — Added `MpvPlayer.get_time_pos()` querying mpv via IPC for actual playback position; `Engine.position()` now uses real mpv position with wall-clock fallback; tests in `test_gui_logic.py::test_playing_state_drives_animation_and_progress` and `test_gui_i18n.py::test_position_pause` verify correct progress bar and time display
 - [ ] Replace placeholder Makefile targets with real commands. — **UNVERIFIED** — Makefile exists but not validated
-- [ ] Replace/remove the placeholder Dockerfile. — **UNVERIFIED** — Dockerfile present but not validated
+- [x] Replace/remove the placeholder Dockerfile. — **VERIFIED** — replaced with `python:3.11-slim` audit image tagged `zpostgresql:latest` / `zpostgresql:audit`; `docker build` self-verifies (ruff check/format, 323 pytest + 3 subtests), `docker run --rm zpostgresql:latest` exits 0
 - [ ] Populate `.env.example` with safe non-secret names only. — **VERIFIED** — `.env.example` present with no committed secrets
 - [ ] Document local setup and deterministic dependency installation. — **VERIFIED** — README documents setup; pyproject.toml pins dependencies
 
