@@ -1909,6 +1909,7 @@ class App(tk.Tk):
             # Bool fields
             cfg.auto_discover = self.s_auto_discover
             cfg.auto_launch = self.s_auto_launch
+            cfg.auto_reply_enabled = self.s_auto_reply_enabled
 
             # TTS voice
             cfg.tts_voice = self.s_tts_voice.get().strip()
@@ -1922,6 +1923,12 @@ class App(tk.Tk):
 
             re.compile(cfg.line_regex)
             re.compile(cfg.client_title_re)
+
+            # Float fields (auto-reply interval, file)
+            cfg.auto_reply_interval = self._parse_float(
+                self.s_auto_reply_interval, "auto reply interval"
+            )
+            cfg.auto_reply_file = self.s_auto_reply_file.get().strip()
 
             # Write to config.toml using tomllib-compatible format
             import tomllib
