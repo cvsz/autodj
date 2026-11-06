@@ -181,6 +181,7 @@ _RANGES = {
     "voteskip_dynamic_pct": (1, 100),
     "user_request_limit": (1, 1000),
     "rate_limit_window": (10.0, 86400.0),
+    "auto_reply_interval": (60.0, 86400.0),
 }
 
 

@@ -837,6 +837,10 @@ class Engine:
             log.debug("auto-reply disabled; loop not started")
             return
         path = self.cfg.auto_reply_file
+        # Resolve relative paths against the config file directory so the file
+        # is found regardless of the current working directory.
+        if not os.path.isabs(path) and self.cfg_path:
+            path = str(Path(self.cfg_path).parent / path)
         messages = self._load_auto_reply_messages(path)
         if not messages:
             log.warning("auto-reply enabled but no messages found in %r", path)
