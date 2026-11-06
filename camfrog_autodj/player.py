@@ -40,7 +40,9 @@ class MpvPlayer:
         self._ipc: str | None = None
         self.skipped = False
         self._lock = threading.Lock()
-        self._paused_since: float | None = None  # monotonic time of the current pause (hang timer excludes pauses)
+        self._paused_since: float | None = (
+            None  # monotonic time of the current pause (hang timer excludes pauses)
+        )
         self._paused_total = 0.0
 
     def available(self) -> bool:
@@ -94,7 +96,10 @@ class MpvPlayer:
         logf = os.path.join(
             tempfile.gettempdir(), f"camfrog-autodj-mpv-{os.getpid()}-{n}.log"
         )
-        fade_in = getattr(self.cfg, "audio_fade", False) and getattr(self.cfg, "audio_fade_in_sec", 0.0) > 0
+        fade_in = (
+            getattr(self.cfg, "audio_fade", False)
+            and getattr(self.cfg, "audio_fade_in_sec", 0.0) > 0
+        )
         init_vol = 0 if fade_in else volume
         cmd = self._base() + [
             "--ytdl-format=bestaudio/best",
@@ -167,7 +172,9 @@ class MpvPlayer:
         """Seconds of actual playing since `started` (pauses excluded)."""
         with self._lock:
             now = time.monotonic()
-            paused = self._paused_total + (now - self._paused_since if self._paused_since else 0.0)
+            paused = self._paused_total + (
+                now - self._paused_since if self._paused_since else 0.0
+            )
         return now - started - paused
 
     @staticmethod
@@ -198,13 +205,20 @@ class MpvPlayer:
                 pass
 
     def stop(self):
-        fade_out = getattr(self.cfg, "audio_fade", False) and getattr(self.cfg, "audio_fade_out_sec", 0.0) > 0
+        fade_out = (
+            getattr(self.cfg, "audio_fade", False)
+            and getattr(self.cfg, "audio_fade_out_sec", 0.0) > 0
+        )
         if fade_out and self._ipc:
             # Quick fade out before terminating
             try:
-                self._fade_volume(getattr(self.cfg, "volume", 100), 0, min(self.cfg.audio_fade_out_sec, 0.8))
-            except Exception:
-                pass
+                self._fade_volume(
+                    getattr(self.cfg, "volume", 100),
+                    0,
+                    min(self.cfg.audio_fade_out_sec, 0.8),
+                )
+            except (OSError, ValueError):
+                pass  # fade-out is best-effort; termination proceeds regardless
         with self._lock:
             p = self.proc
             if p and p.poll() is None:
@@ -212,6 +226,7 @@ class MpvPlayer:
                 p.terminate()
 
     def _cmd(self, *cmd) -> bool:
+        """Send a command to mpv via IPC (fire-and-forget). Returns True if sent."""
         ipc = self._ipc
         if not ipc:
             return False
@@ -229,6 +244,54 @@ class MpvPlayer:
             return True
         except OSError:
             return False
+
+    def _cmd_get(self, *cmd) -> float | None:
+        """Send a command to mpv via IPC and read the JSON response. Returns the property value or None on failure."""
+        ipc = self._ipc
+        if not ipc:
+            return None
+        request_id = next(_ids)
+        data = (
+            json.dumps({"command": list(cmd), "request_id": request_id}) + "\n"
+        ).encode()
+        try:
+            if _is_windows():
+                # Windows named pipe: open for read/write, send request, then read response
+                with open(ipc, "r+b", buffering=0) as f:
+                    f.write(data)
+                    # Read response (may need multiple reads)
+                    response = b""
+                    while b"\n" not in response:
+                        chunk = f.read(4096)
+                        if not chunk:
+                            break
+                        response += chunk
+            else:
+                import socket
+
+                with socket.socket(socket.AF_UNIX) as s:
+                    s.connect(ipc)
+                    s.sendall(data)
+                    # Read response
+                    response = b""
+                    while b"\n" not in response:
+                        chunk = s.recv(4096)
+                        if not chunk:
+                            break
+                        response += chunk
+            if not response:
+                return None
+            # Parse JSON response
+            resp = json.loads(response.decode("utf-8", errors="replace"))
+            if resp.get("request_id") == request_id and "data" in resp:
+                return resp["data"]
+        except (OSError, json.JSONDecodeError, StopIteration):
+            return None
+        return None
+
+    def get_time_pos(self) -> float | None:
+        """Get the current playback position in seconds from mpv via IPC. Returns None if unavailable."""
+        return self._cmd_get("get_property", "time-pos")
 
     def set_pause(self, v: bool) -> bool:
         return self._cmd("set_property", "pause", v)

@@ -1,46 +1,88 @@
-# Release
+# AutoDJ Release Process
 
 ## Scope
 
-This template provides release guidance and release-note configuration. It does **not** provide a generic artifact-publishing workflow because publishing credentials, registries, signing, environments, and approval policy are project-specific.
+This document describes how AutoDJ releases are built, validated, and published. It replaces the generic template release guidance with AutoDJ-specific gates and evidence requirements.
 
 ## Versioning
 
-Use an explicit versioning policy. Semantic Versioning is recommended for reusable software unless the project defines a better scheme.
+AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.2.6`, declared in:
+- `pyproject.toml` (`version = "0.2.6"`)
+- `camfrog_autodj/__init__.py` (`__version__ = "0.2.6"`)
+- `version_info.txt` (Windows file version resource)
+- `CHANGELOG.md` (changelog entries)
+
+`tests/test_version_and_release.py::test_versions_agree` verifies all three stay in sync.
+
+## Release gating
+
+No release is created or published automatically. The release workflow (`.github/workflows/release.yml`) enforces the following sequence:
+
+### Gate 1 — Validation (ubuntu-latest, Python 3.11)
+
+Must pass before any build artifact is produced:
+
+1. **Checkout** the exact tag commit
+2. **Install dependencies** (`-e .`, pytest, ruff, mypy)
+3. **Run unit tests** — `python -m pytest -q -p no:faulthandler -p no:cacheprovider` (baseline: 175 passed)
+4. **Lint** — `ruff check .`
+5. **Strict typecheck** — `mypy camfrog_autodj`
+6. **Secret scan** — rejects any tracked `.env`, `id_rsa`, `id_ed25519`, `*.pem`, `*.key` (except `.env.example`)
+
+If any gate fails, the job fails and the release is blocked.
+
+### Gate 2 — Build (windows-latest)
+
+Runs only if Gate 1 passed:
+
+1. **Checkout** the exact tag commit
+2. **Install dependencies** (`-e .`, pyinstaller, cyclonedx-bom)
+3. **Install NSIS** (choco)
+4. **Build AutoDJ.exe** — `build.ps1 -Clean -NoSign` (no automatic signing during remediation)
+5. **Build NSIS installer** — `makensis /DVERSION=<tag> installer.nsi`
+6. **Generate CycloneDX SBOM** — `cyclonedx-py environment`
+7. **Generate SHA256 checksums** — `SHA256SUMS.txt`
+8. **Attest build provenance** — `actions/attest-build-provenance@v2`
+9. **Upload artifacts** — 90-day retention
+
+### Gate 3 — Release publication (manual)
+
+The "Release" step that creates/publishes a GitHub Release is **intentionally omitted** from the workflow during remediation. A maintainer must:
+
+1. Verify Gate 1 and Gate 2 passed on the exact tag SHA
+2. Obtain independent review and approval (per `GOVERNANCE.md`)
+3. GPG-sign the annotated release tag
+4. Create the release manually with build artifacts, SBOM, and checksums
+5. Record release evidence separately
+
+No release is created or published during remediation.
 
 ## Release checklist
 
-1. Confirm the release commit is the intended exact head.
-2. Ensure required CI/security checks pass on that exact head.
-3. Confirm protected-branch/admin controls are effective.
-4. Update `CHANGELOG.md` and compatibility/migration notes.
-5. Verify deployment and rollback procedures.
-6. Verify migrations and data rollback/forward strategy when applicable.
-7. Verify required backup/restore evidence for stateful systems.
-8. Create/push the release tag according to project policy.
-9. Publish artifacts only from trusted workflows/environments.
-10. Generate provenance/signing/attestation where required.
-11. Verify the published artifact and deployed environment.
-12. Record release evidence and remaining known risk separately.
-
-## Production readiness
-
-Release authorization and production readiness are distinct.
-
-A maintainer may authorize a release with accepted risk, but accepted risk does not convert `PARTIALLY VERIFIED`, `UNVERIFIED`, or `BLOCKED` readiness gates into `VERIFIED`.
-
-Use the canonical evidence definitions in `../ZEAZ-INTRODUCTION.md`.
+1. Confirm the release commit is the intended exact head (`git rev-parse <tag>^{}`)
+2. Ensure Gate 1 + Gate 2 checks pass on that exact head (CI evidence)
+3. Confirm protected-branch/admin controls are effective (push to `main` rejected with GH006)
+4. Update `CHANGELOG.md` and compatibility/migration notes
+5. GPG-sign the annotated tag: `git tag -s vX.Y.Z -m "Release X.Y.Z"`
+6. Verify the tag SHA matches the CI-validated commit
+7. Create the release manually with artifacts, SBOM, checksums
+8. Record release evidence in `docs/reports/`
+9. Do not deploy to production without explicit authorization
 
 ## Rollback
 
-Document and test, as appropriate:
-
-- last known-good artifact/build
-- application rollback
-- safe database/data migration handling
-- configuration rollback
-- credential/artifact invalidation after compromise
-- traffic/routing rollback
-- operator and stakeholder communication
+Documented rollback paths:
+- **Last known-good artifact:** previous GitHub Release assets remain available
+- **Application rollback:** uninstall previous version, reinstall previous MSI/exe
+- **Configuration rollback:** `config.toml.bak` is created by auto-discovery; operator can restore manually
+- **No data migration** is required between versions (playlist.json is forward-compatible)
 
 A rollback document without environment-appropriate execution evidence is not proof that recovery will work.
+
+## Production readiness
+
+Release authorization and production readiness are distinct. A maintainer may authorize a release with accepted risk, but accepted risk does not convert unverified readiness gates into verified. The following gates remain UNVERIFIED as of remediation:
+- Deployment in intended environment
+- Backup/restore drill
+- Load/capacity testing
+- Incident response drill

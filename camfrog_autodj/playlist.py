@@ -81,7 +81,7 @@ def load_playlist(path: str) -> list[Track]:
                 e.get("added") or ""
             )  # not a Track field: plain attribute, kept for !last
             out.append(t)
-        except Exception:
+        except (KeyError, TypeError, ValueError):
             continue
     return out
 
@@ -93,7 +93,7 @@ def _unreadable(path: str) -> bool:
         return False
     except FileNotFoundError:
         return False
-    except Exception:
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
         return True
 
 
@@ -143,11 +143,18 @@ class PlaylistStore:
                         break
                 if changed:
                     save_playlist(self.path, cur)
-                    log.info("playlist: resolved %r -> %r in %s", old_source, new_track.source, self.path)
+                    log.info(
+                        "playlist: resolved %r -> %r in %s",
+                        old_source,
+                        new_track.source,
+                        self.path,
+                    )
                     return True
                 return False
             except Exception:
-                log.exception("cannot update resolved track in playlist file %r", self.path)
+                log.exception(
+                    "cannot update resolved track in playlist file %r", self.path
+                )
                 return False
 
     def add(self, tracks) -> int:
@@ -160,8 +167,14 @@ class PlaylistStore:
                 cur = load_playlist(self.path)
                 if not cur and _unreadable(self.path):
                     bad = f"{self.path}.corrupt-{datetime.now():%Y%m%d-%H%M%S}"
-                    shutil.copyfile(self.path, bad)  # keep the user's file; load_playlist promised not to overwrite it
-                    log.warning("playlist file %r is unreadable: saved a copy as %r", self.path, bad)
+                    shutil.copyfile(
+                        self.path, bad
+                    )  # keep the user's file; load_playlist promised not to overwrite it
+                    log.warning(
+                        "playlist file %r is unreadable: saved a copy as %r",
+                        self.path,
+                        bad,
+                    )
                 have = {t.source for t in cur}
                 now = datetime.now().isoformat(timespec="seconds")
                 fresh = []

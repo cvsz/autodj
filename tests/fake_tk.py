@@ -91,6 +91,7 @@ OPTS = {
     ),
     "Scrollbar": _s("orient", "command", "style", "takefocus", "cursor"),
     "Menu": _s("tearoff"),
+    "Toplevel": COMMON | _s("cursor", "menu"),
 }
 ITEM_OPTS = {
     "polygon": _s("smooth", "fill", "outline", "width", "tags", "stipple", "dash"),
@@ -302,6 +303,40 @@ class Listbox(Misc):
 
     def yview(self, *a):
         pass
+
+
+class Toplevel(Misc):
+    _kind = "Toplevel"
+
+    def __init__(self, *a, **k):
+        super().__init__(None)
+        self._state = "normal"
+
+    def title(self, t):
+        self._title = t
+
+    def geometry(self, g):
+        self._geom = g
+
+    minsize = maxsize = protocol = iconbitmap = lambda self, *a, **k: None
+
+    def transient(self, *a, **k):
+        pass
+
+    def grab_set(self):
+        pass
+
+    def state(self, s=None):
+        return self._state
+
+    def lift(self):
+        pass
+
+    def focus_set(self):
+        pass
+
+    def winfo_exists(self):
+        return not self.destroyed
 
 
 class Text(Misc):

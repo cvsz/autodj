@@ -16,7 +16,7 @@ from camfrog_autodj.adapters.base import ChatMessage
 from camfrog_autodj.commands import COMMANDS
 from camfrog_autodj.config import Config, ConfigError
 from camfrog_autodj.messages import STR
-from camfrog_autodj.models import Track
+from camfrog_autodj.models import Track, UserError
 from camfrog_autodj.playqueue import PlayQueue
 
 
@@ -220,6 +220,68 @@ def test_command_aliases_unique():
     assert "history" in COMMANDS and "block" in COMMANDS
 
 
+# ---- Authorization: nickname-based admin, spoofing-resistant checks ----
+
+
+def test_admin_authorization_is_case_insensitive():
+    """Admin nicks match case-insensitively: 'Boss' and 'boss' are the same admin."""
+    e = make()
+    e.admins = {"boss"}
+    assert e.router.is_admin(ChatMessage("Boss", "!pause", local=False)) is True
+    assert e.router.is_admin(ChatMessage("BOSS", "!pause", local=False)) is True
+    assert e.router.is_admin(ChatMessage("bOsS", "!pause", local=False)) is True
+
+
+def test_local_console_is_always_admin():
+    """Local console messages (msg.local=True) are always trusted as admin."""
+    e = make()
+    e.admins = set()  # no admins configured
+    assert e.router.is_admin(ChatMessage("nobody", "!pause", local=True)) is True
+
+
+def test_non_admin_cannot_run_admin_command():
+    """Non-admin users get 'admin only' reply, no action taken."""
+    e = make()
+    e.admins = {"boss"}
+    e.router.handle(ChatMessage("amy", "!pause"))
+    assert out(e) == ["amy: admin only"]
+    assert not e.paused  # nothing happened
+
+
+def test_admin_can_run_admin_command():
+    """Admin users can run admin commands without denial."""
+    e = make()
+    e.admins = {"boss"}
+    e.player.play = lambda s, v, d=None: True
+    e.current = Track(
+        "s", "now", 90, "boss"
+    )  # a track must be "playing" for pause to act
+    e.router.handle(ChatMessage("boss", "!pause"))
+    out(e)  # consume any output
+    assert e.paused is True
+
+
+def test_blocked_user_cannot_be_admin():
+    """A blocked nick that is also in admins still gets 'cannot block admin' when self-blocking,
+    but a blocked non-admin is simply ignored."""
+    e = make()
+    e.admins = {"boss"}
+    e.blocked.add("boss")
+    # boss is an admin AND blocked: blocking self is rejected
+    e.router.handle(ChatMessage("boss", "!block boss"))
+    assert "admin" in out(e)[0].lower()
+
+
+def test_blocked_user_ignored_silently():
+    """Blocked users' commands produce no reply at all (no room noise)."""
+    e = make()
+    e.admins = {"boss"}
+    e.blocked.add("amy")
+    e.router.handle(ChatMessage("amy", "!pause"))
+    assert out(e) == []
+    assert e.paused is False
+
+
 # ---- F6: config errors are explained, not tracebacks ------------------------------------------
 
 
@@ -274,6 +336,17 @@ def test_valid_config_still_loads_and_normalises(tmp_path):
     )
     assert c.admins == ["Zdevz"] and c.volume == 55 and c.lang == "th"
     assert Config.load(None).lang == "en"
+
+
+def test_config_rejects_duplicate_keys(tmp_path):
+    """ConfigLoader should reject duplicate keys in TOML."""
+    from camfrog_autodj.config import Config, ConfigError
+
+    p = tmp_path / "config.toml"
+    p.write_text('bot_nick = "AutoDJ"\nbot_nick = "Other"\n', "utf-8")
+
+    with pytest.raises(ConfigError):
+        Config.load(str(p))
 
 
 def test_shipped_example_config_is_valid():
@@ -344,6 +417,76 @@ def test_parse_ytdlp_info_playlist_and_single():
         "webpage_url": "https://youtu.be/q",
     }
     assert parse_ytdlp_info(single, "amy")[0].source == "https://youtu.be/q"
+
+
+def test_parse_ytdlp_info_rejects_invalid_urls():
+    """parse_ytdlp_info should skip entries with invalid or missing URLs."""
+    from camfrog_autodj.library import parse_ytdlp_info
+
+    # Entry with no URL and no ID should be skipped
+    info = {"entries": [{"title": "No URL", "duration": 100}]}
+    tracks = parse_ytdlp_info(info, "amy")
+    assert len(tracks) == 0
+
+    # Entry with empty string URL should be skipped
+    info = {"entries": [{"url": "", "title": "Empty URL", "duration": 100}]}
+    tracks = parse_ytdlp_info(info, "amy")
+    assert len(tracks) == 0
+
+    # Entry with invalid URL (not http/https) should be skipped
+    info = {
+        "entries": [{"url": "not-a-valid-url", "title": "Invalid URL", "duration": 100}]
+    }
+    tracks = parse_ytdlp_info(info, "amy")
+    assert len(tracks) == 0
+
+    # Entry with valid URL should be kept
+    info = {
+        "entries": [
+            {
+                "url": "https://www.youtube.com/watch?v=abc123",
+                "title": "Valid",
+                "duration": 100,
+            }
+        ]
+    }
+    tracks = parse_ytdlp_info(info, "amy")
+    assert len(tracks) == 1
+    assert tracks[0].source == "https://www.youtube.com/watch?v=abc123"
+
+
+def test_resolve_track_if_search_fails_on_empty_result(monkeypatch):
+    """_resolve_track_if_search should raise UserError when resolution returns no tracks."""
+    e = make()
+    t = Track("ytsearch1:nonexistent", "test", 100, "amy")
+
+    def mock_remote(
+        query, user, playlist=False, search_limit=1, raw_target=False, **kwargs
+    ):
+        return []
+
+    e._remote = mock_remote
+
+    with pytest.raises(UserError):
+        e._resolve_track_if_search(t)
+
+
+def test_resolve_track_if_search_returns_resolved_track(monkeypatch):
+    """_resolve_track_if_search should return resolved track with state READY."""
+    e = make()
+    t = Track("ytsearch1:test song", "test", 100, "amy")
+
+    def mock_remote(
+        query, user, playlist=False, search_limit=1, raw_target=False, **kwargs
+    ):
+        return [Track("https://youtu.be/abc123", "Resolved Track", 100, "amy")]
+
+    e._remote = mock_remote
+
+    result = e._resolve_track_if_search(t)
+    assert result.source == "https://youtu.be/abc123"
+    assert result.title == "Resolved Track"
+    assert result.state == "READY"
 
 
 def test_remote_tracks_falls_back_to_exe_when_module_missing(monkeypatch, tmp_path):
@@ -608,6 +751,7 @@ def test_build_env_checker_lists_what_is_missing():
 
 # ---- F12: !play from chat is saved to playlist.json (feeds !last) ----
 
+
 def test_play_saves_to_playlist_json(tmp_path):
     """Chat requests (!play) are appended to playlist.json and deduplicated by source."""
     playlist_path = tmp_path / "playlist.json"
@@ -615,6 +759,7 @@ def test_play_saves_to_playlist_json(tmp_path):
     e.playlist_file = str(playlist_path)
     from camfrog_autodj.playlist import PlaylistStore
     from camfrog_autodj.library import local_track
+
     e.playlist = PlaylistStore(str(playlist_path))
 
     # make() overrides resolve to return YouTube URLs; override back for local files
@@ -664,6 +809,7 @@ def test_playlist_loads_into_history_on_startup(tmp_path):
     e.playlist_file = str(playlist_path)
     e.playlist = None
     from camfrog_autodj.playlist import PlaylistStore
+
     e.playlist = PlaylistStore(str(playlist_path))
 
     # Simulate what _load_all does for playlist loading
@@ -672,6 +818,7 @@ def test_playlist_loads_into_history_on_startup(tmp_path):
 
 
 # ---- F13: TTS synth works with default voice and raises clear error when pyttsx3 missing ----
+
 
 def test_tts_synth_works_with_default_voice(tmp_path, monkeypatch):
     """Synthesising with no tts_voice set still produces a WAV file."""

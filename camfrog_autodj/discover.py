@@ -138,17 +138,17 @@ def scan_window(win) -> list[Ctl]:
     for ctype in ("Document", "Edit"):
         try:
             items = win.descendants(control_type=ctype)
-        except Exception:
+        except (AttributeError, RuntimeError):
             continue
         for i, c in enumerate(items):
             try:
                 r = c.rectangle()
                 box = (r.left, r.top, r.right, r.bottom)
-            except Exception:
+            except (AttributeError, RuntimeError):
                 box = (0, 0, 0, 0)
             try:
                 vis, ena = bool(c.is_visible()), bool(c.is_enabled())
-            except Exception:
+            except (AttributeError, RuntimeError):
                 vis = ena = True
             out.append(Ctl(ctype, i, _read(c), *box, enabled=ena, visible=vis))
     return out
@@ -186,7 +186,7 @@ def discover(cfg) -> dict | None:
             f = score_web(c.title, win, cfg, rx) or score_window(
                 c.title, scan_window(win), rx
             )
-        except Exception as e:  # a window can vanish mid-scan
+        except (AttributeError, RuntimeError) as e:  # a window can vanish mid-scan
             log.debug("skip %r: %s", c.title, e)
             continue
         if f:
@@ -244,8 +244,8 @@ def update_config_text(text: str, updates: dict) -> str:
                     new_d = tomllib.loads(new)
                     if old_d.get(key) == new_d.get(key):
                         continue
-                except Exception:
-                    pass
+                except (tomllib.TOMLDecodeError, ValueError):
+                    pass  # value comparison failed; update anyway
                 lines[i] = m.group(1) + new + (m.group(2) or "")
                 break
         else:

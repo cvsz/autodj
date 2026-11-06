@@ -162,11 +162,75 @@ function Detect-AudioDeviceAuto {
 }
 
 # ============================================================================
-# 3. REPO + BUILD
+# 3. REPO + BUILD (staging-based: preserves user data)
 # ============================================================================
+# User data files that must survive an installer re-run:
+#   config.toml, playlist.json, *.log, playlist_dir/*.json
+$USER_DATA_GLOBS = @("config.toml", "playlist.json", "*.log")
+
+function Backup-UserData {
+    param([string]$Dir)
+    $backup = Join-Path $env:TEMP "autodj-userdata-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    if (-not (Test-Path $Dir)) { return $null }
+    $found = $false
+    foreach ($g in $USER_DATA_GLOBS) {
+        Get-ChildItem -Path $Dir -Filter $g -File -ErrorAction SilentlyContinue | ForEach-Object {
+            $dest = Join-Path $backup $_.Name
+            Copy-Item $_.FullName -Destination $dest -Force
+            $found = $true
+        }
+    }
+    # Also back up any playlist_dir/*.json files
+    if (Test-Path (Join-Path $Dir "playlist_dir") -PathType Container) {
+        $pd = Join-Path $backup "playlist_dir"
+        New-Item -ItemType Directory -Path $pd -Force | Out-Null
+        Get-ChildItem -Path (Join-Path $Dir "playlist_dir") -Filter "*.json" -File -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item $_.FullName -Destination (Join-Path $pd $_.Name) -Force
+            $found = $true
+        }
+    }
+    if ($found) { Ok "User data backed up to $backup"; return $backup }
+    return $null
+}
+
+function Restore-UserData {
+    param([string]$Dir, [string]$Backup)
+    if (-not $Backup -or -not (Test-Path $Backup)) { return }
+    Set-Location $Backup
+    Get-ChildItem -File -ErrorAction SilentlyContinue | ForEach-Object {
+        Copy-Item $_.FullName -Destination (Join-Path $Dir $_.Name) -Force
+        Ok "Restored user data: $($_.Name)"
+    }
+    $pd = Join-Path $Backup "playlist_dir"
+    if (Test-Path $pd -PathType Container) {
+        $destPd = Join-Path $Dir "playlist_dir"
+        New-Item -ItemType Directory -Path $destPd -Force | Out-Null
+        Get-ChildItem -Path $pd -Filter "*.json" -File -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item $_.FullName -Destination (Join-Path $destPd $_.Name) -Force
+            Ok "Restored playlist: $($_.Name)"
+        }
+    }
+}
+
 function Setup-RepoAuto {
     Step "Setting up Repository & Building AutoDJ.exe"
+    $backupDir = $null
     if (Test-Path $ProjectDir) {
+        # Check for user data before any destructive operation
+        $hasUserData = $false
+        foreach ($g in $USER_DATA_GLOBS) {
+            if (Get-ChildItem -Path $ProjectDir -Filter $g -File -ErrorAction SilentlyContinue | Select -First 1) { $hasUserData = $true; break }
+        }
+        if (-not $hasUserData) {
+            $pd = Join-Path $ProjectDir "playlist_dir"
+            if (Test-Path $pd -PathType Container -and (Get-ChildItem -Path $pd -Filter "*.json" -File -ErrorAction SilentlyContinue | Select -First 1)) { $hasUserData = $true }
+        }
+
+        if ($hasUserData) {
+            $backupDir = Backup-UserData $ProjectDir
+            if (-not $backupDir) { Fail "Failed to back up user data. Aborting to prevent data loss."; return $false }
+        }
+
         if (-not $Unattended -and -not (Ask "Directory exists. Overwrite?")) { return $false }
         $BackupDir = "$ProjectDir.backup.$(Get-Date -Format 'yyyyMMdd-HHmmss')"
         Move-Item $ProjectDir $BackupDir -ErrorAction SilentlyContinue
@@ -176,6 +240,9 @@ function Setup-RepoAuto {
     git clone --depth 1 $REPO_URL $ProjectDir
     if (-not (Test-Path "$ProjectDir\run_autodj.py")) { Fail "Clone failed"; return $false }
     Ok "Repository ready at $ProjectDir"
+
+    # Restore any backed-up user data into the fresh clone
+    Restore-UserData $ProjectDir $backupDir
 
     if (-not $NoBuild) {
         Ok "Building AutoDJ.exe (this takes a minute)..."

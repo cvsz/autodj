@@ -83,7 +83,12 @@ class Router:
                 window = getattr(e.cfg, "rate_limit_window", 300.0)
                 reqs = [t for t in self.user_requests.get(who, []) if now - t < window]
                 if len(reqs) >= limit:
-                    log.info("rate limit: user %s exceeded %d requests in %.0fs", who, limit, window)
+                    log.info(
+                        "rate limit: user %s exceeded %d requests in %.0fs",
+                        who,
+                        limit,
+                        window,
+                    )
                     e.say(f"{msg.user}: {e.t('max_requests', n=limit)}")
                     return
                 reqs.append(now)
@@ -129,7 +134,9 @@ def _play(e, m, a, admin):
         if t.duration and t.duration > c.max_duration:
             raise UserError(e.t("too_long", m=c.max_duration // 60))
     pos = 0
-    with e.queue.lock:  # the lookup above can take seconds: re-check now, atomically with the add
+    with (
+        e.queue.lock
+    ):  # the lookup above can take seconds: re-check now, atomically with the add
         if not admin:
             if len(e.queue.requests) >= c.max_queue:
                 raise UserError(e.t("queue_full"))
@@ -138,7 +145,9 @@ def _play(e, m, a, admin):
             src = tracks[0].source
             # e.current is read under the queue lock to avoid a data race with _player_loop
             current_source = e.current.source if e.current else None
-            if (current_source == src) or any(r.source == src for r in e.queue.requests):
+            if (current_source == src) or any(
+                r.source == src for r in e.queue.requests
+            ):
                 raise UserError(e.t("already_queued"))
         for t in tracks:
             pos = e.queue.add_request(t)
@@ -286,9 +295,11 @@ def _load(e, m, a, admin):
         p = Path(src)
         try:
             p = p.resolve()
-        except Exception:
+        except (OSError, ValueError):
             raise UserError(e.t("load_failed", err="invalid path"))
-        if not any(p.is_relative_to(d) for d in (Path(d).resolve() for d in e.cfg.music_dirs)):
+        if not any(
+            p.is_relative_to(d) for d in (Path(d).resolve() for d in e.cfg.music_dirs)
+        ):
             raise UserError(e.t("folders_admin"))
     e.load_async(src)
 

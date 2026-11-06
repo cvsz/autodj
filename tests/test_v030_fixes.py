@@ -83,11 +83,11 @@ def test_remote_tracks_uses_search_limit_for_plain_query(monkeypatch):
     """ytsearch{n}: prefix must use search_limit, not hard-coded 1."""
     captured = {}
 
-    def fake_extract_exe(exe, target, playlist, limit):
+    def fake_extract_exe(exe, target, playlist, limit, **kw):
         captured["target"] = target
         raise OSError("no exe")  # fall through to module
 
-    def fake_extract_module(target, playlist, limit):
+    def fake_extract_module(target, playlist, limit, ca_bundle=""):
         captured["target"] = target
         return {
             "entries": [
@@ -106,7 +106,7 @@ def test_remote_tracks_uses_search_limit_for_plain_query(monkeypatch):
 def test_remote_tracks_search_limit_default_is_one(monkeypatch):
     captured = {}
 
-    def fake_extract_module(target, playlist, limit):
+    def fake_extract_module(target, playlist, limit, ca_bundle=""):
         captured["target"] = target
         return {
             "entries": [
@@ -129,7 +129,7 @@ def test_remote_tracks_url_not_prefixed_with_ytsearch(monkeypatch):
     """URLs must never get a ytsearch prefix regardless of search_limit."""
     captured = {}
 
-    def fake_extract_module(target, playlist, limit):
+    def fake_extract_module(target, playlist, limit, ca_bundle=""):
         captured["target"] = target
         return {
             "entries": [
@@ -310,6 +310,7 @@ def test_tts_synth_is_callable_and_thread_safe(monkeypatch):
     fake_mod.init = lambda: FakeEngine()
 
     import sys
+
     monkeypatch.setitem(sys.modules, "pyttsx3", fake_mod)
 
     # Reset TTS worker between test runs
@@ -478,8 +479,19 @@ def test_player_loop_dynamically_resolves_ytsearch_tracks(monkeypatch):
         **kw,
     ):
         if query.startswith("ytsearch1:"):
-            return [Track("https://www.youtube.com/watch?v=real_resolved_id", "Resolved Title", 180, requester)]
-        return [Track("https://www.youtube.com/watch?v=fallback", "Fallback", 100, requester)]
+            return [
+                Track(
+                    "https://www.youtube.com/watch?v=real_resolved_id",
+                    "Resolved Title",
+                    180,
+                    requester,
+                )
+            ]
+        return [
+            Track(
+                "https://www.youtube.com/watch?v=fallback", "Fallback", 100, requester
+            )
+        ]
 
     monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote_tracks)
 
@@ -509,7 +521,9 @@ def test_playlist_store_update_source(tmp_path):
     save_playlist(str(p), initial)
 
     store = PlaylistStore(str(p))
-    resolved_track = Track("https://youtube.com/watch?v=resolved_first", "Resolved First", 195, "User1")
+    resolved_track = Track(
+        "https://youtube.com/watch?v=resolved_first", "Resolved First", 195, "User1"
+    )
     ok = store.update_source("ytsearch1:first", resolved_track)
     assert ok is True
 
@@ -588,7 +602,9 @@ def test_dynamic_voteskip_threshold():
 
     class FakeEngine:
         def __init__(self):
-            self.cfg = Config(voteskip_threshold=5, voteskip_dynamic=True, voteskip_dynamic_pct=30)
+            self.cfg = Config(
+                voteskip_threshold=5, voteskip_dynamic=True, voteskip_dynamic_pct=30
+            )
             self.current = Track("https://youtube.com/watch?v=1", "Song", 120, "DJ")
             self.votes = set()
             self.admins = set()
@@ -628,11 +644,24 @@ def test_user_request_rate_limit():
 
     class FakeEngine:
         def __init__(self):
-            self.cfg = Config(cooldown=0.0, user_request_limit=2, rate_limit_window=60.0, max_queue=100)
+            self.cfg = Config(
+                cooldown=0.0,
+                user_request_limit=2,
+                rate_limit_window=60.0,
+                max_queue=100,
+            )
             self.admins = set()
             self.blocked = set()
             self.messages = []
-            self.queue = type("Q", (), {"requests": [], "count_by": lambda *a: 0, "add_request": lambda *a: None})()
+            self.queue = type(
+                "Q",
+                (),
+                {
+                    "requests": [],
+                    "count_by": lambda *a: 0,
+                    "add_request": lambda *a: None,
+                },
+            )()
 
         def t(self, key, **kw):
             return f"{key}:{kw}"
@@ -652,6 +681,3 @@ def test_user_request_rate_limit():
     # 3rd request within window should be rejected
     r.handle(Msg("user1", "!play song3"))
     assert any("max_requests" in m for m in e.messages)
-
-
-

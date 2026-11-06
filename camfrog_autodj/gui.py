@@ -47,7 +47,9 @@ FPS_MS = 33
 
 
 def mmss(sec: float) -> str:
-    s = int(sec)
+    """Format seconds as M:SS. Uses round() so 0.9s shows as 0:01 instead of jumping
+    straight from 0:00 to 0:01 on the next poll — avoids the countdown 'skip' effect."""
+    s = round(sec)
     return f"{s // 60}:{s % 60:02d}"
 
 
@@ -96,10 +98,19 @@ def install_clipboard(root: tk.Misc, lang=lambda: "en"):
         m.tk_popup(e.x_root, e.y_root)
         return "break"
 
-    root.bind_all("<Control-KeyPress>", on_key, add="+")
-    root.bind_all("<Control-Shift-KeyPress>", on_key, add="+")
-    for cls in ("Entry", "TEntry", "Text", "TCombobox", "TSpinbox"):
-        root.bind_class(cls, "<Button-3>", menu, add="+")
+    root.bind_class("Entry", "<Control-KeyPress>", on_key, add="-")
+    root.bind_class("TEntry", "<Control-KeyPress>", on_key, add="-")
+    root.bind_class("Text", "<Control-KeyPress>", on_key, add="-")
+    root.bind_class("TCombobox", "<Control-KeyPress>", on_key, add="-")
+    root.bind_class("TSpinbox", "<Control-KeyPress>", on_key, add="-")
+    root.bind_class("Entry", "<Control-Shift-KeyPress>", on_key, add="-")
+    root.bind_class("TEntry", "<Control-Shift-KeyPress>", on_key, add="-")
+    root.bind_class("Text", "<Control-Shift-KeyPress>", on_key, add="-")
+    root.bind_class("TCombobox", "<Control-Shift-KeyPress>", on_key, add="-")
+    root.bind_class("TSpinbox", "<Control-Shift-KeyPress>", on_key, add="-")
+    root.bind_class("Entry", "<Button-3>", menu, add="+")
+    root.bind_class("TEntry", "<Button-3>", menu, add="+")
+    root.bind_class("Text", "<Button-3>", menu, add="+")
     root.bind_class("Text", "<Button-1>", lambda e: e.widget.focus_set(), add="+")
 
 
@@ -144,6 +155,7 @@ class PillButton(tk.Canvas):
         self._ifont = icon_font or self._font
         self._minw, self._h, self._padx = minw, height, padx
         self._hover = self._down = self._active = False
+        self._enabled = True
         self.bind("<Enter>", lambda _e: self._hov(True))
         self.bind("<Leave>", lambda _e: self._hov(False))
         self.bind("<ButtonPress-1>", self._press)
@@ -161,6 +173,10 @@ class PillButton(tk.Canvas):
             redraw = True
         if "command" in kw:
             self._cmd = kw.pop("command")
+            redraw = True
+        if "state" in kw:
+            self._enabled = kw.pop("state") == "normal"
+            redraw = True
         if redraw:
             self._draw()
         if kw or cnf:
@@ -190,10 +206,14 @@ class PillButton(tk.Canvas):
         self._draw()
 
     def _press(self, _e):
+        if not self._enabled:
+            return
         self._down = True
         self._draw()
 
     def _release(self, e):
+        if not self._enabled:
+            return
         was = self._down
         self._down = False
         self._draw()
@@ -205,6 +225,10 @@ class PillButton(tk.Canvas):
         ):
             self._cmd()
 
+    def set_state(self, enabled: bool):
+        self._enabled = bool(enabled)
+        self._draw()
+
     # --- drawing
     def _draw(self):
         fill, hov, line, fg, afill, aline, afg = self.STYLES[self._look]
@@ -214,6 +238,9 @@ class PillButton(tk.Canvas):
             fill = hov if not self._active else lerp_color(fill, "#ffffff", 0.08)
         if self._down:
             fill = lerp_color(fill, "#000000", 0.25)
+        if not self._enabled:
+            fill = lerp_color(fill, BG, 0.5)
+            fg = lerp_color(fg, BG, 0.6)
         iw = self._ifont.measure(self._icon) + 8 if self._icon else 0
         tw = self._font.measure(self._text)
         w = max(self._minw, iw + tw + 2 * self._padx)
@@ -441,10 +468,10 @@ class App(tk.Tk):
 
                 try:
                     ctypes.windll.shcore.SetProcessDpiAwareness(1)
-                except Exception:
+                except (AttributeError, OSError):
                     ctypes.windll.user32.SetProcessDPIAware()
-            except Exception:
-                pass
+            except (AttributeError, OSError):
+                pass  # best-effort DPI awareness; falls back to default scaling
 
     def px(self, n: float) -> int:
         return round(n * self.k)
@@ -468,8 +495,8 @@ class App(tk.Tk):
                     == 0
                 ):
                     break
-        except Exception:
-            pass
+        except (AttributeError, OSError):
+            pass  # best-effort dark titlebar; not critical on older Windows
 
     def _set_icon(self):
         import sys
@@ -482,8 +509,8 @@ class App(tk.Tk):
         if os.name == "nt" and ico.exists():
             try:
                 self.iconbitmap(default=str(ico))
-            except Exception:
-                pass
+            except (tk.TclError, OSError):
+                pass  # best-effort window icon; not critical
 
     # ---- construction ----------------------------------------------------
     def _fonts(self):
@@ -733,9 +760,7 @@ class App(tk.Tk):
             ctl, "g_discover", self.do_discover, icon="🔍", height=44, minw=130
         )
         discover.pack(side="left", padx=(px(10), 0))
-        check = self._btn(
-            ctl, "g_check", self.do_check, icon="✓", height=44, minw=110
-        )
+        check = self._btn(ctl, "g_check", self.do_check, icon="✓", height=44, minw=110)
         check.pack(side="left", padx=(px(10), 0))
         self.v_volpct = tk.Label(
             ctl, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e"
@@ -776,9 +801,17 @@ class App(tk.Tk):
             side="left", fill="x", expand=True, ipady=px(9), padx=(0, px(10))
         )
         self.ent_add.bind("<Return>", lambda _e: self.add())
-        self._btn(add, "g_add", self.add, "primary", icon="＋", bg=BG, height=40).pack(
-            side="left"
+        self.b_add = self._btn(
+            add,
+            "g_add",
+            self.add,
+            "primary",
+            icon="＋",
+            bg=BG,
+            height=40,
+            minw=px(100),
         )
+        self.b_add.pack(side="left", padx=(px(10), 0))
         self._btn(add, "g_folder", self.load_folder, bg=BG, height=40).pack(
             side="left", padx=(px(8), 0)
         )
@@ -798,7 +831,7 @@ class App(tk.Tk):
         )
         self.c_repeat.pack(side="left", padx=(px(8), 0))
 
-        # ---- tabbed panel: queue / history / chat
+        # ---- tabbed panel: queue / history / chat / settings
         panel = self._card(right)
         panel.pack(fill="both", expand=True)
         bar = tk.Frame(panel, bg=SURFACE)
@@ -808,7 +841,6 @@ class App(tk.Tk):
             ("queue", "g_queue"),
             ("history", "g_history"),
             ("chat", "g_chat"),
-            ("settings", "g_settings"),
         ):
             b = self._btn(bar, lab, lambda k=key: self.show_tab(k), "tab", height=34)
             b.pack(side="left", padx=(0, px(6)))
@@ -816,7 +848,7 @@ class App(tk.Tk):
         pages = tk.Frame(panel, bg=SURFACE)
         pages.pack(fill="both", expand=True, padx=px(14), pady=(0, px(14)))
         self.pages = {
-            k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat", "settings")
+            k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat")
         }
 
         qp = self.pages["queue"]
@@ -878,18 +910,61 @@ class App(tk.Tk):
         self.chat.tag_configure("bot", foreground=CYAN)
         self.chat.tag_configure("who", foreground="#b79cff", font=self.f_bold)
 
-        sp = self.pages["settings"]
-        sp.columnconfigure(0, weight=1)
-        sp.rowconfigure(0, weight=1)
-        # scrollable settings area
-        sp_scroll = ttk.Scrollbar(sp, orient="vertical")
+    # ---- settings popup ------------------------------------------------------
+    def open_settings(self):
+        """Open the settings dialog as a popup (Toplevel) window."""
+        # Bring existing settings window to front if already open
+        if (
+            getattr(self, "_settings_win", None) is not None
+            and self._settings_win.winfo_exists()
+        ):
+            self._settings_win.lift()
+            self._settings_win.focus_set()
+            return
+
+        sp = tk.Toplevel(self)
+        sp.title(self.e.t("g_settings"))
+        sp.configure(bg=BG)
+        sp.transient(self)
+        sp.grab_set()
+
+        # Make it a decent size and center-ish
+        sp.geometry(f"{self.px(700)}x{self.px(620)}")
+        sp.minsize(self.px(560), self.px(480))
+
+        # header bar
+        hdr = tk.Frame(sp, bg=SURFACE)
+        hdr.pack(fill="x", padx=self.px(16), pady=self.px(12))
+        tk.Label(
+            hdr,
+            bg=SURFACE,
+            fg=TEXT,
+            font=self.f_bold,
+            text=self.e.t("g_settings"),
+        ).pack(side="left")
+        tk.Label(
+            hdr,
+            bg=SURFACE,
+            fg=MUTED,
+            font=self.f_small,
+            text=self.e.t("g_settings_lang") + " (use header pills to switch)",
+        ).pack(side="right")
+
+        # scrollable content
+        container = tk.Frame(sp, bg=SURFACE)
+        container.pack(
+            fill="both", expand=True, padx=self.px(14), pady=(0, self.px(14))
+        )
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(0, weight=1)
+
+        sp_scroll = ttk.Scrollbar(container, orient="vertical")
         sp_scroll.grid(row=0, column=1, sticky="ns")
-        sp_canvas = tk.Canvas(sp, bg=SURFACE, highlightthickness=0)
+        sp_canvas = tk.Canvas(container, bg=SURFACE, highlightthickness=0)
         sp_canvas.grid(row=0, column=0, sticky="nsew")
         sp_canvas.configure(yscrollcommand=sp_scroll.set)
         sp_scroll.configure(command=sp_canvas.yview)
         sp_inner = tk.Frame(sp_canvas, bg=SURFACE)
-        sp_canvas.create_window((0, 0), window=sp_inner, anchor="nw")
         sp_inner.bind(
             "<Configure>",
             lambda e: sp_canvas.configure(scrollregion=sp_canvas.bbox("all")),
@@ -901,13 +976,22 @@ class App(tk.Tk):
         def _setting_row(label_key, widget, note_key=None, padx=None):
             nonlocal row
             if padx is None:
-                padx = (px(14), px(14))
+                padx = (self.px(14), self.px(14))
             lf = tk.Frame(sp_inner, bg=SURFACE)
-            lf.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(px(6), px(2)), padx=padx)
+            lf.grid(
+                row=row,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(self.px(6), self.px(2)),
+                padx=padx,
+            )
             lbl = tk.Label(lf, bg=SURFACE, fg=TEXT, font=self.f_body, anchor="w")
             lbl.pack(in_=lf, side="left")
             self._labels.append((lbl, label_key))
-            widget.pack(in_=lf, side="right", fill="x", expand=True, padx=(px(10), 0))
+            widget.pack(
+                in_=lf, side="right", fill="x", expand=True, padx=(self.px(10), 0)
+            )
             if note_key:
                 note = tk.Label(
                     sp_inner, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w"
@@ -927,7 +1011,14 @@ class App(tk.Tk):
             font=self.f_bold,
             anchor="w",
             text=self.e.t("g_settings_lang") + " (use header pills)",
-        ).grid(row=row, column=0, columnspan=2, sticky="w", pady=(px(10), px(2)), padx=(px(14), px(14)))
+        ).grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(10), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
         row += 1
 
         # mpv_path
@@ -938,12 +1029,16 @@ class App(tk.Tk):
         # ytdlp_path
         self.s_ytdlp_path = self._entry(sp_inner)
         self.s_ytdlp_path.insert(0, self.e.cfg.ytdlp_path)
-        _setting_row("g_settings_ytdlp_path", self.s_ytdlp_path, "g_settings_audio_device")
+        _setting_row(
+            "g_settings_ytdlp_path", self.s_ytdlp_path, "g_settings_audio_device"
+        )
 
         # audio_device
         self.s_audio_device = self._entry(sp_inner)
         self.s_audio_device.insert(0, self.e.cfg.audio_device)
-        _setting_row("g_settings_audio_device", self.s_audio_device, "g_settings_bot_nick")
+        _setting_row(
+            "g_settings_audio_device", self.s_audio_device, "g_settings_bot_nick"
+        )
 
         # bot_nick
         self.s_bot_nick = self._entry(sp_inner)
@@ -963,7 +1058,9 @@ class App(tk.Tk):
         # blocked_users
         self.s_blocked_users = self._entry(sp_inner)
         self.s_blocked_users.insert(0, ", ".join(self.e.cfg.blocked_users))
-        _setting_row("g_settings_blocked_users", self.s_blocked_users, "g_settings_room")
+        _setting_row(
+            "g_settings_blocked_users", self.s_blocked_users, "g_settings_room"
+        )
 
         # room
         self.s_room = self._entry(sp_inner)
@@ -978,12 +1075,16 @@ class App(tk.Tk):
         # music_dirs
         self.s_music_dirs = self._entry(sp_inner)
         self.s_music_dirs.insert(0, ", ".join(self.e.cfg.music_dirs))
-        _setting_row("g_settings_music_dirs", self.s_music_dirs, "g_settings_autoplay_sources")
+        _setting_row(
+            "g_settings_music_dirs", self.s_music_dirs, "g_settings_autoplay_sources"
+        )
 
         # autoplay_sources
         self.s_autoplay_sources = self._entry(sp_inner)
         self.s_autoplay_sources.insert(0, ", ".join(self.e.cfg.autoplay_sources))
-        _setting_row("g_settings_autoplay_sources", self.s_autoplay_sources, "g_settings_volume")
+        _setting_row(
+            "g_settings_autoplay_sources", self.s_autoplay_sources, "g_settings_volume"
+        )
 
         # volume
         self.s_volume = self._entry(sp_inner)
@@ -993,12 +1094,16 @@ class App(tk.Tk):
         # max_queue
         self.s_max_queue = self._entry(sp_inner)
         self.s_max_queue.insert(0, str(self.e.cfg.max_queue))
-        _setting_row("g_settings_max_queue", self.s_max_queue, "g_settings_max_duration")
+        _setting_row(
+            "g_settings_max_queue", self.s_max_queue, "g_settings_max_duration"
+        )
 
         # max_duration
         self.s_max_duration = self._entry(sp_inner)
         self.s_max_duration.insert(0, str(self.e.cfg.max_duration))
-        _setting_row("g_settings_max_duration", self.s_max_duration, "g_settings_cooldown")
+        _setting_row(
+            "g_settings_max_duration", self.s_max_duration, "g_settings_cooldown"
+        )
 
         # cooldown
         self.s_cooldown = self._entry(sp_inner)
@@ -1008,22 +1113,30 @@ class App(tk.Tk):
         # send_interval
         self.s_send_interval = self._entry(sp_inner)
         self.s_send_interval.insert(0, str(self.e.cfg.send_interval))
-        _setting_row("g_settings_send_interval", self.s_send_interval, "g_settings_poll_interval")
+        _setting_row(
+            "g_settings_send_interval", self.s_send_interval, "g_settings_poll_interval"
+        )
 
         # poll_interval
         self.s_poll_interval = self._entry(sp_inner)
         self.s_poll_interval.insert(0, str(self.e.cfg.poll_interval))
-        _setting_row("g_settings_poll_interval", self.s_poll_interval, "g_settings_search_limit")
+        _setting_row(
+            "g_settings_poll_interval", self.s_poll_interval, "g_settings_search_limit"
+        )
 
         # search_limit
         self.s_search_limit = self._entry(sp_inner)
         self.s_search_limit.insert(0, str(self.e.cfg.search_limit))
-        _setting_row("g_settings_search_limit", self.s_search_limit, "g_settings_mpv_timeout")
+        _setting_row(
+            "g_settings_search_limit", self.s_search_limit, "g_settings_mpv_timeout"
+        )
 
         # mpv_timeout
         self.s_mpv_timeout = self._entry(sp_inner)
         self.s_mpv_timeout.insert(0, str(self.e.cfg.mpv_timeout))
-        _setting_row("g_settings_mpv_timeout", self.s_mpv_timeout, "g_settings_tts_voice")
+        _setting_row(
+            "g_settings_mpv_timeout", self.s_mpv_timeout, "g_settings_tts_voice"
+        )
 
         # tts_voice
         self.s_tts_voice = self._entry(sp_inner)
@@ -1053,7 +1166,14 @@ class App(tk.Tk):
             minw=200,
         )
         cb_auto_discover.set_active(self.e.cfg.auto_discover)
-        cb_auto_discover.grid(row=row, column=0, columnspan=2, sticky="w", pady=(px(6), px(2)), padx=(px(14), px(14)))
+        cb_auto_discover.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
         row += 1
 
         # auto_launch toggle
@@ -1069,23 +1189,38 @@ class App(tk.Tk):
             minw=200,
         )
         cb_auto_launch.set_active(self.e.cfg.auto_launch)
-        cb_auto_launch.grid(row=row, column=0, columnspan=2, sticky="w", pady=(px(6), px(2)), padx=(px(14), px(14)))
+        cb_auto_launch.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
         row += 1
 
         # camfrog_exe
         self.s_camfrog_exe = self._entry(sp_inner)
         self.s_camfrog_exe.insert(0, self.e.cfg.camfrog_exe)
-        _setting_row("g_settings_camfrog_exe", self.s_camfrog_exe, "g_settings_client_title_re")
+        _setting_row(
+            "g_settings_camfrog_exe", self.s_camfrog_exe, "g_settings_client_title_re"
+        )
 
         # client_title_re
         self.s_client_title_re = self._entry(sp_inner)
         self.s_client_title_re.insert(0, self.e.cfg.client_title_re)
-        _setting_row("g_settings_client_title_re", self.s_client_title_re, "g_settings_launch_timeout")
+        _setting_row(
+            "g_settings_client_title_re",
+            self.s_client_title_re,
+            "g_settings_launch_timeout",
+        )
 
         # launch_timeout
         self.s_launch_timeout = self._entry(sp_inner)
         self.s_launch_timeout.insert(0, str(self.e.cfg.launch_timeout))
-        _setting_row("g_settings_launch_timeout", self.s_launch_timeout, "g_settings_line_regex")
+        _setting_row(
+            "g_settings_launch_timeout", self.s_launch_timeout, "g_settings_line_regex"
+        )
 
         # line_regex
         self.s_line_regex = self._entry(sp_inner)
@@ -1097,9 +1232,17 @@ class App(tk.Tk):
         self.s_log_file.insert(0, self.e.cfg.log_file)
         _setting_row("g_settings_log_file", self.s_log_file, None)
 
-        # Save button
+        # Save / Cancel buttons
+        btn_row = tk.Frame(sp_inner, bg=SURFACE)
+        btn_row.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            pady=(self.px(18), self.px(14)),
+            padx=(self.px(14), self.px(14)),
+        )
         save_btn = self._btn(
-            sp_inner,
+            btn_row,
             "g_settings_save",
             self.save_settings,
             "primary",
@@ -1108,8 +1251,44 @@ class App(tk.Tk):
             height=40,
             minw=120,
         )
-        save_btn.grid(row=row, column=0, columnspan=2, pady=(px(18), px(14)), padx=(px(14), px(14)))
-        row += 1
+        save_btn.pack(side="left")
+        cancel_btn = self._btn(
+            btn_row,
+            "Close",
+            lambda: self._settings_close(),
+            "ghost",
+            icon="✕",
+            bg=SURFACE,
+            height=40,
+            minw=100,
+        )
+        cancel_btn.pack(side="left", padx=(self.px(8), 0))
+
+        # Place inner frame inside the canvas so it becomes visible.
+        # Store the canvas window item ID for the resize binding.
+        sp_window_id = sp_canvas.create_window((0, 0), window=sp_inner, anchor="nw")
+
+        # Update the embedded frame width when the canvas resizes.
+        # Use the stored window item ID, not the widget itself.
+        sp_canvas.bind(
+            "<Configure>",
+            lambda e: sp_canvas.itemconfigure(sp_window_id, width=e.width),
+        )
+
+        # Protocol handler for window close
+        sp.protocol("WM_DELETE_WINDOW", self._settings_close)
+
+        # Store reference
+        self._settings_win = sp
+
+        # Focus the first entry
+        self.s_mpv_path.focus_set()
+
+    def _settings_close(self):
+        """Close the settings popup."""
+        if hasattr(self, "_settings_win") and self._settings_win.winfo_exists():
+            self._settings_win.destroy()
+            self._settings_win = None
 
     # ---- animated scenery ---------------------------------------------------
     def _layout_line(self, _e=None):
@@ -1446,11 +1625,45 @@ class App(tk.Tk):
     def _vol_release(self, v):
         self.e.set_volume(v)
 
+    def _set_adding_state(self, adding: bool):
+        """Disable add button and show resolving state during resolution."""
+        self.b_add.configure(state="disabled" if adding else "normal")
+        if adding:
+            self.v_hint.configure(text=self.e.t("g_adding"))
+        else:
+            self.v_hint.configure(text=self.e.t("g_add_hint"))
+
     def add(self):
         text = self.ent_add.get().strip()
-        if text:
-            self.e.request(text)
+        if not text:
+            return
+
+        self._set_adding_state(True)
+
+        def on_success(tracks):
+            self._set_adding_state(False)
             self.ent_add.delete(0, "end")
+            if len(tracks) == 1:
+                t = tracks[0]
+                self.v_hint.configure(
+                    text=self.e.t(
+                        "queued_one",
+                        pos=1,
+                        title=t.title,
+                        dur=t.dur,
+                        user="you",
+                    )
+                )
+            else:
+                self.v_hint.configure(
+                    text=self.e.t("queued_many", n=len(tracks), user="you")
+                )
+
+        def on_error(msg):
+            self._set_adding_state(False)
+            self.v_hint.configure(text=msg)
+
+        self.e.request(text, on_success=on_success, on_error=on_error)
 
     def add_files(self):
         ext = " ".join(f"*{x}" for x in sorted(MEDIA))
@@ -1504,9 +1717,17 @@ class App(tk.Tk):
         """Run auto-discovery to find the Camfrog room window and chat controls."""
         import subprocess
         import sys
+
         try:
             subprocess.run(
-                [sys.executable, "-m", "camfrog_autodj", "--discover", "-c", self.e.cfg_path if hasattr(self.e, "cfg_path") else "config.toml"],
+                [
+                    sys.executable,
+                    "-m",
+                    "camfrog_autodj",
+                    "--discover",
+                    "-c",
+                    self.e.cfg_path if hasattr(self.e, "cfg_path") else "config.toml",
+                ],
                 check=False,
             )
         except Exception:
@@ -1516,9 +1737,17 @@ class App(tk.Tk):
         """Run setup diagnostic: mpv, yt-dlp, folders, Camfrog window."""
         import subprocess
         import sys
+
         try:
             subprocess.run(
-                [sys.executable, "-m", "camfrog_autodj", "--check", "-c", self.e.cfg_path if hasattr(self.e, "cfg_path") else "config.toml"],
+                [
+                    sys.executable,
+                    "-m",
+                    "camfrog_autodj",
+                    "--check",
+                    "-c",
+                    self.e.cfg_path if hasattr(self.e, "cfg_path") else "config.toml",
+                ],
                 check=False,
             )
         except Exception:
@@ -1529,6 +1758,28 @@ class App(tk.Tk):
         setattr(self, attr, not getattr(self, attr))
         btn.set_active(getattr(self, attr))
         btn.set_icon("✓" if getattr(self, attr) else "")
+
+    @staticmethod
+    def _parse_int(entry: tk.Entry, field: str) -> int:
+        """Parse an entry as int; raise ValueError with a clear message on bad input."""
+        raw = entry.get().strip()
+        if not raw:
+            raise ValueError(f"{field} must not be empty")
+        try:
+            return int(raw)
+        except ValueError:
+            raise ValueError(f"{field} must be a whole number, got {raw!r}")
+
+    @staticmethod
+    def _parse_float(entry: tk.Entry, field: str) -> float:
+        """Parse an entry as float; raise ValueError with a clear message on bad input."""
+        raw = entry.get().strip()
+        if not raw:
+            raise ValueError(f"{field} must not be empty")
+        try:
+            return float(raw)
+        except ValueError:
+            raise ValueError(f"{field} must be a number, got {raw!r}")
 
     def save_settings(self):
         """Save settings from the settings tab back to config.toml."""
@@ -1549,25 +1800,37 @@ class App(tk.Tk):
             cfg.log_file = self.s_log_file.get().strip()
 
             # List fields
-            cfg.admins = [a.strip() for a in self.s_admins.get().split(",") if a.strip()]
-            cfg.blocked_users = [a.strip() for a in self.s_blocked_users.get().split(",") if a.strip()]
-            cfg.music_dirs = [a.strip() for a in self.s_music_dirs.get().split(",") if a.strip()]
-            cfg.autoplay_sources = [a.strip() for a in self.s_autoplay_sources.get().split(",") if a.strip()]
+            cfg.admins = [
+                a.strip() for a in self.s_admins.get().split(",") if a.strip()
+            ]
+            cfg.blocked_users = [
+                a.strip() for a in self.s_blocked_users.get().split(",") if a.strip()
+            ]
+            cfg.music_dirs = [
+                a.strip() for a in self.s_music_dirs.get().split(",") if a.strip()
+            ]
+            cfg.autoplay_sources = [
+                a.strip() for a in self.s_autoplay_sources.get().split(",") if a.strip()
+            ]
 
             # Int fields
-            cfg.volume = int(self.s_volume.get())
-            cfg.max_queue = int(self.s_max_queue.get())
-            cfg.max_duration = int(self.s_max_duration.get())
-            cfg.search_limit = int(self.s_search_limit.get())
-            cfg.mpv_timeout = float(self.s_mpv_timeout.get())
-            cfg.tts_rate = int(self.s_tts_rate.get())
-            cfg.tts_duck = int(self.s_tts_duck.get())
-            cfg.launch_timeout = int(self.s_launch_timeout.get())
+            cfg.volume = self._parse_int(self.s_volume, "volume")
+            cfg.max_queue = self._parse_int(self.s_max_queue, "max queue length")
+            cfg.max_duration = self._parse_int(
+                self.s_max_duration, "max track duration"
+            )
+            cfg.search_limit = self._parse_int(self.s_search_limit, "search limit")
+            cfg.tts_rate = self._parse_int(self.s_tts_rate, "TTS rate")
+            cfg.tts_duck = self._parse_int(self.s_tts_duck, "TTS duck volume")
+            cfg.launch_timeout = self._parse_int(
+                self.s_launch_timeout, "launch timeout"
+            )
+            cfg.mpv_timeout = self._parse_float(self.s_mpv_timeout, "mpv timeout")
 
             # Float fields
-            cfg.cooldown = float(self.s_cooldown.get())
-            cfg.send_interval = float(self.s_send_interval.get())
-            cfg.poll_interval = float(self.s_poll_interval.get())
+            cfg.cooldown = self._parse_float(self.s_cooldown, "cooldown")
+            cfg.send_interval = self._parse_float(self.s_send_interval, "send interval")
+            cfg.poll_interval = self._parse_float(self.s_poll_interval, "poll interval")
 
             # Bool fields
             cfg.auto_discover = self.s_auto_discover
@@ -1582,6 +1845,7 @@ class App(tk.Tk):
 
             # Validate regexes
             import re
+
             re.compile(cfg.line_regex)
             re.compile(cfg.client_title_re)
 
@@ -1595,7 +1859,7 @@ class App(tk.Tk):
             # Build TOML text manually preserving comments is complex, so we write a clean version
             lines = []
             lines.append(f'bot_nick = "{cfg.bot_nick}"')
-            lines.append(f'admins = {cfg.admins!r}')
+            lines.append(f"admins = {cfg.admins!r}")
             lines.append(f'prefix = "{cfg.prefix}"')
             lines.append(f'lang = "{cfg.lang}"')
             lines.append("")
@@ -1604,51 +1868,51 @@ class App(tk.Tk):
             lines.append(f'window_title_re = "{cfg.window_title_re}"')
             lines.append(f'process_re = "{cfg.process_re}"')
             lines.append(f'window_exclude_re = "{cfg.window_exclude_re}"')
-            lines.append(f'window_index = {cfg.window_index}')
-            lines.append(f'auto_discover = {str(cfg.auto_discover).lower()}')
+            lines.append(f"window_index = {cfg.window_index}")
+            lines.append(f"auto_discover = {str(cfg.auto_discover).lower()}")
             lines.append(f'view_kind = "{cfg.view_kind}"')
             lines.append(f'send_mode = "{cfg.send_mode}"')
-            lines.append(f'send_verify = {str(cfg.send_verify).lower()}')
-            lines.append(f'web_strict_body = {str(cfg.web_strict_body).lower()}')
+            lines.append(f"send_verify = {str(cfg.send_verify).lower()}")
+            lines.append(f"web_strict_body = {str(cfg.web_strict_body).lower()}")
             lines.append(f'view_type = "{cfg.view_type}"')
-            lines.append(f'view_index = {cfg.view_index}')
+            lines.append(f"view_index = {cfg.view_index}")
             lines.append(f'input_type = "{cfg.input_type}"')
-            lines.append(f'input_index = {cfg.input_index}')
+            lines.append(f"input_index = {cfg.input_index}")
             lines.append("")
             lines.append(f'mpv_path = "{cfg.mpv_path}"')
             lines.append(f'ytdlp_path = "{cfg.ytdlp_path}"')
             lines.append(f'audio_device = "{cfg.audio_device}"')
-            lines.append(f'volume = {cfg.volume}')
-            lines.append(f'music_dirs = {cfg.music_dirs!r}')
-            lines.append(f'autoplay_sources = {cfg.autoplay_sources!r}')
-            lines.append(f'shuffle = {str(cfg.shuffle).lower()}')
-            lines.append(f'allowed_hosts = {cfg.allowed_hosts!r}')
-            lines.append(f'max_requests_per_user = {cfg.max_requests_per_user}')
-            lines.append(f'max_queue = {cfg.max_queue}')
-            lines.append(f'max_duration = {cfg.max_duration}')
-            lines.append(f'voteskip_threshold = {cfg.voteskip_threshold}')
-            lines.append(f'cooldown = {cfg.cooldown}')
-            lines.append(f'send_interval = {cfg.send_interval}')
-            lines.append(f'max_msg_len = {cfg.max_msg_len}')
-            lines.append(f'announce_next = {str(cfg.announce_next).lower()}')
+            lines.append(f"volume = {cfg.volume}")
+            lines.append(f"music_dirs = {cfg.music_dirs!r}")
+            lines.append(f"autoplay_sources = {cfg.autoplay_sources!r}")
+            lines.append(f"shuffle = {str(cfg.shuffle).lower()}")
+            lines.append(f"allowed_hosts = {cfg.allowed_hosts!r}")
+            lines.append(f"max_requests_per_user = {cfg.max_requests_per_user}")
+            lines.append(f"max_queue = {cfg.max_queue}")
+            lines.append(f"max_duration = {cfg.max_duration}")
+            lines.append(f"voteskip_threshold = {cfg.voteskip_threshold}")
+            lines.append(f"cooldown = {cfg.cooldown}")
+            lines.append(f"send_interval = {cfg.send_interval}")
+            lines.append(f"max_msg_len = {cfg.max_msg_len}")
+            lines.append(f"announce_next = {str(cfg.announce_next).lower()}")
             lines.append("")
             lines.append(f'tts_voice = "{cfg.tts_voice}"')
-            lines.append(f'tts_rate = {cfg.tts_rate}')
-            lines.append(f'tts_duck = {cfg.tts_duck}')
+            lines.append(f"tts_rate = {cfg.tts_rate}")
+            lines.append(f"tts_duck = {cfg.tts_duck}")
             lines.append("")
-            lines.append(f'auto_launch = {str(cfg.auto_launch).lower()}')
+            lines.append(f"auto_launch = {str(cfg.auto_launch).lower()}")
             lines.append(f'camfrog_exe = "{cfg.camfrog_exe}"')
             lines.append(f'client_title_re = "{cfg.client_title_re}"')
             lines.append(f'room = "{cfg.room}"')
             lines.append(f'join_uri_template = "{cfg.join_uri_template}"')
-            lines.append(f'launch_timeout = {cfg.launch_timeout}')
+            lines.append(f"launch_timeout = {cfg.launch_timeout}")
             lines.append("")
-            lines.append(f'blocked_users = {cfg.blocked_users!r}')
-            lines.append(f'poll_interval = {cfg.poll_interval}')
+            lines.append(f"blocked_users = {cfg.blocked_users!r}")
+            lines.append(f"poll_interval = {cfg.poll_interval}")
             lines.append(f'log_file = "{cfg.log_file}"')
             lines.append(f'playlist_file = "{cfg.playlist_file}"')
-            lines.append(f'search_limit = {cfg.search_limit}')
-            lines.append(f'mpv_timeout = {cfg.mpv_timeout}')
+            lines.append(f"search_limit = {cfg.search_limit}")
+            lines.append(f"mpv_timeout = {cfg.mpv_timeout}")
 
             new_text = "\n".join(lines) + "\n"
 
@@ -1677,6 +1941,7 @@ class App(tk.Tk):
 
             # Re-read config to apply
             from .config import Config
+
             new_cfg = Config.load(str(p))
             self.e.cfg = new_cfg
             self.e.lang = new_cfg.lang
@@ -1691,8 +1956,8 @@ class App(tk.Tk):
             self.e.say(self.e.t("g_settings_save_failed", err=str(ex)))
 
     def show_settings(self):
-        """Switch to the settings tab."""
-        self.show_tab("settings")
+        """Open the settings popup window."""
+        self.open_settings()
 
     def close(self):
         self._closing = True
@@ -1701,8 +1966,8 @@ class App(tk.Tk):
             if timer_id:
                 try:
                     self.after_cancel(timer_id)
-                except Exception:
-                    pass
+                except (tk.TclError, ValueError):
+                    pass  # timer may already be canceled
                 setattr(self, attr, None)
         self.e.shutdown()
         self.destroy()
@@ -1731,7 +1996,14 @@ class App(tk.Tk):
             self.v_title.configure(text=t.title)
             self.v_sub.configure(text=f"{t.requester}  ·  {t.dur}")
             self.bar.set(s["position"] / t.duration if t.duration else 0)
-            self.v_time.configure(text=f"{mmss(s['position'])} / {t.dur}")
+            # Elapsed position from the player loop (monotonic clock, excludes pauses).
+            # round() keeps the countdown smooth: no more skipping from 0:00 to 0:01.
+            elapsed = max(0.0, s["position"])
+            self.v_time.configure(
+                text=f"{mmss(elapsed)} / {t.dur}"
+                if t.duration
+                else f"{mmss(elapsed)} / --:--"
+            )
         else:
             self.v_title.configure(text=self.e.t("g_nothing"))
             self.v_sub.configure(text="")

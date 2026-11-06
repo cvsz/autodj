@@ -12,6 +12,7 @@ from . import __version__
 from .adapters import NullAdapter, build_adapter
 from .config import Config, ConfigError
 from .engine import Engine
+from .migrate import migrate_config
 from .textutil import clean_text
 
 
@@ -117,6 +118,14 @@ def _run(a, level):
             "config file %s not found: running with built-in defaults (copy config.example.toml to config.toml)",
             os.path.abspath(a.config),
         )
+    # Migrate placeholder/invalid values before loading config
+    if os.path.exists(a.config):
+        try:
+            changes = migrate_config(a.config)
+            for change in changes:
+                log.info("config migration: %s", change)
+        except Exception:  # migration must never prevent startup
+            log.exception("config migration failed; continuing with existing config")
     cfg = Config.load(a.config)
     if a.log_file or cfg.log_file:
         log_path = a.log_file or cfg.log_file
@@ -150,7 +159,14 @@ def _run(a, level):
             )
         p = app_cfg_path
         a.config = str(p)
-        cfg = Config.load(str(p))  # re-load from new location
+        # Migrate the relocated config before loading
+        try:
+            changes = migrate_config(str(p))
+            for change in changes:
+                log.info("config migration: %s", change)
+        except Exception:  # migration must never prevent startup
+            log.exception("config migration failed; continuing with existing config")
+        cfg = Config.load(str(p))
     if a.lang:
         cfg.lang = a.lang
     if a.console:
@@ -166,10 +182,8 @@ def _run(a, level):
 
         try:
             ensure_room(cfg)
-        except Exception as ex:  # pragma: no cover - defensive; discovery is best-effort
-            log.warning(
-                "auto-launch failed; continuing without Camfrog: %s", ex
-            )
+        except Exception as ex:  # pragma: no cover - defensive; discovery is best-effort  # noqa: BLE001
+            log.warning("auto-launch failed; continuing without Camfrog: %s", ex)
     uses_uia = "uia" in (cfg.chat_reader, cfg.chat_sender)
     if uses_uia and (a.discover or (cfg.auto_discover and not a.no_discover)):
         from . import discover
@@ -179,7 +193,9 @@ def _run(a, level):
         try:
             ups = discover.apply(cfg, a.config)
         except Exception:  # pragma: no cover - defensive; discovery is best-effort
-            logging.getLogger(__name__).exception("auto-discover failed; continuing without it")
+            logging.getLogger(__name__).exception(
+                "auto-discover failed; continuing without it"
+            )
             ups = None
         if a.discover:
             print(ups or "nothing found: open the room window and try again")

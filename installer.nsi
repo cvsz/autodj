@@ -26,7 +26,7 @@
 ; Metadata (overridable from command line)
 ; -----------------------------------------------------------------------------
 !define /IfNDef APP_NAME "Camfrog AutoDJ"
-!define APP_VERSION "0.2.6"
+!define /IfNDef APP_VERSION "0.2.6"
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
 !define /IfNDef APP_EXE "AutoDJ.exe"
@@ -257,6 +257,7 @@ Section Uninstall
 
     ; Remove application-owned files and directories only.
     ; Keep config.toml, playlist.json, logs, playlists, and other user-created data.
+    ; Do NOT remove $INSTDIR itself: user data may still reside here.
     Delete "$INSTDIR\AutoDJ.exe"
     Delete "$INSTDIR\app.ico"
     Delete "$INSTDIR\README.md"
@@ -269,7 +270,6 @@ Section Uninstall
     RMDir /r "$INSTDIR\mpv"
     RMDir /r "$INSTDIR\docs"
     RMDir /r "$INSTDIR\tools"
-    RMDir "$INSTDIR"
 SectionEnd
 
 ; -----------------------------------------------------------------------------

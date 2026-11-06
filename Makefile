@@ -26,7 +26,7 @@ IS_WINDOWS  := $(filter Windows_NT,$(OS))
         run run-gui run-console run-headless check discover windows say \
         test test-v test-one coverage mutation-smoke \
         lint lint-src fmt typecheck validate-playlists fix-playlists full-validation security-check config-check \
-        build build-clean sign package release installer installer-clean \
+        build build-clean sign build-all build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
         clean clean-all distclean \
         config version bump-patch changelog-check pre-commit ci docs
 
@@ -175,6 +175,131 @@ ifeq ($(OS),Windows_NT)
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_installer.ps1 -Version $(VERSION)
 else
 	bash scripts/build_installer_linux.sh $(VERSION) dist dist
+endif
+
+build:  ## Build AutoDJ.exe with PyInstaller (Windows PowerShell)
+ifeq ($(OS),Windows_NT)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
+else
+	@echo "build requires Windows (runs build.ps1). On Linux/WSL use 'make build' from PowerShell."
+	@exit 1
+endif
+
+build-clean:  ## Clean build artifacts then rebuild
+ifeq ($(OS),Windows_NT)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -Clean $(BUILD_ARGS)
+else
+	@echo "build-clean requires Windows (runs build.ps1 -Clean)."
+	@exit 1
+endif
+
+sign:  ## Sign existing AutoDJ.exe (Windows)
+ifeq ($(OS),Windows_NT)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -NoSign=false $(BUILD_ARGS)
+else
+	@echo "sign requires Windows."
+	@exit 1
+endif
+
+build-all:  ## Full pipeline: build AutoDJ.exe -> connect Windows 11 -> make nsiswindows11
+ifeq ($(OS),Windows_NT)
+	@echo "=== Step 1/3: Building AutoDJ.exe (PyInstaller) ==="
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
+	@if not exist dist\AutoDJ.exe (echo "ERROR: dist\AutoDJ.exe not found after build." && exit 1)
+	@echo ""
+	@echo "=== Step 2/3: Verifying Windows 11 environment ==="
+	@powershell.exe -NoProfile -Command "[System.Environment]::OSVersion.Version.Major -ge 10 -and [System.Environment]::OSVersion.Version.Build -ge 22000" || (echo "ERROR: Windows 11 (Build 22000+) required." && exit 1)
+	@powershell.exe -NoProfile -Command "Get-Command makensis -ErrorAction SilentlyContinue" || (echo "ERROR: NSIS (makensis) not found in PATH. Install NSIS 3.08+." && exit 1)
+	@echo "  OK: Windows 11 detected"
+	@echo "  OK: NSIS (makensis) found"
+	@echo ""
+	@echo "=== Step 3/3: Building NSIS Installer (make nsiswindows11) ==="
+	$(MAKE) nsiswindows11
+	@echo ""
+	@echo "=== Build Complete ==="
+	@echo "Installer: dist\Camfrog-AutoDJ-Setup-$(VERSION).exe"
+else
+	@echo "build-all requires Windows 11 (runs build.ps1 + NSIS)"
+	@exit 1
+endif
+
+build-all-linux:  ## Full pipeline on Linux via Wine: build EXE + NSIS installer (requires wine64 + NSIS in Wine)
+ifeq ($(OS),Windows_NT)
+	@echo "build-all-linux is for Linux/WSL only. Use 'make build-all' on Windows."
+	@exit 1
+else
+	@echo "=== Step 1/3: Building AutoDJ.exe (PyInstaller via Wine) ==="
+	@if command -v wine64 >/dev/null 2>&1; then \
+		echo "Found Wine: $$(wine64 --version)"; \
+	else \
+		echo "ERROR: wine64 not found. Install: sudo apt install wine64"; \
+		exit 1; \
+	fi
+	@if [ -f "build.ps1" ]; then \
+		wine64 powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS); \
+	else \
+		echo "ERROR: build.ps1 not found"; \
+		exit 1; \
+	fi
+	@if [ -f "dist/AutoDJ.exe" ]; then \
+		echo "  OK: dist/AutoDJ.exe built"; \
+	else \
+		echo "ERROR: dist/AutoDJ.exe not found after build"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "=== Step 2/3: Verifying Wine + NSIS environment ==="
+	@NSIS_PATH="$$HOME/.wine/drive_c/NSIS/makensis.exe"; \
+	if [ -f "$$NSIS_PATH" ]; then \
+		echo "  OK: NSIS found at $$NSIS_PATH"; \
+	else \
+		echo "ERROR: NSIS not found at $$NSIS_PATH"; \
+		echo "Install NSIS portable to ~/.wine/drive_c/NSIS/"; \
+		echo "  Download: https://nsis.sourceforge.io/"; \
+		echo "  Extract NSIS 3.08+ to ~/.wine/drive_c/NSIS/"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "=== Step 3/3: Building NSIS Installer (via scripts/build_installer_linux.sh) ==="
+	bash scripts/build_installer_linux.sh $(VERSION) dist dist
+	@echo ""
+	@echo "=== Build Complete ==="
+	@echo "Installer: dist/Camfrog-AutoDJ-Setup-$(VERSION).exe"
+endif
+
+build-all-hybrid:  ## Hybrid workflow: Windows (build + NSIS) -> WSL post-processing (run from PowerShell)
+ifeq ($(OS),Windows_NT)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-all-hybrid.ps1 $(HYBRID_ARGS)
+else
+	@echo "build-all-hybrid must be run from Windows PowerShell"
+	@exit 1
+endif
+
+nsiswindows11:  ## Build NSIS installer for Windows 11 (requires NSIS + AutoDJ.exe in dist/)
+ifeq ($(OS),Windows_NT)
+	@if not exist dist\AutoDJ.exe (echo "ERROR: dist\AutoDJ.exe not found. Run 'make build' first." && exit 1)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_installer.ps1 -Version $(VERSION) -Sign
+else
+	@echo "nsiswindows11 requires Windows 11 with NSIS installed"
+	@exit 1
+endif
+
+trustsign:  ## Azure Trusted Signing: Sign EXE + Installer via Azure Key Vault (requires Azure setup)
+ifeq ($(OS),Windows_NT)
+	@echo "=== Azure Trusted Signing ==="
+	@if not defined AZURE_KEYVAULT_NAME (echo "ERROR: AZURE_KEYVAULT_NAME not set. Set in env or GitHub Secrets." && exit 1)
+	@if not defined AZURE_CERT_NAME (echo "ERROR: AZURE_CERT_NAME not set. Set in env or GitHub Secrets." && exit 1)
+	@if not exist dist\AutoDJ.exe (echo "ERROR: dist\AutoDJ.exe not found. Run 'make build' first." && exit 1)
+	@echo "Signing AutoDJ.exe via Azure Key Vault: $(AZURE_KEYVAULT_NAME)/$(AZURE_CERT_NAME)"
+	az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist\AutoDJ.exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com
+	@if exist dist\Camfrog-AutoDJ-Setup-$(VERSION).exe ( \
+		echo "Signing Installer via Azure Key Vault..." && \
+		az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist\Camfrog-AutoDJ-Setup-$(VERSION).exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com \
+	)
+	@echo "=== Azure Signing Complete ==="
+else
+	@echo "trustsign requires Windows (uses az signtool)"
+	@exit 1
 endif
 
 installer-clean:  ## Clean installer artifacts
