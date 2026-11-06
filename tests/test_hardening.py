@@ -575,7 +575,6 @@ def test_doctor_reports_missing_mpv_and_ok_dirs(monkeypatch, tmp_path):
         admins=[],
     )
     res = doctor.run_checks(cfg, check_window=False)
-    levels = {(lvl, txt) for lvl, txt in res}
     text = "\n".join(f"{l} {t}" for l, t in res)
     assert any(l == "FAIL" and "mpv" in t for l, t in res)
     assert any(l == "WARN" and "missing" in t for l, t in res)
@@ -700,16 +699,16 @@ def test_aurora_and_particles_and_confetti_are_stable_and_bounded():
     ps2 = make_particles(12, seed=7)
     assert ps == ps2 and len(ps) == 12  # seeded: reproducible frame to frame
     for p in ps:
-        x, y, a = particle_pos(p, 3.3, 100, 100, 50)
+        _x, _y, a = particle_pos(p, 3.3, 100, 100, 50)
         assert 0.0 <= a <= 1.0
     cs = confetti_burst(10, seed=3)
     assert len(cs) == 10 and confetti_burst(10, seed=3) == cs
-    x0, y0, r0, a0 = confetti_pos(cs[0], 0.0, 50, 50)
+    x0, y0, _r0, a0 = confetti_pos(cs[0], 0.0, 50, 50)
     assert (x0, y0) == (
         50,
         50,
     ) and a0 == 1.0  # starts at the launch point, fully opaque
-    x1, y1, r1, a1 = confetti_pos(cs[0], 1.4, 50, 50)
+    _x1, _y1, _r1, a1 = confetti_pos(cs[0], 1.4, 50, 50)
     assert a1 == 0.0  # fully faded by the end of its life
 
 
@@ -757,8 +756,8 @@ def test_play_saves_to_playlist_json(tmp_path):
     playlist_path = tmp_path / "playlist.json"
     e = make()
     e.playlist_file = str(playlist_path)
-    from camfrog_autodj.playlist import PlaylistStore
     from camfrog_autodj.library import local_track
+    from camfrog_autodj.playlist import PlaylistStore
 
     e.playlist = PlaylistStore(str(playlist_path))
 
@@ -822,8 +821,8 @@ def test_playlist_loads_into_history_on_startup(tmp_path):
 
 def test_tts_synth_works_with_default_voice(tmp_path, monkeypatch):
     """Synthesising with no tts_voice set still produces a WAV file."""
-    import types
     import sys
+    import types
 
     from camfrog_autodj import tts
 

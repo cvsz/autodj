@@ -25,9 +25,9 @@ import time
 from unittest.mock import MagicMock
 
 import pytest
+from test_core import FakeAdapter, FakePlayer, make, out
 
 from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.commands import Router
 from camfrog_autodj.config import Config, ConfigError
 from camfrog_autodj.discover import Ctl, Found, best_room, choose_view
 from camfrog_autodj.engine import Engine
@@ -37,11 +37,8 @@ from camfrog_autodj.library import (
     parse_ytdlp_info,
     remote_tracks,
 )
-from camfrog_autodj.messages import tr
 from camfrog_autodj.models import Track, UserError
 from camfrog_autodj.player import MpvPlayer, failure_reasons
-from camfrog_autodj.playlist import PlaylistStore
-from test_core import FakeAdapter, FakePlayer, make, out, T
 
 # ============================================================================
 # P0 — YouTube Certificate Trust
@@ -62,7 +59,9 @@ SEARCH_JSON = {
 }
 
 
-def _fake_subprocess_run(returncode=0, stdout=json.dumps(SEARCH_JSON), stderr=""):
+def _fake_subprocess_run(returncode=0, stdout=None, stderr=""):
+    if stdout is None:
+        stdout = json.dumps(SEARCH_JSON)
     def fake_run(cmd, **kw):
         return subprocess.CompletedProcess(cmd, returncode, stdout, stderr)
 
@@ -97,8 +96,6 @@ def test_extract_exe_skips_certificate_when_ca_bundle_missing(monkeypatch, tmp_p
     """_extract_exe does not accept ca_bundle parameter (yt-dlp.exe has no --certificate flag).
     Custom CA bundle is only supported via the yt_dlp Python module path."""
     calls = []
-    missing = tmp_path / "does-not-exist.pem"
-
     def fake_run(cmd, **kw):
         calls.append(cmd)
         return subprocess.CompletedProcess(cmd, 0, json.dumps(SEARCH_JSON), "")
@@ -345,8 +342,6 @@ def test_resolve_rejects_placeholder_youtube_id(monkeypatch):
 
 def test_resolve_rejects_non_allowed_host_for_non_admin(monkeypatch):
     """Non-YouTube URLs must be rejected for non-admin users."""
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.library import LocalIndex
 
     class FakeAdapter:
         def messages(self):
@@ -381,8 +376,6 @@ def test_resolve_rejects_non_allowed_host_for_non_admin(monkeypatch):
 
 def test_resolve_rejects_empty_arg(monkeypatch):
     """Empty argument must raise UserError."""
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.library import LocalIndex
 
     class FakeAdapter:
         def messages(self):
@@ -420,8 +413,6 @@ def test_resolve_rejects_empty_arg(monkeypatch):
 
 def test_resolve_accepts_valid_local_media_file(tmp_path):
     """A local media file with a recognised extension is accepted by admin."""
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.library import LocalIndex
 
     class FakeAdapter:
         def messages(self):
@@ -464,8 +455,6 @@ def test_resolve_accepts_valid_local_media_file(tmp_path):
 
 def test_resolve_extracts_youtube_playlist(monkeypatch):
     """YouTube playlist URLs are detected and played in sequence."""
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.library import LocalIndex, parse_ytdlp_info
 
     class FakeAdapter:
         def messages(self):
@@ -825,7 +814,8 @@ def test_mpv_hung_process_terminated(monkeypatch):
 
 
 def test_mpv_timeout_no_duration(monkeypatch):
-    """With mpv_timeout set and unknown duration (live), mpv_timeout is used as the limit."""
+    """With mpv_timeout set and unknown duration (live), mpv_timeout is NOT a cap:
+    an unknown-duration track plays to completion (no hung termination)."""
     fake_proc = MagicMock()
     calls = 0
 
@@ -852,8 +842,8 @@ def test_mpv_timeout_no_duration(monkeypatch):
     cfg = Config(mpv_path="mpv", ytdlp_path="", mpv_timeout=1)
     player = MpvPlayer(cfg)
     monkeypatch.setattr(player, "_played", lambda started: 2.0)
-    # duration=None means live: limit = mpv_timeout (1s)
-    assert player.play("https://youtu.be/live", 80, duration=None) is False
+    # duration=None means live: no limit, mpv_timeout is not applied as a cap
+    assert player.play("https://youtu.be/live", 80, duration=None) is True
 
 
 # ---- P1-10: Cancellation (skip) ----
@@ -1091,9 +1081,6 @@ def test_save_config_atomic_replace_leaves_original_on_failure(tmp_path, monkeyp
     p.write_text('bot_nick = "X"\n', "utf-8")
     original = p.read_text("utf-8")
 
-    # Make os.replace fail
-    real_replace = os.replace
-
     def failing_replace(src, dst):
         raise OSError("disk full")
 
@@ -1137,7 +1124,7 @@ def test_choose_view_rejects_dialog_without_chat_lines():
         Ctl("Edit", 0, "Type a message...", 0, 0, 500, 30),
         Ctl("Document", 0, "system: welcome\n", 0, 0, 200, 100),
     ]
-    view, matched = choose_view(ctls, rx)
+    view, _matched = choose_view(ctls, rx)
     # The Document has a chat-like line, the Edit does not
     assert view is not None and view.ctype == "Document"
 
@@ -1147,7 +1134,6 @@ def test_choose_view_rejects_dialog_without_chat_lines():
 
 def test_best_room_picks_most_matched_lines():
     """When multiple rooms are open, the one with the most chat lines wins."""
-    rx = __import__("re").compile(Config().line_regex)
     found = [
         Found(
             "Room A",

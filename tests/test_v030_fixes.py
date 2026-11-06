@@ -13,8 +13,8 @@
 from __future__ import annotations
 
 import logging
-import sys
 import subprocess
+import sys
 import threading
 import types
 from unittest.mock import MagicMock
@@ -309,7 +309,6 @@ def test_tts_synth_is_callable_and_thread_safe(monkeypatch):
     fake_mod = types.ModuleType("pyttsx3")
     fake_mod.init = lambda: FakeEngine()
 
-    import sys
 
     monkeypatch.setitem(sys.modules, "pyttsx3", fake_mod)
 
@@ -326,7 +325,7 @@ def test_tts_synth_is_callable_and_thread_safe(monkeypatch):
         try:
             tts_mod.synth(text, path, cfg)
             results.append(text)
-        except Exception as ex:
+        except (ImportError, OSError, RuntimeError) as ex:
             errors.append(ex)
 
     t1 = threading.Thread(target=call_synth, args=("hello", "/tmp/t1.wav"))
@@ -441,8 +440,8 @@ def test_engine_remote_uses_config_search_limit(monkeypatch):
 
 
 def test_player_loop_dynamically_resolves_ytsearch_tracks(monkeypatch):
-    from camfrog_autodj.engine import Engine
     from camfrog_autodj.config import Config
+    from camfrog_autodj.engine import Engine
     from camfrog_autodj.models import Track
 
     class FakeAdapter:
@@ -510,8 +509,8 @@ def test_player_loop_dynamically_resolves_ytsearch_tracks(monkeypatch):
 
 
 def test_playlist_store_update_source(tmp_path):
-    from camfrog_autodj.playlist import PlaylistStore, save_playlist
     from camfrog_autodj.models import Track
+    from camfrog_autodj.playlist import PlaylistStore, save_playlist
 
     p = tmp_path / "playlist.json"
     initial = [
@@ -536,8 +535,8 @@ def test_playlist_store_update_source(tmp_path):
 
 
 def test_preload_search_tracks_updates_queue(monkeypatch):
-    from camfrog_autodj.engine import Engine
     from camfrog_autodj.config import Config
+    from camfrog_autodj.engine import Engine
     from camfrog_autodj.models import Track
 
     class FakeAdapter:
@@ -594,8 +593,9 @@ def test_audio_normalization_and_fade_configuration():
 
 def test_dynamic_voteskip_threshold():
     from collections import namedtuple
-    from camfrog_autodj.config import Config
+
     from camfrog_autodj.commands import Router
+    from camfrog_autodj.config import Config
     from camfrog_autodj.models import Track
 
     Msg = namedtuple("Msg", ["user", "text", "local"], defaults=["", "", False])
@@ -636,8 +636,9 @@ def test_dynamic_voteskip_threshold():
 
 def test_user_request_rate_limit():
     from collections import namedtuple
-    from camfrog_autodj.config import Config
+
     from camfrog_autodj.commands import Router
+    from camfrog_autodj.config import Config
     from camfrog_autodj.models import Track
 
     Msg = namedtuple("Msg", ["user", "text", "local"], defaults=["", "", False])

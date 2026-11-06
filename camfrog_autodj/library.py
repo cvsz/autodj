@@ -51,28 +51,22 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
 
 def scan_folder(folder, requester: str = "AutoDJ") -> list[Track]:
     """Recursively scan *folder* for media files, skipping unreadable directories."""
-    files: list[Path] = []
     root = Path(folder)
     try:
         entries = list(root.iterdir())
     except (OSError, PermissionError):
         log.warning("cannot read folder %r: permission denied", folder)
         return []
+    tracks: list[Track] = []
     for entry in entries:
         try:
             if entry.is_dir():
-                files.extend(scan_folder(str(entry), requester))
+                tracks.extend(scan_folder(str(entry), requester))
             elif entry.is_file() and entry.suffix.lower() in MEDIA:
-                files.append(entry)
+                tracks.append(local_track(entry, requester))
         except (OSError, PermissionError):
             continue
-    files.sort()
-    tracks = []
-    for p in files:
-        try:
-            tracks.append(local_track(p, requester))
-        except Exception:  # nosec B110  # one bad file must not abort the whole folder load  # noqa: BLE001
-            log.warning("skipping unreadable media file %s", p)
+    tracks.sort(key=lambda t: t.source)
     return tracks
 
 

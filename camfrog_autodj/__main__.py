@@ -95,7 +95,7 @@ def _run(a, level):
             print(f"exe={c.exe!r} pid={c.pid} class={c.cls!r} title={c.title!r}")
         return
     if a.dump:
-        from pywinauto import Desktop
+        from pywinauto import Desktop  # type: ignore[import-untyped]  # pywinauto ships no py.typed stubs
 
         from .windows import candidates
 

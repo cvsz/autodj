@@ -128,11 +128,12 @@ class MpvPlayer:
                 daemon=True,
                 name="autodj-fade-in",
             ).start()
-        limit = (
-            float(duration) + self.cfg.mpv_timeout
-            if duration is not None and self.cfg.mpv_timeout
-            else (float(self.cfg.mpv_timeout) if self.cfg.mpv_timeout else None)
-        )
+        if duration is not None:
+            # mpv_timeout is a grace period on top of a known track length, never a cap.
+            limit = float(duration) + float(self.cfg.mpv_timeout or 0.0)
+        else:
+            # Unknown duration (live stream): no limit at all.
+            limit = None
         started, rc, hung = time.monotonic(), None, False
         while rc is None:
             try:

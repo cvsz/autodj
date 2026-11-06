@@ -86,7 +86,6 @@ def test_score_web_returns_none_when_no_panes(monkeypatch):
 
 # ------------------------------------------------------------ to_updates ---
 def test_to_updates_web_and_text():
-    rx = re.compile(Config().line_regex)
     web_f = Found("ZeaZDev: x", Ctl("Pane", 0), Ctl("Pane", 0), 5, web=True)
     assert to_updates(web_f) == {
         "window_title_re": re.escape("ZeaZDev: x"),

@@ -5,6 +5,7 @@ The equaliser is decorative: it moves while a track plays and settles when pause
 
 from __future__ import annotations
 
+import json
 import logging
 import math
 import os
@@ -53,6 +54,17 @@ def mmss(sec: float) -> str:
     return f"{s // 60}:{s % 60:02d}"
 
 
+def _toml_str(s: str) -> str:
+    """Quote *s* as a TOML basic (double-quoted) string.
+
+    json.dumps escaping is a subset of TOML's basic-string rules (backslash, quote,
+    control characters), so the result is valid TOML.  This matters for values that
+    contain backslashes (e.g. line_regex) or quotes, which a raw f-string would emit
+    as invalid TOML and break save_settings / Config.load round-trips.
+    """
+    return json.dumps(s)
+
+
 def _do_clip(w, act: str):
     try:
         if act == "all":
@@ -98,16 +110,16 @@ def install_clipboard(root: tk.Misc, lang=lambda: "en"):
         m.tk_popup(e.x_root, e.y_root)
         return "break"
 
-    root.bind_class("Entry", "<Control-KeyPress>", on_key, add="-")
-    root.bind_class("TEntry", "<Control-KeyPress>", on_key, add="-")
-    root.bind_class("Text", "<Control-KeyPress>", on_key, add="-")
-    root.bind_class("TCombobox", "<Control-KeyPress>", on_key, add="-")
-    root.bind_class("TSpinbox", "<Control-KeyPress>", on_key, add="-")
-    root.bind_class("Entry", "<Control-Shift-KeyPress>", on_key, add="-")
-    root.bind_class("TEntry", "<Control-Shift-KeyPress>", on_key, add="-")
-    root.bind_class("Text", "<Control-Shift-KeyPress>", on_key, add="-")
-    root.bind_class("TCombobox", "<Control-Shift-KeyPress>", on_key, add="-")
-    root.bind_class("TSpinbox", "<Control-Shift-KeyPress>", on_key, add="-")
+    root.bind_class("Entry", "<Control-KeyPress>", on_key, add="-")  # type: ignore[call-overload]
+    root.bind_class("TEntry", "<Control-KeyPress>", on_key, add="-")  # type: ignore[call-overload]
+    root.bind_class("Text", "<Control-KeyPress>", on_key, add="-")  # type: ignore[call-overload]
+    root.bind_class("TCombobox", "<Control-KeyPress>", on_key, add="-")  # type: ignore[call-overload]
+    root.bind_class("TSpinbox", "<Control-KeyPress>", on_key, add="-")  # type: ignore[call-overload]
+    root.bind_class("Entry", "<Control-Shift-KeyPress>", on_key, add="-")  # type: ignore[call-overload]
+    root.bind_class("TEntry", "<Control-Shift-KeyPress>", on_key, add="-")  # type: ignore[call-overload]
+    root.bind_class("Text", "<Control-Shift-KeyPress>", on_key, add="-")  # type: ignore[call-overload]
+    root.bind_class("TCombobox", "<Control-Shift-KeyPress>", on_key, add="-")  # type: ignore[call-overload]
+    root.bind_class("TSpinbox", "<Control-Shift-KeyPress>", on_key, add="-")  # type: ignore[call-overload]
     root.bind_class("Entry", "<Button-3>", menu, add="+")
     root.bind_class("TEntry", "<Button-3>", menu, add="+")
     root.bind_class("Text", "<Button-3>", menu, add="+")
@@ -1939,65 +1951,84 @@ class App(tk.Tk):
 
             # Build TOML text manually preserving comments is complex, so we write a clean version
             lines = []
-            lines.append(f'bot_nick = "{cfg.bot_nick}"')
+            lines.append(f'bot_nick = {_toml_str(cfg.bot_nick)}')
             lines.append(f"admins = {cfg.admins!r}")
-            lines.append(f'prefix = "{cfg.prefix}"')
-            lines.append(f'lang = "{cfg.lang}"')
+            lines.append(f'prefix = {_toml_str(cfg.prefix)}')
+            lines.append(f'lang = {_toml_str(cfg.lang)}')
             lines.append("")
-            lines.append(f'chat_reader = "{cfg.chat_reader}"')
-            lines.append(f'chat_sender = "{cfg.chat_sender}"')
-            lines.append(f'window_title_re = "{cfg.window_title_re}"')
-            lines.append(f'process_re = "{cfg.process_re}"')
-            lines.append(f'window_exclude_re = "{cfg.window_exclude_re}"')
+            lines.append(f'chat_reader = {_toml_str(cfg.chat_reader)}')
+            lines.append(f'chat_sender = {_toml_str(cfg.chat_sender)}')
+            lines.append(f'window_title_re = {_toml_str(cfg.window_title_re)}')
+            lines.append(f'process_re = {_toml_str(cfg.process_re)}')
+            lines.append(f'window_exclude_re = {_toml_str(cfg.window_exclude_re)}')
             lines.append(f"window_index = {cfg.window_index}")
             lines.append(f"auto_discover = {str(cfg.auto_discover).lower()}")
-            lines.append(f'view_kind = "{cfg.view_kind}"')
-            lines.append(f'send_mode = "{cfg.send_mode}"')
+            lines.append(f'view_kind = {_toml_str(cfg.view_kind)}')
+            lines.append(f'send_mode = {_toml_str(cfg.send_mode)}')
             lines.append(f"send_verify = {str(cfg.send_verify).lower()}")
             lines.append(f"web_strict_body = {str(cfg.web_strict_body).lower()}")
-            lines.append(f'view_type = "{cfg.view_type}"')
+            lines.append(f'web_view_title = {_toml_str(cfg.web_view_title)}')
+            lines.append(f'web_input_title = {_toml_str(cfg.web_input_title)}')
+            lines.append(f'view_type = {_toml_str(cfg.view_type)}')
             lines.append(f"view_index = {cfg.view_index}")
-            lines.append(f'input_type = "{cfg.input_type}"')
+            lines.append(f'input_type = {_toml_str(cfg.input_type)}')
             lines.append(f"input_index = {cfg.input_index}")
+            lines.append(f'line_regex = {_toml_str(cfg.line_regex)}')
             lines.append("")
-            lines.append(f'mpv_path = "{cfg.mpv_path}"')
-            lines.append(f'ytdlp_path = "{cfg.ytdlp_path}"')
-            lines.append(f'audio_device = "{cfg.audio_device}"')
+            lines.append(f'mpv_path = {_toml_str(cfg.mpv_path)}')
+            lines.append(f'ytdlp_path = {_toml_str(cfg.ytdlp_path)}')
+            lines.append(f'audio_device = {_toml_str(cfg.audio_device)}')
+            lines.append(f'youtube_cookies_file = {_toml_str(cfg.youtube_cookies_file)}')
+            lines.append(f'youtube_cookies_browser = {_toml_str(cfg.youtube_cookies_browser)}')
+            lines.append(f'youtube_ca_bundle = {_toml_str(cfg.youtube_ca_bundle)}')
             lines.append(f"volume = {cfg.volume}")
+            lines.append(f"audio_fade = {str(cfg.audio_fade).lower()}")
+            lines.append(f"audio_fade_in_sec = {cfg.audio_fade_in_sec}")
+            lines.append(f"audio_fade_out_sec = {cfg.audio_fade_out_sec}")
+            lines.append(f"audio_normalize = {str(cfg.audio_normalize).lower()}")
             lines.append(f"music_dirs = {cfg.music_dirs!r}")
             lines.append(f"autoplay_sources = {cfg.autoplay_sources!r}")
             lines.append(f"shuffle = {str(cfg.shuffle).lower()}")
             lines.append(f"allowed_hosts = {cfg.allowed_hosts!r}")
             lines.append(f"max_requests_per_user = {cfg.max_requests_per_user}")
+            lines.append(f"user_request_limit = {cfg.user_request_limit}")
+            lines.append(f"rate_limit_window = {cfg.rate_limit_window}")
             lines.append(f"max_queue = {cfg.max_queue}")
             lines.append(f"max_duration = {cfg.max_duration}")
             lines.append(f"voteskip_threshold = {cfg.voteskip_threshold}")
+            lines.append(f"voteskip_dynamic = {str(cfg.voteskip_dynamic).lower()}")
+            lines.append(f"voteskip_dynamic_pct = {cfg.voteskip_dynamic_pct}")
             lines.append(f"cooldown = {cfg.cooldown}")
             lines.append(f"send_interval = {cfg.send_interval}")
             lines.append(f"max_msg_len = {cfg.max_msg_len}")
             lines.append(f"announce_next = {str(cfg.announce_next).lower()}")
+            lines.append(f'msg_now = {_toml_str(cfg.msg_now)}')
+            lines.append(f'msg_next = {_toml_str(cfg.msg_next)}')
             lines.append("")
-            lines.append(f'tts_voice = "{cfg.tts_voice}"')
+            lines.append(f'tts_voice = {_toml_str(cfg.tts_voice)}')
             lines.append(f"tts_rate = {cfg.tts_rate}")
             lines.append(f"tts_duck = {cfg.tts_duck}")
             lines.append("")
             lines.append(f"auto_launch = {str(cfg.auto_launch).lower()}")
-            lines.append(f'camfrog_exe = "{cfg.camfrog_exe}"')
-            lines.append(f'client_title_re = "{cfg.client_title_re}"')
-            lines.append(f'room = "{cfg.room}"')
-            lines.append(f'join_uri_template = "{cfg.join_uri_template}"')
+            lines.append(f'camfrog_exe = {_toml_str(cfg.camfrog_exe)}')
+            lines.append(f'client_title_re = {_toml_str(cfg.client_title_re)}')
+            lines.append(f'room = {_toml_str(cfg.room)}')
+            lines.append(f'join_uri_template = {_toml_str(cfg.join_uri_template)}')
             lines.append(f"launch_timeout = {cfg.launch_timeout}")
             lines.append("")
             lines.append(f"blocked_users = {cfg.blocked_users!r}")
             lines.append(f"poll_interval = {cfg.poll_interval}")
-            lines.append(f'log_file = "{cfg.log_file}"')
-            lines.append(f'playlist_file = "{cfg.playlist_file}"')
+            lines.append(f'log_file = {_toml_str(cfg.log_file)}')
+            lines.append(f'log_path = {_toml_str(cfg.log_path)}')
+            lines.append(f'log_encoding = {_toml_str(cfg.log_encoding)}')
+            lines.append(f'playlist_file = {_toml_str(cfg.playlist_file)}')
+            lines.append(f'playlist_dir = {_toml_str(cfg.playlist_dir)}')
             lines.append(f"search_limit = {cfg.search_limit}")
             lines.append(f"mpv_timeout = {cfg.mpv_timeout}")
             lines.append("")
             lines.append(f"auto_reply_enabled = {str(cfg.auto_reply_enabled).lower()}")
             lines.append(f"auto_reply_interval = {cfg.auto_reply_interval}")
-            lines.append(f'auto_reply_file = "{cfg.auto_reply_file}"')
+            lines.append(f'auto_reply_file = {_toml_str(cfg.auto_reply_file)}')
 
             new_text = "\n".join(lines) + "\n"
 
