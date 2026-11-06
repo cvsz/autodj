@@ -1994,6 +1994,10 @@ class App(tk.Tk):
             lines.append(f'playlist_file = "{cfg.playlist_file}"')
             lines.append(f"search_limit = {cfg.search_limit}")
             lines.append(f"mpv_timeout = {cfg.mpv_timeout}")
+            lines.append("")
+            lines.append(f"auto_reply_enabled = {str(cfg.auto_reply_enabled).lower()}")
+            lines.append(f"auto_reply_interval = {cfg.auto_reply_interval}")
+            lines.append(f'auto_reply_file = "{cfg.auto_reply_file}"')
 
             new_text = "\n".join(lines) + "\n"
 
@@ -2028,6 +2032,8 @@ class App(tk.Tk):
             self.e.lang = new_cfg.lang
             self.e.volume = new_cfg.volume
             self.e.queue.shuffle = new_cfg.shuffle
+            self.e.admins = {a.lower() for a in new_cfg.admins}
+            self.e.blocked = {b.lower() for b in new_cfg.blocked_users}
 
             # Show save confirmation via say
             self.e.say(self.e.t("g_settings_saved"))
