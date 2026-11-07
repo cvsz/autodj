@@ -85,6 +85,7 @@ class Engine:
         )  # n = consecutive failures so far
         self._sent: deque[tuple[float, str]] = deque(maxlen=64)
         self._sent_lock = threading.Lock()
+        self._chat_lock = threading.Lock()  # guards chat_log + chat_seq (GUI polls them)
         self._speak_lock = (
             threading.Lock()
         )  # one TTS clip at a time: overlapping jobs would un-duck the music early
@@ -151,12 +152,18 @@ class Engine:
 
     # ---- chat out -------------------------------------------------------
     def log_chat(self, who: str, text: str):
-        self.chat_log.append((who, text))
-        self.chat_seq += 1
+        with self._chat_lock:
+            self.chat_log.append((who, text))
+            self.chat_seq += 1
         # Also to the logger (so --log-file / console keeps a trail of every line the bot sent and every
         # line it acted on, even with the GUI closed -- the in-memory chat_log above is lost on restart
         # and was never enough on its own to reconstruct what happened after the fact).
         log.info("chat %s %s: %s", ">>" if who == self.cfg.bot_nick else "<<", who, text)
+
+    def chat_snapshot(self) -> tuple[int, list[tuple[str, str]]]:
+        """Thread-safe snapshot of (chat_seq, chat_log) for the GUI poller."""
+        with self._chat_lock:
+            return self.chat_seq, list(self.chat_log)
 
     def say(self, text: str):
         text = clean_text(text)
@@ -470,7 +477,7 @@ class Engine:
         if p.is_dir():
             if not admin:
                 raise UserError(self.t("folders_admin"))
-            return scan_folder(p, user)
+            return scan_folder(p, limit=500, requester=user)
         if p.is_file() and p.suffix.lower() in MEDIA:
             return [local_track(p, user)]
         raise UserError(self.t("file_not_found"))
@@ -640,7 +647,7 @@ class Engine:
     def _load_autoplay_sources(self):
         for s in self.cfg.autoplay_sources:
             try:
-                self.queue.add_pool(self.load_source(s))
+                self.queue.add_pool(self.load_source(s, limit=500))
             except Exception:
                 log.exception("autoplay source failed: %s", s)
 

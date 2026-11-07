@@ -304,5 +304,7 @@ class MpvPlayer:
     def play_file(self, path: str):
         kw: dict = {}
         if _is_windows():
-            kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
+            kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
+        # Timeout so a corrupted or unplayable WAV cannot block the caller forever.
+        kw["timeout"] = 30
         subprocess.run(self._base() + ["--volume=100", "--", path], check=False, **kw)

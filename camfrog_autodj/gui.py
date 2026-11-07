@@ -9,6 +9,7 @@ import json
 import logging
 import math
 import os
+import shutil
 import time
 import tkinter as tk
 from tkinter import filedialog, ttk
@@ -1661,8 +1662,38 @@ class App(tk.Tk):
         except Exception:
             log.exception("file dialog failed")
             return
+        if not files:
+            return
+        self._set_adding_state(True)
+        pending = {"n": len(files)}
+
+        def _done():
+            pending["n"] -= 1
+            if pending["n"] <= 0:
+                self.after(0, self._set_adding_state, False)
+
+        def on_success(tracks):
+            _done()
+            if len(tracks) == 1:
+                t = tracks[0]
+                self._set_hint(
+                    self.e.t(
+                        "queued_one",
+                        pos=1,
+                        title=t.title,
+                        dur=t.dur,
+                        user="you",
+                    )
+                )
+            else:
+                self._set_hint(self.e.t("queued_many", n=len(tracks), user="you"))
+
+        def on_error(msg):
+            _done()
+            self._set_hint(msg)
+
         for f in files:
-            self.e.request(f)
+            self.e.request(f, on_success=on_success, on_error=on_error)
 
     def _set_hint(self, text: str):
         """Update the hint label on the main thread (callbacks may run on a
@@ -1985,14 +2016,24 @@ class App(tk.Tk):
             # Write to config.toml; if not writable (e.g. installed to Program Files),
             # relocate to %APPDATA%\Camfrog AutoDJ\config.toml and write there instead.
             try:
-                p.write_text(new_text, "utf-8")
+                if p.exists():
+                    shutil.copyfile(p, p.with_name(p.name + ".bak"))
+                tmp = p.with_name(p.name + ".tmp")
+                tmp.write_text(new_text, "utf-8")
+                os.replace(tmp, p)
             except (OSError, PermissionError):
                 app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
                 app_cfg_dir = Path(app_data) / "Camfrog AutoDJ"
                 app_cfg_dir.mkdir(parents=True, exist_ok=True)
                 app_cfg_path = app_cfg_dir / "config.toml"
+                if app_cfg_path.exists():
+                    shutil.copyfile(
+                        app_cfg_path, app_cfg_path.with_name(app_cfg_path.name + ".bak")
+                    )
+                tmp = app_cfg_path.with_name(app_cfg_path.name + ".tmp")
+                tmp.write_text(new_text, "utf-8")
+                os.replace(tmp, app_cfg_path)
                 p = app_cfg_path
-                p.write_text(new_text, "utf-8")
                 # Remember the writable location so subsequent saves don't keep trying
                 # the original (read-only) path first.
                 self.e.cfg_path = str(p)
@@ -2094,10 +2135,11 @@ class App(tk.Tk):
             self._h_cache = hist
             self.hist.delete(0, "end")
             self.hist.insert("end", *hist)
-        new = min(self.e.chat_seq - self._seen, len(self.e.chat_log))
+        seq, log_entries = self.e.chat_snapshot()
+        new = min(seq - self._seen, len(log_entries))
         if new > 0:
             self.chat.configure(state="normal")
-            for who, text in list(self.e.chat_log)[-new:]:
+            for who, text in log_entries[-new:]:
                 bot = who == self.e.cfg.bot_nick
                 self.chat.insert("end", who + ": ", ("who", "bot") if bot else ("who",))
                 self.chat.insert("end", text + "\n")
@@ -2106,4 +2148,4 @@ class App(tk.Tk):
                 self.chat.delete("1.0", f"{extra + 1}.0")
             self.chat.see("end")
             self.chat.configure(state="disabled")
-        self._seen = self.e.chat_seq
+        self._seen = seq
