@@ -25,7 +25,7 @@ IS_WINDOWS  := $(filter Windows_NT,$(OS))
 .PHONY: help install install-dev install-build install-auto venv \
         run run-gui run-console run-headless check discover windows say \
         test test-v test-one coverage mutation-smoke \
-        lint lint-src fmt typecheck validate-playlists fix-playlists full-validation security-check config-check \
+        lint lint-src fmt typecheck validate-playlists fix-playlists validate-template full-validation security-check config-check \
         build build-clean sign build-all build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
         clean clean-all distclean \
         config version bump-patch changelog-check pre-commit ci docs
@@ -165,6 +165,9 @@ lint-src:  ## Lint source + tools with ruff (excludes test files with pre-existi
 
 config-check:  ## Validate config.toml: parses TOML, checks required keys exist
 	@$(PY) -c "import tomllib,sys; p='$(CONFIG)'; data=tomllib.load(open(p,'rb')); required=['bot_nick','prefix','chat_reader','chat_sender','mpv_path']; missing=[k for k in required if k not in data]; sys.exit(1) if missing else print(f'OK: {p} is valid TOML with {len(data)} keys')"
+
+validate-template:  ## Validate template structure and local Markdown links (scripts/validate_repo.py)
+	$(PY) scripts/validate_repo.py
 
 package:  ## Zip the source tree for distribution (excludes caches, local config.toml)
 	@mkdir -p dist

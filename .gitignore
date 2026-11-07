@@ -72,6 +72,8 @@ dist_staging/
 *.exe
 *.dll
 *.zip
+*.mp4
+*.nlf
 
 # MPV runtime bundle (shipped with installer, not source)
 mpv/
