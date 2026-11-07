@@ -83,30 +83,16 @@ jobs:
 
       - name: Copy mpv to project
         run: |
-          # mpv installs to Program Files\mpv\ or C:\Tools\mpv\ or similar
-          $mpvPaths = @(
-            "C:\\Program Files\\mpv\\mpv.exe",
-            "C:\\Program Files (x86)\\mpv\\mpv.exe",
-            "C:\\Tools\\mpv\\mpv.exe",
-            "$env:ChocolateyInstall\\lib\\mpv\\tools\\mpv.exe",
-            "$env:LOCALAPPDATA\\Microsoft\\WindowsApps\\mpv.exe"
-          )
-          $found = $false
-          foreach ($mpvPath in $mpvPaths) {
-            if (Test-Path $mpvPath) {
-              $mpvDir = Split-Path $mpvPath
-              if (-not (Test-Path "mpv")) { New-Item -ItemType Directory -Path "mpv" | Out-Null }
-              Copy-Item "$mpvDir\\*" "mpv\\" -Recurse -Force
-              "mpv copied from $mpvDir to mpv/"
-              $found = $true
-              break
-            }
-          }
-          if (-not $found) {
-            Write-Error "mpv.exe not found in any known location"
-            Write-Host "Searched paths: $mpvPaths"
+          # Find mpv.exe anywhere on the system after choco install
+          $mpvExe = (Get-Command mpv.exe -ErrorAction SilentlyContinue).Source
+          if (-not $mpvExe) {
+            Write-Error "mpv.exe not found in PATH after Chocolatey install"
             exit 1
           }
+          $mpvDir = Split-Path $mpvExe
+          if (-not (Test-Path "mpv")) { New-Item -ItemType Directory -Path "mpv" | Out-Null }
+          Copy-Item "$mpvDir\\*" "mpv\\" -Recurse -Force
+          "mpv copied from $mpvDir to mpv/"
 
       - name: Build AutoDJ.exe
         run: |
