@@ -152,9 +152,7 @@ class PlaylistStore:
                     return True
                 return False
             except Exception:
-                log.exception(
-                    "cannot update resolved track in playlist file %r", self.path
-                )
+                log.exception("cannot update resolved track in playlist file %r", self.path)
                 return False
 
     def add(self, tracks) -> int:

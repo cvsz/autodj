@@ -71,9 +71,9 @@ def pick_child(
 ) -> int | None:
     """Handle of the smallest window whose rect contains pt (the deepest control under the point)."""
     best, best_area = None, None
-    for h, (l, t, r, b) in rects:
-        if l <= pt[0] < r and t <= pt[1] < b:
-            a = (r - l) * (b - t)
+    for h, (left, top, right, bottom) in rects:
+        if left <= pt[0] < right and top <= pt[1] < bottom:
+            a = (right - left) * (bottom - top)
             if best_area is None or a < best_area:
                 best, best_area = h, a
     return best

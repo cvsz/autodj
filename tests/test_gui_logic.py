@@ -11,6 +11,7 @@ from test_core import make, out
 
 import camfrog_autodj  # cache invalidation for _gui() (clears the cached `gui` attribute)
 from camfrog_autodj.config import Config
+from camfrog_autodj.gui import _toml_str
 from camfrog_autodj.models import Track
 
 
@@ -143,9 +144,7 @@ def test_buttons_do_what_they_say(monkeypatch):
         app.ent_say.insert(0, "hi all")
         app.say()
         assert any("hi all" in o for o in out(e))
-        app.vol._release(
-            types.SimpleNamespace(x=450)
-        )  # drag the volume knob to the middle
+        app.vol._release(types.SimpleNamespace(x=450))  # drag the volume knob to the middle
         assert 40 <= e.volume <= 60
     finally:
         sys.modules.pop("camfrog_autodj.gui", None)
@@ -300,7 +299,9 @@ def test_settings_save_preserves_all_fields(monkeypatch, tmp_path):
         # Fields the settings dialog does NOT expose, plus web/playlist fields
         cfg.web_view_title = "wb-log-room-data.inside/"
         cfg.web_input_title = "wb-edit-data.inside/"
-        cfg.line_regex = r"^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$"
+        cfg.line_regex = (
+            r"^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$"
+        )
         cfg.playlist_dir = "playlist"
         # Fields the dialog DOES expose, set to non-defaults too
         cfg.volume = 85
@@ -379,7 +380,7 @@ def test_settings_save_preserves_all_fields(monkeypatch, tmp_path):
             f"mpv_timeout = {cfg.mpv_timeout}\n"
             f"auto_reply_enabled = {str(cfg.auto_reply_enabled).lower()}\n"
             f"auto_reply_interval = {cfg.auto_reply_interval}\n"
-            f'auto_reply_file = "{cfg.auto_reply_file}"\n',
+            f"auto_reply_file = {_toml_str(cfg.auto_reply_file)}\n",
             "utf-8",
         )
         app.open_settings()
@@ -443,11 +444,7 @@ def test_load_folder_gives_visible_feedback(monkeypatch, tmp_path):
         while time.time() < deadline:
             pool = [t.title for t in e.queue.pool]
             hint = app.v_hint.cget("text")
-            if (
-                "song one" in pool
-                and "song two" in pool
-                and "Loaded 2 tracks" in hint
-            ):
+            if "song one" in pool and "song two" in pool and "Loaded 2 tracks" in hint:
                 ok = True
                 break
             time.sleep(0.05)
@@ -480,4 +477,3 @@ def test_load_folder_empty_shows_loaded_zero(monkeypatch, tmp_path):
         assert "Loaded 0 tracks" in seen, f"hint={seen!r}"
     finally:
         sys.modules.pop("camfrog_autodj.gui", None)
-

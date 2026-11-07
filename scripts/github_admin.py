@@ -135,29 +135,27 @@ def apply(repo: str, branch: str) -> None:
 
 def verify(repo: str, branch: str) -> list[str]:
     errors: list[str] = []
-
     protection = gh_api("GET", f"repos/{repo}/branches/{branch}/protection")
+    _check_branch_protection(protection, errors)
+    actions = gh_api("GET", f"repos/{repo}/actions/permissions/workflow")
+    _check_actions_permissions(actions, errors)
+    repo_state = gh_api("GET", f"repos/{repo}")
+    _check_repo_security(repo_state, errors)
+    _check_private_vulnerability_reporting(repo, errors)
+    _check_dependabot_vulnerability_alerts(repo, errors)
+    _check_dependabot_automated_security_fixes(repo, errors)
+    return errors
 
-    contexts = set(
-        (protection.get("required_status_checks") or {}).get("contexts") or []
-    )
+
+def _check_branch_protection(protection: dict, errors: list[str]) -> None:
+    contexts = set((protection.get("required_status_checks") or {}).get("contexts") or [])
     missing_checks = sorted(set(REQUIRED_CHECKS) - contexts)
     if missing_checks:
         errors.append(f"missing required status checks: {', '.join(missing_checks)}")
-
     if not (protection.get("required_status_checks") or {}).get("strict"):
         errors.append("required status checks are not strict/up-to-date")
-
     reviews = protection.get("required_pull_request_reviews") or {}
-    if int(reviews.get("required_approving_review_count") or 0) < 1:
-        errors.append("at least one approving review is not required")
-    if not reviews.get("dismiss_stale_reviews"):
-        errors.append("stale approvals are not dismissed")
-    if not reviews.get("require_code_owner_reviews"):
-        errors.append("CODEOWNERS review is not required")
-    if not reviews.get("require_last_push_approval"):
-        errors.append("approval after the latest push is not required")
-
+    _check_review_settings(reviews, errors)
     if not (protection.get("enforce_admins") or {}).get("enabled"):
         errors.append("branch protection is not enforced for administrators")
     if not (protection.get("required_conversation_resolution") or {}).get("enabled"):
@@ -167,53 +165,62 @@ def verify(repo: str, branch: str) -> list[str]:
     if (protection.get("allow_deletions") or {}).get("enabled"):
         errors.append("branch deletion is allowed")
 
-    actions = gh_api("GET", f"repos/{repo}/actions/permissions/workflow")
+
+def _check_review_settings(reviews: dict, errors: list[str]) -> None:
+    if int(reviews.get("required_approving_review_count") or 0) < 1:
+        errors.append("at least one approving review is not required")
+    if not reviews.get("dismiss_stale_reviews"):
+        errors.append("stale approvals are not dismissed")
+    if not reviews.get("require_code_owner_reviews"):
+        errors.append("CODEOWNERS review is not required")
+    if not reviews.get("require_last_push_approval"):
+        errors.append("approval after the latest push is not required")
+
+
+def _check_actions_permissions(actions: dict, errors: list[str]) -> None:
     if actions.get("default_workflow_permissions") != "read":
         errors.append("default Actions workflow permission is not read-only")
     if actions.get("can_approve_pull_request_reviews") is not False:
         errors.append("Actions can approve pull requests")
 
-    repo_state = gh_api("GET", f"repos/{repo}")
+
+def _check_repo_security(repo_state: dict, errors: list[str]) -> None:
     security = repo_state.get("security_and_analysis") or {}
     if (security.get("secret_scanning") or {}).get("status") != "enabled":
         errors.append("secret scanning is not enabled")
-    if (security.get("secret_scanning_push_protection") or {}).get(
-        "status"
-    ) != "enabled":
+    if (security.get("secret_scanning_push_protection") or {}).get("status") != "enabled":
         errors.append("secret scanning push protection is not enabled")
 
+
+def _check_private_vulnerability_reporting(repo: str, errors: list[str]) -> None:
     try:
-        private_reporting = gh_api(
-            "GET", f"repos/{repo}/private-vulnerability-reporting"
-        )
+        private_reporting = gh_api("GET", f"repos/{repo}/private-vulnerability-reporting")
         if private_reporting.get("enabled") is not True:
             errors.append("private vulnerability reporting is not enabled")
     except RuntimeError as exc:
         errors.append(f"private vulnerability reporting not verified: {exc}")
 
+
+def _check_dependabot_vulnerability_alerts(repo: str, errors: list[str]) -> None:
     try:
         gh_api("GET", f"repos/{repo}/vulnerability-alerts")
     except RuntimeError as exc:
         errors.append(f"Dependabot vulnerability alerts not verified: {exc}")
 
+
+def _check_dependabot_automated_security_fixes(repo: str, errors: list[str]) -> None:
     try:
         gh_api("GET", f"repos/{repo}/automated-security-fixes")
     except RuntimeError as exc:
         errors.append(f"Dependabot automated security fixes not verified: {exc}")
-
-    return errors
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", default=DEFAULT_REPO)
     parser.add_argument("--branch", default=DEFAULT_BRANCH)
-    parser.add_argument(
-        "--apply", action="store_true", help="apply administration changes"
-    )
-    parser.add_argument(
-        "--verify", action="store_true", help="verify effective settings"
-    )
+    parser.add_argument("--apply", action="store_true", help="apply administration changes")
+    parser.add_argument("--verify", action="store_true", help="verify effective settings")
     args = parser.parse_args()
 
     require_gh()

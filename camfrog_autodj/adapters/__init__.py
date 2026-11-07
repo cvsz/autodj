@@ -37,9 +37,7 @@ def _make(kind: str, cfg) -> ChatAdapter:
 
 def build_adapter(cfg) -> ChatAdapter:
     reader = _make(cfg.chat_reader, cfg)
-    sender = (
-        reader if cfg.chat_sender == cfg.chat_reader else _make(cfg.chat_sender, cfg)
-    )
+    sender = reader if cfg.chat_sender == cfg.chat_reader else _make(cfg.chat_sender, cfg)
     return Composite(reader, sender)
 
 

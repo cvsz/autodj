@@ -13,7 +13,9 @@ from dataclasses import dataclass
 log = logging.getLogger("autodj")
 
 
-DEFAULT_EXE_RE = "(?i)camfrog"  # only windows owned by a process whose exe name matches (not browser tabs)
+DEFAULT_EXE_RE = (
+    "(?i)camfrog"  # only windows owned by a process whose exe name matches (not browser tabs)
+)
 
 
 @dataclass

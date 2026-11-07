@@ -20,9 +20,7 @@ from pathlib import Path
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Camfrog AutoDJ Launcher - เรียกใช้ AutoDJ ได้ง่ายขึ้น"
-    )
+    parser = argparse.ArgumentParser(description="Camfrog AutoDJ Launcher - เรียกใช้ AutoDJ ได้ง่ายขึ้น")
     parser.add_argument(
         "--gui",
         action="store_true",
@@ -79,26 +77,7 @@ def main() -> None:
             print("    โปรดสร้างไฟล์ config.toml ก่อนรัน AutoDJ")
         sys.exit(1)
 
-    # สร้างคำสั่งสำหรับเรียก AutoDJ
-    cmd = [sys.executable, "-m", "camfrog_autodj", "-c", str(config_path)]
-
-    if args.lang:
-        cmd.extend(["--lang", args.lang])
-
-    if args.check:
-        cmd.append("--check")
-    elif args.discover:
-        cmd.append("--discover")
-    elif args.say:
-        cmd.extend(["--say", args.say])
-    elif args.console:
-        cmd.append("--console")
-    elif args.gui or not any([args.check, args.discover, args.say, args.console]):
-        cmd.append("--gui")
-
-    if args.no_discover and not (args.check or args.discover or args.say):
-        cmd.append("--no-discover")
-
+    cmd = _build_launch_command(args, config_path)
     print(f"[AutoDJ] กำลังรัน: {' '.join(cmd)}")
     print("-" * 60)
 
@@ -111,6 +90,26 @@ def main() -> None:
         # instead of dumping a traceback to the end user.
         print(f"\n[AUTO DJ] เกิดข้อผิดพลาด: {exc}")
         sys.exit(1)
+
+
+def _build_launch_command(args, config_path: Path) -> list[str]:
+    """Build the `python -m camfrog_autodj` command line from parsed args."""
+    cmd = [sys.executable, "-m", "camfrog_autodj", "-c", str(config_path)]
+    if args.lang:
+        cmd.extend(["--lang", args.lang])
+    if args.check:
+        cmd.append("--check")
+    elif args.discover:
+        cmd.append("--discover")
+    elif args.say:
+        cmd.extend(["--say", args.say])
+    elif args.console:
+        cmd.append("--console")
+    elif args.gui or not any([args.check, args.discover, args.say, args.console]):
+        cmd.append("--gui")
+    if args.no_discover and not (args.check or args.discover or args.say):
+        cmd.append("--no-discover")
+    return cmd
 
 
 if __name__ == "__main__":

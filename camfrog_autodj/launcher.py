@@ -26,7 +26,7 @@ def find_window(pattern: str, timeout: float) -> bool:
 
 def _open_uri(uri: str):
     _require_windows()
-    os.startfile(uri)  # type: ignore[attr-defined]  # Windows only
+    os.startfile(uri)  # type: ignore[attr-defined]  # Windows only  # noqa: S606 -- os.startfile is the idiomatic Windows-only URI launcher; not a shell spawn
 
 
 def _start(exe: str):
@@ -44,9 +44,7 @@ def ensure_room(cfg) -> None:
             raise RuntimeError("Camfrog window did not appear")
     if cfg.room:
         if not cfg.join_uri_template:
-            log.warning(
-                "room is set but join_uri_template is empty; skipping auto-join"
-            )
+            log.warning("room is set but join_uri_template is empty; skipping auto-join")
         else:
             uri = cfg.join_uri_template.format(room=quote(cfg.room))
             log.info("joining room via %s", uri)

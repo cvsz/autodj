@@ -57,9 +57,7 @@ class UiaAdapter(ChatAdapter):
         self._view = self._input = None
         self._web = False
         self._bg_fails = 0  # consecutive unconfirmed background sends (auto mode only)
-        self._bg_fails_lock = (
-            threading.Lock()
-        )  # protects _bg_fails across reader/sender threads
+        self._bg_fails_lock = threading.Lock()  # protects _bg_fails across reader/sender threads
         self._attach()
 
     def _attach(self):
@@ -82,9 +80,7 @@ class UiaAdapter(ChatAdapter):
         if self.cfg.view_kind in ("auto", "web"):
             from ..webchat import find_web_panes
 
-            view, inp = find_web_panes(
-                self.win, self.cfg.web_view_title, self.cfg.web_input_title
-            )
+            view, inp = find_web_panes(self.win, self.cfg.web_view_title, self.cfg.web_input_title)
             if view is not None:
                 self._web, self._view, self._input = True, view, inp
                 log.info(
@@ -93,9 +89,7 @@ class UiaAdapter(ChatAdapter):
                 )
                 return
             if self.cfg.view_kind == "web":
-                raise RuntimeError(
-                    f"no pane titled like {self.cfg.web_view_title!r} in the window"
-                )
+                raise RuntimeError(f"no pane titled like {self.cfg.web_view_title!r} in the window")
         self._web = False
         self._view = self._find(self.cfg.view_type, self.cfg.view_index)
         self._input = None
@@ -119,9 +113,7 @@ class UiaAdapter(ChatAdapter):
             except (OSError, RuntimeError) as e:
                 log.debug("chat read failed: %s", e)
                 with self.com_lock:  # protect _view/win against reader/sender race
-                    self._view = self.win = (
-                        None  # drop everything: the next poll re-attaches fresh
-                    )
+                    self._view = self.win = None  # drop everything: the next poll re-attaches fresh
                 time.sleep(1)
                 continue
             if prev is not None:
@@ -157,8 +149,8 @@ class UiaAdapter(ChatAdapter):
                 new = diff_lines(before, lines) if before else lines
             except (OSError, RuntimeError):
                 return True
-            for l in new:
-                norm_l = self._norm(l)
+            for line in new:
+                norm_l = self._norm(line)
                 # Check multiple match patterns for web chat format variations
                 if (
                     norm_l.endswith((": " + want, want))
@@ -265,97 +257,110 @@ class UiaAdapter(ChatAdapter):
         try:
             self._ensure_controls()
             if mode in ("auto", "background"):
-                # after 2 unconfirmed background sends in a row, go straight to the foreground for a
-                # while: announcements must not stack seconds of verify+fallback latency every track
-                allow_bg = mode == "background"
-                if mode == "auto":
-                    with self._bg_fails_lock:
-                        allow_bg = self._bg_fails < 2
-                if allow_bg:
-                    before = []
-                    if mode == "auto" and self.cfg.send_verify:
-                        try:
-                            before = self._lines()
-                        except (OSError, RuntimeError):
-                            before = None
-
-                    # Try up to 2 times with different strategies
-                    max_bg_attempts = 2
-                    ok = False
-                    for attempt in range(max_bg_attempts):
-                        try:
-                            ok = self._send_bg(text)
-                        except (OSError, RuntimeError) as e:
-                            log.warning(
-                                "background send attempt %d failed: %s", attempt + 1, e
-                            )
-                            ok = False
-
-                        if ok:
-                            if mode == "auto" and self.cfg.send_verify:
-                                # Verify the message appeared
-                                if before is None or self._appeared(text, before):
-                                    log.debug(
-                                        "sent in background (attempt %d): %s",
-                                        attempt + 1,
-                                        text,
-                                    )
-                                    with self._bg_fails_lock:
-                                        self._bg_fails = 0
-                                    return
-                                else:
-                                    log.warning(
-                                        "background send not confirmed in the room (attempt %d)",
-                                        attempt + 1,
-                                    )
-                            else:
-                                log.debug(
-                                    "sent in background (attempt %d): %s",
-                                    attempt + 1,
-                                    text,
-                                )
-                                with self._bg_fails_lock:
-                                    self._bg_fails = 0
-                                return
-                        # Small delay before retry
-                        time.sleep(0.5)
-
-                    with self._bg_fails_lock:
-                        self._bg_fails += 1
-                        bg_fails = self._bg_fails
-                    log.info(
-                        "background send not confirmed in the room (%d in a row): falling back to foreground",
-                        bg_fails,
-                    )
-                    if mode == "background":
-                        if not ok:
-                            raise RuntimeError(
-                                "background send failed (try send_mode = 'auto' or 'foreground')"
-                            )
-                        return
-                    if ok and (
-                        not self.cfg.send_verify
-                        or before is None
-                        or self._appeared(text, before)
-                    ):
-                        log.debug("sent in background: %s", text)
-                        with self._bg_fails_lock:
-                            self._bg_fails = 0
-                        return
-                    with self._bg_fails_lock:
-                        self._bg_fails += 1
-                        bg_fails = self._bg_fails
-                    log.info(
-                        "background send not confirmed in the room (%d in a row): falling back to foreground",
-                        bg_fails,
-                    )
-                self._send_fg(text)
-                if self.cfg.send_verify and not self._appeared(text, []):
-                    log.warning(
-                        "sent via foreground paste but NOT seen in the room within 3s "
-                        "(the message box may not have received the paste/enter)"
-                    )
-                log.debug("sent to Camfrog: %s", text)
+                decision = self._attempt_background_send(text, mode)
+                if decision == "sent":
+                    return
+                if mode == "background":
+                    # background never falls back to foreground
+                    if decision == "failed":
+                        raise RuntimeError(
+                            "background send failed (try send_mode = 'auto' or 'foreground')"
+                        )
+                    return
+                # mode == "auto" and background did not confirm: fall through to foreground
+            self._send_fg(text)
+            if self.cfg.send_verify and not self._appeared(text, []):
+                log.warning(
+                    "sent via foreground paste but NOT seen in the room within 3s "
+                    "(the message box may not have received the paste/enter)"
+                )
+            log.debug("sent to Camfrog: %s", text)
         except Exception:
             self._view = self._input = None  # re-resolve the controls next time
             raise
+
+    def _attempt_background_send(self, text, mode):
+        """Try sending in the background up to twice.
+
+        Returns "sent" (confirmed or background-only), "fallback" (auto mode should try foreground),
+        or "failed" (background mode could not send at all).
+        """
+        allow_bg = self._bg_allowed(mode)
+        if not allow_bg:
+            return "fallback"
+        before = self._bg_before(text, mode)
+        ok = False
+        # Try up to 2 times with different strategies
+        for attempt in range(2):
+            if self._bg_one_attempt(text, before, mode, attempt + 1):
+                ok = True
+                return "sent"
+            time.sleep(0.5)
+        return self._bg_after_loop(text, ok, before, mode)
+
+    def _bg_allowed(self, mode: str) -> bool:
+        # after 2 unconfirmed background sends in a row, go straight to the foreground for a
+        # while: announcements must not stack seconds of verify+fallback latency every track
+        if mode == "background":
+            return True
+        with self._bg_fails_lock:
+            return self._bg_fails < 2
+
+    def _bg_before(self, text, mode):
+        before = None
+        if mode == "auto" and self.cfg.send_verify:
+            try:
+                before = self._lines()
+            except (OSError, RuntimeError):
+                before = None
+        return before
+
+    def _bg_one_attempt(self, text, before, mode, attempt: int) -> bool:
+        """One background send attempt (+ verify when auto). Returns True when done."""
+        try:
+            ok = self._send_bg(text)
+        except (OSError, RuntimeError) as e:
+            log.warning("background send attempt %d failed: %s", attempt, e)
+            return False
+        if not ok:
+            return False
+        if mode == "auto" and self.cfg.send_verify:
+            # Verify the message appeared
+            if before is None or self._appeared(text, before):
+                log.debug("sent in background (attempt %d): %s", attempt, text)
+                with self._bg_fails_lock:
+                    self._bg_fails = 0
+                return True
+            log.warning("background send not confirmed in the room (attempt %d)", attempt)
+            return False
+        log.debug("sent in background (attempt %d): %s", attempt, text)
+        with self._bg_fails_lock:
+            self._bg_fails = 0
+        return True
+
+    def _bg_after_loop(self, text: str, ok: bool, before, mode: str) -> str:
+        """Decide what to do after the background retry loop exhausted its attempts."""
+        with self._bg_fails_lock:
+            self._bg_fails += 1
+            bg_fails = self._bg_fails
+        log.info(
+            "background send not confirmed in the room (%d in a row): falling back to foreground",
+            bg_fails,
+        )
+        if mode == "background":
+            if not ok:
+                return "failed"
+            return "sent"
+        if ok and (not self.cfg.send_verify or before is None or self._appeared(text, before)):
+            log.debug("sent in background: %s", text)
+            with self._bg_fails_lock:
+                self._bg_fails = 0
+            return "sent"
+        with self._bg_fails_lock:
+            self._bg_fails += 1
+            bg_fails = self._bg_fails
+        log.info(
+            "background send not confirmed in the room (%d in a row): falling back to foreground",
+            bg_fails,
+        )
+        return "fallback"

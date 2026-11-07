@@ -130,9 +130,7 @@ def test_concurrent_commands_different_users():
         with lock:
             results.append(out(e))
 
-    threads = [
-        threading.Thread(target=fire_cmd, args=(f"user{i}", i)) for i in range(10)
-    ]
+    threads = [threading.Thread(target=fire_cmd, args=(f"user{i}", i)) for i in range(10)]
     for t in threads:
         t.start()
     for t in threads:

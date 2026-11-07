@@ -9,9 +9,7 @@ import tempfile
 from pathlib import Path
 
 OWNER_RE = re.compile(r"^(?!-)[A-Za-z0-9-]{1,39}(?<!-)$")
-CODEOWNER_RE = re.compile(
-    r"^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:/[A-Za-z0-9][A-Za-z0-9-]{0,99})?$"
-)
+CODEOWNER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:/[A-Za-z0-9][A-Za-z0-9-]{0,99})?$")
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
 MARKER = ".ztemplate-initialized.json"
 FILES = (
@@ -35,31 +33,14 @@ def safe_file(root: Path, relative: str) -> Path:
     return path
 
 
-def build_changes(
-    root: Path, name: str, owner: str, codeowner: str, description: str
-) -> dict:
+def build_changes(root: Path, name: str, owner: str, codeowner: str, description: str) -> dict:
     if not NAME_RE.fullmatch(name) or name in {".", ".."}:
-        raise ValueError(
-            "Invalid project name; use letters, digits, dot, hyphen or underscore"
-        )
+        raise ValueError("Invalid project name; use letters, digits, dot, hyphen or underscore")
     if not OWNER_RE.fullmatch(owner):
         raise ValueError("Invalid GitHub owner")
     if not CODEOWNER_RE.fullmatch(codeowner):
-        raise ValueError(
-            "Invalid CODEOWNERS user or org/team; provide --codeowner explicitly"
-        )
-    if (
-        not description.strip()
-        or len(description) > 500
-        or "\n" in description
-        or "\r" in description
-    ):
-        raise ValueError("Description must be one nonempty line (max 500 characters)")
-    # Escape generated Markdown and YAML contexts independently.
-    markdown_description = (
-        description.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    )
-    markdown_description = markdown_description.replace("\\", "\\\\")
+        raise ValueError("Invalid CODEOWNERS user or org/team; provide --codeowner explicitly")
+    markdown_description = _validate_description(description)
     values = {
         "{{PROJECT_NAME}}": name,
         "{{OWNER}}": owner,
@@ -77,9 +58,7 @@ def build_changes(
     if "@cvsz" not in codeowners:
         raise ValueError("Unexpected CODEOWNERS template; manual review required")
     changes[".github/CODEOWNERS"] = codeowners.replace("@cvsz", "@" + codeowner)
-    issue = safe_file(root, ".github/ISSUE_TEMPLATE/config.yml").read_text(
-        encoding="utf-8"
-    )
+    issue = safe_file(root, ".github/ISSUE_TEMPLATE/config.yml").read_text(encoding="utf-8")
     old_url = "https://github.com/cvsz/ztemplate/security"
     if issue.count(old_url) != 1:
         raise ValueError("Unexpected issue security URL; manual review required")
@@ -89,6 +68,21 @@ def build_changes(
     for target in FILES:
         safe_file(root, target)
     return changes
+
+
+def _validate_description(description: str) -> str:
+    if (
+        not description.strip()
+        or len(description) > 500
+        or "\n" in description
+        or "\r" in description
+    ):
+        raise ValueError("Description must be one nonempty line (max 500 characters)")
+    # Escape generated Markdown and YAML contexts independently.
+    markdown_description = (
+        description.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    )
+    return markdown_description.replace("\\", "\\\\")
 
 
 def initialize(
@@ -107,9 +101,7 @@ def initialize(
             raise ValueError("Unsafe initialization marker")
         previous = json.loads(marker.read_text(encoding="utf-8"))
         if previous != args:
-            raise ValueError(
-                "Already initialized with different settings; edit manually"
-            )
+            raise ValueError("Already initialized with different settings; edit manually")
         return []
     changes = build_changes(root, name, owner, codeowner, description.strip())
     modified = sorted(
@@ -130,9 +122,7 @@ def initialize(
             finally:
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)
-        marker.write_text(
-            json.dumps(args, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-        )
+        marker.write_text(json.dumps(args, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return modified
 
 
@@ -145,15 +135,9 @@ def main() -> int:
         required=True,
         help="Existing GitHub username or org/team with write access",
     )
-    parser.add_argument(
-        "--description", required=True, help="One-line project description"
-    )
-    parser.add_argument(
-        "--apply", action="store_true", help="Write changes; otherwise dry run"
-    )
-    parser.add_argument(
-        "--root", type=Path, default=Path(__file__).resolve().parents[1]
-    )
+    parser.add_argument("--description", required=True, help="One-line project description")
+    parser.add_argument("--apply", action="store_true", help="Write changes; otherwise dry run")
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     args = parser.parse_args()
     try:
         modified = initialize(
@@ -167,9 +151,7 @@ def main() -> int:
     except (ValueError, OSError, json.JSONDecodeError) as exc:
         parser.exit(2, f"bootstrap: {exc}\n")
     label = "Applied" if args.apply else "Planned"
-    print(
-        f"{label}: {', '.join(modified) if modified else 'already initialized / no changes'}"
-    )
+    print(f"{label}: {', '.join(modified) if modified else 'already initialized / no changes'}")
     if args.apply:
         print(
             "Next: verify CODEOWNERS identity has write access; review LICENSE, SECURITY.md, CI, deployment and IMPLEMENTATION-CHECKLIST.md."

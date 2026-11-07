@@ -25,9 +25,7 @@ def _is_windows() -> bool:
 
 def failure_reasons(log_text: str, keep: int = 4) -> list[str]:
     """The last few lines of an mpv log that explain why playback failed."""
-    lines = [
-        ln.strip() for ln in log_text.splitlines() if any(w in ln.lower() for w in _WHY)
-    ]
+    lines = [ln.strip() for ln in log_text.splitlines() if any(w in ln.lower() for w in _WHY)]
     return lines[-keep:]
 
 
@@ -79,6 +77,29 @@ class MpvPlayer:
         if not self.skipped and self.proc is not None:
             self.set_volume(target_vol)
 
+    def _ipc_log_paths(self, n: int) -> tuple[str, str]:
+        """IPC server address and mpv log file for playback job *n*."""
+        if _is_windows():
+            ipc = rf"\\.\pipe\camfrog-autodj-{os.getpid()}-{n}"
+        else:
+            ipc = os.path.join(tempfile.gettempdir(), f"camfrog-autodj-{os.getpid()}-{n}.sock")
+        logf = os.path.join(tempfile.gettempdir(), f"camfrog-autodj-mpv-{os.getpid()}-{n}.log")
+        return ipc, logf
+
+    def _wait_for_mpv_end(
+        self, p: subprocess.Popen, started: float, limit: float | None
+    ) -> tuple[int | None, bool]:
+        """Wait for mpv to exit; return (returncode, hung). hung means the grace limit was exceeded."""
+        rc, hung = None, False
+        while rc is None:
+            try:
+                rc = p.wait(timeout=POLL if limit is not None else None)
+            except subprocess.TimeoutExpired:
+                if limit is not None and self._played(started) >= limit:
+                    hung = True
+                    break
+        return rc, hung
+
     def play(self, source: str, volume: int, duration: float | None = None) -> bool:
         """Play one track to its end; True = it played (or was skipped), False = it failed or hung.
 
@@ -86,16 +107,7 @@ class MpvPlayer:
         (it used to be a flat cap, which cut every song longer than the timeout). It only applies when the
         duration is known; time spent paused does not count. Unknown duration (live) = no limit."""
         n = next(_ids)
-        ipc = (
-            rf"\\.\pipe\camfrog-autodj-{os.getpid()}-{n}"
-            if _is_windows()
-            else os.path.join(
-                tempfile.gettempdir(), f"camfrog-autodj-{os.getpid()}-{n}.sock"
-            )
-        )
-        logf = os.path.join(
-            tempfile.gettempdir(), f"camfrog-autodj-mpv-{os.getpid()}-{n}.log"
-        )
+        ipc, logf = self._ipc_log_paths(n)
         fade_in = (
             getattr(self.cfg, "audio_fade", False)
             and getattr(self.cfg, "audio_fade_in_sec", 0.0) > 0
@@ -113,9 +125,7 @@ class MpvPlayer:
         cmd += ["--", source]
         kw: dict = {}
         if _is_windows():
-            kw["creationflags"] = (
-                0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
-            )
+            kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
         with self._lock:
             self.skipped = False
             self._paused_since, self._paused_total = None, 0.0
@@ -128,20 +138,11 @@ class MpvPlayer:
                 daemon=True,
                 name="autodj-fade-in",
             ).start()
-        if duration is not None:
-            # mpv_timeout is a grace period on top of a known track length, never a cap.
-            limit = float(duration) + float(self.cfg.mpv_timeout or 0.0)
-        else:
-            # Unknown duration (live stream): no limit at all.
-            limit = None
-        started, rc, hung = time.monotonic(), None, False
-        while rc is None:
-            try:
-                rc = p.wait(timeout=POLL if limit is not None else None)
-            except subprocess.TimeoutExpired:
-                if limit is not None and self._played(started) >= limit:
-                    hung = True
-                    break
+        limit = (
+            float(duration) + float(self.cfg.mpv_timeout or 0.0) if duration is not None else None
+        )
+        started = time.monotonic()
+        rc, hung = self._wait_for_mpv_end(p, started, limit)
         if hung:
             log.warning(
                 "mpv still running %.0fs after the expected end of %s: terminating",
@@ -164,7 +165,6 @@ class MpvPlayer:
             self._ipc = None
             if not hung:
                 ok = rc == 0 or self.skipped
-        # rc is always an int here: the loop above sets it, or the hung branch sets it via p.wait()
         assert rc is not None
         self._report(ok, rc, source, logf)
         return ok
@@ -173,9 +173,7 @@ class MpvPlayer:
         """Seconds of actual playing since `started` (pauses excluded)."""
         with self._lock:
             now = time.monotonic()
-            paused = self._paused_total + (
-                now - self._paused_since if self._paused_since else 0.0
-            )
+            paused = self._paused_total + (now - self._paused_since if self._paused_since else 0.0)
         return now - started - paused
 
     @staticmethod
@@ -252,9 +250,7 @@ class MpvPlayer:
         if not ipc:
             return None
         request_id = next(_ids)
-        data = (
-            json.dumps({"command": list(cmd), "request_id": request_id}) + "\n"
-        ).encode()
+        data = (json.dumps({"command": list(cmd), "request_id": request_id}) + "\n").encode()
         try:
             if _is_windows():
                 # Windows named pipe: open for read/write, send request, then read response
@@ -308,7 +304,7 @@ class MpvPlayer:
     def play_file(self, path: str):
         kw: dict = {}
         if _is_windows():
-            kw["creationflags"] = (
-                0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
-            )
+            kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
+        # Timeout so a corrupted or unplayable WAV cannot block the caller forever.
+        kw["timeout"] = 30
         subprocess.run(self._base() + ["--volume=100", "--", path], check=False, **kw)

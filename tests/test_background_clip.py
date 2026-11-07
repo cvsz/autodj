@@ -30,8 +30,5 @@ def test_clip_thai_layout_only():
     assert clip_action(65, "Thai_phophung") == "all"
     # Latin layout: Tk already handles it: no double paste
     assert clip_action(86, "v") is None and clip_action(67, "C") is None
-    assert (
-        clip_action(45, "Insert") == "copy"
-        and clip_action(45, "Insert", shift=True) == "paste"
-    )
+    assert clip_action(45, "Insert") == "copy" and clip_action(45, "Insert", shift=True) == "paste"
     assert clip_action(86, "Thai_phophan", windows=False) is None

@@ -65,9 +65,7 @@ def test_resolve_scheme_less_youtube_url(monkeypatch):
     monkeypatch.setattr(
         e,
         "_remote",
-        lambda q, u="AutoDJ", playlist=False, search_limit=None, **kw: (
-            captured.update(q=q) or []
-        ),
+        lambda q, u="AutoDJ", playlist=False, search_limit=None, **kw: captured.update(q=q) or [],
     )
     e.resolve("www.youtube.com/watch?v=abc", "user1", False)
     assert captured["q"] == "https://www.youtube.com/watch?v=abc"
@@ -79,9 +77,7 @@ def test_resolve_youtu_be_without_scheme(monkeypatch):
     monkeypatch.setattr(
         e,
         "_remote",
-        lambda q, u="AutoDJ", playlist=False, search_limit=None, **kw: (
-            captured.update(q=q) or []
-        ),
+        lambda q, u="AutoDJ", playlist=False, search_limit=None, **kw: captured.update(q=q) or [],
     )
     e.resolve("youtu.be/xyz", "user1", True)
     assert captured["q"] == "https://youtu.be/xyz"
@@ -120,15 +116,13 @@ def test_play_includes_resolved_ytdlp_hook_even_when_ytdlp_path_empty(monkeypatc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
     monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
-    monkeypatch.setattr(
-        "camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe"
-    )
+    monkeypatch.setattr("camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe")
 
     cfg = Config(mpv_path="mpv", ytdlp_path="")
     assert MpvPlayer(cfg).play("https://youtu.be/abc", 80) is True
-    assert any(
-        "ytdl_hook-ytdl_path=D:/tools/yt-dlp.exe" in c for c in captured["cmd"]
-    ), captured["cmd"]
+    assert any("ytdl_hook-ytdl_path=D:/tools/yt-dlp.exe" in c for c in captured["cmd"]), captured[
+        "cmd"
+    ]
 
 
 # ------------------------------------------------------------- mpv timeout ---
@@ -159,9 +153,7 @@ def test_play_terminates_hung_mpv_after_timeout(monkeypatch):
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
     monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
-    monkeypatch.setattr(
-        "camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe"
-    )
+    monkeypatch.setattr("camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe")
 
     cfg = Config(mpv_path="mpv", ytdlp_path="", mpv_timeout=1)
     player = MpvPlayer(cfg)

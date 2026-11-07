@@ -7,7 +7,7 @@ class UserError(Exception):
     """Message safe to show in the room."""
 
 
-class YtdlpMissing(UserError):
+class YtdlpMissingError(UserError):
     """No way to look up YouTube metadata (neither the yt_dlp module nor a yt-dlp executable)."""
 
 
@@ -27,9 +27,7 @@ class Track:
     duration: float | None = None
     requester: str = "AutoDJ"
     added: str = ""
-    state: str = (
-        "QUEUED"  # QUEUED, RESOLVING, READY, PLAYING, COMPLETED, FAILED, CANCELLED
-    )
+    state: str = "QUEUED"  # QUEUED, RESOLVING, READY, PLAYING, COMPLETED, FAILED, CANCELLED
 
     @property
     def dur(self) -> str:

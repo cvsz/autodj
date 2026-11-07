@@ -38,9 +38,7 @@ def test_version_consistency():
     assert f"Version {version}" in install_ps1
 
     # build installer scripts
-    build_installer_ps1 = (root / "scripts" / "build_installer.ps1").read_text(
-        encoding="utf-8"
-    )
+    build_installer_ps1 = (root / "scripts" / "build_installer.ps1").read_text(encoding="utf-8")
     assert f'[string]$Version = "{version}"' in build_installer_ps1
 
     build_installer_linux = (root / "scripts" / "build_installer_linux.sh").read_text(
@@ -49,13 +47,10 @@ def test_version_consistency():
     assert f'VERSION="${{1:-{version}}}"' in build_installer_linux
 
     # release workflow targets
-    release_yml = (root / ".github" / "workflows" / "release.yml").read_text(
-        encoding="utf-8"
-    )
+    release_yml = (root / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     assert "dist/AutoDJ.exe" in release_yml
     assert "Camfrog-AutoDJ-Setup-*.exe" in release_yml
     assert "SHA256SUMS.txt" in release_yml
     assert (
-        "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
-        in release_yml
+        "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9" in release_yml
     )  # v7.0.2

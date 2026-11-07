@@ -45,8 +45,7 @@ OPTS = {
         "textvariable",
         "image",
     ),
-    "Canvas": COMMON
-    | _s("scrollregion", "insertbackground", "yscrollcommand", "xscrollcommand"),
+    "Canvas": COMMON | _s("scrollregion", "insertbackground", "yscrollcommand", "xscrollcommand"),
     "Entry": COMMON
     | _s(
         "fg",
@@ -115,9 +114,7 @@ PACK = _s(
     "after",
     "in_",
 )
-GRID = _s(
-    "row", "column", "sticky", "padx", "pady", "columnspan", "rowspan", "ipadx", "ipady"
-)
+GRID = _s("row", "column", "sticky", "padx", "pady", "columnspan", "rowspan", "ipadx", "ipady")
 
 
 def _check(kind, opts, allowed):
@@ -210,7 +207,7 @@ class Misc:
         # delay-0 callbacks run immediately (simulates Tk event loop processing
         # them on the next main-loop iteration); positive delays are queued.
         if ms == 0 and fn is not None:
-            fn()
+            fn(*a)
         else:
             self._after.append((ms, fn))
         return f"after#{len(self._after)}"
@@ -476,6 +473,4 @@ ttk = types.SimpleNamespace(
     Combobox=type("Combobox", (Entry,), {}),
     Spinbox=type("Spinbox", (Entry,), {}),
 )
-filedialog = types.SimpleNamespace(
-    askopenfilenames=lambda **k: (), askdirectory=lambda **k: ""
-)
+filedialog = types.SimpleNamespace(askopenfilenames=lambda **k: (), askdirectory=lambda **k: "")

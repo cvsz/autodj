@@ -61,12 +61,12 @@ def validate_markdown_links() -> list[str]:
     errors: list[str] = []
     # Directories that contain build output or third-party bundles:
     # their internal links may reference files outside this repository.
-    SKIP_DIRS = {"dist_staging", "build", "dist", ".venv", "venv", "node_modules"}
+    skip_dirs = {"dist_staging", "build", "dist", ".venv", "venv", "node_modules"}
     for md in sorted(ROOT.rglob("*.md")):
         if ".git" in md.parts:
             continue
         # Skip markdown inside ignored build/runtime directories
-        if any(part in SKIP_DIRS for part in md.parts):
+        if any(part in skip_dirs for part in md.parts):
             continue
         text = md.read_text(encoding="utf-8")
         for match in LINK_RE.finditer(text):

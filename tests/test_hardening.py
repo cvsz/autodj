@@ -47,15 +47,11 @@ def test_echo_of_our_own_line_is_ignored_even_with_wrong_bot_nick():
     e.say("!skip everything")  # e.g. an admin's `!say !skip everything`
     sent = [e.outbox.get_nowait()]
     e._remember_sent(sent[0])  # what _sender does just before posting to the room
-    e.adapter = OneShot(
-        [ChatMessage("zdevz", "!skip everything"), ChatMessage("zdevz", "!np")]
-    )
+    e.adapter = OneShot([ChatMessage("zdevz", "!skip everything"), ChatMessage("zdevz", "!np")])
     e._chat_loop()
     time.sleep(0.2)
     texts = [t for _, t in e.chat_log]
-    assert (
-        texts.count("!skip everything") == 1
-    )  # only our own log entry, not re-processed
+    assert texts.count("!skip everything") == 1  # only our own log entry, not re-processed
     assert any(
         "Nothing playing" in o or "nothing playing" in o.lower() for o in out(e)
     )  # a real !np still works
@@ -64,9 +60,7 @@ def test_echo_of_our_own_line_is_ignored_even_with_wrong_bot_nick():
 def test_wrapped_continuation_never_starts_with_prefix():
     e = make()
     e.cfg.max_msg_len = 20
-    e.say(
-        "aaaa bbbb cccc dddd !skip eeee"
-    )  # wraps so the 2nd line would start with "!skip"
+    e.say("aaaa bbbb cccc dddd !skip eeee")  # wraps so the 2nd line would start with "!skip"
     lines = out(e)
     assert len(lines) >= 2 and all(not ln.startswith("!") for ln in lines[1:])
 
@@ -253,9 +247,7 @@ def test_admin_can_run_admin_command():
     e = make()
     e.admins = {"boss"}
     e.player.play = lambda s, v, d=None: True
-    e.current = Track(
-        "s", "now", 90, "boss"
-    )  # a track must be "playing" for pause to act
+    e.current = Track("s", "now", 90, "boss")  # a track must be "playing" for pause to act
     e.router.handle(ChatMessage("boss", "!pause"))
     out(e)  # consume any output
     assert e.paused is True
@@ -362,9 +354,7 @@ def test_save_config_never_writes_invalid_toml(tmp_path):
 
     p = tmp_path / "config.toml"
     p.write_text('bot_nick = "X"\n', "utf-8")
-    assert (
-        save_config(str(p), {"bad key": "x"}) is False
-    )  # would be invalid TOML: refused
+    assert save_config(str(p), {"bad key": "x"}) is False  # would be invalid TOML: refused
     assert p.read_text("utf-8") == 'bot_nick = "X"\n'
     assert (
         save_config(str(p), {"window_title_re": "tab\there\nnewline"}) is True
@@ -380,7 +370,9 @@ def test_save_config_never_writes_invalid_toml(tmp_path):
 
 
 def test_en_th_use_same_placeholders():
-    fields = lambda s: set(re.findall(r"{(\w+)}", s))
+    def fields(s: str) -> set[str]:
+        return set(re.findall(r"{(\w+)}", s))
+
     for k in STR["en"]:
         assert fields(STR["en"][k]) == fields(STR["th"][k]), k
 
@@ -407,9 +399,7 @@ def test_parse_ytdlp_info_playlist_and_single():
 
     t = parse_ytdlp_info(SEARCH_JSON, "amy")
     assert [x.title for x in t] == ["Song A", "Live"]
-    assert (
-        t[1].source == "https://www.youtube.com/watch?v=zzz" and t[1].duration is None
-    )
+    assert t[1].source == "https://www.youtube.com/watch?v=zzz" and t[1].duration is None
     single = {
         "id": "q",
         "title": "One",
@@ -434,9 +424,7 @@ def test_parse_ytdlp_info_rejects_invalid_urls():
     assert len(tracks) == 0
 
     # Entry with invalid URL (not http/https) should be skipped
-    info = {
-        "entries": [{"url": "not-a-valid-url", "title": "Invalid URL", "duration": 100}]
-    }
+    info = {"entries": [{"url": "not-a-valid-url", "title": "Invalid URL", "duration": 100}]}
     tracks = parse_ytdlp_info(info, "amy")
     assert len(tracks) == 0
 
@@ -460,9 +448,7 @@ def test_resolve_track_if_search_fails_on_empty_result(monkeypatch):
     e = make()
     t = Track("ytsearch1:nonexistent", "test", 100, "amy")
 
-    def mock_remote(
-        query, user, playlist=False, search_limit=1, raw_target=False, **kwargs
-    ):
+    def mock_remote(query, user, playlist=False, search_limit=1, raw_target=False, **kwargs):
         return []
 
     e._remote = mock_remote
@@ -476,9 +462,7 @@ def test_resolve_track_if_search_returns_resolved_track(monkeypatch):
     e = make()
     t = Track("ytsearch1:test song", "test", 100, "amy")
 
-    def mock_remote(
-        query, user, playlist=False, search_limit=1, raw_target=False, **kwargs
-    ):
+    def mock_remote(query, user, playlist=False, search_limit=1, raw_target=False, **kwargs):
         return [Track("https://youtu.be/abc123", "Resolved Track", 100, "amy")]
 
     e._remote = mock_remote
@@ -575,11 +559,11 @@ def test_doctor_reports_missing_mpv_and_ok_dirs(monkeypatch, tmp_path):
         admins=[],
     )
     res = doctor.run_checks(cfg, check_window=False)
-    text = "\n".join(f"{l} {t}" for l, t in res)
-    assert any(l == "FAIL" and "mpv" in t for l, t in res)
-    assert any(l == "WARN" and "missing" in t for l, t in res)
-    assert any(l == "WARN" and "admins" in t for l, t in res)
-    assert any(l == "OK" and str(tmp_path) in t for l, t in res), text
+    text = "\n".join(f"{level} {t}" for level, t in res)
+    assert any(level == "FAIL" and "mpv" in t for level, t in res)
+    assert any(level == "WARN" and "missing" in t for level, t in res)
+    assert any(level == "WARN" and "admins" in t for level, t in res)
+    assert any(level == "OK" and str(tmp_path) in t for level, t in res), text
     assert doctor.has_failures(res)
 
 
@@ -603,9 +587,7 @@ def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path, monkeypatch):
     assert found != str(mpv)
     yt.write_text("x")
     yt.chmod(0o755)
-    assert find_ytdlp("", str(mpv)) == str(
-        yt
-    )  # same folder as mpv: the one mpv itself will use
+    assert find_ytdlp("", str(mpv)) == str(yt)  # same folder as mpv: the one mpv itself will use
     assert find_ytdlp(str(yt), "") == str(yt)  # explicit setting wins
     assert (
         find_ytdlp(str(tmp_path / "nope.exe"), str(mpv)) == ""
@@ -648,10 +630,7 @@ def test_remote_tracks_uses_module_when_no_exe(monkeypatch):
     monkeypatch.setattr(library, "find_ytdlp", lambda *a, **k: "")
     tracks = library.remote_tracks("some song", "amy")
     assert tracks[0].title == "Song A" and FakeYDL.target == "ytsearch1:some song"
-    assert (
-        FakeYDL.opts["noplaylist"] is True
-        and FakeYDL.opts["extract_flat"] == "in_playlist"
-    )
+    assert FakeYDL.opts["noplaylist"] is True and FakeYDL.opts["extract_flat"] == "in_playlist"
 
 
 # ---- GUI visuals (pure maths; the Tk window itself needs a display) ---------------------------
@@ -660,16 +639,11 @@ def test_remote_tracks_uses_module_when_no_exe(monkeypatch):
 def test_visual_colour_helpers():
     from camfrog_autodj.visuals import gradient, hex_to_rgb, lerp_color, rgb_to_hex
 
-    assert (
-        hex_to_rgb("#ff3d9a") == (255, 61, 154)
-        and rgb_to_hex(255, 61, 154) == "#ff3d9a"
-    )
+    assert hex_to_rgb("#ff3d9a") == (255, 61, 154) and rgb_to_hex(255, 61, 154) == "#ff3d9a"
     assert lerp_color("#000000", "#ffffff", 0.5) == "#808080"
     assert lerp_color("#000000", "#ffffff", 9) == "#ffffff"  # clamped
     g = gradient(["#ff0000", "#00ff00", "#0000ff"], 5)
-    assert (
-        g[0] == "#ff0000" and g[2] == "#00ff00" and g[-1] == "#0000ff" and len(g) == 5
-    )
+    assert g[0] == "#ff0000" and g[2] == "#00ff00" and g[-1] == "#0000ff" and len(g) == 5
 
 
 def test_equaliser_is_bounded_and_quiet_when_paused():
@@ -739,13 +713,9 @@ def test_build_env_checker_lists_what_is_missing():
     )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    assert (
-        mod.missing(lambda name: object()) == {}
-    )  # everything importable: nothing missing
+    assert mod.missing(lambda name: object()) == {}  # everything importable: nothing missing
     gone = mod.missing(lambda name: None if name == "yt_dlp" else object())
-    assert (
-        list(gone) == ["yt_dlp"] and "YouTube" in gone["yt_dlp"]
-    )  # the exact failure the exe had
+    assert list(gone) == ["yt_dlp"] and "YouTube" in gone["yt_dlp"]  # the exact failure the exe had
 
 
 # ---- F12: !play from chat is saved to playlist.json (feeds !last) ----
@@ -762,9 +732,7 @@ def test_play_saves_to_playlist_json(tmp_path):
     e.playlist = PlaylistStore(str(playlist_path))
 
     # make() overrides resolve to return YouTube URLs; override back for local files
-    e.resolve = lambda arg, user, admin: [
-        local_track(arg, user) if os.path.isabs(arg) else []
-    ]
+    e.resolve = lambda arg, user, admin: [local_track(arg, user) if os.path.isabs(arg) else []]
 
     tracks = e.resolve("/m/song one.mp3", "amy", True)
     e.queue.add_request(tracks[0])

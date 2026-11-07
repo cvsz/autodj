@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .models import Track, YtdlpMissing
+from .models import Track, YtdlpMissingError
 from .paths import resolve_executable
 
 log = logging.getLogger("autodj")
@@ -49,8 +49,13 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
     return Track(str(p), title, dur, requester)
 
 
-def scan_folder(folder, requester: str = "AutoDJ") -> list[Track]:
-    """Recursively scan *folder* for media files, skipping unreadable directories."""
+def scan_folder(folder, requester: str = "AutoDJ", limit: int = 0) -> list[Track]:
+    """Recursively scan *folder* for media files, skipping unreadable directories.
+
+    Symlinks are never followed (avoids symlink cycles and slow reparse-point
+    hangs on Windows). *limit* caps the total tracks returned (0 = no cap) so a
+    very large folder can never scan forever and block the caller.
+    """
     root = Path(folder)
     try:
         entries = list(root.iterdir())
@@ -59,9 +64,17 @@ def scan_folder(folder, requester: str = "AutoDJ") -> list[Track]:
         return []
     tracks: list[Track] = []
     for entry in entries:
+        if limit and len(tracks) >= limit:
+            break
         try:
+            if entry.is_symlink():
+                continue  # never follow symlinks: avoids cycles and slow reparse points
             if entry.is_dir():
-                tracks.extend(scan_folder(str(entry), requester))
+                need = limit - len(tracks) if limit else 0
+                sub = scan_folder(str(entry), requester, limit=limit)
+                tracks.extend(sub[:need] if need else sub)
+                if limit and len(tracks) >= limit:
+                    break
             elif entry.is_file() and entry.suffix.lower() in MEDIA:
                 tracks.append(local_track(entry, requester))
         except (OSError, PermissionError):
@@ -145,9 +158,7 @@ def _extract_exe(
         "timeout": 90,
     }
     if os.name == "nt":
-        kw["creationflags"] = (
-            0x08000000  # CREATE_NO_WINDOW: no console flash from the GUI build
-        )
+        kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW: no console flash from the GUI build
     # yt-dlp.exe has no --certificate flag and does not honour REQUESTS_CA_BUNDLE.
     # Certificate verification is always preserved; we never disable it.
     # Custom CA bundle support is handled by the yt_dlp Python module path
@@ -158,18 +169,14 @@ def _extract_exe(
         raise RuntimeError("yt-dlp timed out") from None
     if r.returncode != 0:
         tail = (r.stderr or "").strip().splitlines()
-        raise RuntimeError(
-            "yt-dlp failed: " + (tail[-1] if tail else f"exit code {r.returncode}")
-        )
+        raise RuntimeError("yt-dlp failed: " + (tail[-1] if tail else f"exit code {r.returncode}"))
     try:
         return json.loads(r.stdout)
     except ValueError:
         raise RuntimeError("yt-dlp returned no usable result") from None
 
 
-def _extract_module(
-    target: str, playlist: bool, limit: int, ca_bundle: str = ""
-) -> dict:
+def _extract_module(target: str, playlist: bool, limit: int, ca_bundle: str = "") -> dict:
     import yt_dlp
 
     # yt_dlp uses certifi.where() for its CA bundle (see networking/_helper.py).
@@ -267,13 +274,13 @@ def remote_tracks(
             info = _extract_module(target, playlist, limit, ca_bundle=ca_bundle)
         except ImportError:
             if exe_error is not None:
-                raise YtdlpMissing(
+                raise YtdlpMissingError(
                     "yt-dlp not found: the yt-dlp executable failed "
                     f"({exe_error}) and this build has no yt_dlp Python module. "
                     "Put yt-dlp.exe next to mpv.exe (or set ytdlp_path in config.toml), "
                     "or `pip install yt-dlp` and rebuild AutoDJ.exe."
                 ) from None
-            raise YtdlpMissing(
+            raise YtdlpMissingError(
                 "yt-dlp not found: there is no yt-dlp executable (next to mpv.exe or on PATH) and this build has no "
                 "yt_dlp Python module. Put yt-dlp.exe next to mpv.exe (or set ytdlp_path in config.toml), "
                 "or `pip install yt-dlp` and rebuild AutoDJ.exe."

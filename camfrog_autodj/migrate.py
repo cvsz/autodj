@@ -61,9 +61,7 @@ def _is_placeholder(value: str) -> bool:
     return False
 
 
-def _discover_path(
-    key: str, config_dir: Path, registry_value: str | None = None
-) -> str | None:
+def _discover_path(key: str, config_dir: Path, registry_value: str | None = None) -> str | None:
     """Discover a valid executable path for a config key.
 
     Search order:
@@ -200,9 +198,7 @@ def migrate_config(config_path: str | Path) -> list[str]:
         discovered = _discover_path(key, config_dir, registry_values.get(key))
         if discovered:
             updates[key] = discovered
-            changes.append(
-                f"{key}: replaced placeholder '{placeholder_value}' with '{discovered}'"
-            )
+            changes.append(f"{key}: replaced placeholder '{placeholder_value}' with '{discovered}'")
         else:
             changes.append(
                 f"{key}: placeholder '{placeholder_value}' kept (no valid path discovered)"

@@ -44,12 +44,13 @@ class Router:
         e, p = self.e, self.e.cfg.prefix
         text = msg.text.strip()
         is_im = getattr(msg, "is_im", False)
-
+        parsed = self._parse_command(text, p, is_im)
+        if parsed is None:
+            return
+        name, arg = parsed
+        entry = COMMANDS.get(name.lower())
+        admin = self.is_admin(msg)
         if is_im:
-            # IM / private message: no prefix required, but still subject to cooldown/limits
-            name, _, arg = text.partition(" ")
-            entry = COMMANDS.get(name.lower())
-            admin = self.is_admin(msg)
             log.info(
                 "im command %s (%s) from %s%s",
                 name,
@@ -58,12 +59,6 @@ class Router:
                 ", admin" if admin else "",
             )
         else:
-            # Room message: must start with the command prefix
-            if not text.startswith(p):
-                return
-            name, _, arg = text[len(p) :].partition(" ")
-            entry = COMMANDS.get(name.lower())
-            admin = self.is_admin(msg)
             log.info(
                 "command %s%s (%s) from %s%s",
                 p,
@@ -72,7 +67,6 @@ class Router:
                 msg.user,
                 ", admin" if admin else "",
             )
-
         if not entry:
             return
         fn, need_admin = entry
@@ -87,33 +81,8 @@ class Router:
             e.say(f"{msg.user}: {e.t('admin_only')}")
             return
         now = time.monotonic()
-        if not admin:
-            who = msg.user.lower()  # "Bob" and "bob" are one person: changing case must not dodge the cooldown
-            if now - self.last.get(who, -1e9) < e.cfg.cooldown:
-                log.info(
-                    "cooldown: dropping %s's command from %s (%.1fs to go)",
-                    msg.user,
-                    "IM" if is_im else "room",
-                    e.cfg.cooldown - (now - self.last[who]),
-                )
-                return
-            # Sliding window request limit per user
-            if name.lower() in ("play", "request", "req", "p", "เล่น"):
-                limit = getattr(e.cfg, "user_request_limit", 5)
-                window = getattr(e.cfg, "rate_limit_window", 300.0)
-                reqs = [t for t in self.user_requests.get(who, []) if now - t < window]
-                if len(reqs) >= limit:
-                    log.info(
-                        "rate limit: user %s exceeded %d requests in %.0fs",
-                        who,
-                        limit,
-                        window,
-                    )
-                    e.say(f"{msg.user}: {e.t('max_requests', n=limit)}")
-                    return
-                reqs.append(now)
-                self.user_requests[who] = reqs
-            self.last[who] = now
+        if not admin and not self._within_limits(msg, name, now, is_im):
+            return
         try:
             fn(e, msg, arg.strip(), admin)
         except UserError as ex:
@@ -121,6 +90,54 @@ class Router:
         except Exception:
             log.exception("command failed: %s", text)
             e.say(f"{msg.user}: {e.t('error')}")
+
+    def _parse_command(self, text: str, p: str, is_im: bool) -> tuple[str, str] | None:
+        """Return (name, arg) when *text* is a command, else None."""
+        if is_im:
+            # IM / private message: no prefix required, but still subject to cooldown/limits
+            name, _, arg = text.partition(" ")
+            return name, arg
+        # Room message: must start with the command prefix
+        if not text.startswith(p):
+            return None
+        name, _, arg = text[len(p) :].partition(" ")
+        return name, arg
+
+    def _within_limits(self, msg, name: str, now: float, is_im: bool) -> bool:
+        """Cooldown + per-user sliding-window request limit.
+
+        Returns False when the command must be dropped (a reply is sent for rate limits).
+        """
+        e = self.e
+        who = (
+            msg.user.lower()
+        )  # "Bob" and "bob" are one person: changing case must not dodge the cooldown
+        if now - self.last.get(who, -1e9) < e.cfg.cooldown:
+            log.info(
+                "cooldown: dropping %s's command from %s (%.1fs to go)",
+                msg.user,
+                "IM" if is_im else "room",
+                e.cfg.cooldown - (now - self.last[who]),
+            )
+            return False
+        # Sliding window request limit per user
+        if name.lower() in ("play", "request", "req", "p", "เล่น"):
+            limit = getattr(e.cfg, "user_request_limit", 5)
+            window = getattr(e.cfg, "rate_limit_window", 300.0)
+            reqs = [t for t in self.user_requests.get(who, []) if now - t < window]
+            if len(reqs) >= limit:
+                log.info(
+                    "rate limit: user %s exceeded %d requests in %.0fs",
+                    who,
+                    limit,
+                    window,
+                )
+                e.say(f"{msg.user}: {e.t('max_requests', n=limit)}")
+                return False
+            reqs.append(now)
+            self.user_requests[who] = reqs
+        self.last[who] = now
+        return True
 
 
 def _line(t) -> str:
@@ -139,53 +156,52 @@ def _play(e, m, a, admin):
     if not a:
         raise UserError(e.t("usage_play", p=p))
     if not admin:
-        if len(e.queue.requests) >= c.max_queue:
-            raise UserError(e.t("queue_full"))
-        if e.queue.count_by(m.user) >= c.max_requests_per_user:
-            raise UserError(e.t("max_requests", n=c.max_requests_per_user))
+        _assert_queue_capacity(e, m.user)
     tracks = e.resolve(a, m.user, admin)
     if not tracks:
         raise UserError(e.t("nothing_found"))
     if not admin:
-        tracks = tracks[:1]
-        t = tracks[0]
-        if t.duration is None and t.source.startswith("http"):
-            raise UserError(e.t("live_not_allowed"))
-        if t.duration and t.duration > c.max_duration:
-            raise UserError(e.t("too_long", m=c.max_duration // 60))
+        tracks = _validate_non_admin_track(e, c, tracks)
     pos = 0
-    with (
-        e.queue.lock
-    ):  # the lookup above can take seconds: re-check now, atomically with the add
+    with e.queue.lock:  # the lookup above can take seconds: re-check now, atomically with the add
         if not admin:
-            if len(e.queue.requests) >= c.max_queue:
-                raise UserError(e.t("queue_full"))
-            if e.queue.count_by(m.user) >= c.max_requests_per_user:
-                raise UserError(e.t("max_requests", n=c.max_requests_per_user))
-            src = tracks[0].source
-            # e.current is read under the queue lock to avoid a data race with _player_loop
-            current_source = e.current.source if e.current else None
-            if (current_source == src) or any(
-                r.source == src for r in e.queue.requests
-            ):
-                raise UserError(e.t("already_queued"))
+            _assert_queue_capacity(e, m.user)
+            _assert_not_already_queued(e, tracks[0])
         for t in tracks:
             pos = e.queue.add_request(t)
     e.wake.set()
     if e.playlist:  # promised by the playlist docs / config: chat requests are saved too (feeds !last and the pool)
         e.playlist.add(tracks)
     if len(tracks) == 1:
-        e.say(
-            e.t(
-                "queued_one",
-                pos=pos,
-                title=tracks[0].title,
-                dur=tracks[0].dur,
-                user=m.user,
-            )
-        )
+        e.say(e.t("queued_one", pos=pos, title=tracks[0].title, dur=tracks[0].dur, user=m.user))
     else:
         e.say(e.t("queued_many", n=len(tracks), user=m.user))
+
+
+def _assert_queue_capacity(e, user: str) -> None:
+    c = e.cfg
+    if len(e.queue.requests) >= c.max_queue:
+        raise UserError(e.t("queue_full"))
+    if e.queue.count_by(user) >= c.max_requests_per_user:
+        raise UserError(e.t("max_requests", n=c.max_requests_per_user))
+
+
+def _validate_non_admin_track(e, c, tracks: list) -> list:
+    tracks = tracks[:1]
+    t = tracks[0]
+    if t.duration is None and t.source.startswith("http"):
+        raise UserError(e.t("live_not_allowed"))
+    if t.duration and t.duration > c.max_duration:
+        raise UserError(e.t("too_long", m=c.max_duration // 60))
+    return tracks
+
+
+def _assert_not_already_queued(e, t) -> None:
+    # e.current is read under the queue lock to avoid a data race with _player_loop
+    src = t.source
+    current_source = e.current.source if e.current else None
+    if (current_source == src) or any(r.source == src for r in e.queue.requests):
+        raise UserError(e.t("already_queued"))
 
 
 @command("last", "requested", "ขอล่าสุด")
@@ -259,9 +275,7 @@ def _remove(e, m, a, admin):
         raise UserError(e.t("no_such_item"))
     if not (admin or t.requester.lower() == m.user.lower()):
         raise UserError(e.t("remove_own"))
-    if e.queue.remove_track(
-        t
-    ):  # by identity: the numbered slot may have shifted since get()
+    if e.queue.remove_track(t):  # by identity: the numbered slot may have shifted since get()
         e.say(e.t("removed", title=t.title))
     else:
         raise UserError(e.t("no_such_item"))
@@ -322,11 +336,9 @@ def _load(e, m, a, admin):
         p = Path(src)
         try:
             p = p.resolve()
-        except (OSError, ValueError):
-            raise UserError(e.t("load_failed", err="invalid path"))
-        if not any(
-            p.is_relative_to(d) for d in (Path(d).resolve() for d in e.cfg.music_dirs)
-        ):
+        except (OSError, ValueError) as err:
+            raise UserError(e.t("load_failed", err="invalid path")) from err
+        if not any(p.is_relative_to(d) for d in (Path(d).resolve() for d in e.cfg.music_dirs)):
             raise UserError(e.t("folders_admin"))
     e.load_async(src)
 
@@ -352,9 +364,7 @@ def _history(e, m, a, admin):
         e.say(e.t("history_empty"))
         return
     e.say(
-        e.t("history_head")
-        + " "
-        + " | ".join(f"{i}) {_line(t)}" for i, t in enumerate(items, 1))
+        e.t("history_head") + " " + " | ".join(f"{i}) {_line(t)}" for i, t in enumerate(items, 1))
     )
 
 

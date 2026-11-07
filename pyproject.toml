@@ -29,3 +29,30 @@ testpaths = ["tests"]
 # ignored so the release typecheck gate validates AutoDJ's own code
 # instead of failing on unstubbed dependencies.
 ignore_missing_imports = true
+
+[tool.ruff]
+# Ruff configuration for AutoDJ source code.
+# line-length = 100 keeps long TOML/regex strings and Windows paths readable.
+line-length = 100
+
+[tool.ruff.lint]
+# Enable a focused subset of rules: errors, bugs, imports, style, naming, complexity, and security.
+select = ["E", "F", "B", "I", "C", "N", "S"]
+# Ignore rules that are noisy for this codebase (Windows-only ctypes imports,
+# deliberate broad except clauses, test-file monkeypatching patterns).
+ignore = [
+    "E501",   # line too long (long paths/regexes are intentional)
+    "B014",   # bare except with comment (defensive patterns are intentional)
+    "BLE001", # broad except (defensive; chat loop must never crash)
+    "S101",   # assert (used in tests and internal invariants)
+    "S108",   # subprocess without shell=True (we never use shell=True)
+    "S307",   # subprocess without shell=True (we never use shell=True)
+    "S603",   # subprocess call (checked inputs, trusted paths only)
+    "S607",   # subprocess with partial path (paths are resolved explicitly)
+    "S608",   # subprocess with shell=True (never used)
+]
+# RUF012 (mutable class attribute) is intentional for PillButton.STYLES;
+# the STYLES dict in gui.py already carries a `# noqa: RUF012` comment.
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B008", "N802", "S101", "S311"]
+"tools/*" = ["S101", "S603", "S608"]

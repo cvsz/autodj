@@ -45,34 +45,48 @@ def items_to_lines(items: list[tuple[str, str]], strict: bool = True) -> list[st
             seen_avatar = True
         elif seen_avatar:
             groups[-1].append((kind, name))
-    out = []
+    out: list[str] = []
     for g in groups:
-        g = [(k, n.replace("\xa0", " ").strip()) for k, n in g]
-        toks = [(k, n) for k, n in g if k != "emo" or n]  # keep emoticons as joiners
-        if (
-            len(toks) < 3
-            or toks[0][0] not in ("text", "link")
-            or toks[1][0] != "text"
-            or not TIME_RX.match(toks[1][1])
-        ):
-            continue
-        nick = toks[0][1].replace(":", " ").strip()
-        body: list[str] = []
-        prev: str | None = None
-        for k, n in toks[2:]:
-            if k == "emo":
-                prev = "emo"
-                continue
-            if k == "link" or not body or prev in ("emo", "link") or not strict:
-                if n:
-                    body.append(n)
-                prev = k
-            else:
-                break  # adjacent plain text = date header / system line
-        text = " ".join(body)
-        if nick and text:
-            out.append(f"{toks[1][1]} {nick}: {text}")
+        line = _group_line(g, strict)
+        if line is not None:
+            out.append(line)
     return out
+
+
+def _group_line(g: list[tuple[str, str]], strict: bool) -> str | None:
+    """Parse one avatar-delimited group into 'time nick: text', or None when it is not a message."""
+    g = [(k, n.replace("\xa0", " ").strip()) for k, n in g]
+    toks = [(k, n) for k, n in g if k != "emo" or n]  # keep emoticons as joiners
+    if (
+        len(toks) < 3
+        or toks[0][0] not in ("text", "link")
+        or toks[1][0] != "text"
+        or not TIME_RX.match(toks[1][1])
+    ):
+        return None
+    nick = toks[0][1].replace(":", " ").strip()
+    body = _body_tokens(toks[2:], strict)
+    text = " ".join(body)
+    if not nick or not text:
+        return None
+    return f"{toks[1][1]} {nick}: {text}"
+
+
+def _body_tokens(toks: list[tuple[str, str]], strict: bool) -> list[str]:
+    """Collect body tokens; stop at an adjacent plain text (date header / system line)."""
+    body: list[str] = []
+    prev: str | None = None
+    for k, n in toks:
+        if k == "emo":
+            prev = "emo"
+            continue
+        if k == "link" or not body or prev in ("emo", "link") or not strict:
+            if n:
+                body.append(n)
+            prev = k
+        else:
+            break  # adjacent plain text = date header / system line
+    return body
 
 
 def find_web_panes(win, view_title: str, input_title: str):
@@ -103,9 +117,7 @@ def find_web_panes(win, view_title: str, input_title: str):
 
 def _history_children(view):
     node = view.element_info
-    for _ in range(
-        8
-    ):  # unwrap single-child wrapper panes down to the flat message list
+    for _ in range(8):  # unwrap single-child wrapper panes down to the flat message list
         kids = node.children()
         if len(kids) == 1 and kids[0].control_type == "Pane":
             node = kids[0]

@@ -33,9 +33,7 @@ if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
 
             get_verbosity = getattr(self.config, "get_verbosity", None)
             verbosity = (
-                get_verbosity()
-                if callable(get_verbosity)
-                else self.config.getoption("verbose", 0)
+                get_verbosity() if callable(get_verbosity) else self.config.getoption("verbose", 0)
             )
             truncate_locals = verbosity <= 1
 

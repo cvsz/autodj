@@ -9,6 +9,7 @@ import json
 import logging
 import math
 import os
+import shutil
 import time
 import tkinter as tk
 from tkinter import filedialog, ttk
@@ -74,9 +75,7 @@ def _do_clip(w, act: str):
                 w.select_range(0, "end")
                 w.icursor("end")
         else:
-            w.event_generate(
-                {"copy": "<<Copy>>", "cut": "<<Cut>>", "paste": "<<Paste>>"}[act]
-            )
+            w.event_generate({"copy": "<<Copy>>", "cut": "<<Cut>>", "paste": "<<Paste>>"}[act])
     except tk.TclError:
         pass
 
@@ -87,9 +86,7 @@ def install_clipboard(root: tk.Misc, lang=lambda: "en"):
 
     def on_key(e):
         act = clip_action(e.keycode, e.keysym, bool(e.state & 0x1), os.name == "nt")
-        if act and isinstance(
-            e.widget, (tk.Entry, tk.Text, ttk.Entry, ttk.Combobox, ttk.Spinbox)
-        ):
+        if act and isinstance(e.widget, (tk.Entry, tk.Text, ttk.Entry, ttk.Combobox, ttk.Spinbox)):
             _do_clip(e.widget, act)
             return "break"
 
@@ -104,9 +101,7 @@ def install_clipboard(root: tk.Misc, lang=lambda: "en"):
             ("paste", "Paste", "วาง"),
             ("all", "Select all", "เลือกทั้งหมด"),
         ):
-            m.add_command(
-                label=thai if th else en, command=lambda a=act: _do_clip(w, a)
-            )
+            m.add_command(label=thai if th else en, command=lambda a=act: _do_clip(w, a))
         m.tk_popup(e.x_root, e.y_root)
         return "break"
 
@@ -267,13 +262,9 @@ class PillButton(tk.Canvas):
         )
         x = (w - (iw + tw)) / 2
         if self._icon:
-            self.create_text(
-                x, self._h / 2, text=self._icon, font=self._ifont, fill=fg, anchor="w"
-            )
+            self.create_text(x, self._h / 2, text=self._icon, font=self._ifont, fill=fg, anchor="w")
             x += iw
-        self.create_text(
-            x, self._h / 2, text=self._text, font=self._font, fill=fg, anchor="w"
-        )
+        self.create_text(x, self._h / 2, text=self._text, font=self._font, fill=fg, anchor="w")
 
 
 class GlowBar(tk.Canvas):
@@ -281,9 +272,7 @@ class GlowBar(tk.Canvas):
     Clicking on the bar seeks to that fraction of the current track (via *command*)."""
 
     def __init__(self, parent, height=18, bg=SURFACE, command=None):
-        tk.Canvas.__init__(
-            self, parent, height=height, bg=bg, highlightthickness=0, bd=0
-        )
+        tk.Canvas.__init__(self, parent, height=height, bg=bg, highlightthickness=0, bd=0)
         self._h, self._frac, self._bg = height, 0.0, bg
         self._cmd = command
         self.bind("<Configure>", lambda _e: self._draw())
@@ -426,9 +415,7 @@ class VolSlider(tk.Canvas):
             fill=lerp_color(self["bg"], CYAN, 0.2),
             outline="",
         )
-        self.create_oval(
-            x - 6, mid - 6, x + 6, mid + 6, fill="#ffffff", outline=CYAN, width=2
-        )
+        self.create_oval(x - 6, mid - 6, x + 6, mid + 6, fill="#ffffff", outline=CYAN, width=2)
 
 
 class App(tk.Tk):
@@ -468,9 +455,7 @@ class App(tk.Tk):
             tuple[float, dict, int]
         ] = []  # (launch_time, piece, item) still animating
         self._last_track_id: int | None = None
-        self._border_glow = (
-            0.0  # 0..1 window-border-glow intensity, pulses with playback
-        )
+        self._border_glow = 0.0  # 0..1 window-border-glow intensity, pulses with playback
         self._fonts()
         self._style()
         self._build()
@@ -539,9 +524,9 @@ class App(tk.Tk):
 
     # ---- construction ----------------------------------------------------
     def _fonts(self):
-        mk = lambda size, weight="normal", fam=FAMILY: tkfont.Font(
-            root=self, family=fam, size=size, weight=weight
-        )
+        def mk(size, weight="normal", fam=FAMILY):
+            return tkfont.Font(root=self, family=fam, size=size, weight=weight)
+
         self.f_body, self.f_bold, self.f_small = mk(10), mk(10, "bold"), mk(9)
         self.f_list, self.f_title, self.f_brand = mk(11), mk(21, "bold"), mk(21, "bold")
         self.f_h2, self.f_icon = mk(11, "bold"), mk(11, "normal", "Segoe UI Symbol")
@@ -579,9 +564,7 @@ class App(tk.Tk):
         self._labels.append((w, key))
         return w
 
-    def _btn(
-        self, parent, key, cmd, kind="ghost", icon="", bg=SURFACE, height=38, minw=0
-    ):
+    def _btn(self, parent, key, cmd, kind="ghost", icon="", bg=SURFACE, height=38, minw=0):
         w = PillButton(
             parent,
             command=cmd,
@@ -641,9 +624,7 @@ class App(tk.Tk):
         # header: logo, language pills, ON AIR light
         hdr = tk.Frame(root, bg=BG)
         hdr.pack(fill="x", padx=px(26), pady=(px(16), px(10)))
-        logo = tk.Canvas(
-            hdr, width=px(170), height=px(44), bg=BG, highlightthickness=0, bd=0
-        )
+        logo = tk.Canvas(hdr, width=px(170), height=px(44), bg=BG, highlightthickness=0, bd=0)
         logo.pack(side="left")
         halo = logo.create_text(
             1,
@@ -653,9 +634,7 @@ class App(tk.Tk):
             fill=lerp_color(PINK, BG, 0.4),
             anchor="w",
         )
-        logo.create_text(
-            0, px(22), text="AUTO", font=self.f_brand, fill=TEXT, anchor="w"
-        )
+        logo.create_text(0, px(22), text="AUTO", font=self.f_brand, fill=TEXT, anchor="w")
         logo.create_text(
             self.f_brand.measure("AUTO") + 2,
             px(22),
@@ -665,9 +644,9 @@ class App(tk.Tk):
             anchor="w",
         )
         self._logo_halo = halo
-        tk.Label(
-            hdr, text="CAMFROG  ·  ROOM MUSIC BOT", bg=BG, fg=MUTED, font=self.f_small
-        ).pack(side="left", padx=(px(8), 0), pady=(px(8), 0))
+        tk.Label(hdr, text="CAMFROG  ·  ROOM MUSIC BOT", bg=BG, fg=MUTED, font=self.f_small).pack(
+            side="left", padx=(px(8), 0), pady=(px(8), 0)
+        )
         self.b_lang = {}
         for code in ("th", "en"):
             b = PillButton(
@@ -683,9 +662,7 @@ class App(tk.Tk):
             )
             b.pack(side="right", padx=(px(6), 0))
             self.b_lang[code] = b
-        self.led = tk.Canvas(
-            hdr, width=px(18), height=px(18), bg=BG, highlightthickness=0, bd=0
-        )
+        self.led = tk.Canvas(hdr, width=px(18), height=px(18), bg=BG, highlightthickness=0, bd=0)
         self._led_id = self.led.create_oval(
             px(3), px(3), px(15), px(15), fill="#3a3f5c", outline=""
         )
@@ -739,9 +716,7 @@ class App(tk.Tk):
         # ---- now-playing card
         card = self._card(left)
         card.pack(fill="x")
-        self.stage = tk.Canvas(
-            card, height=px(230), bg=SURFACE, highlightthickness=0, bd=0
-        )
+        self.stage = tk.Canvas(card, height=px(230), bg=SURFACE, highlightthickness=0, bd=0)
         self.stage.pack(fill="x")
         self.stage.bind("<Configure>", self._layout_stage)
         info = tk.Frame(card, bg=SURFACE)
@@ -760,9 +735,7 @@ class App(tk.Tk):
         self.v_sub.pack(fill="x", pady=(px(2), px(10)))
         self.bar = GlowBar(info, height=px(22), bg=SURFACE, command=self._on_seek)
         self.bar.pack(fill="x")
-        self.v_time = tk.Label(
-            info, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w"
-        )
+        self.v_time = tk.Label(info, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w")
         self.v_time.pack(fill="x", pady=(0, px(10)))
         ctl = tk.Frame(info, bg=SURFACE)
         ctl.pack(fill="x")
@@ -781,15 +754,11 @@ class App(tk.Tk):
         self.b_pause.pack(side="left")
         skip = self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=44, minw=110)
         skip.pack(side="left", padx=(px(10), 0))
-        discover = self._btn(
-            ctl, "g_discover", self.do_discover, icon="🔍", height=44, minw=130
-        )
+        discover = self._btn(ctl, "g_discover", self.do_discover, icon="🔍", height=44, minw=130)
         discover.pack(side="left", padx=(px(10), 0))
         check = self._btn(ctl, "g_check", self.do_check, icon="✓", height=44, minw=110)
         check.pack(side="left", padx=(px(10), 0))
-        self.v_volpct = tk.Label(
-            ctl, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e"
-        )
+        self.v_volpct = tk.Label(ctl, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e")
         self.v_volpct.pack(side="right")
         self.vol = VolSlider(
             ctl,
@@ -822,9 +791,7 @@ class App(tk.Tk):
         add = tk.Frame(left, bg=BG)
         add.pack(fill="x", pady=(px(18), 0))
         self.ent_add = self._entry(add)
-        self.ent_add.pack(
-            side="left", fill="x", expand=True, ipady=px(9), padx=(0, px(10))
-        )
+        self.ent_add.pack(side="left", fill="x", expand=True, ipady=px(9), padx=(0, px(10)))
         self.ent_add.bind("<Return>", lambda _e: self.add())
         self.b_add = self._btn(
             add,
@@ -837,9 +804,8 @@ class App(tk.Tk):
             minw=px(100),
         )
         self.b_add.pack(side="left", padx=(px(10), 0))
-        self._btn(add, "g_folder", self.load_folder, bg=BG, height=40).pack(
-            side="left", padx=(px(8), 0)
-        )
+        self.b_folder = self._btn(add, "g_folder", self.load_folder, bg=BG, height=40)
+        self.b_folder.pack(side="left", padx=(px(8), 0))
         self._btn(add, "g_file", self.add_files, bg=BG, height=40).pack(
             side="left", padx=(px(8), 0)
         )
@@ -872,19 +838,13 @@ class App(tk.Tk):
             self.tabs[key] = b
         pages = tk.Frame(panel, bg=SURFACE)
         pages.pack(fill="both", expand=True, padx=px(14), pady=(0, px(14)))
-        self.pages = {
-            k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat")
-        }
+        self.pages = {k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat")}
 
         qp = self.pages["queue"]
         qb = tk.Frame(qp, bg=SURFACE)
         qb.pack(side="bottom", fill="x", pady=(px(10), 0))
-        self._btn(qb, "g_remove", self.remove_selected, "danger", height=34).pack(
-            side="left"
-        )
-        self._btn(qb, "g_clear", self.e.queue.clear, height=34).pack(
-            side="left", padx=(px(8), 0)
-        )
+        self._btn(qb, "g_remove", self.remove_selected, "danger", height=34).pack(side="left")
+        self._btn(qb, "g_clear", self.e.queue.clear, height=34).pack(side="left", padx=(px(8), 0))
         sb = ttk.Scrollbar(qp, orient="vertical")
         sb.pack(side="right", fill="y")
         self.lb = self._listbox(qp)
@@ -905,14 +865,10 @@ class App(tk.Tk):
         sr = tk.Frame(cp, bg=SURFACE)
         sr.pack(side="bottom", fill="x", pady=(px(10), 0))
         self.ent_say = self._entry(sr)
-        self.ent_say.pack(
-            side="left", fill="x", expand=True, ipady=px(7), padx=(0, px(8))
-        )
+        self.ent_say.pack(side="left", fill="x", expand=True, ipady=px(7), padx=(0, px(8)))
         self.ent_say.bind("<Return>", lambda _e: self.say())
         self._btn(sr, "g_say", self.say, "primary", height=34).pack(side="left")
-        self._btn(sr, "g_speak", self.speak, height=34).pack(
-            side="left", padx=(px(8), 0)
-        )
+        self._btn(sr, "g_speak", self.speak, height=34).pack(side="left", padx=(px(8), 0))
         cs = ttk.Scrollbar(cp, orient="vertical")
         cs.pack(side="right", fill="y")
         self.chat = tk.Text(
@@ -940,10 +896,7 @@ class App(tk.Tk):
     def open_settings(self):
         """Open the settings dialog as a popup (Toplevel) window."""
         # Bring existing settings window to front if already open
-        if (
-            getattr(self, "_settings_win", None) is not None
-            and self._settings_win.winfo_exists()
-        ):
+        if getattr(self, "_settings_win", None) is not None and self._settings_win.winfo_exists():
             self._settings_win.lift()
             self._settings_win.focus_set()
             return
@@ -978,9 +931,7 @@ class App(tk.Tk):
 
         # scrollable content
         container = tk.Frame(sp, bg=SURFACE)
-        container.pack(
-            fill="both", expand=True, padx=self.px(14), pady=(0, self.px(14))
-        )
+        container.pack(fill="both", expand=True, padx=self.px(14), pady=(0, self.px(14)))
         container.columnconfigure(0, weight=1)
         container.rowconfigure(0, weight=1)
 
@@ -1015,13 +966,9 @@ class App(tk.Tk):
             lbl = tk.Label(lf, bg=SURFACE, fg=TEXT, font=self.f_body, anchor="w")
             lbl.pack(in_=lf, side="left")
             self._labels.append((lbl, label_key))
-            widget.pack(
-                in_=lf, side="right", fill="x", expand=True, padx=(self.px(10), 0)
-            )
+            widget.pack(in_=lf, side="right", fill="x", expand=True, padx=(self.px(10), 0))
             if note_key:
-                note = tk.Label(
-                    sp_inner, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w"
-                )
+                note = tk.Label(sp_inner, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w")
                 note.grid(row=row + 1, column=0, columnspan=2, sticky="w", padx=padx)
                 self._labels.append((note, note_key))
                 row += 2
@@ -1055,16 +1002,12 @@ class App(tk.Tk):
         # ytdlp_path
         self.s_ytdlp_path = self._entry(sp_inner)
         self.s_ytdlp_path.insert(0, self.e.cfg.ytdlp_path)
-        _setting_row(
-            "g_settings_ytdlp_path", self.s_ytdlp_path, "g_settings_audio_device"
-        )
+        _setting_row("g_settings_ytdlp_path", self.s_ytdlp_path, "g_settings_audio_device")
 
         # audio_device
         self.s_audio_device = self._entry(sp_inner)
         self.s_audio_device.insert(0, self.e.cfg.audio_device)
-        _setting_row(
-            "g_settings_audio_device", self.s_audio_device, "g_settings_bot_nick"
-        )
+        _setting_row("g_settings_audio_device", self.s_audio_device, "g_settings_bot_nick")
 
         # bot_nick
         self.s_bot_nick = self._entry(sp_inner)
@@ -1084,9 +1027,7 @@ class App(tk.Tk):
         # blocked_users
         self.s_blocked_users = self._entry(sp_inner)
         self.s_blocked_users.insert(0, ", ".join(self.e.cfg.blocked_users))
-        _setting_row(
-            "g_settings_blocked_users", self.s_blocked_users, "g_settings_room"
-        )
+        _setting_row("g_settings_blocked_users", self.s_blocked_users, "g_settings_room")
 
         # room
         self.s_room = self._entry(sp_inner)
@@ -1101,16 +1042,12 @@ class App(tk.Tk):
         # music_dirs
         self.s_music_dirs = self._entry(sp_inner)
         self.s_music_dirs.insert(0, ", ".join(self.e.cfg.music_dirs))
-        _setting_row(
-            "g_settings_music_dirs", self.s_music_dirs, "g_settings_autoplay_sources"
-        )
+        _setting_row("g_settings_music_dirs", self.s_music_dirs, "g_settings_autoplay_sources")
 
         # autoplay_sources
         self.s_autoplay_sources = self._entry(sp_inner)
         self.s_autoplay_sources.insert(0, ", ".join(self.e.cfg.autoplay_sources))
-        _setting_row(
-            "g_settings_autoplay_sources", self.s_autoplay_sources, "g_settings_volume"
-        )
+        _setting_row("g_settings_autoplay_sources", self.s_autoplay_sources, "g_settings_volume")
 
         # volume
         self.s_volume = self._entry(sp_inner)
@@ -1120,16 +1057,12 @@ class App(tk.Tk):
         # max_queue
         self.s_max_queue = self._entry(sp_inner)
         self.s_max_queue.insert(0, str(self.e.cfg.max_queue))
-        _setting_row(
-            "g_settings_max_queue", self.s_max_queue, "g_settings_max_duration"
-        )
+        _setting_row("g_settings_max_queue", self.s_max_queue, "g_settings_max_duration")
 
         # max_duration
         self.s_max_duration = self._entry(sp_inner)
         self.s_max_duration.insert(0, str(self.e.cfg.max_duration))
-        _setting_row(
-            "g_settings_max_duration", self.s_max_duration, "g_settings_cooldown"
-        )
+        _setting_row("g_settings_max_duration", self.s_max_duration, "g_settings_cooldown")
 
         # cooldown
         self.s_cooldown = self._entry(sp_inner)
@@ -1139,23 +1072,17 @@ class App(tk.Tk):
         # send_interval
         self.s_send_interval = self._entry(sp_inner)
         self.s_send_interval.insert(0, str(self.e.cfg.send_interval))
-        _setting_row(
-            "g_settings_send_interval", self.s_send_interval, "g_settings_poll_interval"
-        )
+        _setting_row("g_settings_send_interval", self.s_send_interval, "g_settings_poll_interval")
 
         # poll_interval
         self.s_poll_interval = self._entry(sp_inner)
         self.s_poll_interval.insert(0, str(self.e.cfg.poll_interval))
-        _setting_row(
-            "g_settings_poll_interval", self.s_poll_interval, "g_settings_search_limit"
-        )
+        _setting_row("g_settings_poll_interval", self.s_poll_interval, "g_settings_search_limit")
 
         # search_limit
         self.s_search_limit = self._entry(sp_inner)
         self.s_search_limit.insert(0, str(self.e.cfg.search_limit))
-        _setting_row(
-            "g_settings_search_limit", self.s_search_limit, "g_settings_mpv_timeout"
-        )
+        _setting_row("g_settings_search_limit", self.s_search_limit, "g_settings_mpv_timeout")
 
         # mpv_timeout
         self.s_mpv_timeout = self._entry(sp_inner)
@@ -1201,9 +1128,7 @@ class App(tk.Tk):
         # auto_reply_file
         self.s_auto_reply_file = self._entry(sp_inner)
         self.s_auto_reply_file.insert(0, self.e.cfg.auto_reply_file)
-        _setting_row(
-            "g_settings_auto_reply_file", self.s_auto_reply_file, "g_settings_tts_voice"
-        )
+        _setting_row("g_settings_auto_reply_file", self.s_auto_reply_file, "g_settings_tts_voice")
 
         # tts_voice
         self.s_tts_voice = self._entry(sp_inner)
@@ -1269,9 +1194,7 @@ class App(tk.Tk):
         # camfrog_exe
         self.s_camfrog_exe = self._entry(sp_inner)
         self.s_camfrog_exe.insert(0, self.e.cfg.camfrog_exe)
-        _setting_row(
-            "g_settings_camfrog_exe", self.s_camfrog_exe, "g_settings_client_title_re"
-        )
+        _setting_row("g_settings_camfrog_exe", self.s_camfrog_exe, "g_settings_client_title_re")
 
         # client_title_re
         self.s_client_title_re = self._entry(sp_inner)
@@ -1285,9 +1208,7 @@ class App(tk.Tk):
         # launch_timeout
         self.s_launch_timeout = self._entry(sp_inner)
         self.s_launch_timeout.insert(0, str(self.e.cfg.launch_timeout))
-        _setting_row(
-            "g_settings_launch_timeout", self.s_launch_timeout, "g_settings_line_regex"
-        )
+        _setting_row("g_settings_launch_timeout", self.s_launch_timeout, "g_settings_line_regex")
 
         # line_regex
         self.s_line_regex = self._entry(sp_inner)
@@ -1367,12 +1288,8 @@ class App(tk.Tk):
         cols = gradient([PINK, VIOLET, CYAN, VIOLET, PINK], n)
         seg = w / n
         for i, c in enumerate(cols):
-            self.line.create_rectangle(
-                i * seg, 0, (i + 1) * seg + 1, 3, fill=c, outline=""
-            )
-        self._shimmer = self.line.create_rectangle(
-            -200, 0, -80, 3, fill="#ffffff", outline=""
-        )
+            self.line.create_rectangle(i * seg, 0, (i + 1) * seg + 1, 3, fill=c, outline="")
+        self._shimmer = self.line.create_rectangle(-200, 0, -80, 3, fill="#ffffff", outline="")
 
     def _layout_stage(self, _e=None):
         c, px = self.stage, self.px
@@ -1387,15 +1304,12 @@ class App(tk.Tk):
                 x = (x * 9301 + 49297) % 233280
                 rnd.append(x / 233280)
             self._stars = [
-                (rnd[i * 2 % 60], rnd[(i * 2 + 1) % 60], 0.4 + rnd[i % 60] * 1.3)
-                for i in range(30)
+                (rnd[i * 2 % 60], rnd[(i * 2 + 1) % 60], 0.4 + rnd[i % 60] * 1.3) for i in range(30)
             ]
         n = len(AURORA)
         strip = h / n * 1.8
         self._aurora_items = [
-            c.create_rectangle(
-                0, i * h / n, w, i * h / n + strip, fill=AURORA[i], outline=""
-            )
+            c.create_rectangle(0, i * h / n, w, i * h / n + strip, fill=AURORA[i], outline="")
             for i in range(n)
         ]
         self._star_items = [
@@ -1422,13 +1336,9 @@ class App(tk.Tk):
             )
             for i, d in enumerate((px(44), px(28), px(14)))
         ]
-        c.create_oval(
-            cx - r, cy - r, cx + r, cy + r, fill="#07080f", outline="#2b3156", width=2
-        )
+        c.create_oval(cx - r, cy - r, cx + r, cy + r, fill="#07080f", outline="#2b3156", width=2)
         for f in (0.92, 0.82, 0.72, 0.62, 0.52):
-            c.create_oval(
-                cx - r * f, cy - r * f, cx + r * f, cy + r * f, outline="#171a2e"
-            )
+            c.create_oval(cx - r * f, cy - r * f, cx + r * f, cy + r * f, outline="#171a2e")
         rs = r * 0.94
         self._sheen = [
             c.create_arc(
@@ -1462,9 +1372,7 @@ class App(tk.Tk):
             fill=VIOLET,
             outline="",
         )
-        self._needle = c.create_line(
-            cx, cy, cx + lab * 0.8, cy, fill="#ffffff", width=2
-        )
+        self._needle = c.create_line(cx, cy, cx + lab * 0.8, cy, fill="#ffffff", width=2)
         c.create_oval(cx - 4, cy - 4, cx + 4, cy + 4, fill="#0a0c14", outline="")
         self._vc = (cx, cy, r, lab)
         self._particle_items = [
@@ -1510,101 +1418,112 @@ class App(tk.Tk):
                 log.exception("GUI animation frame failed")
         finally:
             if not self._closing:
-                self._anim = self.after(
-                    250 if self.state() == "iconic" else FPS_MS, self._tick
-                )
+                self._anim = self.after(250 if self.state() == "iconic" else FPS_MS, self._tick)
 
     def _frame(self):
         t = time.monotonic()
         dt, self._t_prev = min(t - self._t_prev, 0.2), t
         st = self._state
-        c = self.stage
-        if getattr(self, "_aurora_items", None):
-            w, h = getattr(self, "_stage_wh", (0, 0))
-            n = len(self._aurora_items)
-            strip = h / n * 1.8 if n else 0
-            for i, item in enumerate(self._aurora_items):
-                off = aurora_offset(t, i, n) * h * 0.1
-                y0 = i * h / n - off
-                c.coords(item, 0, y0, w, y0 + strip)
-            for i, (item, (sx, sy, sr)) in enumerate(
-                zip(self._star_items, self._stars)
-            ):
-                a = 0.4 + 0.6 * pulse(t * 0.6 + i * 0.9, 2.3)
-                c.itemconfigure(
-                    item,
-                    stipple="gray75"
-                    if a > 0.7
-                    else ("gray50" if a > 0.4 else "gray25"),
-                )
-        if self._vc and getattr(self, "_particle_items", None):
-            cx, cy, r, _lab = self._vc
-            for item, p in zip(self._particle_items, self._particles):
-                x, y, alpha = particle_pos(p, t, cx, cy, r + self.px(70))
-                s = p["size"] * (0.6 + 0.7 * alpha) * (1.0 if st == "playing" else 0.5)
-                c.coords(item, x - s, y - s, x + s, y + s)
-                c.itemconfigure(
-                    item,
-                    stipple="gray75"
-                    if alpha > 0.75
-                    else ("gray50" if alpha > 0.45 else "gray25"),
-                )
+        self._animate_aurora(t)
+        self._animate_particles(t, st)
         self._run_confetti(t)
+        self._update_border_glow_and_level(t, st)
+        self._animate_bars(t)
+        self._animate_record(t, st, dt)
+        self._update_playback_indicators(t, st)
+
+    def _animate_aurora(self, t: float) -> None:
+        if not getattr(self, "_aurora_items", None):
+            return
+        c = self.stage
+        w, h = getattr(self, "_stage_wh", (0, 0))
+        n = len(self._aurora_items)
+        strip = h / n * 1.8 if n else 0
+        for i, item in enumerate(self._aurora_items):
+            off = aurora_offset(t, i, n) * h * 0.1
+            y0 = i * h / n - off
+            c.coords(item, 0, y0, w, y0 + strip)
+        for i, (item, (_sx, _sy, _sr)) in enumerate(
+            zip(self._star_items, self._stars, strict=False)
+        ):
+            a = 0.4 + 0.6 * pulse(t * 0.6 + i * 0.9, 2.3)
+            c.itemconfigure(
+                item,
+                stipple="gray75" if a > 0.7 else ("gray50" if a > 0.4 else "gray25"),
+            )
+
+    def _animate_particles(self, t: float, st: str) -> None:
+        if not (self._vc and getattr(self, "_particle_items", None)):
+            return
+        c = self.stage
+        cx, cy, r, _lab = self._vc
+        for item, p in zip(self._particle_items, self._particles, strict=False):
+            x, y, alpha = particle_pos(p, t, cx, cy, r + self.px(70))
+            s = p["size"] * (0.6 + 0.7 * alpha) * (1.0 if st == "playing" else 0.5)
+            c.coords(item, x - s, y - s, x + s, y + s)
+            c.itemconfigure(
+                item,
+                stipple="gray75" if alpha > 0.75 else ("gray50" if alpha > 0.45 else "gray25"),
+            )
+
+    def _update_border_glow_and_level(self, t: float, st: str) -> None:
         glow_target = 0.75 + 0.25 * pulse(t, 1.5) if st == "playing" else 0.0
         self._border_glow = ease(self._border_glow, glow_target, 0.12, 0.05)
         self._border.configure(bg=lerp_color(BG, PINK, 0.55 * self._border_glow))
         target = (
-            1.0
-            if st == "playing"
-            else (0.10 if st == "paused" else 0.05 + 0.04 * pulse(t, 3.0))
+            1.0 if st == "playing" else (0.10 if st == "paused" else 0.05 + 0.04 * pulse(t, 3.0))
         )
         self._level = ease(self._level, target, 0.15, 0.08)
+
+    def _animate_bars(self, t: float) -> None:
+        if not self._bar_items:
+            return
         c = self.stage
-        if self._bar_items:
-            tgt = bar_heights(t, len(self._bar_items), self._level)
-            x0, bw, base, maxh = self._bar_geo
-            for i, item in enumerate(self._bar_items):
-                self._bars[i] = ease(self._bars[i], tgt[i])
-                c.coords(
-                    item,
-                    x0 + i * bw + 1,
-                    base - max(2.0, self._bars[i] * maxh),
-                    x0 + (i + 1) * bw - 2,
-                    base,
-                )
-        if self._vc:
-            cx, cy, _r, lab = self._vc
-            self._spin = ease(self._spin, 1.0 if st == "playing" else 0.0, 0.08, 0.04)
-            self._angle = (
-                self._angle + self._spin * dt * 200.0
-            ) % 360.0  # 33⅓ rpm = 200 deg/s
-            c.itemconfigure(self._sheen[0], start=self._angle)
-            c.itemconfigure(self._sheen[1], start=(self._angle + 180) % 360)
-            a = math.radians(self._angle)
+        tgt = bar_heights(t, len(self._bar_items), self._level)
+        x0, bw, base, maxh = self._bar_geo
+        for i, item in enumerate(self._bar_items):
+            self._bars[i] = ease(self._bars[i], tgt[i])
             c.coords(
-                self._needle,
-                cx,
-                cy,
-                cx + lab * 0.8 * math.cos(a),
-                cy - lab * 0.8 * math.sin(a),
+                item,
+                x0 + i * bw + 1,
+                base - max(2.0, self._bars[i] * maxh),
+                x0 + (i + 1) * bw - 2,
+                base,
             )
-            for i, ring in enumerate(self._glow):
-                c.itemconfigure(
-                    ring,
-                    fill=lerp_color(
-                        "#0d1021",
-                        PINK,
-                        (0.04 + 0.03 * i)
-                        + 0.10 * self._level * pulse(t, 1.8) * (i + 1) / 3,
-                    ),
-                )
+
+    def _animate_record(self, t: float, st: str, dt: float) -> None:
+        if not self._vc:
+            return
+        c = self.stage
+        cx, cy, _r, lab = self._vc
+        self._spin = ease(self._spin, 1.0 if st == "playing" else 0.0, 0.08, 0.04)
+        self._angle = (self._angle + self._spin * dt * 200.0) % 360.0  # 33⅓ rpm = 200 deg/s
+        c.itemconfigure(self._sheen[0], start=self._angle)
+        c.itemconfigure(self._sheen[1], start=(self._angle + 180) % 360)
+        a = math.radians(self._angle)
+        c.coords(
+            self._needle,
+            cx,
+            cy,
+            cx + lab * 0.8 * math.cos(a),
+            cy - lab * 0.8 * math.sin(a),
+        )
+        for i, ring in enumerate(self._glow):
+            c.itemconfigure(
+                ring,
+                fill=lerp_color(
+                    "#0d1021",
+                    PINK,
+                    (0.04 + 0.03 * i) + 0.10 * self._level * pulse(t, 1.8) * (i + 1) / 3,
+                ),
+            )
+
+    def _update_playback_indicators(self, t: float, st: str) -> None:
         if st == "playing" and self._cur_dur:
             self.bar.set(self.e.position() / self._cur_dur)
         self.led.itemconfigure(
             self._led_id,
-            fill=lerp_color("#4a1f2c", RED, pulse(t, 1.4))
-            if st == "playing"
-            else "#3a3f5c",
+            fill=lerp_color("#4a1f2c", RED, pulse(t, 1.4)) if st == "playing" else "#3a3f5c",
         )
         if self._shimmer is not None and self.line.winfo_width() > 10:
             x = (t * 220) % (self.line.winfo_width() + 400) - 200
@@ -1613,7 +1532,7 @@ class App(tk.Tk):
     # ---- actions -------------------------------------------------------------
     def show_tab(self, name: str):
         self._tab = name
-        for k, page in self.pages.items():
+        for _, page in self.pages.items():
             page.pack_forget()
         self.pages[name].pack(fill="both", expand=True)
         for k, b in self.tabs.items():
@@ -1657,7 +1576,7 @@ class App(tk.Tk):
         pieces = confetti_burst(22, seed=int(time.monotonic() * 1000) % 10_000)
         cols = gradient([PINK, VIOLET, CYAN, GREEN, "#ffffff"], len(pieces))
         now = time.monotonic()
-        for piece, col in zip(pieces, cols):
+        for piece, col in zip(pieces, cols, strict=False):
             item = self.stage.create_oval(0, 0, 1, 1, fill=col, outline="")
             self._confetti.append((now, piece, item))
 
@@ -1676,9 +1595,7 @@ class App(tk.Tk):
             self.stage.coords(item, x - s, y - s, x + s, y + s)
             self.stage.itemconfigure(
                 item,
-                stipple="gray75"
-                if alpha > 0.7
-                else ("gray50" if alpha > 0.35 else "gray25"),
+                stipple="gray75" if alpha > 0.7 else ("gray50" if alpha > 0.35 else "gray25"),
             )
             keep.append((launch, piece, item))
         self._confetti = keep
@@ -1714,12 +1631,12 @@ class App(tk.Tk):
         self._set_adding_state(True)
 
         def on_success(tracks):
-            self._set_adding_state(False)
-            self.ent_add.delete(0, "end")
+            self.after(0, self._set_adding_state, False)
+            self.after(0, self.ent_add.delete, 0, "end")
             if len(tracks) == 1:
                 t = tracks[0]
-                self.v_hint.configure(
-                    text=self.e.t(
+                self._set_hint(
+                    self.e.t(
                         "queued_one",
                         pos=1,
                         title=t.title,
@@ -1728,13 +1645,11 @@ class App(tk.Tk):
                     )
                 )
             else:
-                self.v_hint.configure(
-                    text=self.e.t("queued_many", n=len(tracks), user="you")
-                )
+                self._set_hint(self.e.t("queued_many", n=len(tracks), user="you"))
 
         def on_error(msg):
-            self._set_adding_state(False)
-            self.v_hint.configure(text=msg)
+            self.after(0, self._set_adding_state, False)
+            self._set_hint(msg)
 
         self.e.request(text, on_success=on_success, on_error=on_error)
 
@@ -1742,13 +1657,43 @@ class App(tk.Tk):
         ext = " ".join(f"*{x}" for x in sorted(MEDIA))
         try:
             files = filedialog.askopenfilenames(
-                filetypes=[("Media", ext), ("All", "*.*")]
+                parent=self, filetypes=[("Media", ext), ("All", "*.*")]
             )
         except Exception:
             log.exception("file dialog failed")
             return
+        if not files:
+            return
+        self._set_adding_state(True)
+        pending = {"n": len(files)}
+
+        def _done():
+            pending["n"] -= 1
+            if pending["n"] <= 0:
+                self.after(0, self._set_adding_state, False)
+
+        def on_success(tracks):
+            _done()
+            if len(tracks) == 1:
+                t = tracks[0]
+                self._set_hint(
+                    self.e.t(
+                        "queued_one",
+                        pos=1,
+                        title=t.title,
+                        dur=t.dur,
+                        user="you",
+                    )
+                )
+            else:
+                self._set_hint(self.e.t("queued_many", n=len(tracks), user="you"))
+
+        def on_error(msg):
+            _done()
+            self._set_hint(msg)
+
         for f in files:
-            self.e.request(f)
+            self.e.request(f, on_success=on_success, on_error=on_error)
 
     def _set_hint(self, text: str):
         """Update the hint label on the main thread (callbacks may run on a
@@ -1756,24 +1701,50 @@ class App(tk.Tk):
         self.after(0, lambda: self.v_hint.configure(text=text))
 
     def load_folder(self):
+        """Open a folder picker and add all media files under it to the pool.
+
+        The scan runs off the main thread (via load_async) and is capped so a
+        very large folder cannot block forever. The folder button is disabled
+        while scanning to prevent reentrant clicks from stacking heavy scans.
+        """
+        if getattr(self, "_loading_folder", False):
+            return
         try:
             d = filedialog.askdirectory(parent=self)
         except Exception:
             log.exception("folder dialog failed")
             return
-        if d:
-            self._set_hint(self.e.t("folder_loading"))
-            try:
-                self.e.load_async(
-                    d,
-                    on_success=lambda tracks: self._set_hint(
-                        self.e.t("folder_loaded", n=len(tracks))
-                    ),
-                    on_error=lambda msg: self._set_hint(msg),
-                )
-            except Exception as ex:
-                log.exception("load folder failed: %s", d)
-                self._set_hint(self.e.t("load_failed", err=ex))
+        if not d:
+            return
+        self._loading_folder = True
+        self.after(0, self._set_folder_loading, True)
+        try:
+            self.e.load_async(
+                d,
+                limit=2000,
+                on_success=lambda tracks: self.after(0, self._on_folder_loaded, len(tracks)),
+                on_error=lambda msg: self.after(0, self._on_folder_failed, msg),
+            )
+        except Exception as ex:
+            log.exception("load folder failed: %s", d)
+            self.after(0, self._on_folder_failed, self.e.t("load_failed", err=ex))
+
+    def _set_folder_loading(self, loading: bool):
+        """Disable the folder button and show a scanning hint while loading."""
+        self.b_folder.configure(state="disabled" if loading else "normal")
+        self.v_hint.configure(
+            text=self.e.t("folder_loading") if loading else self.e.t("g_add_hint")
+        )
+
+    def _on_folder_loaded(self, n: int):
+        self._loading_folder = False
+        self.after(0, self._set_folder_loading, False)
+        self._set_hint(self.e.t("folder_loaded", n=n))
+
+    def _on_folder_failed(self, msg: str):
+        self._loading_folder = False
+        self.after(0, self._set_folder_loading, False)
+        self._set_hint(msg)
 
     def remove_selected(self):
         # by object, not by position: the queue may have changed since the list box was last refreshed
@@ -1868,8 +1839,8 @@ class App(tk.Tk):
             raise ValueError(f"{field} must not be empty")
         try:
             return int(raw)
-        except ValueError:
-            raise ValueError(f"{field} must be a whole number, got {raw!r}")
+        except ValueError as err:
+            raise ValueError(f"{field} must be a whole number, got {raw!r}") from err
 
     @staticmethod
     def _parse_float(entry: tk.Entry, field: str) -> float:
@@ -1879,8 +1850,8 @@ class App(tk.Tk):
             raise ValueError(f"{field} must not be empty")
         try:
             return float(raw)
-        except ValueError:
-            raise ValueError(f"{field} must be a number, got {raw!r}")
+        except ValueError as err:
+            raise ValueError(f"{field} must be a number, got {raw!r}") from err
 
     def save_settings(self):
         """Save settings from the settings tab back to config.toml."""
@@ -1901,15 +1872,11 @@ class App(tk.Tk):
             cfg.log_file = self.s_log_file.get().strip()
 
             # List fields
-            cfg.admins = [
-                a.strip() for a in self.s_admins.get().split(",") if a.strip()
-            ]
+            cfg.admins = [a.strip() for a in self.s_admins.get().split(",") if a.strip()]
             cfg.blocked_users = [
                 a.strip() for a in self.s_blocked_users.get().split(",") if a.strip()
             ]
-            cfg.music_dirs = [
-                a.strip() for a in self.s_music_dirs.get().split(",") if a.strip()
-            ]
+            cfg.music_dirs = [a.strip() for a in self.s_music_dirs.get().split(",") if a.strip()]
             cfg.autoplay_sources = [
                 a.strip() for a in self.s_autoplay_sources.get().split(",") if a.strip()
             ]
@@ -1917,15 +1884,11 @@ class App(tk.Tk):
             # Int fields
             cfg.volume = self._parse_int(self.s_volume, "volume")
             cfg.max_queue = self._parse_int(self.s_max_queue, "max queue length")
-            cfg.max_duration = self._parse_int(
-                self.s_max_duration, "max track duration"
-            )
+            cfg.max_duration = self._parse_int(self.s_max_duration, "max track duration")
             cfg.search_limit = self._parse_int(self.s_search_limit, "search limit")
             cfg.tts_rate = self._parse_int(self.s_tts_rate, "TTS rate")
             cfg.tts_duck = self._parse_int(self.s_tts_duck, "TTS duck volume")
-            cfg.launch_timeout = self._parse_int(
-                self.s_launch_timeout, "launch timeout"
-            )
+            cfg.launch_timeout = self._parse_int(self.s_launch_timeout, "launch timeout")
             cfg.mpv_timeout = self._parse_float(self.s_mpv_timeout, "mpv timeout")
 
             # Float fields
@@ -1993,12 +1956,8 @@ class App(tk.Tk):
             lines.append(f"mpv_path = {_toml_str(cfg.mpv_path)}")
             lines.append(f"ytdlp_path = {_toml_str(cfg.ytdlp_path)}")
             lines.append(f"audio_device = {_toml_str(cfg.audio_device)}")
-            lines.append(
-                f"youtube_cookies_file = {_toml_str(cfg.youtube_cookies_file)}"
-            )
-            lines.append(
-                f"youtube_cookies_browser = {_toml_str(cfg.youtube_cookies_browser)}"
-            )
+            lines.append(f"youtube_cookies_file = {_toml_str(cfg.youtube_cookies_file)}")
+            lines.append(f"youtube_cookies_browser = {_toml_str(cfg.youtube_cookies_browser)}")
             lines.append(f"youtube_ca_bundle = {_toml_str(cfg.youtube_ca_bundle)}")
             lines.append(f"volume = {cfg.volume}")
             lines.append(f"audio_fade = {str(cfg.audio_fade).lower()}")
@@ -2057,14 +2016,24 @@ class App(tk.Tk):
             # Write to config.toml; if not writable (e.g. installed to Program Files),
             # relocate to %APPDATA%\Camfrog AutoDJ\config.toml and write there instead.
             try:
-                p.write_text(new_text, "utf-8")
+                if p.exists():
+                    shutil.copyfile(p, p.with_name(p.name + ".bak"))
+                tmp = p.with_name(p.name + ".tmp")
+                tmp.write_text(new_text, "utf-8")
+                os.replace(tmp, p)
             except (OSError, PermissionError):
                 app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
                 app_cfg_dir = Path(app_data) / "Camfrog AutoDJ"
                 app_cfg_dir.mkdir(parents=True, exist_ok=True)
                 app_cfg_path = app_cfg_dir / "config.toml"
+                if app_cfg_path.exists():
+                    shutil.copyfile(
+                        app_cfg_path, app_cfg_path.with_name(app_cfg_path.name + ".bak")
+                    )
+                tmp = app_cfg_path.with_name(app_cfg_path.name + ".tmp")
+                tmp.write_text(new_text, "utf-8")
+                os.replace(tmp, app_cfg_path)
                 p = app_cfg_path
-                p.write_text(new_text, "utf-8")
                 # Remember the writable location so subsequent saves don't keep trying
                 # the original (read-only) path first.
                 self.e.cfg_path = str(p)
@@ -2113,9 +2082,7 @@ class App(tk.Tk):
     def refresh(self):
         try:
             self._refresh()
-        except (
-            Exception
-        ):  # one bad frame must not freeze the window: log it and keep polling
+        except Exception:  # one bad frame must not freeze the window: log it and keep polling
             log.exception("GUI refresh failed")
         finally:
             if not self._closing:
@@ -2137,9 +2104,7 @@ class App(tk.Tk):
             # round() keeps the countdown smooth: no more skipping from 0:00 to 0:01.
             elapsed = max(0.0, s["position"])
             self.v_time.configure(
-                text=f"{mmss(elapsed)} / {t.dur}"
-                if t.duration
-                else f"{mmss(elapsed)} / --:--"
+                text=f"{mmss(elapsed)} / {t.dur}" if t.duration else f"{mmss(elapsed)} / --:--"
             )
         else:
             self.v_title.configure(text=self.e.t("g_nothing"))
@@ -2149,19 +2114,14 @@ class App(tk.Tk):
         self._sync_pause()
         n = s["next"]
         self.v_next.configure(
-            text=f"{self.e.t('g_up_next')}: {n.title} [{n.dur}] ({n.requester})"
-            if n
-            else ""
+            text=f"{self.e.t('g_up_next')}: {n.title} [{n.dur}] ({n.requester})" if n else ""
         )
         if not self.vol.dragging:
             self.vol.set(s["volume"])
             self.v_volpct.configure(text=f"{int(s['volume'])}%")
         self.c_shuffle.set_active(s["shuffle"])
         self.c_repeat.set_active(s["repeat"] == "one")
-        items = [
-            f"{i}. {q.title}  [{q.dur}]  ({q.requester})"
-            for i, q in enumerate(s["queue"], 1)
-        ]
+        items = [f"{i}. {q.title}  [{q.dur}]  ({q.requester})" for i, q in enumerate(s["queue"], 1)]
         self._q_tracks = list(s["queue"])
         if items != self._q_cache:
             self._q_cache = items
@@ -2175,18 +2135,17 @@ class App(tk.Tk):
             self._h_cache = hist
             self.hist.delete(0, "end")
             self.hist.insert("end", *hist)
-        new = min(self.e.chat_seq - self._seen, len(self.e.chat_log))
+        seq, log_entries = self.e.chat_snapshot()
+        new = min(seq - self._seen, len(log_entries))
         if new > 0:
             self.chat.configure(state="normal")
-            for who, text in list(self.e.chat_log)[-new:]:
+            for who, text in log_entries[-new:]:
                 bot = who == self.e.cfg.bot_nick
                 self.chat.insert("end", who + ": ", ("who", "bot") if bot else ("who",))
                 self.chat.insert("end", text + "\n")
-            extra = (
-                int(self.chat.index("end-1c").split(".")[0]) - 1000
-            )  # keep the log box bounded
+            extra = int(self.chat.index("end-1c").split(".")[0]) - 1000  # keep the log box bounded
             if extra > 0:
                 self.chat.delete("1.0", f"{extra + 1}.0")
             self.chat.see("end")
             self.chat.configure(state="disabled")
-        self._seen = self.e.chat_seq
+        self._seen = seq

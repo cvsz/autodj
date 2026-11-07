@@ -50,9 +50,7 @@ def test_parse_line():
 
 def test_host_ok():
     h = ["youtube.com", "youtu.be"]
-    assert host_ok("https://www.youtube.com/watch?v=1", h) and host_ok(
-        "https://youtu.be/x", h
-    )
+    assert host_ok("https://www.youtube.com/watch?v=1", h) and host_ok("https://youtu.be/x", h)
     assert not host_ok("https://evil.com/youtube.com", h)
     assert not host_ok("https://notyoutube.com/x", h)
 
