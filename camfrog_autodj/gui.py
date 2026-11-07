@@ -1790,7 +1790,10 @@ class App(tk.Tk):
         if getattr(self, "_loading_folder", False):
             return
         try:
-            d = filedialog.askdirectory(parent=self)
+            # NOTE: do NOT pass parent=self on Windows — askdirectory with a
+            # Tkinter parent can hang on some systems (network drives, shell
+            # extensions, modal-dialog deadlock). Run parentless instead.
+            d = filedialog.askdirectory()
         except Exception:
             log.exception("folder dialog failed")
             self._loading_folder = False
@@ -1802,6 +1805,8 @@ class App(tk.Tk):
             return
         self._loading_folder = True
         self.after(0, self._set_folder_loading, True)
+        # Safety timeout: re-enable the button if scanning never completes
+        self._folder_scan_deadline = self.after(self.px(30000), self._folder_scan_timeout)
         try:
             self.e.load_async(
                 d,
@@ -1811,8 +1816,27 @@ class App(tk.Tk):
                 on_error=lambda msg: self.after(0, self._on_folder_failed, msg),
             )
         except Exception as ex:
+            self.after(0, self._cancel_folder_timeout)
             log.exception("load folder failed: %s", d)
             self.after(0, self._on_folder_failed, self.e.t("load_failed", err=ex))
+
+    def _cancel_folder_timeout(self):
+        """Cancel the folder-scan safety timeout if it is still pending."""
+        deadline = getattr(self, "_folder_scan_deadline", None)
+        if deadline:
+            try:
+                self.after_cancel(deadline)
+            except (tk.TclError, ValueError):
+                pass
+            self._folder_scan_deadline = None
+
+    def _folder_scan_timeout(self):
+        """Safety net: re-enable the folder button if a scan never reports back."""
+        self._folder_scan_deadline = None
+        log.warning("folder scan timeout: re-enabling Load folder button")
+        self._loading_folder = False
+        self.after(0, self._set_folder_loading, False)
+        self._set_hint(self.e.t("load_failed", err="สแกนนานเกินไป ยกเลิกแล้ว"))
 
     def _set_folder_loading(self, loading: bool):
         """Disable the folder button and show a scanning hint while loading."""
