@@ -134,7 +134,7 @@ lint:  ## Lint with ruff if installed, else a basic py_compile pass
 fmt:  ## Format with ruff/black if installed
 	@if command -v ruff >/dev/null 2>&1; then ruff format $(PROJECT) tests tools; \
 	elif command -v black >/dev/null 2>&1; then black $(PROJECT) tests tools; \
-	else echo "no formatter installed (pip install ruff or black)"; fi
+	else echo "no formatter installed (pip install ruff or black)"; exit 1; fi
 
 typecheck:  ## Type-check with mypy if installed
 	@if $(PY) -c "import mypy" 2>/dev/null; then $(PY) -m mypy $(PROJECT) || echo "NOTE: pre-existing mypy issues (missing stubs)"; \
