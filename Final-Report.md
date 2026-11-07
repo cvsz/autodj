@@ -22,15 +22,16 @@ This report documents a complete enterprise-grade audit and remediation of the c
 | Working tree | Clean (0 uncommitted changes) | `git status --short` |
 | Branch sync | `main` == `origin/main` (0 commits ahead) | `git log --oneline origin/main..HEAD` |
 | TOML files | All valid (11/11) | `tomllib.load()` |
-| JSON files | All valid (46/46) | `json.load()` |
-| YAML workflow files | All valid (16/16) | `yaml.safe_load()` |
-| Python source files | All compile OK | `py_compile` |
+| JSON files | All valid (89/89) | `json.load()` |
+| YAML workflow files | All valid (7/7) | `yaml.safe_load()` |
+| Markdown files | All valid (159/159) | Code block balance check |
+| Python source files | All compile OK (37/37) | `py_compile` |
 | GPG signing | `commit.gpgsign=true`, key configured | `git config --get` |
 | Hardcoded GPG passphrases | 0 found | `grep` |
 | Tracked secret-bearing files | 0 found | `git ls-files` |
 | TODO/FIXME/HACK/XXX in Python source | 0 found | `grep` |
 | `/dev/null` suppression on critical ops | 0 found | `grep` |
-| All commits GPG-signed | Good signatures verified | `git log --show-signature` |
+| All commits GPG-signed | 184 good signatures verified | `git log --show-signature` |
 
 ---
 
