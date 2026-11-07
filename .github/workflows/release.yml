@@ -76,22 +76,20 @@ jobs:
         run: |
           python -m pip install -e . pyinstaller cyclonedx-bom
 
-      - name: Install NSIS
+      - name: Install NSIS and mpv
         run: |
-          choco install nsis --yes
+          choco install nsis mpv --yes
           echo "C:\\Program Files (x86)\\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Download mpv
+      - name: Copy mpv to project
         run: |
-          $mpvUrl = "https://sourceforge.net/projects/mpv-player-windows/files/mpv-x86_64-20240101-git-1e4e8b5.7z/download"
-          $mpvZip = "mpv.7z"
-          Invoke-WebRequest -Uri $mpvUrl -OutFile $mpvZip -UseBasicParsing
-          7z x $mpvZip -ompv -y
-          Move-Item mpv/mpv.exe mpv/
-          Move-Item mpv/_internal mpv/
-          Remove-Item $mpvZip
-          Remove-Item mpv/mpv.7z -ErrorAction SilentlyContinue
-          "mpv downloaded and extracted to mpv/"
+          if (Test-Path "C:\\Program Files\\mpv\\mpv.exe") {
+            if (-not (Test-Path "mpv")) { New-Item -ItemType Directory -Path "mpv" | Out-Null }
+            Copy-Item "C:\\Program Files\\mpv\\*" "mpv\\" -Recurse -Force
+            "mpv copied from Chocolatey install to mpv/"
+          } else {
+            throw "mpv.exe not found after Chocolatey install"
+          }
 
       - name: Build AutoDJ.exe
         run: |
