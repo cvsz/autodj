@@ -415,3 +415,69 @@ def test_settings_save_preserves_all_fields(monkeypatch, tmp_path):
         app._settings_close()
     finally:
         sys.modules.pop("camfrog_autodj.gui", None)
+
+
+def test_load_folder_gives_visible_feedback(monkeypatch, tmp_path):
+    """Clicking "Load folder..." must show a GUI hint (not silently log), and
+    load media files recursively into the autoplay pool, skipping non-media."""
+    try:
+        _gui, e, app = _app(monkeypatch)
+        music = tmp_path / "music"
+        music.mkdir()
+        (music / "song one.mp3").write_bytes(b"not-a-real-mp3")
+        (music / "notes.txt").write_text("ignore me")
+        sub = music / "sub"
+        sub.mkdir()
+        (sub / "song two.flac").write_bytes(b"not-a-real-flac")
+        monkeypatch.setattr(
+            __import__("camfrog_autodj.gui", fromlist=["filedialog"]).filedialog,
+            "askdirectory",
+            lambda **k: str(music),
+        )
+
+        app.load_folder()
+        assert "Loading folder" in app.v_hint.cget("text")
+
+        deadline = time.time() + 8
+        ok = False
+        while time.time() < deadline:
+            pool = [t.title for t in e.queue.pool]
+            hint = app.v_hint.cget("text")
+            if (
+                "song one" in pool
+                and "song two" in pool
+                and "Loaded 2 tracks" in hint
+            ):
+                ok = True
+                break
+            time.sleep(0.05)
+
+        assert ok, f"pool={pool} hint={hint!r}"
+        assert not any("notes" in t.title for t in e.queue.pool)
+    finally:
+        sys.modules.pop("camfrog_autodj.gui", None)
+
+
+def test_load_folder_empty_shows_loaded_zero(monkeypatch, tmp_path):
+    """An empty folder still reports via the hint instead of staying silent."""
+    try:
+        _gui, _e, app = _app(monkeypatch)
+        empty = tmp_path / "empty"
+        empty.mkdir()
+        monkeypatch.setattr(
+            __import__("camfrog_autodj.gui", fromlist=["filedialog"]).filedialog,
+            "askdirectory",
+            lambda **k: str(empty),
+        )
+        app.load_folder()
+        deadline = time.time() + 5
+        seen = ""
+        while time.time() < deadline:
+            seen = app.v_hint.cget("text")
+            if "Loaded 0 tracks" in seen:
+                break
+            time.sleep(0.05)
+        assert "Loaded 0 tracks" in seen, f"hint={seen!r}"
+    finally:
+        sys.modules.pop("camfrog_autodj.gui", None)
+

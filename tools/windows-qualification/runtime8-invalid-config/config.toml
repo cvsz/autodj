@@ -1,0 +1,8 @@
+bot_nick = "TestBot"
+admins = []
+prefix = "!"
+lang = "en"
+mpv_path = "C:\\nonexistent\\mpv.exe"
+ytdlp_path = ""
+music_dirs = []
+autoplay_sources = []

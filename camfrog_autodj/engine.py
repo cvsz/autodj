@@ -560,7 +560,9 @@ class Engine:
             return [local_track(p)]
         raise UserError(self.t("not_found", src=src))
 
-    def load_async(self, src: str, announce: bool = True):
+    def load_async(
+        self, src: str, announce: bool = True, on_success=None, on_error=None
+    ):
         def job():
             try:
                 tracks = self.load_source(src)
@@ -568,11 +570,15 @@ class Engine:
                 self.wake.set()
                 if self.playlist:
                     self.playlist.add(tracks)
-                if announce:
+                if on_success:
+                    on_success(tracks)
+                elif announce:
                     self.say(self.t("added_pool", n=len(tracks)))
             except Exception as ex:
                 log.exception("load failed")
-                if announce:
+                if on_error:
+                    on_error(str(ex))
+                elif announce:
                     self.say(self.t("load_failed", err=ex))
 
         self.exec.submit(job)
