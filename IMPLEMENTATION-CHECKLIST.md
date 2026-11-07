@@ -104,7 +104,7 @@ Every claim includes an evidence reference (test file, workflow, or documented r
 ## Final verification
 
 - [ ] Fresh clone works with documented setup. — **UNVERIFIED** — not tested from a fresh clone
-- [ ] Repository validator passes. — **UNVERIFIED** — `scripts/validate_repo.py` exists but not run
+- [x] Repository validator passes. — **VERIFIED** — `python scripts/validate_repo.py` exits 0; all required template paths present and all local Markdown links valid (audit run 2026-11-07 on `fix/gui-thread-safety-main-thread` @ 9fa9c94).
 - [ ] Required CI/security checks pass on the exact release head. — **UNVERIFIED** — no release tag created yet
 - [ ] Protected-branch/admin verification succeeds. — **PARTIALLY VERIFIED** — push to `main` rejected (GH006) confirming protection; admin verification not run
 - [ ] No secrets/private data are committed. — **VERIFIED** — CI secret-file scan passes; no .env, .pem, .key tracked
