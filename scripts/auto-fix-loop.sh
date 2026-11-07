@@ -150,7 +150,7 @@ for f in glob.glob('.github/**/*.{yml,yaml}', recursive=True):
     except Exception as e:
         bad.append(f)
 print('\n'.join(bad))
-" 2>/dev/null || true)"
+" || true)"
     if [ -n "$YAML_BAD" ]; then
       echo "  ⚠️  พบ YAML ผิดรูปแบบ (ต้องแก้ด้วยมือ):"
       echo "$YAML_BAD" | while IFS= read -r f; do
