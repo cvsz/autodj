@@ -803,9 +803,8 @@ class App(tk.Tk):
             minw=px(100),
         )
         self.b_add.pack(side="left", padx=(px(10), 0))
-        self._btn(add, "g_folder", self.load_folder, bg=BG, height=40).pack(
-            side="left", padx=(px(8), 0)
-        )
+        self.b_folder = self._btn(add, "g_folder", self.load_folder, bg=BG, height=40)
+        self.b_folder.pack(side="left", padx=(px(8), 0))
         self._btn(add, "g_file", self.add_files, bg=BG, height=40).pack(
             side="left", padx=(px(8), 0)
         )
@@ -1671,24 +1670,50 @@ class App(tk.Tk):
         self.after(0, lambda: self.v_hint.configure(text=text))
 
     def load_folder(self):
+        """Open a folder picker and add all media files under it to the pool.
+
+        The scan runs off the main thread (via load_async) and is capped so a
+        very large folder cannot block forever. The folder button is disabled
+        while scanning to prevent reentrant clicks from stacking heavy scans.
+        """
+        if getattr(self, "_loading_folder", False):
+            return
         try:
             d = filedialog.askdirectory(parent=self)
         except Exception:
             log.exception("folder dialog failed")
             return
-        if d:
-            self._set_hint(self.e.t("folder_loading"))
-            try:
-                self.e.load_async(
-                    d,
-                    on_success=lambda tracks: self._set_hint(
-                        self.e.t("folder_loaded", n=len(tracks))
-                    ),
-                    on_error=lambda msg: self._set_hint(msg),
-                )
-            except Exception as ex:
-                log.exception("load folder failed: %s", d)
-                self._set_hint(self.e.t("load_failed", err=ex))
+        if not d:
+            return
+        self._loading_folder = True
+        self.after(0, self._set_folder_loading, True)
+        try:
+            self.e.load_async(
+                d,
+                limit=2000,
+                on_success=lambda tracks: self.after(0, self._on_folder_loaded, len(tracks)),
+                on_error=lambda msg: self.after(0, self._on_folder_failed, msg),
+            )
+        except Exception as ex:
+            log.exception("load folder failed: %s", d)
+            self.after(0, self._on_folder_failed, self.e.t("load_failed", err=ex))
+
+    def _set_folder_loading(self, loading: bool):
+        """Disable the folder button and show a scanning hint while loading."""
+        self.b_folder.configure(state="disabled" if loading else "normal")
+        self.v_hint.configure(
+            text=self.e.t("folder_loading") if loading else self.e.t("g_add_hint")
+        )
+
+    def _on_folder_loaded(self, n: int):
+        self._loading_folder = False
+        self.after(0, self._set_folder_loading, False)
+        self._set_hint(self.e.t("folder_loaded", n=n))
+
+    def _on_folder_failed(self, msg: str):
+        self._loading_folder = False
+        self.after(0, self._set_folder_loading, False)
+        self._set_hint(msg)
 
     def remove_selected(self):
         # by object, not by position: the queue may have changed since the list box was last refreshed

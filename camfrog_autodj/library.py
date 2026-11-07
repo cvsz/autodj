@@ -49,8 +49,13 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
     return Track(str(p), title, dur, requester)
 
 
-def scan_folder(folder, requester: str = "AutoDJ") -> list[Track]:
-    """Recursively scan *folder* for media files, skipping unreadable directories."""
+def scan_folder(folder, requester: str = "AutoDJ", limit: int = 0) -> list[Track]:
+    """Recursively scan *folder* for media files, skipping unreadable directories.
+
+    Symlinks are never followed (avoids symlink cycles and slow reparse-point
+    hangs on Windows). *limit* caps the total tracks returned (0 = no cap) so a
+    very large folder can never scan forever and block the caller.
+    """
     root = Path(folder)
     try:
         entries = list(root.iterdir())
@@ -59,9 +64,17 @@ def scan_folder(folder, requester: str = "AutoDJ") -> list[Track]:
         return []
     tracks: list[Track] = []
     for entry in entries:
+        if limit and len(tracks) >= limit:
+            break
         try:
+            if entry.is_symlink():
+                continue  # never follow symlinks: avoids cycles and slow reparse points
             if entry.is_dir():
-                tracks.extend(scan_folder(str(entry), requester))
+                need = limit - len(tracks) if limit else 0
+                sub = scan_folder(str(entry), requester, limit=limit)
+                tracks.extend(sub[:need] if need else sub)
+                if limit and len(tracks) >= limit:
+                    break
             elif entry.is_file() and entry.suffix.lower() in MEDIA:
                 tracks.append(local_track(entry, requester))
         except (OSError, PermissionError):
