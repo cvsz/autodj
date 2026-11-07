@@ -29,7 +29,7 @@ echo "============================================================"
 if [ -n "$REPOS_FILTER" ]; then
   REPO_LIST="$REPOS_FILTER"
 else
-  REPO_LIST="$(gh api user/repos --jq '.[] | select(.fork == false and .private == false) | .full_name' 2>/dev/null || true)"
+  REPO_LIST="$(gh api user/repos --jq '.[] | select(.fork == false and .private == false) | .full_name' || true)"
 fi
 
 TOTAL=$(echo "$REPO_LIST" | wc -l)
@@ -96,7 +96,7 @@ while [ "$ITER" -le "$MAX_ITER" ] && [ "$ALL_CLEAN" -eq 0 ]; do
       echo "  📦 พบไฟล์ลับถูก track: $(echo "$SECRET_FILES" | tr '\n' ' ')"
       echo "$SECRET_FILES" | while IFS= read -r f; do
         [ -z "$f" ] && continue
-        git rm --cached "$f" >/dev/null 2>&1 && echo "     → เอา $f ออกจาก tracking แล้ว"
+        git rm --cached "$f" && echo "     → เอา $f ออกจาก tracking แล้ว"
       done
       FIXED_ANY=1
     fi
@@ -163,10 +163,9 @@ print('\n'.join(bad))
     if ! git diff --quiet || ! git diff --cached --quiet; then
       git config user.name "cvsz"
       git config user.email "cvsz@seaza.com"
-      export GPG_PASSPHRASE=@@@Zz112233
       git add -A
-      git -c gpg.program=/home/cvsz/.local/bin/gpg-loopback.sh commit -m "fix: auto-fix loop — remove tracked secrets, add .gitignore" >/dev/null 2>&1
-      git push origin HEAD 2>/dev/null && echo "  ✅ Commit & push แล้ว" || echo "  ⚠️  Commit สำเร็จแต่ push ไม่สำเร็จ (อาจเป็น protected branch)"
+      git -c gpg.program=/home/cvsz/.local/bin/gpg-loopback.sh commit -m "fix: auto-fix loop — remove tracked secrets, add .gitignore"
+      git push origin HEAD && echo "  ✅ Commit & push แล้ว" || echo "  ⚠️  Commit สำเร็จแต่ push ไม่สำเร็จ (อาจเป็น protected branch)"
       FIXED_ANY=1
     else
       echo "  ℹ️  ไม่มีไฟล์ให้แก้ไขอัตโนมัติ (ต้องแก้ด้วยมือ)"
