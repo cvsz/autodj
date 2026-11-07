@@ -84,24 +84,40 @@ jobs:
       - name: Install mpv via Chocolatey
         run: choco install mpv --yes
 
-      - name: Refresh environment for Chocolatey PATH
-        run: refreshenv
-
       - name: Copy mpv to project
         run: |
-          # Find mpv.exe after choco install + refreshenv
+          # Find mpv.exe anywhere in Chocolatey lib or PATH
+          $mpvExe = $null
+
+          # 1. Try PATH (after refreshenv)
+          refreshenv
           $mpvExe = (Get-Command mpv.exe -ErrorAction SilentlyContinue).Source
+
+          # 2. Search Chocolatey lib folder recursively
           if (-not $mpvExe) {
-            # Fallback: check Chocolatey lib path
             $chocoLib = "$env:ChocolateyInstall\\lib\\mpv"
-            if (Test-Path "$chocoLib\\tools\\mpv.exe") {
-              $mpvExe = "$chocoLib\\tools\\mpv.exe"
-            } elseif (Test-Path "$chocoLib\\mpv.exe") {
-              $mpvExe = "$chocoLib\\mpv.exe"
+            if (Test-Path $chocoLib) {
+              $mpvExe = (Get-ChildItem -Path $chocoLib -Filter "mpv.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
             }
           }
+
+          # 3. Search common Chocolatey install locations
           if (-not $mpvExe) {
-            Write-Error "mpv.exe not found after Chocolatey install + refreshenv"
+            $commonPaths = @(
+              "C:\\ProgramData\\chocolatey\\lib\\mpv\\tools\\mpv.exe",
+              "C:\\ProgramData\\chocolatey\\lib\\mpv\\mpv.exe",
+              "C:\\Program Files\\mpv\\mpv.exe",
+              "C:\\Program Files (x86)\\mpv\\mpv.exe",
+              "C:\\Tools\\mpv\\mpv.exe"
+            )
+            foreach ($p in $commonPaths) {
+              if (Test-Path $p) { $mpvExe = $p; break }
+            }
+          }
+
+          if (-not $mpvExe) {
+            Write-Error "mpv.exe not found after Chocolatey install"
+            Write-Host "ChocolateyInstall: $env:ChocolateyInstall"
             Write-Host "PATH: $env:PATH"
             exit 1
           }
