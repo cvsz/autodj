@@ -87,28 +87,20 @@ class TestBuildScriptLogic(unittest.TestCase):
 
     def _init_git_repo(self):
         """Initialize a test git repository."""
-        subprocess.run(
-            ["git", "init"], cwd=self.repo_root, check=True, capture_output=True
-        )
+        subprocess.run(["git", "init"], cwd=self.repo_root, check=True, capture_output=True)
         subprocess.run(
             ["git", "config", "user.email", "test@test.com"],
             cwd=self.repo_root,
             check=True,
         )
-        subprocess.run(
-            ["git", "config", "user.name", "Test User"], cwd=self.repo_root, check=True
-        )
+        subprocess.run(["git", "config", "user.name", "Test User"], cwd=self.repo_root, check=True)
         # Test repos must not inherit global GPG signing (needs a passphrase
         # that cannot be supplied in batch mode).
-        subprocess.run(
-            ["git", "config", "commit.gpgsign", "false"], cwd=self.repo_root, check=True
-        )
+        subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=self.repo_root, check=True)
 
         # Create minimal repo structure
         (self.repo_root / "camfrog_autodj").mkdir(parents=True)
-        (self.repo_root / "camfrog_autodj" / "__init__.py").write_text(
-            '__version__ = "0.2.6"\n'
-        )
+        (self.repo_root / "camfrog_autodj" / "__init__.py").write_text('__version__ = "0.2.6"\n')
         (self.repo_root / "run_autodj.py").write_text("print('test')\n")
         (self.repo_root / "app.ico").write_bytes(b"fake_ico")
         (self.repo_root / "version_info.txt").write_text("VSVersionInfo(...)")
@@ -129,9 +121,7 @@ OutFile "Test.exe"
 
         # Commit
         subprocess.run(["git", "add", "."], cwd=self.repo_root, check=True)
-        subprocess.run(
-            ["git", "commit", "-m", "Initial commit"], cwd=self.repo_root, check=True
-        )
+        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=self.repo_root, check=True)
 
     def _get_head_sha(self, repo_path: Path) -> str:
         result = subprocess.run(

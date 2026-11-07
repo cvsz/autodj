@@ -98,25 +98,18 @@ def test_configure_ca_uses_posix_system_store_by_default(monkeypatch):
 def test_tls_failures_are_never_classified_as_transient():
     message = "CERTIFICATE_VERIFY_FAILED: self-signed certificate in certificate chain"
     assert resolver.classify_failure(message) == "tls_certificate"
-    assert (
-        resolver.classify_failure("HTTP Error 503: Service Unavailable")
-        == "transient_network"
-    )
+    assert resolver.classify_failure("HTTP Error 503: Service Unavailable") == "transient_network"
     assert resolver.classify_failure("HTTP Error 403: Forbidden") == "permanent"
 
 
 def test_search_retries_only_transient_network_failures(monkeypatch):
     calls = []
-    payload = json.dumps(
-        {"entries": [{"id": "abcdefghijk", "title": "Track", "duration": 120}]}
-    )
+    payload = json.dumps({"entries": [{"id": "abcdefghijk", "title": "Track", "duration": 120}]})
 
     def fake_run(cmd, **kwargs):
         calls.append(cmd)
         if len(calls) < 3:
-            return subprocess.CompletedProcess(
-                cmd, 1, "", "HTTP Error 503: Service Unavailable"
-            )
+            return subprocess.CompletedProcess(cmd, 1, "", "HTTP Error 503: Service Unavailable")
         return subprocess.CompletedProcess(cmd, 0, payload, "")
 
     monkeypatch.setattr(resolver.subprocess, "run", fake_run)
@@ -169,9 +162,7 @@ def test_search_does_not_retry_permanent_http_errors(monkeypatch):
 def test_tls_failure_is_reported_in_json_and_exit_status(monkeypatch, tmp_path):
     playlist = tmp_path / "edm_house.json"
     playlist.write_text(
-        json.dumps(
-            {"tracks": [{"source": "ytsearch1:EDM festival hits official music video"}]}
-        ),
+        json.dumps({"tracks": [{"source": "ytsearch1:EDM festival hits official music video"}]}),
         encoding="utf-8",
     )
     report_path = tmp_path / "reports" / "playlist-report.json"
@@ -186,9 +177,7 @@ def test_tls_failure_is_reported_in_json_and_exit_status(monkeypatch, tmp_path):
         )
 
     monkeypatch.setattr(resolver, "search", fail_search)
-    exit_code = resolver.main(
-        [str(playlist), "--delay", "0", "--report-json", str(report_path)]
-    )
+    exit_code = resolver.main([str(playlist), "--delay", "0", "--report-json", str(report_path)])
 
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert exit_code == 1
@@ -201,9 +190,7 @@ def test_tls_failure_is_reported_in_json_and_exit_status(monkeypatch, tmp_path):
     )
 
 
-def test_main_rejects_report_path_matching_input_before_processing(
-    monkeypatch, tmp_path
-):
+def test_main_rejects_report_path_matching_input_before_processing(monkeypatch, tmp_path):
     playlist = tmp_path / "playlist.json"
     original = b'{"tracks": [{"source": "ytsearch1:EDM"}]}\n'
     playlist.write_bytes(original)
@@ -223,9 +210,7 @@ def test_main_rejects_report_path_matching_input_before_processing(
     assert not playlist.with_name(playlist.name + ".bak").exists()
 
 
-def test_main_rejects_report_path_matching_existing_backup_before_processing(
-    monkeypatch, tmp_path
-):
+def test_main_rejects_report_path_matching_existing_backup_before_processing(monkeypatch, tmp_path):
     playlist = tmp_path / "playlist.json"
     backup = playlist.with_name(playlist.name + ".bak")
     original = b'{"tracks": [{"source": "ytsearch1:EDM"}]}\n'
@@ -265,9 +250,7 @@ def test_main_rejects_report_path_matching_input_staging_file_before_processing(
         ),
     )
 
-    exit_code = resolver.main(
-        [str(playlist), "--dry-run", "--report-json", str(staging)]
-    )
+    exit_code = resolver.main([str(playlist), "--dry-run", "--report-json", str(staging)])
 
     assert exit_code == 2
     assert staging.read_bytes() == report_original
@@ -290,9 +273,7 @@ def test_main_rejects_report_staging_path_matching_another_input(monkeypatch, tm
         ),
     )
 
-    exit_code = resolver.main(
-        [str(playlist), str(staging_collision), "--report-json", str(report)]
-    )
+    exit_code = resolver.main([str(playlist), str(staging_collision), "--report-json", str(report)])
 
     assert exit_code == 2
     assert playlist.read_text(encoding="utf-8") == '{"tracks": []}\n'

@@ -439,17 +439,9 @@ class Engine:
         return fresh[-n:]
 
     def resolve(self, arg: str, user: str, admin: bool) -> list[Track]:
-        arg = arg.strip().strip('"')
+        arg = self._normalize_url_arg(arg.strip().strip('"'))
         if not arg:
             raise UserError(self.t("nothing_found"))
-        if not is_url(
-            arg
-        ):  # "youtube.com/x", "www.youtu.be/x" pasted without a scheme is still a link
-            host = arg.split("/")[0].lower()
-            if "." in host and any(
-                host == h or host.endswith("." + h) for h in self.cfg.allowed_hosts
-            ):
-                arg = "https://" + arg
         if is_url(arg):
             if not admin and not host_ok(arg, self.cfg.allowed_hosts):
                 raise UserError(self.t("host_denied"))
@@ -457,18 +449,31 @@ class Engine:
             is_playlist = self._is_youtube_playlist(arg)
             return self._remote(arg, user, playlist=admin or is_playlist)
         if os.path.isabs(arg):
-            p = Path(arg)
-            if not admin and not self.index.contains(p):
-                raise UserError(self.t("file_not_in_lib"))
-            if p.is_dir():
-                if not admin:
-                    raise UserError(self.t("folders_admin"))
-                return scan_folder(p, user)
-            if p.is_file() and p.suffix.lower() in MEDIA:
-                return [local_track(p, user)]
-            raise UserError(self.t("file_not_found"))
+            return self._resolve_local_file(arg, user, admin)
         hit = self.index.find(arg, user)
         return [hit] if hit else self._remote(arg, user)
+
+    def _normalize_url_arg(self, arg: str) -> str:
+        """Add https:// scheme to bare YouTube host links pasted without one."""
+        if not is_url(arg):
+            host = arg.split("/")[0].lower()
+            if "." in host and any(
+                host == h or host.endswith("." + h) for h in self.cfg.allowed_hosts
+            ):
+                return "https://" + arg
+        return arg
+
+    def _resolve_local_file(self, arg: str, user: str, admin: bool) -> list[Track]:
+        p = Path(arg)
+        if not admin and not self.index.contains(p):
+            raise UserError(self.t("file_not_in_lib"))
+        if p.is_dir():
+            if not admin:
+                raise UserError(self.t("folders_admin"))
+            return scan_folder(p, user)
+        if p.is_file() and p.suffix.lower() in MEDIA:
+            return [local_track(p, user)]
+        raise UserError(self.t("file_not_found"))
 
     def request(
         self,
@@ -610,59 +615,10 @@ class Engine:
             log.debug("preload search tracks encountered an issue", exc_info=True)
 
     def _load_all(self):
-        try:
-            self.index.scan()
-            self.queue.add_pool(self.index.tracks)
-        except Exception:
-            log.exception("library scan failed")
-        for s in self.cfg.autoplay_sources:
-            try:
-                self.queue.add_pool(self.load_source(s))
-            except Exception:
-                log.exception("autoplay source failed: %s", s)
-        if self.playlist:
-            try:
-                # Add playlist tracks to the request queue so they are visible in the
-                # GUI list box and play before the autoplay pool (requests first).
-                # Dedupe against existing requests and recently played history so a
-                # restart does not re-queue the same tracks.
-                loaded = self.playlist.load()
-                with self.queue.lock:
-                    queued_sources = {r.source for r in self.queue.requests}
-                    played_sources = {t.source for t in self.history}
-                    for t in loaded:
-                        if t.source not in queued_sources and t.source not in played_sources:
-                            self.queue.add_request(t)
-                            queued_sources.add(t.source)
-            except Exception:
-                log.exception("playlist load failed")
-        # Auto-load all *.json playlist files from playlist_dir (e.g. playlist/thai_pop.json)
-        if self.cfg.playlist_dir:
-            try:
-                pl_dir = Path(self.cfg.playlist_dir)
-                if pl_dir.is_dir():
-                    for pl_file in sorted(pl_dir.glob("*.json")):
-                        try:
-                            dir_tracks = load_playlist(str(pl_file))
-                            with self.queue.lock:
-                                queued_sources = {r.source for r in self.queue.requests}
-                                played_sources = {t.source for t in self.history}
-                                for t in dir_tracks:
-                                    if (
-                                        t.source not in queued_sources
-                                        and t.source not in played_sources
-                                    ):
-                                        self.queue.add_request(t)
-                                        queued_sources.add(t.source)
-                            log.info(
-                                "playlist dir: loaded %d track(s) from %s",
-                                len(dir_tracks),
-                                pl_file,
-                            )
-                        except Exception:
-                            log.exception("failed to load playlist dir file: %s", pl_file)
-            except Exception:
-                log.exception("playlist dir scan failed: %s", self.cfg.playlist_dir)
+        self._load_library()
+        self._load_autoplay_sources()
+        self._load_playlist()
+        self._load_playlist_dir()
         log.info(
             "autoplay pool: %d tracks; queue: %d requests",
             len(self.queue.pool),
@@ -671,6 +627,63 @@ class Engine:
         self.wake.set()
         # Trigger background lookahead resolution for search tracks
         self.exec.submit(self._preload_search_tracks)
+
+    def _load_library(self):
+        try:
+            self.index.scan()
+            self.queue.add_pool(self.index.tracks)
+        except Exception:
+            log.exception("library scan failed")
+
+    def _load_autoplay_sources(self):
+        for s in self.cfg.autoplay_sources:
+            try:
+                self.queue.add_pool(self.load_source(s))
+            except Exception:
+                log.exception("autoplay source failed: %s", s)
+
+    def _load_playlist(self):
+        # Add playlist tracks to the request queue so they are visible in the
+        # GUI list box and play before the autoplay pool (requests first).
+        # Dedupe against existing requests and recently played history so a
+        # restart does not re-queue the same tracks.
+        if not self.playlist:
+            return
+        try:
+            loaded = self.playlist.load()
+            with self.queue.lock:
+                queued_sources = {r.source for r in self.queue.requests}
+                played_sources = {t.source for t in self.history}
+                for t in loaded:
+                    if t.source not in queued_sources and t.source not in played_sources:
+                        self.queue.add_request(t)
+                        queued_sources.add(t.source)
+        except Exception:
+            log.exception("playlist load failed")
+
+    def _load_playlist_dir(self):
+        # Auto-load all *.json playlist files from playlist_dir (e.g. playlist/thai_pop.json)
+        if not self.cfg.playlist_dir:
+            return
+        try:
+            pl_dir = Path(self.cfg.playlist_dir)
+            if not pl_dir.is_dir():
+                return
+            for pl_file in sorted(pl_dir.glob("*.json")):
+                try:
+                    dir_tracks = load_playlist(str(pl_file))
+                    with self.queue.lock:
+                        queued_sources = {r.source for r in self.queue.requests}
+                        played_sources = {t.source for t in self.history}
+                        for t in dir_tracks:
+                            if t.source not in queued_sources and t.source not in played_sources:
+                                self.queue.add_request(t)
+                                queued_sources.add(t.source)
+                    log.info("playlist dir: loaded %d track(s) from %s", len(dir_tracks), pl_file)
+                except Exception:
+                    log.exception("failed to load playlist dir file: %s", pl_file)
+        except Exception:
+            log.exception("playlist dir scan failed: %s", self.cfg.playlist_dir)
 
     # ---- playback loop --------------------------------------------------
     def _announce(self, t: Track):
@@ -687,9 +700,7 @@ class Engine:
     def _player_loop(self):
         fails = 0  # consecutive tracks that failed to play
         while not self.stop_evt.is_set():
-            # Don't pop from queue if player is not available (e.g. mpv_path not set).
-            # Otherwise playlist tracks get consumed and lost before mpv is configured.
-            if hasattr(self.player, "available") and not self.player.available():
+            if not self._mpv_available():
                 if fails == 0:
                     log.warning(
                         "mpv not available (mpv_path=%r); waiting for mpv before playing queue",
@@ -708,69 +719,79 @@ class Engine:
                 t = self._resolve_track_if_search(t)
             except UserError as ex:
                 log.warning("failed to resolve track %r: %s", t.source, ex)
-                t.state = "FAILED"
-                self._log_track(t, "FAILED")
                 fails += 1
-                self.current = None
-                if fails <= MAX_FAIL_ANNOUNCE:
-                    self.say(self.t("cannot_play", title=t.title))
-                elif fails == MAX_FAIL_ANNOUNCE + 1:
-                    log.warning(
-                        "%d tracks in a row failed to play: not announcing further failures in the room "
-                        "(check the lines above; run AutoDJ.exe --check)",
-                        fails - 1,
-                    )
-                self.stop_evt.wait(self.fail_delay(fails))
+                self._track_failed(t, fails)
                 continue
             # After popping and resolving current, trigger preload for next in queue
             self.exec.submit(self._preload_search_tracks)
-            recorded = False
-            while not self.stop_evt.is_set():
-                self.current = t
-                t.state = "PLAYING"
-                self._log_track(t, "PLAYING")
-                self.votes.clear()
-                self.paused, self._paused_at, self._paused_total = False, None, 0.0
-                self.started_at = time.monotonic()
-                if fails < MAX_FAIL_ANNOUNCE:
-                    self._announce(t)
-                else:
-                    self.exec.submit(self._announce_if_playing, t)
-                log.info("playing %s", t.source)
-                try:
-                    ok = self.player.play(t.source, self.volume, t.duration)
-                except Exception:
-                    log.exception(
-                        "cannot start mpv (mpv_path=%r): install mpv and set mpv_path in config.toml",
-                        self.cfg.mpv_path,
-                    )
-                    ok = False
-                if not ok:
-                    fails += 1
-                    t.state = "FAILED"
-                    self._log_track(t, "FAILED")
-                    self.current = None
-                    if fails <= MAX_FAIL_ANNOUNCE:
-                        self.say(self.t("cannot_play", title=t.title))
-                    elif fails == MAX_FAIL_ANNOUNCE + 1:
-                        log.warning(
-                            "%d tracks in a row failed to play: not announcing further failures in the room "
-                            "(check the lines above; run AutoDJ.exe --check)",
-                            fails - 1,
-                        )
-                    self.stop_evt.wait(
-                        self.fail_delay(fails)
-                    )  # back off: never spin on a broken setup
-                    break
-                fails = 0
-                if not recorded:
-                    t.state = "COMPLETED"
-                    self._log_track(t, "COMPLETED")
-                    self.history.appendleft(t)
-                    recorded = True
-                if self.queue.repeat != "one" or getattr(self.player, "skipped", False):
-                    break
-            self.current = None
+            fails = self._play_one_track(t, fails)
+
+    def _mpv_available(self) -> bool:
+        # Players without an `available` method (e.g. test fakes) are treated as available.
+        if not hasattr(self.player, "available"):
+            return True
+        return bool(self.player.available())
+
+    def _announce_playback_failure(self, t: Track, fails: int) -> None:
+        if fails <= MAX_FAIL_ANNOUNCE:
+            self.say(self.t("cannot_play", title=t.title))
+        elif fails == MAX_FAIL_ANNOUNCE + 1:
+            log.warning(
+                "%d tracks in a row failed to play: not announcing further failures in the room "
+                "(check the lines above; run AutoDJ.exe --check)",
+                fails - 1,
+            )
+
+    def _track_failed(self, t: Track, fails: int) -> None:
+        """Mark *t* failed, announce per the back-off policy, then back off."""
+        t.state = "FAILED"
+        self._log_track(t, "FAILED")
+        self.current = None
+        self._announce_playback_failure(t, fails)
+        self.stop_evt.wait(self.fail_delay(fails))  # back off: never spin on a broken setup
+
+    def _try_play(self, t: Track) -> bool:
+        try:
+            return self.player.play(t.source, self.volume, t.duration)
+        except Exception:
+            log.exception(
+                "cannot start mpv (mpv_path=%r): install mpv and set mpv_path in config.toml",
+                self.cfg.mpv_path,
+            )
+            return False
+
+    def _play_one_track(self, t: Track, fails: int) -> int:
+        """Play *t* (repeating if configured) until it completes or the loop stops.
+
+        Returns the updated consecutive-failure count.
+        """
+        recorded = False
+        while not self.stop_evt.is_set():
+            self.current = t
+            t.state = "PLAYING"
+            self._log_track(t, "PLAYING")
+            self.votes.clear()
+            self.paused, self._paused_at, self._paused_total = False, None, 0.0
+            self.started_at = time.monotonic()
+            if fails < MAX_FAIL_ANNOUNCE:
+                self._announce(t)
+            else:
+                self.exec.submit(self._announce_if_playing, t)
+            log.info("playing %s", t.source)
+            if not self._try_play(t):
+                fails += 1
+                self._track_failed(t, fails)
+                return fails
+            fails = 0
+            if not recorded:
+                t.state = "COMPLETED"
+                self._log_track(t, "COMPLETED")
+                self.history.appendleft(t)
+                recorded = True
+            if self.queue.repeat != "one" or getattr(self.player, "skipped", False):
+                break
+        self.current = None
+        return fails
 
     # ---- main -----------------------------------------------------------
     def _chat_loop(self):

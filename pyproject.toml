@@ -34,7 +34,9 @@ ignore_missing_imports = true
 # Ruff configuration for AutoDJ source code.
 # line-length = 100 keeps long TOML/regex strings and Windows paths readable.
 line-length = 100
-# Enable a focused subset of rules: errors, bugs, imports, style, naming, and security.
+
+[tool.ruff.lint]
+# Enable a focused subset of rules: errors, bugs, imports, style, naming, complexity, and security.
 select = ["E", "F", "B", "I", "C", "N", "S"]
 # Ignore rules that are noisy for this codebase (Windows-only ctypes imports,
 # deliberate broad except clauses, test-file monkeypatching patterns).
@@ -51,6 +53,6 @@ ignore = [
 ]
 # RUF012 (mutable class attribute) is intentional for PillButton.STYLES;
 # the STYLES dict in gui.py already carries a `# noqa: RUF012` comment.
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B008", "N802", "S101", "S311"]
 "tools/*" = ["S101", "S603", "S608"]

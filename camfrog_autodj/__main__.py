@@ -6,14 +6,14 @@ import shutil
 import sys
 from pathlib import Path
 
-log = logging.getLogger(__name__)
-
 from . import __version__
 from .adapters import NullAdapter, build_adapter
 from .config import Config, ConfigError
 from .engine import Engine
 from .migrate import migrate_config
 from .textutil import clean_text
+
+log = logging.getLogger(__name__)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -84,29 +84,11 @@ def main():
 
 
 def _run(a, level):
-    if a.windows:
-        from .windows import list_all
-
-        for c in list_all():
-            print(f"exe={c.exe!r} pid={c.pid} class={c.cls!r} title={c.title!r}")
+    if _handle_windows(a):
         return
-    if a.dump:
-        from pywinauto import Desktop  # type: ignore[import-untyped]  # pywinauto ships no py.typed stubs
-
-        from .windows import candidates
-
-        cs = [c for c in candidates(a.dump, visible_only=False) if c.pid != os.getpid()]
-        if not cs:
-            print("no window matches", a.dump)
-            return
-        Desktop(backend="uia").window(handle=cs[0].handle).print_control_identifiers()
+    if _handle_dump(a):
         return
-    if not os.path.exists(a.config) and getattr(
-        sys, "frozen", False
-    ):  # exe: also look next to AutoDJ.exe
-        alt = os.path.join(os.path.dirname(sys.executable), os.path.basename(a.config))
-        if os.path.exists(alt):
-            a.config = alt
+    _resolve_frozen_config_path(a)
     if os.path.exists(a.config):
         log.info("config: %s", os.path.abspath(a.config))
     else:
@@ -114,106 +96,22 @@ def _run(a, level):
             "config file %s not found: running with built-in defaults (copy config.example.toml to config.toml)",
             os.path.abspath(a.config),
         )
-    # Migrate placeholder/invalid values before loading config
-    if os.path.exists(a.config):
-        try:
-            changes = migrate_config(a.config)
-            for change in changes:
-                log.info("config migration: %s", change)
-        except Exception:  # migration must never prevent startup
-            log.exception("config migration failed; continuing with existing config")
+    _migrate_config(a.config)
     cfg = Config.load(a.config)
-    if a.log_file or cfg.log_file:
-        log_path = a.log_file or cfg.log_file
-        # Resolve relative log paths to a user-writable directory (APPDATA/Camfrog AutoDJ)
-        # instead of CWD which may be Program Files (write-protected).
-        if log_path and not os.path.isabs(log_path):
-            app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-            log_path = os.path.join(app_data, "Camfrog AutoDJ", log_path)
-        try:
-            _add_log_file(log_path, level)
-        except (OSError, PermissionError):
-            log.warning(
-                "cannot open log file %s; continuing without file logging",
-                log_path,
-            )
-
-    # If config file is not writable (e.g. installed to Program Files), relocate to APPDATA
-    # so settings changes and auto-discover can be saved.
-    p = Path(a.config)
-    if not p.exists() or not os.access(p, os.W_OK):
-        app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-        app_cfg_dir = Path(app_data) / "Camfrog AutoDJ"
-        app_cfg_dir.mkdir(parents=True, exist_ok=True)
-        app_cfg_path = app_cfg_dir / "config.toml"
-        if p.exists() and not app_cfg_path.exists():
-            shutil.copyfile(p, app_cfg_path)
-            log.info(
-                "config.toml not writable at %s; using %s instead",
-                p,
-                app_cfg_path,
-            )
-        p = app_cfg_path
-        a.config = str(p)
-        # Migrate the relocated config before loading
-        try:
-            changes = migrate_config(str(p))
-            for change in changes:
-                log.info("config migration: %s", change)
-        except Exception:  # migration must never prevent startup
-            log.exception("config migration failed; continuing with existing config")
-        cfg = Config.load(str(p))
+    _setup_log_file(a, cfg, level)
+    cfg = _relocate_config(a, cfg)
     if a.lang:
         cfg.lang = a.lang
     if a.console:
         cfg.chat_reader = cfg.chat_sender = "console"
-    if a.check:
-        from . import doctor
-
-        res = doctor.run_checks(cfg)
-        print(doctor.format_report(res))
-        sys.exit(1 if doctor.has_failures(res) else 0)
-    if cfg.auto_launch and "uia" in (cfg.chat_reader, cfg.chat_sender):
-        from .launcher import ensure_room
-
-        try:
-            ensure_room(cfg)
-        except (
-            Exception  # noqa: BLE001 -- defensive; auto-launch must not crash the bot
-        ) as ex:  # pragma: no cover - defensive; discovery is best-effort
-            log.warning("auto-launch failed; continuing without Camfrog: %s", ex)
-    uses_uia = "uia" in (cfg.chat_reader, cfg.chat_sender)
-    if uses_uia and (a.discover or (cfg.auto_discover and not a.no_discover)):
-        from . import discover
-
-        # Auto-discovery must never prevent the GUI from opening: log the failure
-        # and continue with the existing config instead of crashing at startup.
-        try:
-            ups = discover.apply(cfg, a.config)
-        except Exception:  # pragma: no cover - defensive; discovery is best-effort
-            logging.getLogger(__name__).exception("auto-discover failed; continuing without it")
-            ups = None
-        if a.discover:
-            print(ups or "nothing found: open the room window and try again")
-            return
-    if a.say:
-        ad = build_adapter(cfg)
-        ad.send(clean_text(a.say))
-        print("sent:", a.say)
+    if _run_check(a, cfg):
         return
-    try:
-        adapter = build_adapter(cfg)
-    except Exception as ex:  # Camfrog not open / pywinauto unavailable, ...
-        if a.gui:
-            # The window must still open so the user can run --check / --discover
-            # from inside it; chat degrades to silent until Camfrog is reachable.
-            log.error(
-                "cannot attach to Camfrog chat (%s); opening the GUI without chat",
-                ex,
-            )
-            adapter = NullAdapter()
-        else:
-            raise
+    _auto_launch(cfg)
+    if _auto_discover(a, cfg):
+        return
+    if _run_say(a, cfg):
+        return
+    adapter = _build_adapter(a, cfg)
     eng = Engine(cfg, adapter, cfg_path=a.config)
     if a.gui:
         from .gui import App
@@ -222,6 +120,157 @@ def _run(a, level):
         App(eng).mainloop()
     else:
         eng.run()
+
+
+def _handle_windows(a) -> bool:
+    if not a.windows:
+        return False
+    from .windows import list_all
+
+    for c in list_all():
+        print(f"exe={c.exe!r} pid={c.pid} class={c.cls!r} title={c.title!r}")
+    return True
+
+
+def _handle_dump(a) -> bool:
+    if not a.dump:
+        return False
+    from pywinauto import Desktop  # type: ignore[import-untyped]  # pywinauto ships no py.typed stubs
+
+    from .windows import candidates
+
+    cs = [c for c in candidates(a.dump, visible_only=False) if c.pid != os.getpid()]
+    if not cs:
+        print("no window matches", a.dump)
+        return True
+    Desktop(backend="uia").window(handle=cs[0].handle).print_control_identifiers()
+    return True
+
+
+def _resolve_frozen_config_path(a) -> None:
+    # exe: also look next to AutoDJ.exe
+    if not os.path.exists(a.config) and getattr(sys, "frozen", False):
+        alt = os.path.join(os.path.dirname(sys.executable), os.path.basename(a.config))
+        if os.path.exists(alt):
+            a.config = alt
+
+
+def _migrate_config(path: str) -> None:
+    # Migrate placeholder/invalid values before loading config.
+    if not os.path.exists(path):
+        return
+    try:
+        changes = migrate_config(path)
+        for change in changes:
+            log.info("config migration: %s", change)
+    except Exception:  # migration must never prevent startup
+        log.exception("config migration failed; continuing with existing config")
+
+
+def _setup_log_file(a, cfg, level) -> None:
+    if not (a.log_file or cfg.log_file):
+        return
+    log_path = a.log_file or cfg.log_file
+    # Resolve relative log paths to a user-writable directory (APPDATA/Camfrog AutoDJ)
+    # instead of CWD which may be Program Files (write-protected).
+    if log_path and not os.path.isabs(log_path):
+        app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
+        log_path = os.path.join(app_data, "Camfrog AutoDJ", log_path)
+    try:
+        _add_log_file(log_path, level)
+    except (OSError, PermissionError):
+        log.warning(
+            "cannot open log file %s; continuing without file logging",
+            log_path,
+        )
+
+
+def _relocate_config(a, cfg):
+    # If config file is not writable (e.g. installed to Program Files), relocate to APPDATA
+    # so settings changes and auto-discover can be saved.
+    p = Path(a.config)
+    if p.exists() and os.access(p, os.W_OK):
+        return cfg
+    app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
+    app_cfg_dir = Path(app_data) / "Camfrog AutoDJ"
+    app_cfg_dir.mkdir(parents=True, exist_ok=True)
+    app_cfg_path = app_cfg_dir / "config.toml"
+    if p.exists() and not app_cfg_path.exists():
+        shutil.copyfile(p, app_cfg_path)
+        log.info(
+            "config.toml not writable at %s; using %s instead",
+            p,
+            app_cfg_path,
+        )
+    p = app_cfg_path
+    a.config = str(p)
+    # Migrate the relocated config before loading
+    _migrate_config(str(p))
+    return Config.load(str(p))
+
+
+def _run_check(a, cfg) -> bool:
+    if not a.check:
+        return False
+    from . import doctor
+
+    res = doctor.run_checks(cfg)
+    print(doctor.format_report(res))
+    sys.exit(1 if doctor.has_failures(res) else 0)
+
+
+def _auto_launch(cfg) -> None:
+    if not (cfg.auto_launch and "uia" in (cfg.chat_reader, cfg.chat_sender)):
+        return
+    from .launcher import ensure_room
+
+    try:
+        ensure_room(cfg)
+    except Exception as ex:  # noqa: BLE001 -- defensive; auto-launch must not crash the bot
+        log.warning("auto-launch failed; continuing without Camfrog: %s", ex)
+
+
+def _auto_discover(a, cfg) -> bool:
+    # Auto-discovery must never prevent the GUI from opening: log the failure
+    # and continue with the existing config instead of crashing at startup.
+    uses_uia = "uia" in (cfg.chat_reader, cfg.chat_sender)
+    if not (uses_uia and (a.discover or (cfg.auto_discover and not a.no_discover))):
+        return False
+    from . import discover
+
+    try:
+        ups = discover.apply(cfg, a.config)
+    except Exception:  # pragma: no cover - defensive; discovery is best-effort
+        logging.getLogger(__name__).exception("auto-discover failed; continuing without it")
+        ups = None
+    if a.discover:
+        print(ups or "nothing found: open the room window and try again")
+        return True
+    return False
+
+
+def _run_say(a, cfg) -> bool:
+    if not a.say:
+        return False
+    ad = build_adapter(cfg)
+    ad.send(clean_text(a.say))
+    print("sent:", a.say)
+    return True
+
+
+def _build_adapter(a, cfg):
+    try:
+        return build_adapter(cfg)
+    except Exception as ex:  # Camfrog not open / pywinauto unavailable, ...
+        if a.gui:
+            # The window must still open so the user can run --check / --discover
+            # from inside it; chat degrades to silent until Camfrog is reachable.
+            log.error(
+                "cannot attach to Camfrog chat (%s); opening the GUI without chat",
+                ex,
+            )
+            return NullAdapter()
+        raise
 
 
 if __name__ == "__main__":

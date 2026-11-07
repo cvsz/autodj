@@ -144,9 +144,7 @@ def test_buttons_do_what_they_say(monkeypatch):
         app.ent_say.insert(0, "hi all")
         app.say()
         assert any("hi all" in o for o in out(e))
-        app.vol._release(
-            types.SimpleNamespace(x=450)
-        )  # drag the volume knob to the middle
+        app.vol._release(types.SimpleNamespace(x=450))  # drag the volume knob to the middle
         assert 40 <= e.volume <= 60
     finally:
         sys.modules.pop("camfrog_autodj.gui", None)
@@ -301,7 +299,9 @@ def test_settings_save_preserves_all_fields(monkeypatch, tmp_path):
         # Fields the settings dialog does NOT expose, plus web/playlist fields
         cfg.web_view_title = "wb-log-room-data.inside/"
         cfg.web_input_title = "wb-edit-data.inside/"
-        cfg.line_regex = r"^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$"
+        cfg.line_regex = (
+            r"^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$"
+        )
         cfg.playlist_dir = "playlist"
         # Fields the dialog DOES expose, set to non-defaults too
         cfg.volume = 85

@@ -109,9 +109,7 @@ def configure_ca(
 ) -> tuple[dict[str, str], bool, str | None]:
     """Validate an optional PEM bundle and prepare a process-local CA environment."""
     configured = (
-        ca_bundle
-        or os.environ.get("AUTODJ_YTDLP_CA_BUNDLE")
-        or os.environ.get("SSL_CERT_FILE")
+        ca_bundle or os.environ.get("AUTODJ_YTDLP_CA_BUNDLE") or os.environ.get("SSL_CERT_FILE")
     )
     env = os.environ.copy()
     if configured:
@@ -158,8 +156,7 @@ def failure_guidance(category: str, message: str) -> str:
         )
     if category == "invalid_ca_bundle":
         return (
-            "Invalid CA bundle configuration. Supply a readable PEM CA bundle. Details: "
-            + message
+            "Invalid CA bundle configuration. Supply a readable PEM CA bundle. Details: " + message
         )
     if category == "ytdlp_not_found":
         return message
@@ -214,9 +211,7 @@ def search(
             category = "transient_network"
             last_error = "yt-dlp process timed out after 120 seconds"
         except OSError as ex:
-            raise ResolverError(
-                "ytdlp_execution", f"Could not execute yt-dlp: {ex}"
-            ) from ex
+            raise ResolverError("ytdlp_execution", f"Could not execute yt-dlp: {ex}") from ex
         else:
             if result.returncode == 0:
                 try:
@@ -230,11 +225,7 @@ def search(
                         "invalid_response",
                         "yt-dlp returned JSON that was not an object",
                     )
-                return [
-                    entry
-                    for entry in (info.get("entries") or [])
-                    if isinstance(entry, dict)
-                ]
+                return [entry for entry in (info.get("entries") or []) if isinstance(entry, dict)]
 
             last_error = (result.stderr or result.stdout or "").strip()
             if not last_error:
@@ -252,11 +243,7 @@ def pick(results: list[dict]) -> dict | None:
     """Select the first real video with a valid ID, title, and known duration."""
     for entry in results:
         video_id = str(entry.get("id") or "")
-        if (
-            VIDEO_ID.fullmatch(video_id)
-            and entry.get("duration")
-            and entry.get("title")
-        ):
+        if VIDEO_ID.fullmatch(video_id) and entry.get("duration") and entry.get("title"):
             return {
                 "source": f"https://www.youtube.com/watch?v={video_id}",
                 "title": entry["title"],
@@ -304,46 +291,79 @@ def process_file(
     ok = skip = 0
     fails: list[str] = []
     for entry in tracks:
-        if not isinstance(entry, dict):
-            message = "playlist entry must be a JSON object"
-            fails.append(f"{path.name}: {message}")
-            if failure_records is not None:
-                failure_records.append(
-                    {
-                        "file": path.name,
-                        "category": "invalid_playlist",
-                        "message": message,
-                    }
-                )
-            continue
+        ok_inc, skip_inc = _process_entry(
+            entry, path, lookup, dry, delay, failure_records, fails, data
+        )
+        ok += ok_inc
+        skip += skip_inc
+    _deduplicate_tracks(tracks, path, dry, data)
+    return ok, skip, fails
 
-        result = fix_entry(entry, lookup)
-        if result == "ok":
-            ok += 1
-            print(f"  ok   {entry['source']}  {str(entry['title'])[:60]}")
-            if not dry:
-                save(path, data)
-            if delay:
-                time.sleep(delay)
-        elif result == "skip":
-            skip += 1
-        else:
-            detail = result[5:]
-            category, separator, message = detail.partition(":")
-            message = message if separator else detail
-            failure = f"{path.name}: {entry.get('source')} ({category}: {message})"
-            fails.append(failure)
-            print(f"  FAIL {failure}")
-            if failure_records is not None:
-                failure_records.append(
-                    {
-                        "file": path.name,
-                        "source": entry.get("source"),
-                        "category": category,
-                        "message": message,
-                    }
-                )
 
+def _process_entry(
+    entry, path, lookup, dry: bool, delay: float, failure_records, fails: list[str], data
+) -> tuple[int, int]:
+    if not isinstance(entry, dict):
+        message = "playlist entry must be a JSON object"
+        _record_failure(
+            fails,
+            failure_records,
+            f"{path.name}: {message}",
+            path.name,
+            None,
+            "invalid_playlist",
+            message,
+        )
+        return 0, 0
+    result = fix_entry(entry, lookup)
+    if result == "ok":
+        print(f"  ok   {entry['source']}  {str(entry['title'])[:60]}")
+        if not dry:
+            save(path, data)
+        if delay:
+            time.sleep(delay)
+        return 1, 0
+    if result == "skip":
+        return 0, 1
+    detail = result[5:]
+    category, separator, message = detail.partition(":")
+    message = message if separator else detail
+    failure = f"{path.name}: {entry.get('source')} ({category}: {message})"
+    _record_failure(
+        fails,
+        failure_records,
+        failure,
+        path.name,
+        entry.get("source"),
+        category,
+        message,
+    )
+    print(f"  FAIL {failure}")
+    return 0, 0
+
+
+def _record_failure(
+    fails: list[str],
+    failure_records,
+    failure: str,
+    file_name: str,
+    source,
+    category: str,
+    message: str,
+) -> None:
+    fails.append(failure)
+    if failure_records is not None:
+        failure_records.append(
+            {
+                "file": file_name,
+                "source": source,
+                "category": category,
+                "message": message,
+            }
+        )
+
+
+def _deduplicate_tracks(tracks: list, path: Path, dry: bool, data) -> None:
     seen: set[str] = set()
     unique = []
     for track in tracks:
@@ -359,7 +379,6 @@ def process_file(
     if len(unique) != len(tracks) and not dry:
         tracks[:] = unique
         save(path, data)
-    return ok, skip, fails
 
 
 def save(path: Path, data) -> None:
@@ -417,9 +436,7 @@ def validate_report_path(report_path: Path, input_files: list[Path]) -> None:
     protected_paths: list[tuple[str, Path]] = []
     for input_path in input_files:
         protected_paths.append(("playlist", input_path))
-        protected_paths.append(
-            ("playlist backup", input_path.with_name(input_path.name + ".bak"))
-        )
+        protected_paths.append(("playlist backup", input_path.with_name(input_path.name + ".bak")))
         protected_paths.append(
             ("playlist staging file", input_path.with_name(input_path.name + ".tmp"))
         )
@@ -428,7 +445,7 @@ def validate_report_path(report_path: Path, input_files: list[Path]) -> None:
         ("report", report_path),
         ("report temporary file", report_path.with_name(report_path.name + ".tmp")),
     )
-    for output_label, output_path in output_paths:
+    for _output_label, output_path in output_paths:
         for protected_label, protected_path in protected_paths:
             if paths_alias(output_path, protected_path):
                 raise ResolverError(
@@ -480,13 +497,7 @@ def main(argv=None) -> int:
         help="write a machine-readable summary and per-entry failure report",
     )
     args = parser.parse_args(argv)
-
-    if not 0 <= args.retries <= MAX_RETRIES:
-        parser.error(f"--retries must be between 0 and {MAX_RETRIES}")
-    if not 0 <= args.retry_delay <= MAX_RETRY_DELAY:
-        parser.error(f"--retry-delay must be between 0 and {MAX_RETRY_DELAY}")
-    if args.delay < 0:
-        parser.error("--delay must not be negative")
+    _validate_cli_args(parser, args)
 
     here = Path(__file__).resolve().parent
     files = [Path(file) for file in args.files] or sorted(here.glob("*.json"))
@@ -508,17 +519,61 @@ def main(argv=None) -> int:
         return 2
 
     print(f"yt-dlp command: {' '.join(command)}")
-    print(
-        f"TLS verification: enabled; CA mode: {'system' if use_system_ca else 'yt-dlp default'}"
-    )
+    print(f"TLS verification: enabled; CA mode: {'system' if use_system_ca else 'yt-dlp default'}")
     if ca_bundle:
         print(f"CA bundle: {ca_bundle}")
 
+    total_ok, total_skip, all_fails, file_reports, failure_records = _run_files(
+        files, args, command, env, use_system_ca
+    )
+
+    report = {
+        "generated_at": datetime.now(UTC).isoformat(),
+        "tool": "playlist.resolve_urls",
+        "yt_dlp_command": command,
+        "tls_verification": "enabled",
+        "ca_mode": "system" if use_system_ca else "yt-dlp-default",
+        "ca_bundle": ca_bundle,
+        "dry_run": args.dry_run,
+        "summary": {
+            "resolved": total_ok,
+            "already_urls": total_skip,
+            "failed": len(all_fails),
+        },
+        "files": file_reports,
+        "failures": failure_records,
+    }
+    if args.report_json:
+        try:
+            write_report(Path(args.report_json), report)
+            print(f"Failure report: {args.report_json}")
+        except OSError as ex:
+            print(f"ERROR: could not write JSON report: {ex}", file=sys.stderr)
+            return 2
+
+    print(
+        f"\nresolved {total_ok}, already URLs {total_skip}, failed {len(all_fails)}"
+        + (" (dry run: nothing written)" if args.dry_run else "")
+    )
+    for failure in all_fails:
+        print(f"  could not resolve: {failure}", file=sys.stderr)
+    return 1 if all_fails else 0
+
+
+def _validate_cli_args(parser, args) -> None:
+    if not 0 <= args.retries <= MAX_RETRIES:
+        parser.error(f"--retries must be between 0 and {MAX_RETRIES}")
+    if not 0 <= args.retry_delay <= MAX_RETRY_DELAY:
+        parser.error(f"--retry-delay must be between 0 and {MAX_RETRY_DELAY}")
+    if args.delay < 0:
+        parser.error("--delay must not be negative")
+
+
+def _run_files(files, args, command, env, use_system_ca):
     total_ok = total_skip = 0
     all_fails: list[str] = []
     failure_records: list[dict] = []
     file_reports: list[dict] = []
-
     for file_path in files:
         print(file_path.name)
         try:
@@ -553,12 +608,9 @@ def main(argv=None) -> int:
                     "message": message,
                 }
             )
-            file_reports.append(
-                {"file": str(file_path), "resolved": 0, "skipped": 0, "failed": 1}
-            )
+            file_reports.append({"file": str(file_path), "resolved": 0, "skipped": 0, "failed": 1})
             print(f"  FILE ERROR: {message}")
             continue
-
         total_ok += resolved
         total_skip += skipped
         all_fails.extend(failures)
@@ -570,38 +622,7 @@ def main(argv=None) -> int:
                 "failed": len(failures),
             }
         )
-
-    report = {
-        "generated_at": datetime.now(UTC).isoformat(),
-        "tool": "playlist.resolve_urls",
-        "yt_dlp_command": command,
-        "tls_verification": "enabled",
-        "ca_mode": "system" if use_system_ca else "yt-dlp-default",
-        "ca_bundle": ca_bundle,
-        "dry_run": args.dry_run,
-        "summary": {
-            "resolved": total_ok,
-            "already_urls": total_skip,
-            "failed": len(all_fails),
-        },
-        "files": file_reports,
-        "failures": failure_records,
-    }
-    if args.report_json:
-        try:
-            write_report(Path(args.report_json), report)
-            print(f"Failure report: {args.report_json}")
-        except OSError as ex:
-            print(f"ERROR: could not write JSON report: {ex}", file=sys.stderr)
-            return 2
-
-    print(
-        f"\nresolved {total_ok}, already URLs {total_skip}, failed {len(all_fails)}"
-        + (" (dry run: nothing written)" if args.dry_run else "")
-    )
-    for failure in all_fails:
-        print(f"  could not resolve: {failure}", file=sys.stderr)
-    return 1 if all_fails else 0
+    return total_ok, total_skip, all_fails, file_reports, failure_records
 
 
 if __name__ == "__main__":

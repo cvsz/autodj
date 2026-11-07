@@ -45,9 +45,7 @@ class BootstrapTest(unittest.TestCase):
     def test_apply_updates_only_allowlisted_files_and_is_idempotent(self):
         self.assertEqual(len(self.run_init(apply=True)), 4)
         self.assertIn("# example-app", (self.root / "README.md").read_text())
-        self.assertIn(
-            "@example-org/maintainers", (self.root / ".github/CODEOWNERS").read_text()
-        )
+        self.assertIn("@example-org/maintainers", (self.root / ".github/CODEOWNERS").read_text())
         self.assertIn(
             "github.com/example-org/example-app/security",
             (self.root / ".github/ISSUE_TEMPLATE/config.yml").read_text(),

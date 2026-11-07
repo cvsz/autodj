@@ -118,73 +118,94 @@ def main(argv):
         arg, want_name = arg.split("::", 1)
     root = pathlib.Path(arg).resolve()
     files = [root] if root.is_file() else sorted(root.glob("test_*.py"))
-    tests_dir = (
-        root.parent if root.is_file() else root
-    )  # the tests/ dir, whether given a file or the dir itself
+    tests_dir = root.parent if root.is_file() else root
     sys.path.insert(0, str(tests_dir))
     sys.path.insert(0, str(tests_dir.parent))  # project root, for `import camfrog_autodj`
     ok = fail = skip = 0
     for f in files:
-        spec = importlib.util.spec_from_file_location(f.stem, f)
-        m = importlib.util.module_from_spec(spec)
-        sys.modules[f.stem] = m
-        try:
-            spec.loader.exec_module(m)
-        except (ImportError, SyntaxError, TypeError, AttributeError, OSError):
-            print(f"ERROR collecting {f.name}")
-            traceback.print_exc()
+        m = _load_module(f)
+        if m is None:
             fail += 1
             continue
-        for name, fn in inspect.getmembers(m, inspect.isfunction):
-            if not name.startswith("test_") or fn.__module__ != m.__name__:
-                continue
-            if want_name and name != want_name:
-                continue
-            cases = [{}]
-            if hasattr(fn, "_params"):
-                names, vals = fn._params
-                names = [n.strip() for n in names.split(",")]
-                cases = [
-                    dict(zip(names, v if len(names) > 1 else (v,), strict=False)) for v in vals
-                ]
-            for kw in cases:
-                mp = MonkeyPatch()
-                tmp = pathlib.Path(tempfile.mkdtemp())
-                args = {}
-                for p in inspect.signature(fn).parameters:
-                    args[p] = (
-                        kw.get(p)
-                        if p in kw
-                        else mp
-                        if p == "monkeypatch"
-                        else tmp
-                        if p == "tmp_path"
-                        else None
-                    )
-                try:
-                    fn(**args)
-                    ok += 1
-                    print(f"PASS {f.name}::{name}")
-                except SkipError as s:
-                    skip += 1
-                    print(f"SKIP {f.name}::{name} ({s})")
-                except (
-                    AssertionError,
-                    TypeError,
-                    ValueError,
-                    KeyError,
-                    IndexError,
-                    RuntimeError,
-                    OSError,
-                    ImportError,
-                ):
-                    fail += 1
-                    print(f"FAIL {f.name}::{name}")
-                    traceback.print_exc()
-                finally:
-                    mp.undo()
+        o, fl, sk = _run_tests_in_module(m, f, want_name)
+        ok += o
+        fail += fl
+        skip += sk
     print(f"\n{ok} passed, {fail} failed, {skip} skipped")
     return 1 if fail else 0
+
+
+def _load_module(f):
+    """Import one test file as a module; return None on collection error."""
+    spec = importlib.util.spec_from_file_location(f.stem, f)
+    m = importlib.util.module_from_spec(spec)
+    sys.modules[f.stem] = m
+    try:
+        spec.loader.exec_module(m)
+    except (ImportError, SyntaxError, TypeError, AttributeError, OSError):
+        print(f"ERROR collecting {f.name}")
+        traceback.print_exc()
+        return None
+    return m
+
+
+def _run_tests_in_module(m, f, want_name):
+    """Run every test_* function in module *m*; return (ok, fail, skip)."""
+    ok = fail = skip = 0
+    for name, fn in inspect.getmembers(m, inspect.isfunction):
+        if not name.startswith("test_") or fn.__module__ != m.__name__:
+            continue
+        if want_name and name != want_name:
+            continue
+        for kw in _param_cases(fn):
+            ok_delta, fl_delta, sk_delta = _run_case(fn, m, kw, f.name, name)
+            ok += ok_delta
+            fail += fl_delta
+            skip += sk_delta
+    return ok, fail, skip
+
+
+def _param_cases(fn):
+    """The parameterised cases for *fn*: a list of kwarg dicts (default [{}])."""
+    cases = [{}]
+    if hasattr(fn, "_params"):
+        names, vals = fn._params
+        names = [n.strip() for n in names.split(",")]
+        cases = [dict(zip(names, v if len(names) > 1 else (v,), strict=False)) for v in vals]
+    return cases
+
+
+def _run_case(fn, m, kw, file_name, func_name):
+    """Run one parameterised test case; return (ok, fail, skip) deltas."""
+    mp = MonkeyPatch()
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    args = {}
+    for p in inspect.signature(fn).parameters:
+        args[p] = (
+            kw.get(p) if p in kw else mp if p == "monkeypatch" else tmp if p == "tmp_path" else None
+        )
+    try:
+        fn(**args)
+        print(f"PASS {file_name}::{func_name}")
+        return 1, 0, 0
+    except SkipError as s:
+        print(f"SKIP {file_name}::{func_name} ({s})")
+        return 0, 0, 1
+    except (
+        AssertionError,
+        TypeError,
+        ValueError,
+        KeyError,
+        IndexError,
+        RuntimeError,
+        OSError,
+        ImportError,
+    ):
+        print(f"FAIL {file_name}::{func_name}")
+        traceback.print_exc()
+        return 0, 1, 0
+    finally:
+        mp.undo()
 
 
 if __name__ == "__main__":

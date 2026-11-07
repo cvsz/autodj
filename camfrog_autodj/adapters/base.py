@@ -21,7 +21,7 @@ class ChatAdapter(ABC):
     @abstractmethod
     def send(self, text: str) -> None: ...
 
-    def close(self) -> None:
+    def close(self) -> None:  # noqa: B027  # intentional no-op base; adapters that hold resources override close()
         pass
 
 

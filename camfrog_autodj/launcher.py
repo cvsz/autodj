@@ -26,7 +26,7 @@ def find_window(pattern: str, timeout: float) -> bool:
 
 def _open_uri(uri: str):
     _require_windows()
-    os.startfile(uri)  # type: ignore[attr-defined]  # Windows only
+    os.startfile(uri)  # type: ignore[attr-defined]  # Windows only  # noqa: S606 -- os.startfile is the idiomatic Windows-only URI launcher; not a shell spawn
 
 
 def _start(exe: str):

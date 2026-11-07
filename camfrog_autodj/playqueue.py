@@ -48,7 +48,7 @@ class PlayQueue:
             return None
         if self.shuffle:
             c = [t for t in self.pool if t.source != self._last] or self.pool
-            return random.choice(c)
+            return random.choice(c)  # noqa: S311  # music shuffle is not security-sensitive
         t = self.pool[self._i % len(self.pool)]
         self._i += 1
         return t

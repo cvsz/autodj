@@ -225,24 +225,7 @@ def _validate(cfg: Config, data: dict, where: str) -> None:
     for f in fields(Config):
         if f.name not in data:
             continue
-        v, want = data[f.name], type(getattr(defaults, f.name))
-        ok = (
-            isinstance(v, bool)
-            if want is bool
-            else isinstance(v, (int, float)) and not isinstance(v, bool)
-            if want is float
-            else isinstance(v, int) and not isinstance(v, bool)
-            if want is int
-            else isinstance(v, want)
-        )
-        if not ok:
-            hint = ' (a list looks like ["nick1", "nick2"])' if want is list else ""
-            raise ConfigError(
-                f"{where}: '{f.name}' must be {_type_name(getattr(defaults, f.name))}, "
-                f"got {v!r}{hint}"
-            )
-        if want is list and not all(isinstance(x, str) for x in v):
-            raise ConfigError(f"{where}: every item of '{f.name}' must be text, got {v!r}")
+        _validate_field(cfg, data, f, defaults, where)
     for k, allowed in _CHOICES.items():
         if getattr(cfg, k) not in allowed:
             raise ConfigError(
@@ -253,15 +236,41 @@ def _validate(cfg: Config, data: dict, where: str) -> None:
         if not lo <= v <= hi:
             raise ConfigError(f"{where}: '{k}' must be between {lo} and {hi}; got {v}")
     for k in _REGEXES:
-        try:
-            re.compile(getattr(cfg, k))
-        except re.error as ex:
-            raise ConfigError(
-                f"{where}: '{k}' is not a valid regular expression ({ex}). "
-                "Tip: write regexes in 'single quotes' so backslashes stay as they are."
-            ) from None
+        _validate_regex(cfg, k, where)
     if not cfg.prefix.strip():
         raise ConfigError(f"{where}: 'prefix' must not be empty (e.g. prefix = \"!\")")
     cfg.prefix = cfg.prefix.strip()
     cfg.admins = [a.strip() for a in cfg.admins if a.strip()]
     cfg.blocked_users = [a.strip() for a in cfg.blocked_users if a.strip()]
+
+
+def _validate_field(cfg: Config, data: dict, f, defaults: Config, where: str) -> None:
+    v = data[f.name]
+    want = type(getattr(defaults, f.name))
+    if not _is_type(v, want):
+        hint = ' (a list looks like ["nick1", "nick2"])' if want is list else ""
+        raise ConfigError(
+            f"{where}: '{f.name}' must be {_type_name(getattr(defaults, f.name))}, got {v!r}{hint}"
+        )
+    if want is list and not all(isinstance(x, str) for x in v):
+        raise ConfigError(f"{where}: every item of '{f.name}' must be text, got {v!r}")
+
+
+def _is_type(v, want) -> bool:
+    if want is bool:
+        return isinstance(v, bool)
+    if want is float:
+        return isinstance(v, (int, float)) and not isinstance(v, bool)
+    if want is int:
+        return isinstance(v, int) and not isinstance(v, bool)
+    return isinstance(v, want)
+
+
+def _validate_regex(cfg: Config, k: str, where: str) -> None:
+    try:
+        re.compile(getattr(cfg, k))
+    except re.error as ex:
+        raise ConfigError(
+            f"{where}: '{k}' is not a valid regular expression ({ex}). "
+            "Tip: write regexes in 'single quotes' so backslashes stay as they are."
+        ) from None

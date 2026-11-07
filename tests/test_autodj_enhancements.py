@@ -22,9 +22,7 @@ from camfrog_autodj.playqueue import PlayQueue
 # ============================================================================
 
 
-def _make_auto_reply_engine(
-    tmp_path, enabled=True, interval=60, file_name="ads-list.json"
-):
+def _make_auto_reply_engine(tmp_path, enabled=True, interval=60, file_name="ads-list.json"):
     """Create an engine with auto-reply config and a temp ads-list.json."""
     ads = tmp_path / file_name
     ads.write_text(

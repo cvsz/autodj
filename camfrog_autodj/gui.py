@@ -1424,34 +1424,49 @@ class App(tk.Tk):
         t = time.monotonic()
         dt, self._t_prev = min(t - self._t_prev, 0.2), t
         st = self._state
-        c = self.stage
-        if getattr(self, "_aurora_items", None):
-            w, h = getattr(self, "_stage_wh", (0, 0))
-            n = len(self._aurora_items)
-            strip = h / n * 1.8 if n else 0
-            for i, item in enumerate(self._aurora_items):
-                off = aurora_offset(t, i, n) * h * 0.1
-                y0 = i * h / n - off
-                c.coords(item, 0, y0, w, y0 + strip)
-            for i, (item, (_sx, _sy, _sr)) in enumerate(
-                zip(self._star_items, self._stars, strict=False)
-            ):
-                a = 0.4 + 0.6 * pulse(t * 0.6 + i * 0.9, 2.3)
-                c.itemconfigure(
-                    item,
-                    stipple="gray75" if a > 0.7 else ("gray50" if a > 0.4 else "gray25"),
-                )
-        if self._vc and getattr(self, "_particle_items", None):
-            cx, cy, r, _lab = self._vc
-            for item, p in zip(self._particle_items, self._particles, strict=False):
-                x, y, alpha = particle_pos(p, t, cx, cy, r + self.px(70))
-                s = p["size"] * (0.6 + 0.7 * alpha) * (1.0 if st == "playing" else 0.5)
-                c.coords(item, x - s, y - s, x + s, y + s)
-                c.itemconfigure(
-                    item,
-                    stipple="gray75" if alpha > 0.75 else ("gray50" if alpha > 0.45 else "gray25"),
-                )
+        self._animate_aurora(t)
+        self._animate_particles(t, st)
         self._run_confetti(t)
+        self._update_border_glow_and_level(t, st)
+        self._animate_bars(t)
+        self._animate_record(t, st, dt)
+        self._update_playback_indicators(t, st)
+
+    def _animate_aurora(self, t: float) -> None:
+        if not getattr(self, "_aurora_items", None):
+            return
+        c = self.stage
+        w, h = getattr(self, "_stage_wh", (0, 0))
+        n = len(self._aurora_items)
+        strip = h / n * 1.8 if n else 0
+        for i, item in enumerate(self._aurora_items):
+            off = aurora_offset(t, i, n) * h * 0.1
+            y0 = i * h / n - off
+            c.coords(item, 0, y0, w, y0 + strip)
+        for i, (item, (_sx, _sy, _sr)) in enumerate(
+            zip(self._star_items, self._stars, strict=False)
+        ):
+            a = 0.4 + 0.6 * pulse(t * 0.6 + i * 0.9, 2.3)
+            c.itemconfigure(
+                item,
+                stipple="gray75" if a > 0.7 else ("gray50" if a > 0.4 else "gray25"),
+            )
+
+    def _animate_particles(self, t: float, st: str) -> None:
+        if not (self._vc and getattr(self, "_particle_items", None)):
+            return
+        c = self.stage
+        cx, cy, r, _lab = self._vc
+        for item, p in zip(self._particle_items, self._particles, strict=False):
+            x, y, alpha = particle_pos(p, t, cx, cy, r + self.px(70))
+            s = p["size"] * (0.6 + 0.7 * alpha) * (1.0 if st == "playing" else 0.5)
+            c.coords(item, x - s, y - s, x + s, y + s)
+            c.itemconfigure(
+                item,
+                stipple="gray75" if alpha > 0.75 else ("gray50" if alpha > 0.45 else "gray25"),
+            )
+
+    def _update_border_glow_and_level(self, t: float, st: str) -> None:
         glow_target = 0.75 + 0.25 * pulse(t, 1.5) if st == "playing" else 0.0
         self._border_glow = ease(self._border_glow, glow_target, 0.12, 0.05)
         self._border.configure(bg=lerp_color(BG, PINK, 0.55 * self._border_glow))
@@ -1459,42 +1474,51 @@ class App(tk.Tk):
             1.0 if st == "playing" else (0.10 if st == "paused" else 0.05 + 0.04 * pulse(t, 3.0))
         )
         self._level = ease(self._level, target, 0.15, 0.08)
+
+    def _animate_bars(self, t: float) -> None:
+        if not self._bar_items:
+            return
         c = self.stage
-        if self._bar_items:
-            tgt = bar_heights(t, len(self._bar_items), self._level)
-            x0, bw, base, maxh = self._bar_geo
-            for i, item in enumerate(self._bar_items):
-                self._bars[i] = ease(self._bars[i], tgt[i])
-                c.coords(
-                    item,
-                    x0 + i * bw + 1,
-                    base - max(2.0, self._bars[i] * maxh),
-                    x0 + (i + 1) * bw - 2,
-                    base,
-                )
-        if self._vc:
-            cx, cy, _r, lab = self._vc
-            self._spin = ease(self._spin, 1.0 if st == "playing" else 0.0, 0.08, 0.04)
-            self._angle = (self._angle + self._spin * dt * 200.0) % 360.0  # 33⅓ rpm = 200 deg/s
-            c.itemconfigure(self._sheen[0], start=self._angle)
-            c.itemconfigure(self._sheen[1], start=(self._angle + 180) % 360)
-            a = math.radians(self._angle)
+        tgt = bar_heights(t, len(self._bar_items), self._level)
+        x0, bw, base, maxh = self._bar_geo
+        for i, item in enumerate(self._bar_items):
+            self._bars[i] = ease(self._bars[i], tgt[i])
             c.coords(
-                self._needle,
-                cx,
-                cy,
-                cx + lab * 0.8 * math.cos(a),
-                cy - lab * 0.8 * math.sin(a),
+                item,
+                x0 + i * bw + 1,
+                base - max(2.0, self._bars[i] * maxh),
+                x0 + (i + 1) * bw - 2,
+                base,
             )
-            for i, ring in enumerate(self._glow):
-                c.itemconfigure(
-                    ring,
-                    fill=lerp_color(
-                        "#0d1021",
-                        PINK,
-                        (0.04 + 0.03 * i) + 0.10 * self._level * pulse(t, 1.8) * (i + 1) / 3,
-                    ),
-                )
+
+    def _animate_record(self, t: float, st: str, dt: float) -> None:
+        if not self._vc:
+            return
+        c = self.stage
+        cx, cy, _r, lab = self._vc
+        self._spin = ease(self._spin, 1.0 if st == "playing" else 0.0, 0.08, 0.04)
+        self._angle = (self._angle + self._spin * dt * 200.0) % 360.0  # 33⅓ rpm = 200 deg/s
+        c.itemconfigure(self._sheen[0], start=self._angle)
+        c.itemconfigure(self._sheen[1], start=(self._angle + 180) % 360)
+        a = math.radians(self._angle)
+        c.coords(
+            self._needle,
+            cx,
+            cy,
+            cx + lab * 0.8 * math.cos(a),
+            cy - lab * 0.8 * math.sin(a),
+        )
+        for i, ring in enumerate(self._glow):
+            c.itemconfigure(
+                ring,
+                fill=lerp_color(
+                    "#0d1021",
+                    PINK,
+                    (0.04 + 0.03 * i) + 0.10 * self._level * pulse(t, 1.8) * (i + 1) / 3,
+                ),
+            )
+
+    def _update_playback_indicators(self, t: float, st: str) -> None:
         if st == "playing" and self._cur_dur:
             self.bar.set(self.e.position() / self._cur_dur)
         self.led.itemconfigure(
@@ -1508,7 +1532,7 @@ class App(tk.Tk):
     # ---- actions -------------------------------------------------------------
     def show_tab(self, name: str):
         self._tab = name
-        for k, page in self.pages.items():
+        for _, page in self.pages.items():
             page.pack_forget()
         self.pages[name].pack(fill="both", expand=True)
         for k, b in self.tabs.items():

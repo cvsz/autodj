@@ -34,9 +34,7 @@ from camfrog_autodj.player import MpvPlayer
 def test_error_message_is_descriptive():
     en_err = tr("en", "error")
     th_err = tr("th", "error")
-    assert len(en_err) > 5, (
-        "EN error message should be a real sentence, not bare 'error'"
-    )
+    assert len(en_err) > 5, "EN error message should be a real sentence, not bare 'error'"
     assert len(th_err) > 5, "TH error message should be a real sentence"
     # Must not be the bare word used to trigger the condition
     assert en_err != "error"
@@ -89,11 +87,7 @@ def test_remote_tracks_uses_search_limit_for_plain_query(monkeypatch):
 
     def fake_extract_module(target, playlist, limit, ca_bundle=""):
         captured["target"] = target
-        return {
-            "entries": [
-                {"webpage_url": "https://youtu.be/x", "title": "T", "duration": 60}
-            ]
-        }
+        return {"entries": [{"webpage_url": "https://youtu.be/x", "title": "T", "duration": 60}]}
 
     monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
     monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
@@ -108,11 +102,7 @@ def test_remote_tracks_search_limit_default_is_one(monkeypatch):
 
     def fake_extract_module(target, playlist, limit, ca_bundle=""):
         captured["target"] = target
-        return {
-            "entries": [
-                {"webpage_url": "https://youtu.be/x", "title": "T", "duration": 60}
-            ]
-        }
+        return {"entries": [{"webpage_url": "https://youtu.be/x", "title": "T", "duration": 60}]}
 
     monkeypatch.setattr(
         "camfrog_autodj.library._extract_exe",
@@ -131,11 +121,7 @@ def test_remote_tracks_url_not_prefixed_with_ytsearch(monkeypatch):
 
     def fake_extract_module(target, playlist, limit, ca_bundle=""):
         captured["target"] = target
-        return {
-            "entries": [
-                {"webpage_url": "https://youtu.be/abc", "title": "T", "duration": 60}
-            ]
-        }
+        return {"entries": [{"webpage_url": "https://youtu.be/abc", "title": "T", "duration": 60}]}
 
     monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
     monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **kw: "")
@@ -161,9 +147,7 @@ def test_play_file_uses_create_no_window_on_windows(monkeypatch):
     p = MpvPlayer(cfg)
     p.play_file("/some/track.wav")
 
-    assert "creationflags" in captured_kw, (
-        "CREATE_NO_WINDOW creationflags not set on Windows"
-    )
+    assert "creationflags" in captured_kw, "CREATE_NO_WINDOW creationflags not set on Windows"
     assert captured_kw["creationflags"] == 0x08000000
 
 
@@ -206,9 +190,7 @@ def test_play_hidden_console_on_windows(monkeypatch):
     p = MpvPlayer(cfg)
     assert p.play("https://youtu.be/x", 80) is True
 
-    assert "creationflags" in captured_kw, (
-        "CREATE_NO_WINDOW not set on the per-track spawn"
-    )
+    assert "creationflags" in captured_kw, "CREATE_NO_WINDOW not set on the per-track spawn"
     assert captured_kw["creationflags"] == 0x08000000
 
 
@@ -485,11 +467,7 @@ def test_player_loop_dynamically_resolves_ytsearch_tracks(monkeypatch):
                     requester,
                 )
             ]
-        return [
-            Track(
-                "https://www.youtube.com/watch?v=fallback", "Fallback", 100, requester
-            )
-        ]
+        return [Track("https://www.youtube.com/watch?v=fallback", "Fallback", 100, requester)]
 
     monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote_tracks)
 
@@ -601,9 +579,7 @@ def test_dynamic_voteskip_threshold():
 
     class FakeEngine:
         def __init__(self):
-            self.cfg = Config(
-                voteskip_threshold=5, voteskip_dynamic=True, voteskip_dynamic_pct=30
-            )
+            self.cfg = Config(voteskip_threshold=5, voteskip_dynamic=True, voteskip_dynamic_pct=30)
             self.current = Track("https://youtube.com/watch?v=1", "Song", 120, "DJ")
             self.votes = set()
             self.admins = set()

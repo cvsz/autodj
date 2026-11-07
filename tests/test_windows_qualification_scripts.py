@@ -7,9 +7,7 @@ without requiring a Windows execution environment.
 from pathlib import Path
 
 QUAL_DIR = Path(__file__).resolve().parent.parent / "tools" / "windows-qualification"
-CAMELFROG_DIR = (
-    Path(__file__).resolve().parent.parent / "tools" / "camfrog-qualification"
-)
+CAMELFROG_DIR = Path(__file__).resolve().parent.parent / "tools" / "camfrog-qualification"
 
 
 def test_windows_qualification_directory_exists():
@@ -84,9 +82,7 @@ def test_powershell_scripts_have_balanced_braces():
         for line in cleaned.split("\n"):
             if "#" in line:
                 parts = line.split("#")
-                quote_count = sum(
-                    1 for p in parts[: len(parts) - 1] for c in p if c == '"'
-                )
+                quote_count = sum(1 for p in parts[: len(parts) - 1] for c in p if c == '"')
                 if quote_count % 2 == 0:
                     line = "#".join(parts[: len(parts) - 1])
             lines.append(line)
@@ -133,9 +129,7 @@ def test_codesigning_has_fail_closed():
     content = script.read_text(encoding="utf-8")
     assert "BLOCKED" in content, "Missing BLOCKED status for missing certificate"
     assert "AUTODJ_PFX" in content, "Missing AUTODJ_PFX env var reference"
-    assert "AUTODJ_CERT_THUMBPRINT" in content, (
-        "Missing AUTODJ_CERT_THUMBPRINT env var reference"
-    )
+    assert "AUTODJ_CERT_THUMBPRINT" in content, "Missing AUTODJ_CERT_THUMBPRINT env var reference"
 
 
 def test_camfrog_test_has_live_marker():

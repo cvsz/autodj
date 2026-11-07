@@ -45,8 +45,7 @@ OPTS = {
         "textvariable",
         "image",
     ),
-    "Canvas": COMMON
-    | _s("scrollregion", "insertbackground", "yscrollcommand", "xscrollcommand"),
+    "Canvas": COMMON | _s("scrollregion", "insertbackground", "yscrollcommand", "xscrollcommand"),
     "Entry": COMMON
     | _s(
         "fg",
@@ -115,9 +114,7 @@ PACK = _s(
     "after",
     "in_",
 )
-GRID = _s(
-    "row", "column", "sticky", "padx", "pady", "columnspan", "rowspan", "ipadx", "ipady"
-)
+GRID = _s("row", "column", "sticky", "padx", "pady", "columnspan", "rowspan", "ipadx", "ipady")
 
 
 def _check(kind, opts, allowed):
@@ -476,6 +473,4 @@ ttk = types.SimpleNamespace(
     Combobox=type("Combobox", (Entry,), {}),
     Spinbox=type("Spinbox", (Entry,), {}),
 )
-filedialog = types.SimpleNamespace(
-    askopenfilenames=lambda **k: (), askdirectory=lambda **k: ""
-)
+filedialog = types.SimpleNamespace(askopenfilenames=lambda **k: (), askdirectory=lambda **k: "")

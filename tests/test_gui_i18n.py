@@ -154,9 +154,7 @@ def test_discover_pick_and_config(tmp_path):
     box = Ctl("Edit", 0, "", 0, 520, 800, 550)
     nick = Ctl("Edit", 1, "me", 0, 10, 100, 30)
     room = score_window("My Room - Camfrog", [chat, nick, box], rx)
-    main = score_window(
-        "Camfrog Video Chat", [Ctl("Edit", 0, "search", 0, 0, 200, 20)], rx
-    )
+    main = score_window("Camfrog Video Chat", [Ctl("Edit", 0, "search", 0, 0, 200, 20)], rx)
     assert main is None
     ups = to_updates(best_room([f for f in (room, main) if f]))
     assert ups["view_type"] == "Document" and ups["view_index"] == 0
@@ -165,16 +163,11 @@ def test_discover_pick_and_config(tmp_path):
     p.write_text('bot_nick = "X"\nview_index = 3  # old\n# input_index = -1\n', "utf-8")
     assert save_config(str(p), ups)
     t = p.read_text("utf-8")
-    assert (
-        "view_index = 0  # old" in t
-        and "input_index = 0" in t
-        and 'bot_nick = "X"' in t
-    )
+    assert "view_index = 0  # old" in t and "input_index = 0" in t and 'bot_nick = "X"' in t
     assert (tmp_path / "config.toml.bak").exists()
     assert not save_config(str(p), ups)
-    from camfrog_autodj.config import Config as C
 
-    assert re.fullmatch(C.load(str(p)).window_title_re, "My Room - Camfrog")
+    assert re.fullmatch(Config.load(str(p)).window_title_re, "My Room - Camfrog")
 
 
 def test_window_pick_by_process():

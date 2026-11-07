@@ -40,18 +40,7 @@ def build_changes(root: Path, name: str, owner: str, codeowner: str, description
         raise ValueError("Invalid GitHub owner")
     if not CODEOWNER_RE.fullmatch(codeowner):
         raise ValueError("Invalid CODEOWNERS user or org/team; provide --codeowner explicitly")
-    if (
-        not description.strip()
-        or len(description) > 500
-        or "\n" in description
-        or "\r" in description
-    ):
-        raise ValueError("Description must be one nonempty line (max 500 characters)")
-    # Escape generated Markdown and YAML contexts independently.
-    markdown_description = (
-        description.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    )
-    markdown_description = markdown_description.replace("\\", "\\\\")
+    markdown_description = _validate_description(description)
     values = {
         "{{PROJECT_NAME}}": name,
         "{{OWNER}}": owner,
@@ -79,6 +68,21 @@ def build_changes(root: Path, name: str, owner: str, codeowner: str, description
     for target in FILES:
         safe_file(root, target)
     return changes
+
+
+def _validate_description(description: str) -> str:
+    if (
+        not description.strip()
+        or len(description) > 500
+        or "\n" in description
+        or "\r" in description
+    ):
+        raise ValueError("Description must be one nonempty line (max 500 characters)")
+    # Escape generated Markdown and YAML contexts independently.
+    markdown_description = (
+        description.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    )
+    return markdown_description.replace("\\", "\\\\")
 
 
 def initialize(
