@@ -867,8 +867,6 @@ class App(tk.Tk):
             minw=px(100),
         )
         self.b_add.pack(side="left", padx=(px(8), 0))
-        self.b_folder = self._btn(add, "g_folder", self.load_folder, kind="ghost", height=38)
-        self.b_folder.pack(side="left", padx=(px(6), 0))
         self._btn(add, "g_file", self.add_files, kind="ghost", height=38).pack(
             side="left", padx=(px(6), 0)
         )
@@ -1839,8 +1837,14 @@ class App(tk.Tk):
         self._set_hint(self.e.t("load_failed", err="สแกนนานเกินไป ยกเลิกแล้ว"))
 
     def _set_folder_loading(self, loading: bool):
-        """Disable the folder button and show a scanning hint while loading."""
-        self.b_folder.configure(state="disabled" if loading else "normal")
+        """Disable the folder button and show a scanning hint while loading.
+
+        The folder button may have been removed from the UI; guard against that
+        so load_folder() still works when called programmatically.
+        """
+        b_folder = getattr(self, "b_folder", None)
+        if b_folder is not None:
+            b_folder.configure(state="disabled" if loading else "normal")
         self.v_hint.configure(
             text=self.e.t("folder_loading") if loading else self.e.t("g_add_hint")
         )
