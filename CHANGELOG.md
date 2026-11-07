@@ -2,7 +2,13 @@
 
 ## Unreleased
 
-- **Fix: Player music time countdown skipping** — The GUI now queries mpv via IPC (`get_property time-pos`) for the actual playback position instead of relying on wall-clock time. Added `MpvPlayer._cmd_get()` and `MpvPlayer.get_time_pos()` in `player.py`; `Engine.position()` in `engine.py` uses real mpv position with wall-clock fallback. Fixes the issue where the time display jumped (e.g., from 00:00 to 00:30) during playback.
+- **Fix: GUI hangs when clicking Load Folder** — `library.scan_folder()` now skips symlinks (avoids cycle/reparse-point hangs on Windows) and caps returned tracks via a `limit` argument; `gui.load_folder()` disables the folder button while scanning, guards against reentrant clicks, and shows loaded/failed status. (`camfrog_autodj/library.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)
+- **Fix: chat-log race condition between engine and GUI poller** — `Engine.chat_log`/`chat_seq` are now guarded by `_chat_lock`; GUI reads via thread-safe `chat_snapshot()`. (`camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)
+- **Fix: `save_settings()` could leave a half-written `config.toml` on crash** — writes atomically via temp file + `os.replace()` with a `.bak` backup, with `%APPDATA%\\Camfrog AutoDJ\\` relocation fallback. (`camfrog_autodj/gui.py`)
+- **Fix: `MpvPlayer.play_file()` could block forever on a bad WAV** — 30s subprocess timeout. (`camfrog_autodj/player.py`)
+- **Fix: folder scans in autoplay sources and `!load` could scan forever** — capped at 500 tracks. (`camfrog_autodj/engine.py`)
+- **Fix: `Add files` button lacked busy state** — now shows resolving state with a pending counter, matching `Add`. (`camfrog_autodj/gui.py`)
+- **Fix: Player music time countdown skipping** — The GUI now queries mpv via IPC (`get_property time-pos`) for the actual playback position instead of relying on wall-clock time. Added `MpvPlayer._cmd_get()` and `MpvPlayer.get_time_pos()` in `player.py`; `Engine.position()` in `engine.py` uses real mpv position with wall-clock fallback. Fixes the issue where the time display jumped (e.g., from 00:00 to 0:01) during playback.
 - Resolve MPV and yt-dlp executable paths consistently, including Windows environment variables and app-relative paths.
 - Preserve the user's `config.toml` across installer upgrades and retain user data during uninstall.
 - Make source-validation output explicit and keep `clean-all` from deleting the tracked PyInstaller spec.
