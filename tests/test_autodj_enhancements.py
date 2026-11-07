@@ -13,6 +13,7 @@ from test_core import FakeAdapter, FakePlayer, T, make, out
 from camfrog_autodj.adapters.base import ChatMessage
 from camfrog_autodj.config import Config, ConfigError
 from camfrog_autodj.engine import Engine
+from camfrog_autodj.gui import _toml_str
 from camfrog_autodj.models import Track
 from camfrog_autodj.playqueue import PlayQueue
 
@@ -348,7 +349,7 @@ def test_save_settings_writes_auto_reply_fields(tmp_path, monkeypatch):
     lines = []
     lines.append(f"auto_reply_enabled = {str(cfg.auto_reply_enabled).lower()}")
     lines.append(f"auto_reply_interval = {cfg.auto_reply_interval}")
-    lines.append(f'auto_reply_file = "{cfg.auto_reply_file}"')
+    lines.append(f"auto_reply_file = {_toml_str(cfg.auto_reply_file)}")
     new_text = "\n".join(lines) + "\n"
 
     # Validate it parses back

@@ -11,6 +11,7 @@ from test_core import make, out
 
 import camfrog_autodj  # cache invalidation for _gui() (clears the cached `gui` attribute)
 from camfrog_autodj.config import Config
+from camfrog_autodj.gui import _toml_str
 from camfrog_autodj.models import Track
 
 
@@ -379,7 +380,7 @@ def test_settings_save_preserves_all_fields(monkeypatch, tmp_path):
             f"mpv_timeout = {cfg.mpv_timeout}\n"
             f"auto_reply_enabled = {str(cfg.auto_reply_enabled).lower()}\n"
             f"auto_reply_interval = {cfg.auto_reply_interval}\n"
-            f'auto_reply_file = "{cfg.auto_reply_file}"\n',
+            f"auto_reply_file = {_toml_str(cfg.auto_reply_file)}\n",
             "utf-8",
         )
         app.open_settings()
