@@ -1,0 +1,20 @@
+# Security-sensitive paths — independent review required.
+# These paths require approval from @policedbc before changes can be merged.
+# Everything else defaults to @cvsz.
+
+# GitHub Actions workflows (CI, release, audit, security scans).
+.github/workflows/ @policedbc
+
+# Installer / build scripts (produce distributable artifacts).
+scripts/build_installer.ps1 @policedbc
+scripts/build_installer_linux.sh @policedbc
+installer.nsi @policedbc
+
+# Security policy and configuration.
+SECURITY.md @policedbc
+config.toml @policedbc
+config.example.toml @policedbc
+config.default.toml @policedbc
+
+# Default owner for everything else.
+* @cvsz
