@@ -852,8 +852,8 @@ class App(tk.Tk):
 
         # ---- add row (card)
         self._section(left, "g_add_section")
-        add = self._card(left, pad=True)
-        add.pack(fill="x", pady=(px(6), 0))
+        add = tk.Frame(left, bg=SURFACE2, highlightthickness=1, highlightbackground=BORDER)
+        add.pack(fill="x", pady=(px(6), 0), padx=px(2))
         self.ent_add = self._entry(add)
         self.ent_add.pack(side="left", fill="x", expand=True, ipady=px(8), padx=(px(10), px(10)))
         self.ent_add.bind("<Return>", lambda _e: self.add())
