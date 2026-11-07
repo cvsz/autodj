@@ -210,7 +210,7 @@ class Misc:
         # delay-0 callbacks run immediately (simulates Tk event loop processing
         # them on the next main-loop iteration); positive delays are queued.
         if ms == 0 and fn is not None:
-            fn()
+            fn(*a)
         else:
             self._after.append((ms, fn))
         return f"after#{len(self._after)}"

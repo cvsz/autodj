@@ -1714,12 +1714,12 @@ class App(tk.Tk):
         self._set_adding_state(True)
 
         def on_success(tracks):
-            self._set_adding_state(False)
-            self.ent_add.delete(0, "end")
+            self.after(0, self._set_adding_state, False)
+            self.after(0, self.ent_add.delete, 0, "end")
             if len(tracks) == 1:
                 t = tracks[0]
-                self.v_hint.configure(
-                    text=self.e.t(
+                self._set_hint(
+                    self.e.t(
                         "queued_one",
                         pos=1,
                         title=t.title,
@@ -1728,13 +1728,11 @@ class App(tk.Tk):
                     )
                 )
             else:
-                self.v_hint.configure(
-                    text=self.e.t("queued_many", n=len(tracks), user="you")
-                )
+                self._set_hint(self.e.t("queued_many", n=len(tracks), user="you"))
 
         def on_error(msg):
-            self._set_adding_state(False)
-            self.v_hint.configure(text=msg)
+            self.after(0, self._set_adding_state, False)
+            self._set_hint(msg)
 
         self.e.request(text, on_success=on_success, on_error=on_error)
 
@@ -1742,6 +1740,7 @@ class App(tk.Tk):
         ext = " ".join(f"*{x}" for x in sorted(MEDIA))
         try:
             files = filedialog.askopenfilenames(
+                parent=self,
                 filetypes=[("Media", ext), ("All", "*.*")]
             )
         except Exception:
