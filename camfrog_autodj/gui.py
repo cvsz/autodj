@@ -1740,8 +1740,7 @@ class App(tk.Tk):
         ext = " ".join(f"*{x}" for x in sorted(MEDIA))
         try:
             files = filedialog.askopenfilenames(
-                parent=self,
-                filetypes=[("Media", ext), ("All", "*.*")]
+                parent=self, filetypes=[("Media", ext), ("All", "*.*")]
             )
         except Exception:
             log.exception("file dialog failed")

@@ -98,6 +98,11 @@ class TestBuildScriptLogic(unittest.TestCase):
         subprocess.run(
             ["git", "config", "user.name", "Test User"], cwd=self.repo_root, check=True
         )
+        # Test repos must not inherit global GPG signing (needs a passphrase
+        # that cannot be supplied in batch mode).
+        subprocess.run(
+            ["git", "config", "commit.gpgsign", "false"], cwd=self.repo_root, check=True
+        )
 
         # Create minimal repo structure
         (self.repo_root / "camfrog_autodj").mkdir(parents=True)

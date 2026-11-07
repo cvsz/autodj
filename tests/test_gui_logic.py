@@ -443,11 +443,7 @@ def test_load_folder_gives_visible_feedback(monkeypatch, tmp_path):
         while time.time() < deadline:
             pool = [t.title for t in e.queue.pool]
             hint = app.v_hint.cget("text")
-            if (
-                "song one" in pool
-                and "song two" in pool
-                and "Loaded 2 tracks" in hint
-            ):
+            if "song one" in pool and "song two" in pool and "Loaded 2 tracks" in hint:
                 ok = True
                 break
             time.sleep(0.05)
@@ -480,4 +476,3 @@ def test_load_folder_empty_shows_loaded_zero(monkeypatch, tmp_path):
         assert "Loaded 0 tracks" in seen, f"hint={seen!r}"
     finally:
         sys.modules.pop("camfrog_autodj.gui", None)
-
