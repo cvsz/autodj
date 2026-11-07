@@ -120,11 +120,11 @@ SectionEnd
 
 Section /o "mpv + yt-dlp" SEC_MPV
     SetOutPath "$INSTDIR\mpv"
-    File "mpv\mpv.exe"
-    File "mpv\mpv.com"
-    File "mpv\yt-dlp.exe"
-    File /nonfatal "mpv\mpv-register.bat"
-    File /nonfatal "mpv\mpv-unregister.bat"
+    File "dist\mpv\mpv.exe"
+    File "dist\mpv\mpv.com"
+    File "dist\mpv\yt-dlp.exe"
+    File /nonfatal "dist\mpv\mpv-register.bat"
+    File /nonfatal "dist\mpv\mpv-unregister.bat"
     SetOutPath "$INSTDIR\mpv\_internal"
     File /r "mpv\_internal\*.*"
 SectionEnd
