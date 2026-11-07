@@ -138,9 +138,7 @@ def verify(repo: str, branch: str) -> list[str]:
 
     protection = gh_api("GET", f"repos/{repo}/branches/{branch}/protection")
 
-    contexts = set(
-        (protection.get("required_status_checks") or {}).get("contexts") or []
-    )
+    contexts = set((protection.get("required_status_checks") or {}).get("contexts") or [])
     missing_checks = sorted(set(REQUIRED_CHECKS) - contexts)
     if missing_checks:
         errors.append(f"missing required status checks: {', '.join(missing_checks)}")
@@ -177,15 +175,11 @@ def verify(repo: str, branch: str) -> list[str]:
     security = repo_state.get("security_and_analysis") or {}
     if (security.get("secret_scanning") or {}).get("status") != "enabled":
         errors.append("secret scanning is not enabled")
-    if (security.get("secret_scanning_push_protection") or {}).get(
-        "status"
-    ) != "enabled":
+    if (security.get("secret_scanning_push_protection") or {}).get("status") != "enabled":
         errors.append("secret scanning push protection is not enabled")
 
     try:
-        private_reporting = gh_api(
-            "GET", f"repos/{repo}/private-vulnerability-reporting"
-        )
+        private_reporting = gh_api("GET", f"repos/{repo}/private-vulnerability-reporting")
         if private_reporting.get("enabled") is not True:
             errors.append("private vulnerability reporting is not enabled")
     except RuntimeError as exc:
@@ -208,12 +202,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", default=DEFAULT_REPO)
     parser.add_argument("--branch", default=DEFAULT_BRANCH)
-    parser.add_argument(
-        "--apply", action="store_true", help="apply administration changes"
-    )
-    parser.add_argument(
-        "--verify", action="store_true", help="verify effective settings"
-    )
+    parser.add_argument("--apply", action="store_true", help="apply administration changes")
+    parser.add_argument("--verify", action="store_true", help="verify effective settings")
     args = parser.parse_args()
 
     require_gh()

@@ -103,9 +103,7 @@ def find_web_panes(win, view_title: str, input_title: str):
 
 def _history_children(view):
     node = view.element_info
-    for _ in range(
-        8
-    ):  # unwrap single-child wrapper panes down to the flat message list
+    for _ in range(8):  # unwrap single-child wrapper panes down to the flat message list
         kids = node.children()
         if len(kids) == 1 and kids[0].control_type == "Pane":
             node = kids[0]

@@ -57,9 +57,7 @@ class UiaAdapter(ChatAdapter):
         self._view = self._input = None
         self._web = False
         self._bg_fails = 0  # consecutive unconfirmed background sends (auto mode only)
-        self._bg_fails_lock = (
-            threading.Lock()
-        )  # protects _bg_fails across reader/sender threads
+        self._bg_fails_lock = threading.Lock()  # protects _bg_fails across reader/sender threads
         self._attach()
 
     def _attach(self):
@@ -82,9 +80,7 @@ class UiaAdapter(ChatAdapter):
         if self.cfg.view_kind in ("auto", "web"):
             from ..webchat import find_web_panes
 
-            view, inp = find_web_panes(
-                self.win, self.cfg.web_view_title, self.cfg.web_input_title
-            )
+            view, inp = find_web_panes(self.win, self.cfg.web_view_title, self.cfg.web_input_title)
             if view is not None:
                 self._web, self._view, self._input = True, view, inp
                 log.info(
@@ -93,9 +89,7 @@ class UiaAdapter(ChatAdapter):
                 )
                 return
             if self.cfg.view_kind == "web":
-                raise RuntimeError(
-                    f"no pane titled like {self.cfg.web_view_title!r} in the window"
-                )
+                raise RuntimeError(f"no pane titled like {self.cfg.web_view_title!r} in the window")
         self._web = False
         self._view = self._find(self.cfg.view_type, self.cfg.view_index)
         self._input = None
@@ -119,9 +113,7 @@ class UiaAdapter(ChatAdapter):
             except (OSError, RuntimeError) as e:
                 log.debug("chat read failed: %s", e)
                 with self.com_lock:  # protect _view/win against reader/sender race
-                    self._view = self.win = (
-                        None  # drop everything: the next poll re-attaches fresh
-                    )
+                    self._view = self.win = None  # drop everything: the next poll re-attaches fresh
                 time.sleep(1)
                 continue
             if prev is not None:
@@ -157,8 +149,8 @@ class UiaAdapter(ChatAdapter):
                 new = diff_lines(before, lines) if before else lines
             except (OSError, RuntimeError):
                 return True
-            for l in new:
-                norm_l = self._norm(l)
+            for line in new:
+                norm_l = self._norm(line)
                 # Check multiple match patterns for web chat format variations
                 if (
                     norm_l.endswith((": " + want, want))
@@ -286,9 +278,7 @@ class UiaAdapter(ChatAdapter):
                         try:
                             ok = self._send_bg(text)
                         except (OSError, RuntimeError) as e:
-                            log.warning(
-                                "background send attempt %d failed: %s", attempt + 1, e
-                            )
+                            log.warning("background send attempt %d failed: %s", attempt + 1, e)
                             ok = False
 
                         if ok:
@@ -334,9 +324,7 @@ class UiaAdapter(ChatAdapter):
                             )
                         return
                     if ok and (
-                        not self.cfg.send_verify
-                        or before is None
-                        or self._appeared(text, before)
+                        not self.cfg.send_verify or before is None or self._appeared(text, before)
                     ):
                         log.debug("sent in background: %s", text)
                         with self._bg_fails_lock:

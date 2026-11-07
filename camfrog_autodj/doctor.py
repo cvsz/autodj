@@ -48,7 +48,9 @@ def _ytdlp_version(exe: str) -> str:
 
 def run_checks(cfg, check_window: bool = True) -> list[Result]:
     out: list[Result] = []
-    add = lambda level, text: out.append((level, text))
+
+    def add(level, text):
+        out.append((level, text))
 
     # mpv: the player itself
     mpv_executable = resolve_executable(cfg.mpv_path)
@@ -95,9 +97,7 @@ def run_checks(cfg, check_window: bool = True) -> list[Result]:
     for d in cfg.music_dirs:
         p = Path(d)
         if p.is_dir():
-            n = sum(
-                1 for f in p.rglob("*") if f.suffix.lower() in MEDIA and f.is_file()
-            )
+            n = sum(1 for f in p.rglob("*") if f.suffix.lower() in MEDIA and f.is_file())
             add("OK", f"music_dirs: {d}: {n} media file(s)")
         else:
             add("WARN", f"music_dirs: folder not found: {d}")

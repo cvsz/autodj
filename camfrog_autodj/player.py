@@ -25,9 +25,7 @@ def _is_windows() -> bool:
 
 def failure_reasons(log_text: str, keep: int = 4) -> list[str]:
     """The last few lines of an mpv log that explain why playback failed."""
-    lines = [
-        ln.strip() for ln in log_text.splitlines() if any(w in ln.lower() for w in _WHY)
-    ]
+    lines = [ln.strip() for ln in log_text.splitlines() if any(w in ln.lower() for w in _WHY)]
     return lines[-keep:]
 
 
@@ -89,13 +87,9 @@ class MpvPlayer:
         ipc = (
             rf"\\.\pipe\camfrog-autodj-{os.getpid()}-{n}"
             if _is_windows()
-            else os.path.join(
-                tempfile.gettempdir(), f"camfrog-autodj-{os.getpid()}-{n}.sock"
-            )
+            else os.path.join(tempfile.gettempdir(), f"camfrog-autodj-{os.getpid()}-{n}.sock")
         )
-        logf = os.path.join(
-            tempfile.gettempdir(), f"camfrog-autodj-mpv-{os.getpid()}-{n}.log"
-        )
+        logf = os.path.join(tempfile.gettempdir(), f"camfrog-autodj-mpv-{os.getpid()}-{n}.log")
         fade_in = (
             getattr(self.cfg, "audio_fade", False)
             and getattr(self.cfg, "audio_fade_in_sec", 0.0) > 0
@@ -113,9 +107,7 @@ class MpvPlayer:
         cmd += ["--", source]
         kw: dict = {}
         if _is_windows():
-            kw["creationflags"] = (
-                0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
-            )
+            kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
         with self._lock:
             self.skipped = False
             self._paused_since, self._paused_total = None, 0.0
@@ -173,9 +165,7 @@ class MpvPlayer:
         """Seconds of actual playing since `started` (pauses excluded)."""
         with self._lock:
             now = time.monotonic()
-            paused = self._paused_total + (
-                now - self._paused_since if self._paused_since else 0.0
-            )
+            paused = self._paused_total + (now - self._paused_since if self._paused_since else 0.0)
         return now - started - paused
 
     @staticmethod
@@ -252,9 +242,7 @@ class MpvPlayer:
         if not ipc:
             return None
         request_id = next(_ids)
-        data = (
-            json.dumps({"command": list(cmd), "request_id": request_id}) + "\n"
-        ).encode()
+        data = (json.dumps({"command": list(cmd), "request_id": request_id}) + "\n").encode()
         try:
             if _is_windows():
                 # Windows named pipe: open for read/write, send request, then read response
@@ -308,7 +296,5 @@ class MpvPlayer:
     def play_file(self, path: str):
         kw: dict = {}
         if _is_windows():
-            kw["creationflags"] = (
-                0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
-            )
+            kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
         subprocess.run(self._base() + ["--volume=100", "--", path], check=False, **kw)

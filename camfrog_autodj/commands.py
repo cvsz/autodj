@@ -88,7 +88,9 @@ class Router:
             return
         now = time.monotonic()
         if not admin:
-            who = msg.user.lower()  # "Bob" and "bob" are one person: changing case must not dodge the cooldown
+            who = (
+                msg.user.lower()
+            )  # "Bob" and "bob" are one person: changing case must not dodge the cooldown
             if now - self.last.get(who, -1e9) < e.cfg.cooldown:
                 log.info(
                     "cooldown: dropping %s's command from %s (%.1fs to go)",
@@ -154,9 +156,7 @@ def _play(e, m, a, admin):
         if t.duration and t.duration > c.max_duration:
             raise UserError(e.t("too_long", m=c.max_duration // 60))
     pos = 0
-    with (
-        e.queue.lock
-    ):  # the lookup above can take seconds: re-check now, atomically with the add
+    with e.queue.lock:  # the lookup above can take seconds: re-check now, atomically with the add
         if not admin:
             if len(e.queue.requests) >= c.max_queue:
                 raise UserError(e.t("queue_full"))
@@ -165,9 +165,7 @@ def _play(e, m, a, admin):
             src = tracks[0].source
             # e.current is read under the queue lock to avoid a data race with _player_loop
             current_source = e.current.source if e.current else None
-            if (current_source == src) or any(
-                r.source == src for r in e.queue.requests
-            ):
+            if (current_source == src) or any(r.source == src for r in e.queue.requests):
                 raise UserError(e.t("already_queued"))
         for t in tracks:
             pos = e.queue.add_request(t)
@@ -259,9 +257,7 @@ def _remove(e, m, a, admin):
         raise UserError(e.t("no_such_item"))
     if not (admin or t.requester.lower() == m.user.lower()):
         raise UserError(e.t("remove_own"))
-    if e.queue.remove_track(
-        t
-    ):  # by identity: the numbered slot may have shifted since get()
+    if e.queue.remove_track(t):  # by identity: the numbered slot may have shifted since get()
         e.say(e.t("removed", title=t.title))
     else:
         raise UserError(e.t("no_such_item"))
@@ -322,11 +318,9 @@ def _load(e, m, a, admin):
         p = Path(src)
         try:
             p = p.resolve()
-        except (OSError, ValueError):
-            raise UserError(e.t("load_failed", err="invalid path"))
-        if not any(
-            p.is_relative_to(d) for d in (Path(d).resolve() for d in e.cfg.music_dirs)
-        ):
+        except (OSError, ValueError) as err:
+            raise UserError(e.t("load_failed", err="invalid path")) from err
+        if not any(p.is_relative_to(d) for d in (Path(d).resolve() for d in e.cfg.music_dirs)):
             raise UserError(e.t("folders_admin"))
     e.load_async(src)
 
@@ -352,9 +346,7 @@ def _history(e, m, a, admin):
         e.say(e.t("history_empty"))
         return
     e.say(
-        e.t("history_head")
-        + " "
-        + " | ".join(f"{i}) {_line(t)}" for i, t in enumerate(items, 1))
+        e.t("history_head") + " " + " | ".join(f"{i}) {_line(t)}" for i, t in enumerate(items, 1))
     )
 
 

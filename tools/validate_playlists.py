@@ -52,9 +52,7 @@ def validate_file(path: Path) -> tuple[int, int, list[tuple[int, str, str]]]:
     for i, t in enumerate(tracks):
         source = t.get("source", "") if isinstance(t, dict) else str(t)
         if not is_valid_source(source):
-            reason = (
-                "empty" if not str(source).strip() else "not a URL or ytsearch query"
-            )
+            reason = "empty" if not str(source).strip() else "not a URL or ytsearch query"
             invalid.append((i, str(source), reason))
 
     return len(tracks), len(invalid), invalid
@@ -71,9 +69,7 @@ def fix_file(path: Path, dry_run: bool = False) -> int:
     if not isinstance(tracks, list):
         return 0
 
-    valid = [
-        t for t in tracks if is_valid_source(t.get("source", "")) if isinstance(t, dict)
-    ]
+    valid = [t for t in tracks if is_valid_source(t.get("source", "")) if isinstance(t, dict)]
     removed = len(tracks) - len(valid)
 
     if removed > 0 and not dry_run:
@@ -93,12 +89,8 @@ def fix_file(path: Path, dry_run: bool = False) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Validate playlist/*.json source URLs")
-    ap.add_argument(
-        "--fix", action="store_true", help="remove invalid entries (with .bak backup)"
-    )
-    ap.add_argument(
-        "--dir", default="playlist", help="playlist directory (default: playlist)"
-    )
+    ap.add_argument("--fix", action="store_true", help="remove invalid entries (with .bak backup)")
+    ap.add_argument("--dir", default="playlist", help="playlist directory (default: playlist)")
     args = ap.parse_args()
 
     pl_dir = Path(args.dir)

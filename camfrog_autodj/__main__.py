@@ -20,9 +20,7 @@ def _parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="camfrog-autodj")
     ap.add_argument("-c", "--config", default="config.toml")
     ap.add_argument("--version", action="version", version=f"AutoDJ {__version__}")
-    ap.add_argument(
-        "--console", action="store_true", help="chat via stdin/stdout (no Camfrog)"
-    )
+    ap.add_argument("--console", action="store_true", help="chat via stdin/stdout (no Camfrog)")
     ap.add_argument("--gui", action="store_true", help="open the desktop window")
     ap.add_argument("--lang", choices=["en", "th"], help="override config lang")
     ap.add_argument(
@@ -50,9 +48,7 @@ def _parser() -> argparse.ArgumentParser:
         metavar="TEXT",
         help="send TEXT into the room once and exit (tests chat sending)",
     )
-    ap.add_argument(
-        "--no-discover", action="store_true", help="skip startup auto-discovery"
-    )
+    ap.add_argument("--no-discover", action="store_true", help="skip startup auto-discovery")
     ap.add_argument(
         "--log-file",
         metavar="PATH",
@@ -195,9 +191,7 @@ def _run(a, level):
         try:
             ups = discover.apply(cfg, a.config)
         except Exception:  # pragma: no cover - defensive; discovery is best-effort
-            logging.getLogger(__name__).exception(
-                "auto-discover failed; continuing without it"
-            )
+            logging.getLogger(__name__).exception("auto-discover failed; continuing without it")
             ups = None
         if a.discover:
             print(ups or "nothing found: open the room window and try again")

@@ -35,9 +35,7 @@ def main() -> int:
         return 0
     for mod, why in bad.items():
         print(f"  MISSING {mod:<10} -> without it: {why}")
-    print(
-        "Fix:  python -m pip install -e . pyinstaller      (then run build.ps1 again)"
-    )
+    print("Fix:  python -m pip install -e . pyinstaller      (then run build.ps1 again)")
     return 1
 
 

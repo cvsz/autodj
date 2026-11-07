@@ -11,7 +11,9 @@ def hex_to_rgb(h: str) -> tuple[int, int, int]:
 
 
 def rgb_to_hex(r: float, g: float, b: float) -> str:
-    c = lambda v: max(0, min(255, round(v)))
+    def c(v):
+        return max(0, min(255, round(v)))
+
     return f"#{c(r):02x}{c(g):02x}{c(b):02x}"
 
 
@@ -45,9 +47,7 @@ def bar_heights(t: float, n: int, level: float) -> list[float]:
             + (0.5 + 0.5 * math.sin(t * 5.3 - i * 1.17 + 1.3)) * 0.30
             + (0.5 + 0.5 * math.sin(t * 1.7 + x * 6.0)) * 0.15
         )
-        shape = 0.55 + 0.45 * math.sin(
-            math.pi * (0.12 + 0.76 * x)
-        )  # a little lower at both edges
+        shape = 0.55 + 0.45 * math.sin(math.pi * (0.12 + 0.76 * x))  # a little lower at both edges
         out.append(max(0.03, min(1.0, v * shape * level + 0.03)))
     return out
 
@@ -75,7 +75,7 @@ def make_particles(n: int, seed: int = 0) -> list[dict]:
     """n floating sparkle particles with a fixed per-particle phase/speed/radius/orbit, seeded for stability."""
     rnd = []
     x = (seed * 9301 + 49297) % 233280
-    for i in range(n):
+    for _i in range(n):
         x = (x * 9301 + 49297) % 233280
         rnd.append(x / 233280)
     out = []
@@ -117,7 +117,7 @@ def confetti_burst(n: int, seed: int = 0) -> list[dict]:
     """n confetti pieces launched outward from the centre (fixed initial velocity/angle/spin), t=0 at launch."""
     rnd = []
     x = (seed * 9301 + 49297) % 233280
-    for i in range(n * 3):
+    for _i in range(n * 3):
         x = (x * 9301 + 49297) % 233280
         rnd.append(x / 233280)
     out = []
@@ -135,9 +135,7 @@ def confetti_burst(n: int, seed: int = 0) -> list[dict]:
     return out
 
 
-def confetti_pos(
-    c: dict, age: float, cx: float, cy: float
-) -> tuple[float, float, float, float]:
+def confetti_pos(c: dict, age: float, cx: float, cy: float) -> tuple[float, float, float, float]:
     """x, y, rotation(deg), alpha(0..1) for one confetti piece `age` seconds after launch. Lasts ~1.4s."""
     life = 1.4
     k = min(age / life, 1.0)
@@ -152,9 +150,7 @@ def confetti_pos(
     return x, y, rot, alpha
 
 
-def round_rect_points(
-    x1: float, y1: float, x2: float, y2: float, r: float
-) -> list[float]:
+def round_rect_points(x1: float, y1: float, x2: float, y2: float, r: float) -> list[float]:
     """Polygon points for a rounded rectangle; draw with smooth=True."""
     r = max(0.0, min(r, (x2 - x1) / 2, (y2 - y1) / 2))
     return [

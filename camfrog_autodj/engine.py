@@ -25,7 +25,7 @@ from .library import (
     scan_folder,
 )
 from .messages import tr
-from .models import Track, UserError, YtdlpMissing
+from .models import Track, UserError, YtdlpMissingError
 from .player import MpvPlayer
 from .playlist import PlaylistStore, load_playlist
 from .playqueue import PlayQueue
@@ -33,7 +33,9 @@ from .textutil import clean_text, norm
 
 log = logging.getLogger("autodj")
 
-MAX_FAIL_ANNOUNCE = 3  # consecutive failed tracks announced in the room; after that only the log hears about it
+MAX_FAIL_ANNOUNCE = (
+    3  # consecutive failed tracks announced in the room; after that only the log hears about it
+)
 MAX_BACKOFF = 30.0  # seconds, ceiling of the pause between consecutive failed tracks
 ECHO_TTL = 120.0  # seconds a line we posted is remembered, to recognise it when it comes back from the room
 
@@ -91,15 +93,9 @@ class Engine:
         ] = []  # daemon threads started by start(), joined on shutdown()
         # ---- observability --------------------------------------------------
         self._req_counter = itertools.count()  # per-engine request ID counter
-        self._delivery_counter = (
-            itertools.count()
-        )  # per-engine delivery attempt ID counter
-        self._active_requests: dict[
-            str, dict
-        ] = {}  # request_id -> {user, arg, start, state}
-        self._delivery_attempts: dict[
-            int, dict
-        ] = {}  # attempt_id -> {text, stage, confirmed}
+        self._delivery_counter = itertools.count()  # per-engine delivery attempt ID counter
+        self._active_requests: dict[str, dict] = {}  # request_id -> {user, arg, start, state}
+        self._delivery_attempts: dict[int, dict] = {}  # attempt_id -> {text, stage, confirmed}
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -160,22 +156,16 @@ class Engine:
         # Also to the logger (so --log-file / console keeps a trail of every line the bot sent and every
         # line it acted on, even with the GUI closed -- the in-memory chat_log above is lost on restart
         # and was never enough on its own to reconstruct what happened after the fact).
-        log.info(
-            "chat %s %s: %s", ">>" if who == self.cfg.bot_nick else "<<", who, text
-        )
+        log.info("chat %s %s: %s", ">>" if who == self.cfg.bot_nick else "<<", who, text)
 
     def say(self, text: str):
         text = clean_text(text)
         if not text:
             return
         self.log_chat(self.cfg.bot_nick, text)
-        for i, chunk in enumerate(
-            textwrap.wrap(text, self.cfg.max_msg_len, break_long_words=True)
-        ):
+        for i, chunk in enumerate(textwrap.wrap(text, self.cfg.max_msg_len, break_long_words=True)):
             if i and chunk.startswith(self.cfg.prefix):
-                chunk = (
-                    "… " + chunk
-                )  # a wrapped continuation must never look like a command
+                chunk = "… " + chunk  # a wrapped continuation must never look like a command
             self.outbox.put(chunk)
 
     # The room shows our own lines back to us under the account's nick, which may differ from bot_nick.
@@ -307,9 +297,7 @@ class Engine:
                 m = self.outbox.get(timeout=0.5)
             except queue.Empty:
                 continue
-            self._remember_sent(
-                m
-            )  # before posting: the echo can show up before send() returns
+            self._remember_sent(m)  # before posting: the echo can show up before send() returns
             attempt_id = self.log_delivery(m, "attempted")
             try:
                 self.adapter.send(m)
@@ -328,9 +316,7 @@ class Engine:
                 except Exception:
                     self.fail_delivery(attempt_id, FAIL_DELIVERY)
                     log.exception("send retry failed too, dropped: %r", m)
-            self.stop_evt.wait(
-                self.cfg.send_interval
-            )  # flood control (wakes up at shutdown)
+            self.stop_evt.wait(self.cfg.send_interval)  # flood control (wakes up at shutdown)
 
     # ---- controls -------------------------------------------------------
     def skip(self):
@@ -350,9 +336,7 @@ class Engine:
             if self.player.set_pause(False) is False:
                 log.warning("resume failed: mpv did not accept the command")
                 return
-            self._paused_total += time.monotonic() - (
-                self._paused_at or time.monotonic()
-            )
+            self._paused_total += time.monotonic() - (self._paused_at or time.monotonic())
             self.paused, self._paused_at = False, None
 
     def position(self) -> float:
@@ -388,9 +372,7 @@ class Engine:
 
             from .tts import synth
 
-            wav = os.path.join(
-                tempfile.gettempdir(), f"autodj-tts-{time.time_ns()}.wav"
-            )
+            wav = os.path.join(tempfile.gettempdir(), f"autodj-tts-{time.time_ns()}.wav")
             with self._speak_lock:
                 try:
                     synth(text, wav, self.cfg)
@@ -442,7 +424,7 @@ class Engine:
                 cookies_browser=getattr(self.cfg, "youtube_cookies_browser", ""),
                 ca_bundle=getattr(self.cfg, "youtube_ca_bundle", ""),
             )
-        except YtdlpMissing as ex:
+        except YtdlpMissingError as ex:
             log.error(
                 "%s", ex
             )  # the details (how to fix it) are for the operator, the room gets a short line
@@ -549,9 +531,7 @@ class Engine:
         self.exec.submit(job)
 
     def load_source(self, src: str) -> list[Track]:
-        if is_url(src) or SEARCH_PREFIX.match(
-            src
-        ):  # "ytsearch20:text" works as an autoplay source
+        if is_url(src) or SEARCH_PREFIX.match(src):  # "ytsearch20:text" works as an autoplay source
             return self._remote(src, playlist=True, raw_target=True)
         p = Path(src)
         if p.is_dir():
@@ -560,9 +540,7 @@ class Engine:
             return [local_track(p)]
         raise UserError(self.t("not_found", src=src))
 
-    def load_async(
-        self, src: str, announce: bool = True, on_success=None, on_error=None
-    ):
+    def load_async(self, src: str, announce: bool = True, on_success=None, on_error=None):
         def job():
             try:
                 tracks = self.load_source(src)
@@ -610,18 +588,14 @@ class Engine:
         except UserError:
             raise
         except Exception as ex:
-            log.warning(
-                "failed to dynamically resolve search track %r: %s", orig_src, ex
-            )
+            log.warning("failed to dynamically resolve search track %r: %s", orig_src, ex)
             raise UserError(str(ex)) from ex
 
     def _preload_search_tracks(self):
         """Asynchronously resolve upcoming search-backed tracks in the queue."""
         try:
             with self.queue.lock:
-                candidates = [
-                    t for t in self.queue.requests if SEARCH_PREFIX.match(t.source)
-                ][:3]
+                candidates = [t for t in self.queue.requests if SEARCH_PREFIX.match(t.source)][:3]
             for cand in candidates:
                 if self.stop_evt.is_set():
                     break
@@ -657,10 +631,7 @@ class Engine:
                     queued_sources = {r.source for r in self.queue.requests}
                     played_sources = {t.source for t in self.history}
                     for t in loaded:
-                        if (
-                            t.source not in queued_sources
-                            and t.source not in played_sources
-                        ):
+                        if t.source not in queued_sources and t.source not in played_sources:
                             self.queue.add_request(t)
                             queued_sources.add(t.source)
             except Exception:
@@ -689,9 +660,7 @@ class Engine:
                                 pl_file,
                             )
                         except Exception:
-                            log.exception(
-                                "failed to load playlist dir file: %s", pl_file
-                            )
+                            log.exception("failed to load playlist dir file: %s", pl_file)
             except Exception:
                 log.exception("playlist dir scan failed: %s", self.cfg.playlist_dir)
         log.info(
@@ -810,9 +779,7 @@ class Engine:
                 if self.stop_evt.is_set():
                     break
                 # Ignore our own messages: match by normalized nick or by echo detection
-                if norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(
-                    msg.text
-                ):
+                if norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text):
                     continue
                 self.log_chat(msg.user, msg.text)
                 self.exec.submit(self.router.handle, msg)

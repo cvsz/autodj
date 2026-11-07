@@ -15,19 +15,19 @@ import traceback
 import types
 
 
-class Skip(Exception):
+class SkipError(Exception):
     pass
 
 
 def _skip(msg=""):
-    raise Skip(msg)
+    raise SkipError(msg)
 
 
 def importorskip(name):
     try:
         return importlib.import_module(name)
-    except ImportError:
-        raise Skip(f"no module {name}")
+    except ImportError as err:
+        raise SkipError(f"no module {name}") from err
 
 
 class _Raises:
@@ -122,9 +122,7 @@ def main(argv):
         root.parent if root.is_file() else root
     )  # the tests/ dir, whether given a file or the dir itself
     sys.path.insert(0, str(tests_dir))
-    sys.path.insert(
-        0, str(tests_dir.parent)
-    )  # project root, for `import camfrog_autodj`
+    sys.path.insert(0, str(tests_dir.parent))  # project root, for `import camfrog_autodj`
     ok = fail = skip = 0
     for f in files:
         spec = importlib.util.spec_from_file_location(f.stem, f)
@@ -146,7 +144,9 @@ def main(argv):
             if hasattr(fn, "_params"):
                 names, vals = fn._params
                 names = [n.strip() for n in names.split(",")]
-                cases = [dict(zip(names, v if len(names) > 1 else (v,))) for v in vals]
+                cases = [
+                    dict(zip(names, v if len(names) > 1 else (v,), strict=False)) for v in vals
+                ]
             for kw in cases:
                 mp = MonkeyPatch()
                 tmp = pathlib.Path(tempfile.mkdtemp())
@@ -165,7 +165,7 @@ def main(argv):
                     fn(**args)
                     ok += 1
                     print(f"PASS {f.name}::{name}")
-                except Skip as s:
+                except SkipError as s:
                     skip += 1
                     print(f"SKIP {f.name}::{name} ({s})")
                 except (

@@ -21,9 +21,7 @@ INPUT_TYPES = ("Edit",)
 @dataclass
 class Ctl:
     ctype: str
-    index: (
-        int  # index inside window.descendants(control_type=ctype): what config stores
-    )
+    index: int  # index inside window.descendants(control_type=ctype): what config stores
     text: str = ""
     left: int = 0
     top: int = 0
@@ -109,11 +107,7 @@ def score_web(title: str, win, cfg, rx: re.Pattern) -> Found | None:
 
 def best_room(found: list[Found]) -> Found | None:
     # most parsed chat lines first; ties -> larger chat view
-    return (
-        max(found, key=lambda f: (f.matched, f.view.area), default=None)
-        if found
-        else None
-    )
+    return max(found, key=lambda f: (f.matched, f.view.area), default=None) if found else None
 
 
 def to_updates(f: Found) -> dict:
@@ -159,9 +153,7 @@ def discover(cfg) -> dict | None:
     try:
         from pywinauto import Desktop
     except ImportError:  # pywinauto is Windows-only; may be absent on other platforms
-        log.warning(
-            "auto-discover: pywinauto is not available; cannot scan Camfrog windows"
-        )
+        log.warning("auto-discover: pywinauto is not available; cannot scan Camfrog windows")
         return None
 
     from .windows import candidates
@@ -183,9 +175,7 @@ def discover(cfg) -> dict | None:
     for c in cands:
         try:
             win = Desktop(backend="uia").window(handle=c.handle)
-            f = score_web(c.title, win, cfg, rx) or score_window(
-                c.title, scan_window(win), rx
-            )
+            f = score_web(c.title, win, cfg, rx) or score_window(c.title, scan_window(win), rx)
         except (AttributeError, RuntimeError) as e:  # a window can vanish mid-scan
             log.debug("skip %r: %s", c.title, e)
             continue
@@ -218,8 +208,7 @@ def _toml_value(v) -> str:
     return (
         '"'
         + "".join(
-            esc.get(c, c if ord(c) >= 32 and ord(c) != 127 else f"\\u{ord(c):04x}")
-            for c in s
+            esc.get(c, c if ord(c) >= 32 and ord(c) != 127 else f"\\u{ord(c):04x}") for c in s
         )
         + '"'
     )
@@ -299,9 +288,7 @@ def apply(cfg, path: str) -> dict | None:
     """Discover, update cfg in memory and config.toml. Returns the updates (or None if nothing found)."""
     ups = discover(cfg)
     if not ups:
-        log.warning(
-            "auto-discover: no Camfrog room chat found (open the room window first)"
-        )
+        log.warning("auto-discover: no Camfrog room chat found (open the room window first)")
         return None
     for k, v in ups.items():
         setattr(cfg, k, v)
