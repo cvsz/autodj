@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import re
 import time
 from pathlib import Path
 
 from .base import ChatAdapter, parse_line
+
+log = logging.getLogger(__name__)
 
 
 class LogTailAdapter(ChatAdapter):
@@ -31,4 +34,7 @@ class LogTailAdapter(ChatAdapter):
                     yield m
 
     def send(self, text):
-        raise NotImplementedError("logtail is read-only")
+        # LogTail adapter is read-only: it cannot send chat messages.
+        log.warning(
+            "Cannot send chat: logtail adapter is read-only. Message dropped: %r", text[:80]
+        )

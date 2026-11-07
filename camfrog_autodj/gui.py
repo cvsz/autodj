@@ -2184,11 +2184,17 @@ class App(tk.Tk):
             self.e.blocked = {b.lower() for b in new_cfg.blocked_users}
 
             # Show save confirmation via say
-            self.e.say(self.e.t("g_settings_saved"))
+            try:
+                self.e.say(self.e.t("g_settings_saved"))
+            except Exception:
+                log.debug("say() failed for settings_saved", exc_info=True)
 
         except Exception as ex:
             log.exception("save settings failed")
-            self.e.say(self.e.t("g_settings_save_failed", err=str(ex)))
+            try:
+                self.e.say(self.e.t("g_settings_save_failed", err=str(ex)))
+            except Exception:
+                log.debug("say() failed for settings_save_failed", exc_info=True)
 
     def show_settings(self):
         """Open the settings popup window."""
