@@ -1,0 +1,26 @@
+{
+ "version": 1,
+ "tracks": [
+  {
+   "source": "https://youtu.be/test_song_one",
+   "title": "test song one",
+   "duration": 120,
+   "added_by": "tester",
+   "added": "2026-11-07T00:00:00"
+  },
+  {
+   "source": "https://youtu.be/test_song_two",
+   "title": "test song two",
+   "duration": 180,
+   "added_by": "tester",
+   "added": "2026-11-07T00:01:00"
+  },
+  {
+   "source": "ytsearch1:test query",
+   "title": "test query",
+   "duration": null,
+   "added_by": "tester",
+   "added": "2026-11-07T00:02:00"
+  }
+ ]
+}

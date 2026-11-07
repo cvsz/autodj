@@ -207,7 +207,12 @@ class Misc:
         pass
 
     def after(self, ms, fn=None, *a):
-        self._after.append((ms, fn))
+        # delay-0 callbacks run immediately (simulates Tk event loop processing
+        # them on the next main-loop iteration); positive delays are queued.
+        if ms == 0 and fn is not None:
+            fn()
+        else:
+            self._after.append((ms, fn))
         return f"after#{len(self._after)}"
 
     def after_cancel(self, i):

@@ -1750,17 +1750,30 @@ class App(tk.Tk):
         for f in files:
             self.e.request(f)
 
+    def _set_hint(self, text: str):
+        """Update the hint label on the main thread (callbacks may run on a
+        background thread from load_async). Tkinter is not thread-safe."""
+        self.after(0, lambda: self.v_hint.configure(text=text))
+
     def load_folder(self):
         try:
-            d = filedialog.askdirectory()
+            d = filedialog.askdirectory(parent=self)
         except Exception:
             log.exception("folder dialog failed")
             return
         if d:
+            self._set_hint(self.e.t("folder_loading"))
             try:
-                self.e.load_async(d)
-            except Exception:
+                self.e.load_async(
+                    d,
+                    on_success=lambda tracks: self._set_hint(
+                        self.e.t("folder_loaded", n=len(tracks))
+                    ),
+                    on_error=lambda msg: self._set_hint(msg),
+                )
+            except Exception as ex:
                 log.exception("load folder failed: %s", d)
+                self._set_hint(self.e.t("load_failed", err=ex))
 
     def remove_selected(self):
         # by object, not by position: the queue may have changed since the list box was last refreshed

@@ -19,7 +19,7 @@ SCRIPT_SRC=".github/scripts/post-review-comment.sh"
 ACCOUNTS_FILE="scripts/gh-switch-accounts.conf"
 
 # Get policedbc PAT from credential store
-POLIEDBC_PAT="$(printf 'protocol=https\nhost=github.com\nusername=policedbc\n' | git credential fill 2>/dev/null | grep '^password=' | cut -d= -f2-)"
+POLIEDBC_PAT="$(printf 'protocol=https\nhost=github.com\nusername=policedbc\n' | git credential fill | grep '^password=' | cut -d= -f2-)"
 if [ -z "$POLIEDBC_PAT" ]; then
   echo "ERROR: POLIEDBC_PAT not found in credential store"
   exit 1
@@ -33,7 +33,7 @@ echo "============================================================"
 # List ALL public repos owned by cvsz (not forks) - with pagination
 REPO_LIST=""
 for page in 1 2 3 4 5 6 7 8 9 10; do
-  page_repos="$(gh api "user/repos?per_page=100&page=$page" --jq '.[] | select(.fork == false and .private == false) | .full_name' 2>/dev/null || true)"
+  page_repos="$(gh api "user/repos?per_page=100&page=$page" --jq '.[] | select(.fork == false and .private == false) | .full_name' || true)"
   if [ -z "$page_repos" ]; then
     break
   fi
@@ -64,7 +64,7 @@ while IFS= read -r repo; do
   mkdir -p "$WORKDIR"
 
   # Clone repo
-  if ! gh repo clone "$repo" "$WORKDIR" -- --depth=1 2>/dev/null; then
+  if ! gh repo clone "$repo" "$WORKDIR" -- --depth=1; then
     echo "  ❌ Clone failed"
     FAILED=$((FAILED + 1))
     continue
@@ -78,7 +78,7 @@ while IFS= read -r repo; do
   chmod +x .github/scripts/post-review-comment.sh
 
   # Set POLIEDBC_PAT secret
-  echo "$POLIEDBC_PAT" | gh secret set POLIEDBC_PAT --repo "$repo" >/dev/null 2>&1 || {
+  echo "$POLIEDBC_PAT" | gh secret set POLIEDBC_PAT --repo "$repo" || {
     echo "  ❌ Failed to set POLIEDBC_PAT secret"
     FAILED=$((FAILED + 1))
     cd /mnt/d/data/camfrog-autodj
@@ -89,7 +89,6 @@ while IFS= read -r repo; do
   # Commit and push
   git config user.name "cvsz"
   git config user.email "cvsz@seaza.com"
-  export GPG_PASSPHRASE=@@@Zz112233
   git add .github/workflows/automated-audit-review-approve.yml .github/scripts/post-review-comment.sh
   if ! git diff --cached --quiet; then
     git -c gpg.program=/home/cvsz/.local/bin/gpg-loopback.sh commit -m "feat: add auto audit/review/approve workflow (policedbc)
@@ -97,8 +96,8 @@ while IFS= read -r repo; do
 - Add automated audit, review, and approve workflow
 - policedbc service account reviews PRs
 - Auto-approves when safe (no security-sensitive paths changed)
-- Blocks auto-approve on security-sensitive paths per CODEOWNERS" >/dev/null 2>&1
-    git push origin HEAD 2>/dev/null || {
+- Blocks auto-approve on security-sensitive paths per CODEOWNERS"
+    git push origin HEAD || {
       echo "  ❌ Push failed"
       FAILED=$((FAILED + 1))
       cd /mnt/d/data/camfrog-autodj
@@ -113,16 +112,16 @@ while IFS= read -r repo; do
   if [ "$TEST_MODE" = "--test" ]; then
     echo "  🧪 Creating test PR ..."
     TEST_BRANCH="test-auto-approve-$(date +%s)"
-    git checkout -b "$TEST_BRANCH" >/dev/null 2>&1
+    git checkout -b "$TEST_BRANCH"
     echo "# Test Auto-Approve" > TEST_AUTO_APPROVE.md
     git add TEST_AUTO_APPROVE.md
-    git -c gpg.program=/home/cvsz/.local/bin/gpg-loopback.sh commit -m "test: auto-approve workflow trigger" >/dev/null 2>&1
-    git push origin "$TEST_BRANCH" >/dev/null 2>&1 || {
+    git -c gpg.program=/home/cvsz/.local/bin/gpg-loopback.sh commit -m "test: auto-approve workflow trigger"
+    git push origin "$TEST_BRANCH" || {
       echo "  ⚠️  Test PR push failed (may need manual test)"
       cd /mnt/d/data/camfrog-autodj
       continue
     }
-    gh pr create --title "test: auto-approve workflow" --body "ทดสอบ workflow อัตโนมัติ — policedbc" --base main --head "$TEST_BRANCH" --repo "$repo" >/dev/null 2>&1 || {
+    gh pr create --title "test: auto-approve workflow" --body "ทดสอบ workflow อัตโนมัติ — policedbc" --base main --head "$TEST_BRANCH" --repo "$repo" || {
       echo "  ⚠️  Test PR creation failed"
     }
     echo "  ✅ Test PR created"
