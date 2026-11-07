@@ -192,6 +192,7 @@ _RANGES = {
     "user_request_limit": (1, 1000),
     "rate_limit_window": (10.0, 86400.0),
     "auto_reply_interval": (60.0, 86400.0),
+    "im_auto_reply_cooldown": (10.0, 3600.0),
 }
 
 
