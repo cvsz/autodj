@@ -61,7 +61,6 @@ playlist.json.tmp
 cert/
 
 # Reverse-engineering reference (do not distribute)
-camfrog-re-report.md
 exec-next.md
 docs/camfrog-re-report.md
 

@@ -74,3 +74,13 @@ playlist_file = "playlist.json"   # user-requested tracks (!play / GUI request /
                                   # (deduplicated) and join the autoplay pool (random); "" = disable persistence
 search_limit = 1               # YouTube text-search results fetched per non-admin !play (1 = first match only; max 50)
 mpv_timeout = 30               # seconds to wait for one mpv track before treating it as hung (0 = never)
+
+# --- auto-reply (scheduled ads/messages to the room) ------------------------------------------
+auto_reply_enabled = false          # enable scheduled auto-reply messages to the room
+auto_reply_interval = 300.0         # seconds between auto-reply messages (min 60s)
+auto_reply_file = "ads-list.json"   # JSON file with messages to rotate through
+
+# IM Auto-reply: automatic reply to private/instant messages
+im_auto_reply_enabled = false       # enable auto-reply to private/instant messages
+im_auto_reply_message = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
+im_auto_reply_cooldown = 60.0       # seconds between auto-replies to the same user (avoid spam)

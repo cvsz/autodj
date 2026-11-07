@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from .adapters.base import ChatMessage
 from .commands import Router
 from .library import (
     MEDIA,
@@ -86,6 +87,7 @@ class Engine:
         self._sent: deque[tuple[float, str]] = deque(maxlen=64)
         self._sent_lock = threading.Lock()
         self._chat_lock = threading.Lock()  # guards chat_log + chat_seq (GUI polls them)
+        self._im_reply_cooldowns: dict[str, float] = {}  # user -> last IM reply time
         self._speak_lock = (
             threading.Lock()
         )  # one TTS clip at a time: overlapping jobs would un-duck the music early
@@ -346,6 +348,28 @@ class Engine:
             self._paused_total += time.monotonic() - (self._paused_at or time.monotonic())
             self.paused, self._paused_at = False, None
 
+    def voteskip(self, user: str) -> tuple[bool, str]:
+        """Register a voteskip from *user* for the current track.
+
+        Returns (passed, message). When the threshold is reached the track
+        is skipped immediately.
+        """
+        if not self.current:
+            return False, self.t("nothing_playing")
+        self.votes.add(user.lower())
+        n = len(self.votes)
+        need = self.cfg.voteskip_threshold
+        if getattr(self.cfg, "voteskip_dynamic", False):
+            participants = getattr(self, "participant_count", 0)
+            if participants > 0:
+                pct = getattr(self.cfg, "voteskip_dynamic_pct", 30)
+                need = max(1, round((participants * pct) / 100.0))
+        if n >= need:
+            self.skip()
+            self.votes.clear()
+            return True, self.t("vote_passed", n=n, need=need)
+        return False, self.t("vote_progress", n=n, need=need)
+
     def position(self) -> float:
         if not self.current:
             return 0.0
@@ -542,22 +566,28 @@ class Engine:
 
         self.exec.submit(job)
 
-    def load_source(self, src: str, limit: int = 0) -> list[Track]:
+    def load_source(self, src: str, limit: int = 0, max_dirs: int = 0) -> list[Track]:
         if is_url(src) or SEARCH_PREFIX.match(src):  # "ytsearch20:text" works as an autoplay source
             return self._remote(src, playlist=True, raw_target=True)
         p = Path(src)
         if p.is_dir():
-            return scan_folder(p, limit=limit)
+            return scan_folder(p, limit=limit, max_dirs=max_dirs)
         if p.is_file():
             return [local_track(p)]
         raise UserError(self.t("not_found", src=src))
 
     def load_async(
-        self, src: str, announce: bool = True, on_success=None, on_error=None, limit: int = 0
+        self,
+        src: str,
+        announce: bool = True,
+        on_success=None,
+        on_error=None,
+        limit: int = 0,
+        max_dirs: int = 0,
     ):
         def job():
             try:
-                tracks = self.load_source(src, limit=limit)
+                tracks = self.load_source(src, limit=limit, max_dirs=max_dirs)
                 self.queue.add_pool(tracks)
                 self.wake.set()
                 if self.playlist:
@@ -835,6 +865,7 @@ class Engine:
             self._load_all,
             self._chat_loop,
             self._auto_reply_loop,
+            self._im_auto_reply_loop,
         ):
             t = threading.Thread(target=fn, daemon=True, name=f"autodj-{fn.__name__}")
             self._threads.append(t)
@@ -885,6 +916,42 @@ class Engine:
         if not isinstance(entries, list):
             return []
         return [str(m) for m in entries if m]
+
+    def _im_auto_reply_loop(self):
+        """Send automatic replies to private/instant messages (IMs)."""
+        if not self.cfg.im_auto_reply_enabled:
+            log.debug("IM auto-reply disabled; loop not started")
+            return
+        interval = max(10.0, self.cfg.im_auto_reply_cooldown)  # minimum 10s
+        log.info("IM auto-reply enabled with cooldown %.1fs", interval)
+        while not self.stop_evt.is_set():
+            if self.stop_evt.wait(1.0):
+                break
+            # Check for pending IM messages that need replies
+            # The chat loop handles IM messages and calls _handle_im_message
+            time.sleep(0.5)
+
+    def _handle_im_message(self, msg: ChatMessage):
+        """Handle incoming IM (private message) and send auto-reply if enabled."""
+        if not self.cfg.im_auto_reply_enabled:
+            return
+        if not msg.is_im:
+            return
+        user = msg.user.lower()
+        now = time.monotonic()
+        last_reply = self._im_reply_cooldowns.get(user, 0.0)
+        if now - last_reply < self.cfg.im_auto_reply_cooldown:
+            log.debug("IM auto-reply on cooldown for %s", user)
+            return
+        # Send auto-reply
+        reply_text = self.cfg.im_auto_reply_message
+        if reply_text:
+            try:
+                self.adapter.send(f"[IM] {reply_text}")
+                self._im_reply_cooldowns[user] = time.monotonic()
+                log.info("Sent IM auto-reply to %s", msg.user)
+            except Exception:
+                log.exception("Failed to send IM auto-reply to %s", msg.user)
 
     def run(self):
         self.start()

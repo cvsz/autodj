@@ -34,7 +34,7 @@ from .visuals import (
 log = logging.getLogger("autodj")
 
 # palette
-BG, SURFACE, SURFACE2, BORDER = "#06070d", "#121628", "#1a2038", "#2a3256"
+BG, SURFACE, SURFACE2, BORDER = "#0a0b12", "#161a26", "#1e2436", "#2d364a"
 AURORA = [
     "#1a0a2e",
     "#140a30",
@@ -42,9 +42,13 @@ AURORA = [
     "#0a2a2e",
     "#1a0a2e",
 ]  # deep backdrop bands, drift slowly
-TEXT, MUTED = "#eef1ff", "#8d95bb"
-PINK, VIOLET, CYAN, GREEN, RED = "#ff3d9a", "#8a5cff", "#27e1ff", "#35e08c", "#ff4d6d"
+TEXT, MUTED = "#e8eaed", "#8b93a6"
+PINK, VIOLET, CYAN, GREEN, RED = "#ff4da6", "#7c5cff", "#38bdf8", "#34d399", "#f87171"
 FAMILY = "Segoe UI"
+# semantic accents
+ON_AIR = "#ff4da6"  # live/playing state
+IDLE = "#8b93a6"  # idle/stopped state
+WARN = "#fbbf24"  # attention/warning
 FPS_MS = 33
 
 
@@ -126,11 +130,12 @@ class PillButton(tk.Canvas):
     configure(text=..., command=...), cget("text"), plus set_active() for tabs/toggle chips and set_icon()."""
 
     STYLES = {  # kind: (fill, hover fill, outline, text colour, active fill, active outline, active text)  # noqa: RUF012
-        "primary": (PINK, "#ff62b0", "", "#ffffff", PINK, "", "#ffffff"),
+        "primary": (PINK, "#ff62b0", "", "#ffffff", ON_AIR, "", "#ffffff"),
         "ghost": (SURFACE2, "#232b4a", BORDER, TEXT, SURFACE2, BORDER, TEXT),
         "tab": (SURFACE, SURFACE2, "", MUTED, "#241b4d", VIOLET, TEXT),
         "chip": (SURFACE2, "#232b4a", BORDER, MUTED, "#0f2a35", CYAN, CYAN),
         "danger": (SURFACE2, "#2d1f33", RED, RED, SURFACE2, RED, RED),
+        "outline": (SURFACE, "#232b4a", BORDER, TEXT, SURFACE, BORDER, TEXT),
     }
 
     def __init__(
@@ -527,10 +532,12 @@ class App(tk.Tk):
         def mk(size, weight="normal", fam=FAMILY):
             return tkfont.Font(root=self, family=fam, size=size, weight=weight)
 
-        self.f_body, self.f_bold, self.f_small = mk(10), mk(10, "bold"), mk(9)
-        self.f_list, self.f_title, self.f_brand = mk(11), mk(21, "bold"), mk(21, "bold")
+        self.f_body, self.f_bold, self.f_small = mk(10), mk(10, "bold"), mk(8)
+        self.f_list, self.f_title, self.f_brand = mk(11), mk(22, "bold"), mk(22, "bold")
         self.f_h2, self.f_icon = mk(11, "bold"), mk(11, "normal", "Segoe UI Symbol")
-        self.f_big_icon = mk(13, "normal", "Segoe UI Symbol")
+        self.f_big_icon = mk(14, "normal", "Segoe UI Symbol")
+        self.f_caption = mk(8, "normal")
+        self.f_section = mk(10, "bold")
 
     def _style(self):
         s = ttk.Style(self)
@@ -542,22 +549,74 @@ class App(tk.Tk):
             "Vertical.TScrollbar",
             background=SURFACE2,
             troughcolor=SURFACE,
-            bordercolor=SURFACE,
+            bordercolor=BORDER,
+            arrowcolor=MUTED,
+            lightcolor=SURFACE2,
+            darkcolor=SURFACE2,
+            relief="flat",
+            width=self.px(12),
+        )
+        s.map("Vertical.TScrollbar", background=[("active", BORDER)])
+        s.configure(
+            "Horizontal.TScrollbar",
+            background=SURFACE2,
+            troughcolor=SURFACE,
+            bordercolor=BORDER,
             arrowcolor=MUTED,
             lightcolor=SURFACE2,
             darkcolor=SURFACE2,
             relief="flat",
         )
-        s.map("Vertical.TScrollbar", background=[("active", BORDER)])
+        # Combobox/Spinbox used in settings: keep them on-theme
+        s.configure(
+            "TCombobox",
+            fieldbackground=SURFACE2,
+            background=SURFACE2,
+            foreground=TEXT,
+            arrowcolor=MUTED,
+            bordercolor=BORDER,
+            lightcolor=SURFACE2,
+            darkcolor=SURFACE2,
+        )
+        s.map(
+            "TCombobox",
+            fieldbackground=[("readonly", SURFACE2)],
+            selectbackground=[("readonly", VIOLET)],
+            selectforeground=[("readonly", "#ffffff")],
+        )
 
-    def _card(self, parent):
-        return tk.Frame(
+    def _card(self, parent, pad: int = 0):
+        card = tk.Frame(
             parent,
             bg=SURFACE,
             highlightthickness=1,
             highlightbackground=BORDER,
             highlightcolor=BORDER,
         )
+        if pad:
+            card.configure(highlightthickness=0)
+            inner = tk.Frame(card, bg=SURFACE2, bd=0)
+            inner.pack(fill="both", expand=True, padx=1, pady=1)
+            return inner
+        return card
+
+    def _section(self, parent, key: str):
+        """Section header with a subtle divider for enterprise-style grouping."""
+        row = tk.Frame(parent, bg=BG)
+        row.pack(fill="x", pady=(self.px(14), self.px(8)))
+        line = tk.Frame(row, height=1, bg=BORDER)
+        line.pack(fill="x", pady=(0, self.px(6)))
+        lbl = tk.Label(
+            row,
+            text=self.e.t(key),
+            bg=BG,
+            fg=MUTED,
+            font=self.f_section,
+            anchor="w",
+        )
+        lbl.pack(fill="x")
+        self._labels.append((lbl, key))
+        return row
 
     def _lbl(self, parent, key, font=None, fg=MUTED, bg=SURFACE, **kw):
         w = tk.Label(parent, bg=bg, fg=fg, font=font or self.f_small, **kw)
@@ -631,7 +690,7 @@ class App(tk.Tk):
             px(22) + 1,
             text="AUTODJ",
             font=self.f_brand,
-            fill=lerp_color(PINK, BG, 0.4),
+            fill=lerp_color(PINK, BG, 0.35),
             anchor="w",
         )
         logo.create_text(0, px(22), text="AUTO", font=self.f_brand, fill=TEXT, anchor="w")
@@ -644,8 +703,8 @@ class App(tk.Tk):
             anchor="w",
         )
         self._logo_halo = halo
-        tk.Label(hdr, text="CAMFROG  ·  ROOM MUSIC BOT", bg=BG, fg=MUTED, font=self.f_small).pack(
-            side="left", padx=(px(8), 0), pady=(px(8), 0)
+        tk.Label(hdr, text="CAMFROG  ·  ROOM MUSIC BOT", bg=BG, fg=MUTED, font=self.f_caption).pack(
+            side="left", padx=(px(10), 0), pady=(px(10), 0)
         )
         self.b_lang = {}
         for code in ("th", "en"):
@@ -662,13 +721,13 @@ class App(tk.Tk):
             )
             b.pack(side="right", padx=(px(6), 0))
             self.b_lang[code] = b
-        self.led = tk.Canvas(hdr, width=px(18), height=px(18), bg=BG, highlightthickness=0, bd=0)
+        self.led = tk.Canvas(hdr, width=px(20), height=px(20), bg=BG, highlightthickness=0, bd=0)
         self._led_id = self.led.create_oval(
-            px(3), px(3), px(15), px(15), fill="#3a3f5c", outline=""
+            px(3), px(3), px(17), px(17), fill=IDLE, outline=PINK, width=1
         )
-        self.led.pack(side="right", padx=(0, px(6)))
+        self.led.pack(side="right", padx=(0, px(8)))
         self.v_onair = self._lbl(hdr, "g_on_air", font=self.f_bold, bg=BG)
-        self.v_onair.pack(side="right", padx=(px(18), px(2)))
+        self.v_onair.pack(side="right", padx=(px(18), px(4)))
         self.b_settings = PillButton(
             hdr,
             text="⚙️",
@@ -716,11 +775,11 @@ class App(tk.Tk):
         # ---- now-playing card
         card = self._card(left)
         card.pack(fill="x")
-        self.stage = tk.Canvas(card, height=px(230), bg=SURFACE, highlightthickness=0, bd=0)
+        self.stage = tk.Canvas(card, height=px(150), bg=SURFACE, highlightthickness=0, bd=0)
         self.stage.pack(fill="x")
         self.stage.bind("<Configure>", self._layout_stage)
         info = tk.Frame(card, bg=SURFACE)
-        info.pack(fill="x", padx=px(22), pady=(px(10), px(18)))
+        info.pack(fill="x", padx=px(16), pady=(px(8), px(12)))
         self.v_title = tk.Label(
             info,
             bg=SURFACE,
@@ -754,21 +813,41 @@ class App(tk.Tk):
         self.b_pause.pack(side="left")
         skip = self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=44, minw=110)
         skip.pack(side="left", padx=(px(10), 0))
+        self.v_voteskip = self._lbl(ctl, "g_voteskip_progress", font=self.f_small, bg=SURFACE)
+        self.v_voteskip.configure(
+            text=self.e.t(
+                "g_voteskip_progress",
+                n=0,
+                need=self.e.cfg.voteskip_threshold,
+            )
+        )
+        self.v_voteskip.pack(side="left", padx=(px(12), 0))
+        vs = self._btn(ctl, None, self._on_voteskip, "chip", height=34, minw=90)
+        vs.configure(text="โหวต")
+        vs.pack(side="left", padx=(px(8), 0))
         discover = self._btn(ctl, "g_discover", self.do_discover, icon="🔍", height=44, minw=130)
         discover.pack(side="left", padx=(px(10), 0))
         check = self._btn(ctl, "g_check", self.do_check, icon="✓", height=44, minw=110)
         check.pack(side="left", padx=(px(10), 0))
-        self.v_volpct = tk.Label(ctl, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e")
-        self.v_volpct.pack(side="right")
+
+        # ---- volume row (separate row so it is never squeezed out by
+        # playback buttons on small screens)
+        vol_row = tk.Frame(info, bg=SURFACE)
+        vol_row.pack(fill="x", pady=(px(10), 0))
+        self._lbl(vol_row, "g_vol", bg=SURFACE).pack(side="right", padx=(px(18), 0))
+        self.v_volpct = tk.Label(
+            vol_row, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e"
+        )
+        self.v_volpct.pack(side="right", padx=(px(6), 0))
         self.vol = VolSlider(
-            ctl,
+            vol_row,
             command=self._vol_release,
             on_change=self._vol_live,
             bg=SURFACE,
             height=px(28),
         )
         self.vol.pack(side="right", fill="x", expand=True, padx=(px(24), px(6)))
-        self._lbl(ctl, "g_vol", bg=SURFACE).pack(side="right", padx=(px(18), 0))
+
         self.v_next = tk.Label(
             info,
             bg=SURFACE,
@@ -787,11 +866,12 @@ class App(tk.Tk):
             ],
         )
 
-        # ---- add row
-        add = tk.Frame(left, bg=BG)
-        add.pack(fill="x", pady=(px(18), 0))
+        # ---- add row (card)
+        self._section(left, "g_add_section")
+        add = tk.Frame(left, bg=SURFACE2, highlightthickness=1, highlightbackground=BORDER)
+        add.pack(fill="x", pady=(px(6), 0), padx=px(2))
         self.ent_add = self._entry(add)
-        self.ent_add.pack(side="left", fill="x", expand=True, ipady=px(9), padx=(0, px(10)))
+        self.ent_add.pack(side="left", fill="x", expand=True, ipady=px(8), padx=(px(10), px(10)))
         self.ent_add.bind("<Return>", lambda _e: self.add())
         self.b_add = self._btn(
             add,
@@ -799,20 +879,18 @@ class App(tk.Tk):
             self.add,
             "primary",
             icon="＋",
-            bg=BG,
-            height=40,
+            height=38,
             minw=px(100),
         )
-        self.b_add.pack(side="left", padx=(px(10), 0))
-        self.b_folder = self._btn(add, "g_folder", self.load_folder, bg=BG, height=40)
-        self.b_folder.pack(side="left", padx=(px(8), 0))
-        self._btn(add, "g_file", self.add_files, bg=BG, height=40).pack(
-            side="left", padx=(px(8), 0)
+        self.b_add.pack(side="left", padx=(px(8), 0))
+        self._btn(add, "g_file", self.add_files, kind="ghost", height=38).pack(
+            side="left", padx=(px(6), 0)
         )
-        self.v_hint = tk.Label(left, bg=BG, fg=MUTED, font=self.f_small, anchor="w")
+        self.v_hint = tk.Label(left, bg=BG, fg=MUTED, font=self.f_caption, anchor="w")
         self.v_hint.pack(fill="x", pady=(px(6), 0))
+        self._section(left, "g_playback_controls")
         opts = tk.Frame(left, bg=BG)
-        opts.pack(fill="x", pady=(px(12), 0))
+        opts.pack(fill="x", pady=(px(6), 0))
         self.c_shuffle = self._btn(
             opts, "g_shuffle", self.on_shuffle, "chip", icon="⇄", bg=BG, height=34
         )
@@ -822,7 +900,8 @@ class App(tk.Tk):
         )
         self.c_repeat.pack(side="left", padx=(px(8), 0))
 
-        # ---- tabbed panel: queue / history / chat / settings
+        # ---- tabbed panel: queue / history / chat
+        self._section(right, "g_queue_history_chat")
         panel = self._card(right)
         panel.pack(fill="both", expand=True)
         bar = tk.Frame(panel, bg=SURFACE)
@@ -1564,6 +1643,21 @@ class App(tk.Tk):
     def toggle_pause(self):
         self.e.resume() if self.e.paused else self.e.pause()
 
+    def _on_voteskip(self):
+        """Cast a voteskip from the GUI operator and update the progress label."""
+        passed, msg = self.e.voteskip("operator")
+        self.v_voteskip.configure(
+            text=self.e.t(
+                "g_voteskip_progress", n=len(self.e.votes), need=self.e.cfg.voteskip_threshold
+            )
+        )
+        if passed:
+            self._set_hint(
+                self.e.t("vote_passed", n=len(self.e.votes), need=self.e.cfg.voteskip_threshold)
+            )
+        else:
+            self._set_hint(msg)
+
     def _on_seek(self, frac: float):
         """Seek to a fraction of the current track when the progress bar is clicked."""
         t = self.e.current
@@ -1710,28 +1804,63 @@ class App(tk.Tk):
         if getattr(self, "_loading_folder", False):
             return
         try:
-            d = filedialog.askdirectory(parent=self)
+            # NOTE: do NOT pass parent=self on Windows — askdirectory with a
+            # Tkinter parent can hang on some systems (network drives, shell
+            # extensions, modal-dialog deadlock). Run parentless instead.
+            d = filedialog.askdirectory()
         except Exception:
             log.exception("folder dialog failed")
+            self._loading_folder = False
+            self.after(0, self._set_folder_loading, False)
             return
         if not d:
+            self._loading_folder = False
+            self.after(0, self._set_folder_loading, False)
             return
         self._loading_folder = True
         self.after(0, self._set_folder_loading, True)
+        # Safety timeout: re-enable the button if scanning never completes
+        self._folder_scan_deadline = self.after(self.px(30000), self._folder_scan_timeout)
         try:
             self.e.load_async(
                 d,
                 limit=2000,
+                max_dirs=50,
                 on_success=lambda tracks: self.after(0, self._on_folder_loaded, len(tracks)),
                 on_error=lambda msg: self.after(0, self._on_folder_failed, msg),
             )
         except Exception as ex:
+            self.after(0, self._cancel_folder_timeout)
             log.exception("load folder failed: %s", d)
             self.after(0, self._on_folder_failed, self.e.t("load_failed", err=ex))
 
+    def _cancel_folder_timeout(self):
+        """Cancel the folder-scan safety timeout if it is still pending."""
+        deadline = getattr(self, "_folder_scan_deadline", None)
+        if deadline:
+            try:
+                self.after_cancel(deadline)
+            except (tk.TclError, ValueError):
+                pass
+            self._folder_scan_deadline = None
+
+    def _folder_scan_timeout(self):
+        """Safety net: re-enable the folder button if a scan never reports back."""
+        self._folder_scan_deadline = None
+        log.warning("folder scan timeout: re-enabling Load folder button")
+        self._loading_folder = False
+        self.after(0, self._set_folder_loading, False)
+        self._set_hint(self.e.t("load_failed", err="สแกนนานเกินไป ยกเลิกแล้ว"))
+
     def _set_folder_loading(self, loading: bool):
-        """Disable the folder button and show a scanning hint while loading."""
-        self.b_folder.configure(state="disabled" if loading else "normal")
+        """Disable the folder button and show a scanning hint while loading.
+
+        The folder button may have been removed from the UI; guard against that
+        so load_folder() still works when called programmatically.
+        """
+        b_folder = getattr(self, "b_folder", None)
+        if b_folder is not None:
+            b_folder.configure(state="disabled" if loading else "normal")
         self.v_hint.configure(
             text=self.e.t("folder_loading") if loading else self.e.t("g_add_hint")
         )
@@ -2055,11 +2184,17 @@ class App(tk.Tk):
             self.e.blocked = {b.lower() for b in new_cfg.blocked_users}
 
             # Show save confirmation via say
-            self.e.say(self.e.t("g_settings_saved"))
+            try:
+                self.e.say(self.e.t("g_settings_saved"))
+            except Exception:
+                log.debug("say() failed for settings_saved", exc_info=True)
 
         except Exception as ex:
             log.exception("save settings failed")
-            self.e.say(self.e.t("g_settings_save_failed", err=str(ex)))
+            try:
+                self.e.say(self.e.t("g_settings_save_failed", err=str(ex)))
+            except Exception:
+                log.debug("say() failed for settings_save_failed", exc_info=True)
 
     def show_settings(self):
         """Open the settings popup window."""

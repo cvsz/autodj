@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import logging
+
 from .base import ChatAdapter
+
+log = logging.getLogger(__name__)
 
 
 class Composite(ChatAdapter):
@@ -50,7 +54,12 @@ class NullAdapter(ChatAdapter):
         return iter(())
 
     def send(self, text: str) -> None:
-        pass
+        # Deliberately do nothing: Camfrog is not reachable. Log a clear warning
+        # so operators know messages are being dropped, not silently swallowed.
+        log.warning(
+            "Cannot send chat: Camfrog is not reachable (using NullAdapter). Message dropped: %r",
+            text[:80],
+        )
 
     def close(self) -> None:
         pass
