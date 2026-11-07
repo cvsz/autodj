@@ -814,8 +814,16 @@ class App(tk.Tk):
         skip = self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=44, minw=110)
         skip.pack(side="left", padx=(px(10), 0))
         self.v_voteskip = self._lbl(ctl, "g_voteskip_progress", font=self.f_small, bg=SURFACE)
+        self.v_voteskip.configure(
+            text=self.e.t(
+                "g_voteskip_progress",
+                n=0,
+                need=self.e.cfg.voteskip_threshold,
+            )
+        )
         self.v_voteskip.pack(side="left", padx=(px(12), 0))
-        vs = self._btn(ctl, None, self._on_voteskip, "chip", icon="🗳️", height=34, minw=90)
+        vs = self._btn(ctl, None, self._on_voteskip, "chip", height=34, minw=90)
+        vs.configure(text="โหวต")
         vs.pack(side="left", padx=(px(8), 0))
         discover = self._btn(ctl, "g_discover", self.do_discover, icon="🔍", height=44, minw=130)
         discover.pack(side="left", padx=(px(10), 0))
