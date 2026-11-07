@@ -232,7 +232,9 @@ function Setup-RepoAuto {
         }
 
         if (-not $Unattended -and -not (Ask "Directory exists. Overwrite?")) { return $false }
-        Remove-Item -Recurse -Force $ProjectDir -ErrorAction SilentlyContinue
+        $BackupDir = "$ProjectDir.backup.$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+        Move-Item $ProjectDir $BackupDir -ErrorAction SilentlyContinue
+        Ok "Existing project backed up to $BackupDir (playlists, config, and logs preserved)"
     }
     Ok "Cloning repository..."
     git clone --depth 1 $REPO_URL $ProjectDir
