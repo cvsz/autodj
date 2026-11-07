@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.2.7
+2026-11-07
+
 - **Fix: GUI hangs when clicking Load Folder** — `library.scan_folder()` now skips symlinks (avoids cycle/reparse-point hangs on Windows) and caps returned tracks via a `limit` argument; `gui.load_folder()` disables the folder button while scanning, guards against reentrant clicks, and shows loaded/failed status. (`camfrog_autodj/library.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)
 - **Fix: chat-log race condition between engine and GUI poller** — `Engine.chat_log`/`chat_seq` are now guarded by `_chat_lock`; GUI reads via thread-safe `chat_snapshot()`. (`camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)
 - **Fix: `save_settings()` could leave a half-written `config.toml` on crash** — writes atomically via temp file + `os.replace()` with a `.bak` backup, with `%APPDATA%\\Camfrog AutoDJ\\` relocation fallback. (`camfrog_autodj/gui.py`)
