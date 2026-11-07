@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-## 0.2.7
+- **Security: added `CODEOWNERS`** — security-sensitive paths (GitHub Actions workflows, installer scripts, `SECURITY.md`, config files) now require independent review by `@policedbc`; default ownership for everything else is `@cvsz`. (`CODEOWNERS`)
+
+## 0.2.8
 2026-11-07
 
 - **Fix: GUI hangs when clicking Load Folder** — `library.scan_folder()` now skips symlinks (avoids cycle/reparse-point hangs on Windows) and caps returned tracks via a `limit` argument; `gui.load_folder()` disables the folder button while scanning, guards against reentrant clicks, and shows loaded/failed status. (`camfrog_autodj/library.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)
