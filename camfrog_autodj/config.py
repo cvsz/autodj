@@ -120,6 +120,12 @@ class Config:
     auto_reply_enabled: bool = False  # enable scheduled auto-reply messages
     auto_reply_interval: float = 300.0  # seconds between auto-reply messages (5 minutes)
     auto_reply_file: str = "ads-list.json"  # JSON file with messages to rotate through
+    # IM Auto-reply: automatic reply to private/instant messages
+    im_auto_reply_enabled: bool = False  # enable auto-reply to private/instant messages
+    im_auto_reply_message: str = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."  # message to send as auto-reply
+    im_auto_reply_cooldown: float = (
+        60.0  # seconds between auto-replies to the same user (avoid spam)
+    )
 
     @classmethod
     def load(cls, path: str | None) -> Config:
