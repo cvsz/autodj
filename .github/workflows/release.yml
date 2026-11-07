@@ -81,50 +81,25 @@ jobs:
           choco install nsis --yes
           echo "C:\\Program Files (x86)\\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Install mpv via Chocolatey
-        run: choco install mpv --yes
-
-      - name: Copy mpv to project
+      - name: Download mpv from official GitHub releases
         run: |
-          # Find mpv.exe anywhere in Chocolatey lib or PATH
-          $mpvExe = $null
-
-          # 1. Try PATH (after refreshenv)
-          refreshenv
-          $mpvExe = (Get-Command mpv.exe -ErrorAction SilentlyContinue).Source
-
-          # 2. Search Chocolatey lib folder recursively
-          if (-not $mpvExe) {
-            $chocoLib = "$env:ChocolateyInstall\\lib\\mpv"
-            if (Test-Path $chocoLib) {
-              $mpvExe = (Get-ChildItem -Path $chocoLib -Filter "mpv.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-            }
+          # Use official mpv GitHub release (stable 2024 build)
+          $mpvUrl = "https://github.com/mpv-player/mpv/releases/download/v0.38.0/mpv-x86_64-20240101-git-1e4e8b5.7z"
+          $mpvZip = "mpv.7z"
+          Invoke-WebRequest -Uri $mpvUrl -OutFile $mpvZip -UseBasicParsing
+          7z x $mpvZip -ompv -y
+          # The archive extracts to a folder like mpv-x86_64-... move contents to mpv/
+          $extractedDir = Get-ChildItem -Directory "mpv*" | Where-Object { $_.Name -ne "mpv.7z" } | Select-Object -First 1
+          if ($extractedDir) {
+            Move-Item "$($extractedDir.FullName)\\*" "mpv\\" -Force
+            Remove-Item $extractedDir.FullName -Recurse -Force
           }
-
-          # 3. Search common Chocolatey install locations
-          if (-not $mpvExe) {
-            $commonPaths = @(
-              "C:\\ProgramData\\chocolatey\\lib\\mpv\\tools\\mpv.exe",
-              "C:\\ProgramData\\chocolatey\\lib\\mpv\\mpv.exe",
-              "C:\\Program Files\\mpv\\mpv.exe",
-              "C:\\Program Files (x86)\\mpv\\mpv.exe",
-              "C:\\Tools\\mpv\\mpv.exe"
-            )
-            foreach ($p in $commonPaths) {
-              if (Test-Path $p) { $mpvExe = $p; break }
-            }
-          }
-
-          if (-not $mpvExe) {
-            Write-Error "mpv.exe not found after Chocolatey install"
-            Write-Host "ChocolateyInstall: $env:ChocolateyInstall"
-            Write-Host "PATH: $env:PATH"
+          Remove-Item $mpvZip -ErrorAction SilentlyContinue
+          if (-not (Test-Path "mpv\\mpv.exe")) {
+            Write-Error "mpv.exe not found after extraction"
             exit 1
           }
-          $mpvDir = Split-Path $mpvExe
-          if (-not (Test-Path "mpv")) { New-Item -ItemType Directory -Path "mpv" | Out-Null }
-          Copy-Item "$mpvDir\\*" "mpv\\" -Recurse -Force
-          "mpv copied from $mpvDir to mpv/"
+          "mpv downloaded and extracted to mpv/"
 
       - name: Build AutoDJ.exe
         run: |
