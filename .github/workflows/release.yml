@@ -76,17 +76,33 @@ jobs:
         run: |
           python -m pip install -e . pyinstaller cyclonedx-bom
 
-      - name: Install NSIS and mpv
+      - name: Install NSIS
         run: |
-          choco install nsis mpv --yes
+          choco install nsis --yes
           echo "C:\\Program Files (x86)\\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install mpv via Chocolatey
+        run: choco install mpv --yes
+
+      - name: Refresh environment for Chocolatey PATH
+        run: refreshenv
 
       - name: Copy mpv to project
         run: |
-          # Find mpv.exe anywhere on the system after choco install
+          # Find mpv.exe after choco install + refreshenv
           $mpvExe = (Get-Command mpv.exe -ErrorAction SilentlyContinue).Source
           if (-not $mpvExe) {
-            Write-Error "mpv.exe not found in PATH after Chocolatey install"
+            # Fallback: check Chocolatey lib path
+            $chocoLib = "$env:ChocolateyInstall\\lib\\mpv"
+            if (Test-Path "$chocoLib\\tools\\mpv.exe") {
+              $mpvExe = "$chocoLib\\tools\\mpv.exe"
+            } elseif (Test-Path "$chocoLib\\mpv.exe") {
+              $mpvExe = "$chocoLib\\mpv.exe"
+            }
+          }
+          if (-not $mpvExe) {
+            Write-Error "mpv.exe not found after Chocolatey install + refreshenv"
+            Write-Host "PATH: $env:PATH"
             exit 1
           }
           $mpvDir = Split-Path $mpvExe
