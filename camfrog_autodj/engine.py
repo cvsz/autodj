@@ -564,22 +564,28 @@ class Engine:
 
         self.exec.submit(job)
 
-    def load_source(self, src: str, limit: int = 0) -> list[Track]:
+    def load_source(self, src: str, limit: int = 0, max_dirs: int = 0) -> list[Track]:
         if is_url(src) or SEARCH_PREFIX.match(src):  # "ytsearch20:text" works as an autoplay source
             return self._remote(src, playlist=True, raw_target=True)
         p = Path(src)
         if p.is_dir():
-            return scan_folder(p, limit=limit)
+            return scan_folder(p, limit=limit, max_dirs=max_dirs)
         if p.is_file():
             return [local_track(p)]
         raise UserError(self.t("not_found", src=src))
 
     def load_async(
-        self, src: str, announce: bool = True, on_success=None, on_error=None, limit: int = 0
+        self,
+        src: str,
+        announce: bool = True,
+        on_success=None,
+        on_error=None,
+        limit: int = 0,
+        max_dirs: int = 0,
     ):
         def job():
             try:
-                tracks = self.load_source(src, limit=limit)
+                tracks = self.load_source(src, limit=limit, max_dirs=max_dirs)
                 self.queue.add_pool(tracks)
                 self.wake.set()
                 if self.playlist:

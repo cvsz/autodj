@@ -1793,8 +1793,12 @@ class App(tk.Tk):
             d = filedialog.askdirectory(parent=self)
         except Exception:
             log.exception("folder dialog failed")
+            self._loading_folder = False
+            self.after(0, self._set_folder_loading, False)
             return
         if not d:
+            self._loading_folder = False
+            self.after(0, self._set_folder_loading, False)
             return
         self._loading_folder = True
         self.after(0, self._set_folder_loading, True)
@@ -1802,6 +1806,7 @@ class App(tk.Tk):
             self.e.load_async(
                 d,
                 limit=2000,
+                max_dirs=50,
                 on_success=lambda tracks: self.after(0, self._on_folder_loaded, len(tracks)),
                 on_error=lambda msg: self.after(0, self._on_folder_failed, msg),
             )
