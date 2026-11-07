@@ -775,11 +775,11 @@ class App(tk.Tk):
         # ---- now-playing card
         card = self._card(left)
         card.pack(fill="x")
-        self.stage = tk.Canvas(card, height=px(230), bg=SURFACE, highlightthickness=0, bd=0)
+        self.stage = tk.Canvas(card, height=px(150), bg=SURFACE, highlightthickness=0, bd=0)
         self.stage.pack(fill="x")
         self.stage.bind("<Configure>", self._layout_stage)
         info = tk.Frame(card, bg=SURFACE)
-        info.pack(fill="x", padx=px(22), pady=(px(10), px(18)))
+        info.pack(fill="x", padx=px(16), pady=(px(8), px(12)))
         self.v_title = tk.Label(
             info,
             bg=SURFACE,
