@@ -821,17 +821,25 @@ class App(tk.Tk):
         discover.pack(side="left", padx=(px(10), 0))
         check = self._btn(ctl, "g_check", self.do_check, icon="✓", height=44, minw=110)
         check.pack(side="left", padx=(px(10), 0))
-        self.v_volpct = tk.Label(ctl, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e")
-        self.v_volpct.pack(side="right")
+
+        # ---- volume row (separate row so it is never squeezed out by
+        # playback buttons on small screens)
+        vol_row = tk.Frame(info, bg=SURFACE)
+        vol_row.pack(fill="x", pady=(px(10), 0))
+        self._lbl(vol_row, "g_vol", bg=SURFACE).pack(side="right", padx=(px(18), 0))
+        self.v_volpct = tk.Label(
+            vol_row, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e"
+        )
+        self.v_volpct.pack(side="right", padx=(px(6), 0))
         self.vol = VolSlider(
-            ctl,
+            vol_row,
             command=self._vol_release,
             on_change=self._vol_live,
             bg=SURFACE,
             height=px(28),
         )
         self.vol.pack(side="right", fill="x", expand=True, padx=(px(24), px(6)))
-        self._lbl(ctl, "g_vol", bg=SURFACE).pack(side="right", padx=(px(18), 0))
+
         self.v_next = tk.Label(
             info,
             bg=SURFACE,
