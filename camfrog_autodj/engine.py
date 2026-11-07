@@ -346,6 +346,28 @@ class Engine:
             self._paused_total += time.monotonic() - (self._paused_at or time.monotonic())
             self.paused, self._paused_at = False, None
 
+    def voteskip(self, user: str) -> tuple[bool, str]:
+        """Register a voteskip from *user* for the current track.
+
+        Returns (passed, message). When the threshold is reached the track
+        is skipped immediately.
+        """
+        if not self.current:
+            return False, self.t("nothing_playing")
+        self.votes.add(user.lower())
+        n = len(self.votes)
+        need = self.cfg.voteskip_threshold
+        if getattr(self.cfg, "voteskip_dynamic", False):
+            participants = getattr(self, "participant_count", 0)
+            if participants > 0:
+                pct = getattr(self.cfg, "voteskip_dynamic_pct", 30)
+                need = max(1, round((participants * pct) / 100.0))
+        if n >= need:
+            self.skip()
+            self.votes.clear()
+            return True, self.t("vote_passed", n=n, need=need)
+        return False, self.t("vote_progress", n=n, need=need)
+
     def position(self) -> float:
         if not self.current:
             return 0.0
