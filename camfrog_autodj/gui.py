@@ -2142,6 +2142,19 @@ class App(tk.Tk):
             # Validate by parsing back
             tomllib.loads(new_text)
 
+            # Semantic validation with the same rules Config.load() applies
+            # (ranges, choices, regexes) so invalid values are rejected before
+            # anything is written to disk.
+            from .config import Config, ConfigError
+            from .config import _validate as _cfg_validate
+
+            _candidate_data = tomllib.loads(new_text)
+            _probe = Config(**_candidate_data)
+            try:
+                _cfg_validate(_probe, _candidate_data, "settings")
+            except ConfigError as ex:
+                raise ValueError(f"invalid settings: {ex}") from ex
+
             # Write to config.toml; if not writable (e.g. installed to Program Files),
             # relocate to %APPDATA%\Camfrog AutoDJ\config.toml and write there instead.
             try:
