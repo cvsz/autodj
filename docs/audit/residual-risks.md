@@ -1,29 +1,25 @@
-# Residual Risks — cvsz/autodj
+# Residual Risks — Camfrog AutoDJ
 
-Risks that remain after this audit. Each is documented with classification; none are concealed as "zero error."
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** `fb5e99a`
 
-## Environment limitations (BLOCKED, not defects)
+## Unmitigated risks (documented, not concealed)
 
-- Windows PyInstaller build and NSIS installer not executed here (`pwsh`/Windows absent).
-- NSIS installer artifacts present in `dist/` are pre-existing; signatures not verified.
-- Real mpv / yt-dlp playback not exercised (fake mpv in tests).
-- Real Camfrog UI Automation not tested (no Camfrog; no authorized room).
-- TTS (pyttsx3) not testable (Windows SAPI-only).
-- Code signing with a real (OV/EV) certificate not configured; self-signed cert trusted only locally after `.cer` import.
-- `policedbc` independent review and `cvsz` merge not yet executed (PR pending).
+| Risk | Location | Severity | Mitigation / status |
+|------|----------|----------|---------------------|
+| Nickname-based admin authorization is spoofable | `commands.py:Router.is_admin` | Medium | Documented in-code; fail-closed when `admins` empty; immutable account IDs not available in Camfrog chat protocol |
+| GUI `position()` mpv IPC read can block on unresponsive mpv (Windows) | `player.py:_cmd_get` → `engine.py:position()` | Low | `open()` failure returns `None`; only live-but-unresponsive mpv is a risk; Windows-only, BLOCKED from validation |
+| Live/unknown-duration stream stalls player loop | `player.py:_wait_for_mpv_end` | Low | Intentional ("live = no limit"); `mpv_timeout` bounds known-duration tracks |
+| Settings dialog manually re-serializes config.toml | `gui.py:save_settings` | Low | Re-validates via `_validate`; re-reads config after save; drift risk for new keys |
+| Self-signed code-signing cert only trusted where `.cer` imported | `build.ps1` | Medium | Documented; real OV/EV cert needed for public distribution |
+| VBCable driver install requires Administrator | `installer.nsi` SEC_VBCABLE | Low | Documented; optional component |
+| No real Camfrog / mpv / yt-dlp integration evidence | N/A | High | Classified NOT IMPLEMENTED; mocks do not prove live integration |
+| GPG signing unavailable | git config | High (process) | Blocker; no signed commits produced |
+| Windows build/installer unverified | build.ps1 / installer.nsi | High (process) | BLOCKED; not claimed as passing |
 
-## Documented design risks (not defects; operator must accept)
+## Risks explicitly NOT claimed
 
-| Risk | Mitigation |
-|------|-----------|
-| Nickname-based admin auth is spoofable on Camfrog | Fail-closed: empty `admins` → no admin access; operator sets real nicks; documented in `commands.py` |
-| UIA chat depends on Camfrog window/control indexes; `line_regex` per Camfrog version | `--discover` tunes config; documented caveat in README |
-| Background chat send cannot prove page acceptance | `send_mode=auto` verifies appearance; `foreground` fallback |
-| No persisted queue/volume/shuffle across restart | `playlist.json` persists requests; runtime state reset by design (documented) |
-| `MpvPlayer._cmd_get` Windows named-pipe read has no read timeout | GUI poll is 500 ms; returns None on failure; Windows-only residual |
-| Long Windows paths (`\\?\` prefix not applied) | `Path` handles most; very long paths may need operator attention |
-| Self-signed code signing → SmartScreen warnings on public distribution | Use real OV/EV cert or Azure Trusted Signing via `-Pfx` |
-
-## No defects concealed
-
-No `|| echo warning`, no silently swallowed lint failures, no assumed Windows passes from Linux syntax checks, no fake test-equivalence claims. All blocked checks are explicitly BLOCKED/NOT APPLICABLE.
+- No claim of a valid Authenticode signature (no signing host).
+- No claim of a successful Windows installer run (no Windows host).
+- No claim of real Camfrog integration (no authorized test environment).
+- No claim of real audio playback with mpv/yt-dlp (no real media on host).

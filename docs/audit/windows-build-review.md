@@ -1,27 +1,45 @@
-# Windows Build Review — cvsz/autodj
+# Windows Build Review — Camfrog AutoDJ
 
-**BLOCKED — Windows-only.** `build.ps1` requires Windows PowerShell; `pwsh`/`powershell` is not installed on this Linux host. `make build`/`make build-all`/`make sign` are Windows targets. No Windows build artifact was produced or signed here. Nothing is assumed.
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** `fb5e99a`  
+**Status:** BLOCKED — no Windows host available
 
-## Build scripts audited (source inspection only)
+## Build artifacts reviewed (source only, not executed)
 
-- `build.ps1`: PyInstaller onefile build + code signing + smoke test. Verifies every required package is installed (`tools/check_build_env.py`) so the exe doesn't fail later with `No module named 'yt_dlp'`; builds `dist\AutoDJ.exe` with `app.ico` and `version_info.txt` (company ZEAZDEV COMPANY LIMITED); copies `config.toml`; signs the exe (SHA256 + timestamp); prints signature status and SHA256. `-Clean` wipes build/dist/spec; `-NoSign` builds only. Certificate: `-Pfx`/`-Password` (or `AUTODJ_PFX`/`AUTODJ_PFX_PASSWORD`), `-Thumbprint` (or `AUTODJ_CERT_THUMBPRINT`), else self-signed cert reused/created in user store. Writes `cert\autodj-codesign.cer`. No UPX. Exe smoke-tested with `--version`. `AutoDJ.spec` mirrors `build.ps1`. `camfrog_autodj/__init__.py` must contain only `__version__`.
-- `build_exe.bat` / `build_installer.bat`: batch wrappers.
-- `scripts/build_installer.ps1` / `build_installer_linux.sh` / `build-all-hybrid.ps1`: installer pipelines.
-- `tools/check_build_env.py`: build-env verification.
-- `tools/make_cert.ps1` / `tools/sign_exe.ps1`: cert/sign helpers.
+| Artifact | Purpose | Status |
+|----------|---------|--------|
+| `build.ps1` | PyInstaller build + sign + smoke test | Reviewed; not executed |
+| `AutoDJ.spec` | PyInstaller spec mirroring build.ps1 | Reviewed |
+| `build_exe.bat` / `build_installer.bat` | Batch wrappers for build.ps1 | Reviewed |
+| `installer.nsi` | NSIS installer script | Reviewed |
+| `scripts/build_installer.ps1` | NSIS installer builder (PowerShell) | Reviewed |
+| `scripts/build_installer_linux.sh` | NSIS builder for Linux/WSL | Reviewed |
+| `scripts/build-all-hybrid.ps1` | Hybrid Windows→WSL workflow | Reviewed |
+| `tools/check_build_env.py` | Verifies required packages before build | Reviewed |
+| `app.ico`, `version_info.txt` | Icon + version metadata | Present |
 
-## Verification items not executable here
+## build.ps1 findings
 
-| Item | State | Reason |
-|------|-------|--------|
-| PyInstaller hidden imports / package discovery | BLOCKED | needs Windows + pyinstaller |
-| Data files / icons / runtime hooks | BLOCKED | needs Windows build |
-| UPX policy (no UPX) | documented only | not verified by build |
-| Reproducibility | BLOCKED | needs build |
-| Startup behavior / missing DLLs | BLOCKED | needs Windows runtime |
-| Code signing + signature verification | BLOCKED | no cert; `pwsh` absent |
-| Self-signed cert trust | documented only | `.cer` import required per PC |
+- Verifies required packages (`yt-dlp`, `mutagen`, `pyttsx3`, `pywinauto`, ...) via `tools/check_build_env.py` before building — prevents an exe that starts but fails at runtime with `No module named 'yt_dlp'`.
+- Builds `--onefile --noupx --windowed` with `--collect-all yt_dlp`, `--collect-submodules camfrog_autodj/pywinauto/pyttsx3`, hidden imports `comtypes`, `pyperclip`, `mutagen`.
+- Copies `config.example.toml` → `dist/config.toml` (writable) and `mpv/` → `dist/mpv/` (mpv.exe + yt-dlp.exe).
+- Smoke-tests `dist\AutoDJ.exe --version`; kills leftover processes.
+- Signing: Pfx / Thumbprint / self-signed cert; RFC 3161 timestamping; `Get-AuthenticodeSignature` verification. Self-signed cert trusted on local machine via `cert\autodj-codesign.cer`.
 
-## Conclusion
+## Windows signing (NOT verified)
 
-Windows build is **documented and reviewed by source inspection but not executed.** BLOCKED in this environment. Must be validated on Windows with `pwsh`, PyInstaller, NSIS, and (for signing) a code-signing certificate before any release claim.
+- `commit.gpgsign = true` and `gpg.program` configured locally, but signing requires `GPG_PASSPHRASE` (unset) and no TTY → BLOCKED.
+- Authenticode signature of `dist\AutoDJ.exe` / installer could not be verified. **Not claimed as signed.**
+
+## Installer (installer.nsi) findings
+
+- Per-user install to `$APPDATA\Camfrog AutoDJ` (`RequestExecutionLevel user`).
+- Preserves existing `config.toml` on upgrade (`IfFileExists ... config_exists` skips overwriting).
+- Uninstaller deletes only app-owned files; keeps `config.toml`, `playlist.json`, logs, playlists.
+- `SEC_MPV` (mpv + yt-dlp) and `SEC_VBCABLE` (driver) are optional components (`/o`).
+- Registry entries under HKCU for Add/Remove Programs and App Paths.
+- Thai installer language requires `thai.nlf` on the makensis machine (documented in-file).
+
+## Verdict
+
+Windows build and installer behavior **cannot be verified on this Linux host**. All Windows build claims are BLOCKED, not assumed. A `make build` / `make installer` / `makensis` run on Windows 11 with NSIS is required to close this gate.

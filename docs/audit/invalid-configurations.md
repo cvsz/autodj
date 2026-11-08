@@ -1,21 +1,25 @@
-# Invalid Configurations — cvsz/autodj
+# Invalid Configurations — Camfrog AutoDJ
 
-`config.py` validates every setting with explicit errors (fail-closed, never silent replacement):
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** `fb5e99a`  
+**Status:** Config validation reviewed; no invalid configuration accepted silently
 
-- Unknown keys → `ConfigError` with "did you mean" hint (difflib).
-- Wrong types → `ConfigError` describing expected type.
-- Out-of-range values → `ConfigError` with bounds.
-- Invalid regexes (`window_title_re`, `process_re`, `line_regex`, etc.) → `ConfigError`.
-- Empty `prefix` → `ConfigError`.
-- `admins`/`blocked_users` stripped and validated.
-- Choices enforced: `lang`, `chat_reader`, `chat_sender`, `view_kind`, `send_mode`.
+## Validation (`config.py`)
 
-The GUI settings dialog (`gui.py save_settings`) now validates the assembled candidate TOML with `Config._validate` (ranges, choices, regexes) **before** any write; invalid values raise `ValueError` and nothing is written. Backup (`.bak`) + atomic write (`.tmp` + `os.replace`) used on every write.
+`Config.load()` rejects:
+- Unknown settings (with "did you mean" hint via `difflib`).
+- Wrong types for a setting (text/whole number/number/true-false/list).
+- Non-string items in list settings.
+- Values outside `_RANGES` (volume 0-100, max_queue 1-100000, max_duration 1-604800, cooldown, send_interval, max_msg_len 20-2000, poll_interval, tts_duck, search_limit, mpv_timeout, fade times, voteskip_dynamic_pct, user_request_limit, rate_limit_window, auto_reply_interval, im_auto_reply_cooldown).
+- Values not in `_CHOICES` (lang, chat_reader, chat_sender, view_kind, send_mode).
+- Invalid regexes for `window_title_re`, `process_re`, `window_exclude_re`, `line_regex`, `client_title_re`.
+- Empty `prefix`.
+- Non-existent config file is not an error — runs with built-in defaults and a warning.
 
-Search of git history for accidentally committed secrets: **none found** (`git grep` for `ghp_`, `github_pat_`, `AKIA`, `BEGIN ... KEY`, `ssh-rsa` → 0 matches; `git ls-files` for `.env`/`id_rsa`/`.pem`/`.key` → 0 tracked secret files, excluding `.env.example`).
+## Migration (`migrate.py`)
 
-No invalid configuration values exist in tracked config files (`config.default.toml`, `config.example.toml`, `config.toml`, `config.toml.bak` all parse with `tomllib`). No placeholder `REPLACE_ME` values are left in tracked configs (the commented `camfrog_exe = "REPLACE_ME:..."` in `config.default.toml` is intentionally commented documentation).
+Placeholder values (`REPLACE_ME`, `CHANGE_ME`, `TODO`, `FIXME`, `XXX`, empty paths) in `mpv_path`/`ytdlp_path` are detected; valid paths are discovered (registry, relative to config/app dir, common Windows locations) and written atomically with backup. Valid custom operator values are never replaced.
 
-## Conclusion
+## No silently-accepted invalid values
 
-No invalid configurations detected. Config validation is explicit, fail-closed, and tested (`tests/test_core.py`, `tests/test_hardening.py`, `tests/test_migration.py`).
+All invalid configuration raises explicit `ConfigError` with a message written for the person editing the file (TOML syntax errors include the offending line and a `^` marker). No setting is silently replaced with a default.

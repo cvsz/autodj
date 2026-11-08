@@ -3,6 +3,8 @@
 ## Unreleased
 
 - **Security: added `CODEOWNERS`** — security-sensitive paths (GitHub Actions workflows, installer scripts, `SECURITY.md`, config files) now require independent review by `@policedbc`; default ownership for everything else is `@cvsz`. (`CODEOWNERS`)
+- **Test: library scan symlink / reparse-point safety regression tests** — added `tests/test_library_scan_safety.py` (11 tests) pinning that `scan_folder`/`LocalIndex` never follow symlinks, skip broken symlinks and cycles, skip unreadable directories, enforce `limit`/`max_dirs`, and ignore unsupported extensions. (`docs/audit/library-scan-review.md`, `docs/audit/bugs-and-findings.md`)
+- **Docs: full PR inventory + audit reports** — all 142 pull requests enumerated, dispositioned, and recorded in `docs/audit/all-pr-*.md`; architecture, security, playback, GUI, playlist, library-scan, Windows build, installer, dependency, penetration-test, performance, GPG/merge-evidence, production-readiness, and residual-risk reports added under `docs/audit/`. (`docs/audit/`)
 
 ## 0.2.8
 2026-11-07

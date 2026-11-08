@@ -1,30 +1,23 @@
-# Performance Report — cvsz/autodj
+# Performance Report — Camfrog AutoDJ
 
-**BLOCKED for real measurement.** No profiling run against real mpv / large library / real Camfrog in this environment. The following are design-level assessments from source inspection, not measurements.
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** `fb5e99a`  
+**Status:** Reviewed; no production-scale benchmark executed
 
-## Design-level performance characteristics
+## Observed measurements
 
-| Area | Mechanism | Assessment |
-|------|-----------|------------|
-| Library scan | `scan_folder` with `limit`/`max_dirs` caps; symlinks skipped; executor offload | Capped; non-blocking GUI |
-| GUI refresh | 500 ms poll of `snapshot()`; animations ~30 fps; per-frame exception isolation | Lightweight |
-| Playback | one mpv process per track; IPC commands; temp log cleaned | No persistent per-track overhead |
-| Queue ops | `RLock`-guarded lists; `peek`/`pop` O(1); dedup via set | Efficient |
-| Chat read | `poll_interval` (default 0.5s) sleep between polls; 300-line tail | Configurable; bounded |
-| TTS | single worker thread; 60s timeout per synthesis | Serialized, no overlap |
-| Shutdown | `stop_evt` + 5s thread joins + player stop | Bounded |
+- Test suite: 336 tests in ~15.6 s (pytest, Linux, Python 3.14.4).
+- Library scan: `scan_folder` is bounded by `limit` (tracks) and `max_dirs` (sub-directories); skips symlinks and unreadable dirs per-entry; returns `[]` for missing roots. Large directories cannot scan forever.
+- Playlist load: single read + JSON parse at startup; guarded by lock; corrupt file = `[]`.
+- Chat poll interval: configurable `poll_interval` (default 0.5 s); "raise it if AutoDJ uses too much CPU" (README).
+- Failure backoff: `min(30, 2^(n-1))` s; room announcements stop after 3 consecutive failures — prevents chat flood on a broken setup.
 
-## What would need measuring (BLOCKED)
+## Not measured (no realistic workload / host)
 
-- Library scan time on large libraries
-- Memory usage / file-descriptor leaks
-- MPV startup latency
-- Playback command latency
-- GUI responsiveness on large libraries
-- Shutdown time
+- Library scan time on a large local library (thousands of files).
+- Memory usage over a long session.
+- File-descriptor / process-leak measurement (mpv one-per-track, terminated after play).
+- GUI frame time on a real display.
+- MPV startup latency.
 
-No memory leaks, FD leaks, deadlocks, or reentrant GUI handlers were found by inspection, but these require real measurement on Windows with mpv/Camfrog.
-
-## Conclusion
-
-No performance defects found by inspection. Performance claims are NOT VERIFIED (no measurements taken); real measurement is BLOCKED in this environment.
+These require a Windows host with mpv, a media library, and a display. Marked BLOCKED, not estimated.

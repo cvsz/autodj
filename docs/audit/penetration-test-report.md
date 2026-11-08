@@ -1,20 +1,29 @@
-# Penetration Test Report — cvsz/autodj
+# Penetration Test Report — Camfrog AutoDJ
 
-**BLOCKED.** No live penetration test was performed. AutoDJ is a local desktop music bot with no public network service, no listening port, and no authentication endpoint. Attack surface is limited to: local config file, local `playlist.json`, local chat (Camfrog UIA), and local subprocess invocation (mpv/yt-dlp).
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** `fb5e99a`  
+**Scope:** Application source + configuration + build/installer (static review); no live network or Camfrog target available  
+**Status:** Reviewed; no live penetration test performed
 
-## Attack surface review (source inspection, not live testing)
+## Approach
 
-| Vector | Assessment | Status |
-|--------|-----------|--------|
-| Config file tampering | `Config.load` validates types/ranges/regexes; fail-closed | Reviewed |
-| Path traversal | `commands._load` confines to `music_dirs`; `index.contains` check | Reviewed |
-| Subprocess injection | argument lists only; no `shell=True` | Reviewed |
-| Symlink / reparse-point | `scan_folder` never follows symlinks | Reviewed |
-| Chat spoofing (nickname admin auth) | documented spoofable; fail-closed admin list | Documented risk |
-| Clipboard (foreground send) | best-effort restore; background mode avoids clipboard | Reviewed |
-| Secret logging | delivery text truncated to 80 chars | Reviewed |
-| Certificate bypass | yt-dlp TLS always on; custom CA via `certifi.where()` patch | Reviewed |
+No authorized live target (Camfrog server, YouTube, mpv network) is available on this host, so no active/network penetration test was executed. The assessment is a static security review of trust boundaries, input validation, authorization, subprocess handling, and secret handling (see docs/audit/security-assessment.md).
 
-## Conclusion
+## Trust boundaries reviewed
 
-No exploitable surface found by source inspection. No live penetration test performed (BLOCKED — no network service to test). Security relies on fail-closed config, nickname-based auth (documented spoofable), and local-only operation.
+1. **config.toml (operator input):** validated by `config.py` (types, ranges, choices, regexes); unknown keys rejected with "did you mean" hint. Path traversal not applicable — music_dirs paths are used for scanning only, `resolve_executable` anchors relative paths to the application directory and `resolve_executable` refuses non-existent explicit paths.
+2. **Chat input (room):** nickname-based authorization (documented spoofable); rate limit + cooldown per user; non-admin YouTube host restrictions; `clean_text` strips control characters before anything is typed into the room.
+3. **Playlist file:** entries validated; corrupt file backed up, never silently deleted.
+4. **Subprocess:** argument lists only (`shell=False` never used); `CREATE_NO_WINDOW` on Windows; timeouts on yt-dlp/mpv/TTS subprocesses.
+5. **mpv IPC:** named pipe/socket per process; cleaned up after playback.
+
+## Findings
+
+No exploitable vulnerabilities identified in static review. The highest-risk item (nickname-based admin spoofing) is an inherent protocol limitation, documented in-code and in SECURITY.md-adjacent documentation; mitigated by fail-closed empty admin list.
+
+## Not performed (no live target)
+
+- Network penetration testing against YouTube/mpv.
+- Live Camfrog UI Automation bypass testing.
+- Fuzzing of yt-dlp/mpv subprocess inputs.
+- Authenticode signature verification (no signing host).

@@ -1,42 +1,35 @@
-# Playlist and Queue Review — cvsz/autodj
+# Playlist and Queue Review — Camfrog AutoDJ
 
-Audited: `camfrog_autodj/playlist.py`, `playqueue.py`, and `engine.py` playlist/queue handling.
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** `fb5e99a`  
+**Status:** Reviewed and tested
 
-## Playlist (`playlist.json`)
+## Playlist persistence (`playlist.py`)
 
-- **Format:** `{"version":1,"tracks":[{"source","title","duration","added_by","added"}]}` — human-editable JSON.
-- **Loading:** `load_playlist` — missing or corrupt file → `[]` (logged, never fatal). Invalid sources skipped with warning. Malformed JSON → `[]`, file **not** overwritten.
-- **Saving:** `save_playlist` — atomic (tmp file + `os.replace`); `.bak` backup before write via `PlaylistStore.add`/discover.
-- **Unreadable file handling:** `.corrupt-<timestamp>` backup preserved; load continues with `[]`.
-- **Dedup:** by `source` in `PlaylistStore.add` and `PlayQueue.add_pool`.
-- **Backward compatibility:** reads `version:1` shape; tolerates missing fields (`duration`, `added_by`, `added`).
+- Format: `{"version": 1, "tracks": [{source, title, duration, added_by, added}]}`.
+- `load_playlist`: missing file → `[]`; corrupt/unreadable → logged warning, `[]`, **never overwritten**.
+- Corrupt file recovery: `PlaylistStore.add` backs up the unreadable file as `playlist.corrupt-<timestamp>` before replacing.
+- `save_playlist`: atomic write via `<path>.tmp` + `Path.replace` (same-filesystem atomic); guarded by `PlaylistStore.lock`.
+- `PlaylistStore.add`: dedup by `source`, appends with `added` timestamp, never breaks the request on write failure.
+- `update_source`: replaces a track after ytsearch → real URL resolution.
 
-## PlayQueue (`playqueue.py`)
+## Play queue (`playqueue.py`)
 
-- **Ordering:** requests first, then autoplay pool (looping). `peek()` stable until `pop()`.
-- **Shuffle / repeat:** `shuffle` bool; `repeat` = `off` | `one`. Shuffle excludes last track when possible.
-- **next/previous:** `pop()` removes head of requests (or next auto from pool).
-- **Current track:** `Engine.current`; `position()` from mpv IPC or wall-clock fallback (pauses excluded).
-- **Missing files:** not pre-checked; mpv failure handled by backoff (max 3 announcements, then backoff 1,2,4…30s).
-- **Queue persistence:** `playlist.json` persists requests; queue/volume/shuffle repeat are runtime-only (documented by design).
-- **Concurrent updates:** `RLock` guards all mutations; `PlaylistStore` has its own lock.
-- **Duplicate prevention:** `_assert_not_already_queued` checks `e.current` and `e.queue.requests` under lock; `remove_track` by identity survives queue shifts.
+- Requests first, then autoplay pool (looping). `peek()` stable until `pop()`.
+- Thread-safe via `threading.RLock`; `add_request`, `add_pool` (dedup), `remove`, `remove_track` (by identity), `clear`, `count_by`, `get`.
+- Shuffle avoids immediate repeat of the last track (`random.choice`, not security-sensitive).
+- Repeat: `off | one`.
 
-## Tests (critical regression areas)
+## Commands (`commands.py`)
 
-Covered by `test_hardening.py`, `test_core.py`, `test_playlist_resolver.py`, `test_installer_data_safety.py`:
-- Empty playlist, malformed JSON, missing playlist → `[]`
-- Duplicate entries → rejected for non-admins
-- Unicode paths → handled by `Path`
-- Deleted tracks → not pre-checked (mpv failure path)
-- Concurrent save → lock-protected
-- Interrupted save → atomic tmp+replace
-- Application restart → playlist.json reloaded at startup
+- `!play`/`!np`/`!next`/`!queue`/`!history`/`!voteskip`/`!remove`/`!help` (everyone); `!skip`/`!pause`/`!resume`/`!vol`/`!shuffle`/`!repeat`/`!clear`/`!load`/`!say`/`!speak`/`!block`/`!unblock` (admin).
+- Non-admin limits: YouTube-only, 1 track, `max_duration`, no live, `max_requests_per_user`, sliding window `rate_limit_window`, cooldown, duplicate-request refusal.
+- Rate limit and cooldown are per-user (case-insensitive).
 
-## Atomic file replacement
+## Findings
 
-All persistent writes use tmp + `os.replace` (atomic on same volume) with `.bak` backup. No silent deletion of invalid entries without backup; `PlaylistStore.add` backs up unreadable files as `.corrupt-<ts>`.
+No defects found. Corrupt-file backup, atomic save, dedup, and rate limiting are all covered by `tests/test_play_flow.py` and `tests/test_hardening.py`.
 
-## Conclusion
+## Verdict
 
-Playlist integrity verified; atomic writes; backward compatible; concurrency protected. No confirmed defects.
+Playlist integrity and queue behavior are verified by tests on Linux. No code change needed.

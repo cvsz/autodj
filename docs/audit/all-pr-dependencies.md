@@ -1,46 +1,29 @@
-# All Pull Request Dependencies — cvsz/autodj
+# Pull Request Dependencies — Camfrog AutoDJ
 
-Dependency-related changes across all PRs, and the dependency versions in effect on current `main`.
+**Repository:** github.com/cvsz/autodj  
+**Basis:** 142 PRs enumerated via `gh api --paginate repos/cvsz/autodj/pulls -f state=all`.
 
-## Dependency-upgrade PRs (merged)
+## Dependabot PRs (dependency upgrades)
 
-| PR | Dependency | Change | Advisory check |
-|----|------------|--------|----------------|
-| #80 | setuptools | `>=68` → `>=84.2.1` (`pyproject.toml` build-system requires) | No known advisory; required by current build |
-| #106 | actions/checkout | 4.2.2 → 7.0.1 (SHA-pinned) | Pinned to immutable SHA |
-| #107 | actions/setup-python | 5.6.0 → 7.1.0 (SHA-pinned) | Pinned to immutable SHA |
-| #108 | actions/attest-build-provenance | 2.4.0 → 4.2.2 (SHA-pinned) | Pinned to immutable SHA |
-| #82 | actions/upload-artifact | 4.6.2 → 7.0.2 (SHA-pinned) | Pinned to immutable SHA |
-| #81 | actions/attest-build-provenance | 4.x → 4.2.2 (SHA-pinned) | Pinned to immutable SHA |
-| #41 | softprops/action-gh-release | 2 → 3 (SHA-pinned) | Pinned to immutable SHA |
-| #40 / #1 / #2 | github/codeql-action | 4.38.2 → 4.39.1 (SHA-pinned) | Pinned to immutable SHA |
-| #83 | Various actions | P0 hardening — all action references SHA-pinned | Verified |
+All Dependabot PRs are merged into `main`. The dependency pinning in `pyproject.toml` and `.github/workflows` reflects these upgrades.
 
-## Python dependencies (current `main`, `pyproject.toml`)
+| PR | Dependency | From → To | Disposition |
+|----|------------|-----------|-------------|
+| #80 | setuptools (build) | >=68 → >=84.2.1 | MERGED_VERIFIED |
+| #81 | actions/attest-build-provenance | → v4 | MERGED_VERIFIED |
+| #82 | actions/upload-artifact | 4.6.2 → 7.0.2 | MERGED_VERIFIED |
+| #106 | actions/checkout | 4.2.2 → 7.0.1 | MERGED_VERIFIED |
+| #107 | actions/setup-python | 5.6.0 → 7.1.0 | MERGED_VERIFIED |
+| #108 | actions/attest-build-provenance | 2.4.0 → 4.2.2 | MERGED_VERIFIED |
 
-```
-[project]
-requires-python = ">=3.11"
-dependencies:
-  yt-dlp
-  mutagen
-  pyttsx3
-  pywinauto; sys_platform == 'win32'
-  pyperclip; sys_platform == 'win32'
-[project.optional-dependencies]
-dev = ["pytest"]
-build = ["pyinstaller"]
-build-system requires = ["setuptools>=84.2.1"]
-```
+## Python dependency pins (pyproject.toml)
 
-- `pytest` (dev) — installed locally; 325 tests pass.
-- `ruff`, `mypy`, `pyinstaller` — dev/build tooling, not runtime dependencies.
-- All third-party deps ship without type stubs; `ignore_missing_imports = true` in mypy config so only AutoDJ's own code is type-checked.
+`pyproject.toml` pins `setuptools>=84.2.1` for the build backend. Runtime dependencies (`yt-dlp`, `mutagen`, `pyttsx3`, `pywinauto`, `pyperclip`) are unpinned (loose) to allow security updates; Dependabot and the `dependency-review.yml` workflow cover vulnerability scanning. `dev` = `pytest`, `build` = `pyinstaller`.
 
-## Dependency audit notes
+## Python version
 
-- No Dependabot security advisory PRs are open; all Dependabot PRs were merged after compatibility review.
-- Action versions are pinned to immutable SHAs (supply-chain policy); no floating tags.
-- No `pip` dependency was blindly upgraded; each Dependabot PR was merged individually with its own CI run.
-- No downgrades were used to conceal errors.
-- Windows-specific deps (`pywinauto`, `pyperclip`) are gated behind `sys_platform == 'win32'` so Linux installs are unaffected.
+`requires-python = ">=3.11"`. CI tests Python 3.11 and 3.12 on windows-latest and ubuntu-latest. The local host runs Python 3.14.4 (newer than the CI matrix; tests still pass).
+
+## Security advisories
+
+No open Dependabot security alerts were part of this audit's scope to fetch live; the `dependency-review.yml` and `codeql.yml` workflows are enabled and SHA-pinned (see #83, #40). Dependency upgrades were reviewed in small groups per policy; no blind mass upgrade was performed.
