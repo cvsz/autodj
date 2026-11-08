@@ -1,53 +1,32 @@
-# GUI Responsiveness — cvsz/autodj
+# GUI Responsiveness — Camfrog AutoDJ
 
-Audited: `camfrog_autodj/gui.py` (`App`), `visuals.py`, and `engine.py` GUI-facing methods.
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** `fb5e99a`  
+**Status:** Reviewed (Tk GUI); real-Tk smoke test not executable headless on this host
 
-## Event loop and threading
+## Threading model
 
-- Tk `App` runs on the main thread; `refresh()` polls `Engine.snapshot()` every 500 ms; `_tick()` animates ~30 fps (250 ms when iconified).
-- All long operations (folder scan, YouTube lookup, playback) run on `Engine.exec` (ThreadPoolExecutor, 8 workers) or daemon threads — **never on the GUI thread**.
-- UI updates are marshaled to the main thread via `self.after(0, ...)` (`_set_hint`, `on_success`/`on_error` callbacks).
-- Tkinter thread-safety respected: only the main thread touches widgets.
+- `Engine` runs daemon threads: `_sender`, `_player_loop`, `_load_all`, `_chat_loop`, `_auto_reply_loop`, `_im_auto_reply_loop` (`engine.py:start()`).
+- Tk GUI (`gui.py:App`) polls `Engine.snapshot()` every 500 ms (`refresh()`) and animates at ~30 fps (`_tick()`).
+- All GUI updates from background callbacks are marshaled to the main thread via `tk.after(0, ...)` (`gui.py:_set_hint`, `add()`/`add_files()` on_success/on_error, folder-load callbacks).
+- Blocking work (yt-dlp lookup, folder scan, playlist load) runs in `Engine.exec` (`ThreadPoolExecutor(8)`) or `load_async`, never on the GUI thread.
+- Folder scan button disabled while scanning; 30 s safety timeout re-enables it (`gui.py:load_folder`).
 
-## Blocking-call audit
+## Busy/disabled state
 
-No blocking I/O on the GUI thread confirmed by inspection:
-- `load_folder`: `load_async` on executor; button disabled during scan; 30s safety timeout (`_folder_scan_timeout`).
-- `add` / `add_files`: `engine.request` on executor; `b_add` disabled during resolving (`_set_adding_state`).
-- `do_check`/`do_discover`: `subprocess.run` in a spawned process (not blocking GUI long-term); returns quickly.
-- Animations (`_tick`/`_frame`) catch exceptions per-frame and keep animating.
+- `PillButton.configure(state=...)` toggles enabled/disabled; folder button disabled during scan; add button disabled during resolution (`_set_adding_state`).
+- Repeated folder clicks guarded by `self._loading_folder` flag.
+- mpv-missing warning banner shown when `player.available()` is False.
 
-## Busy / disabled state
+## Shutdown
 
-- Buttons have `set_active`/`set_state`/`configure(state=...)` for busy/disabled.
-- Folder button disabled while scanning (`_loading_folder`).
-- Add button disabled during resolution (`_set_adding_state`).
-- Pause/skip reflect `e.paused` / current track.
+- `App.close()` cancels `after` timers, calls `Engine.shutdown()` (sets stop event, stops player, closes adapter, shuts down executor, joins threads with 5 s timeout), then destroys the window.
 
-## Duplicate-job prevention
+## Findings
 
-- `load_folder` guards with `_loading_folder` flag (reentrant click returns early).
-- Settings popup: existing window lifted (`winfo_exists` check) rather than reopened.
-- `_preload_search_tracks` capped at 3 candidates.
+- F-002: `position()` → mpv IPC `_cmd_get` can block on Windows if mpv is unresponsive (documented, BLOCKED from validation).
+- Real-Tk rendering on screen not verified (no display/Camfrog on this host); `test_gui_smoke` is environment-dependent.
 
-## Cancellation
+## Verdict
 
-- `stop_evt` stops player loop, sender, chat loop, auto-reply loops.
-- `Engine.shutdown()` joins daemon threads with 5s timeout.
-- `App.close()` cancels `_anim`/`_ref` after-callbacks, calls `e.shutdown()`, then `destroy()`; guards double-close with `_closing`.
-
-## Worker exception propagation
-
-- `_tick` catches frame exceptions (logs once, keeps animating).
-- `refresh` catches exceptions (logs, keeps polling).
-- `request` job catches `UserError` and generic `Exception` → `on_error` callback or `say(error)`.
-
-## Repeated-click / race tests
-
-- `test_gui_logic.py` covers GUI logic against a strict fake Tk.
-- `test_hardening.py` covers concurrency/race regressions.
-- GUI responsiveness on large libraries measured by `limit=2000`/`max_dirs=50` caps + executor offloading.
-
-## Conclusion
-
-GUI remains responsive; no blocking I/O on GUI thread; worker exceptions propagated; cancellation works; repeated clicks guarded. Large-library responsiveness capped and verified by design. Real-Tk screen test (`test_gui_smoke`) runs only where a display exists (NOT APPLICABLE headless here).
+GUI design is thread-safe and non-blocking by construction. Windows display behavior and real Camfrog window interaction are BLOCKED (no Windows/display/Camfrog host).

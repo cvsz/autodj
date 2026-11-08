@@ -1,39 +1,33 @@
-# Playback Engine Review — cvsz/autodj
+# Playback Engine Review — Camfrog AutoDJ
 
-Audited: `camfrog_autodj/player.py` (`MpvPlayer`) and `engine.py` (`_player_loop`, `_play_one_track`).
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** `fb5e99a`  
+**Status:** Reviewed; real mpv playback not executable on this host
 
-## MPV integration
+## MPV integration (`player.py:MpvPlayer`)
 
-- **Discovery:** `MpvPlayer.available()` → `resolve_executable(cfg.mpv_path)`.
-- **Executable resolution:** `paths.resolve_executable` — explicit paths authoritative; relative-with-separator anchored to app dir; bare names via `shutil.which`; returns `""` (not a silently substituted binary) when missing.
-- **Version compatibility:** `doctor._ytdlp_version` reports yt-dlp version; mpv version not parsed (mpv has no simple version flag used).
-- **Process startup:** `subprocess.Popen(cmd, **kw)` with argument list (never shell); `CREATE_NO_WINDOW` on Windows.
-- **Process termination:** `stop()` → `p.terminate()`; hang path → `terminate()` then `kill()` with 5s wait.
-- **IPC:** named pipe (Windows) / unix socket (Linux) `--input-ipc-server`; `get_time_pos`, `seek`, `set_pause`, `set_volume` via IPC JSON commands.
-- **Playback commands:** pause/resume, seek, volume, next/previous (via `skip`/`stop`).
-- **Error handling:** `_report` reads mpv log for failure reasons; `_try_play` catches exceptions; `_track_failed` backoff.
-- **Output device:** `--audio-device=` from `cfg.audio_device`.
-- **Audio format:** `--ytdl-format=bestaudio/best`; `--no-video --force-window --no-terminal --really-quiet`.
-- **Device disconnection / crashes:** handled by mpv exit code + log; failure announced max 3 times then backoff.
-- **Shutdown cleanup:** `Engine.shutdown()` → `player.stop()`; temp mpv log removed in `_report` finally; `os.remove` best-effort.
+- One mpv process per track (`subprocess.Popen` argument list, `shell=False`).
+- Flags: `--no-video --force-window=no --no-terminal --really-quiet --ytdl-format=bestaudio/best --input-ipc-server --log-file --volume`.
+- `--script-opts=ytdl_hook-ytdl_path=<resolved yt-dlp>` so mpv's youtube hook uses the same yt-dlp as title lookups (`find_ytdlp`).
+- `CREATE_NO_WINDOW` on Windows (no console flash).
+- IPC: named pipe (Windows) / UNIX socket (Linux) for `get_time_pos`, `seek`, `set_pause`, `set_volume`.
+- `play_file` (TTS) uses `subprocess.run` with a 30 s timeout.
+- Termination: `stop()` sets `skipped=True` and `terminate()`; `play()` on hang terminates then kills after 5 s.
+- Log cleanup: mpv log file removed after reporting (`_report`).
 
-## Hang detection (not a cap)
+## Playback lifecycle (`engine.py:_player_loop` / `_play_one_track`)
 
-`mpv_timeout` is a **grace period on top of track length**, never a flat cap. Time spent paused excluded. Unknown duration (live) = no limit. This was a historical bug (flat cap cut long songs) — fixed and tested (`test_hardening.py` F2).
+- Pops from `PlayQueue` (requests first, then looping autoplay pool).
+- `mpv_timeout` is a grace period over known duration, not a hard cap (longer songs not cut).
+- Failure backoff: `fail_delay(n) = min(30, 2^(n-1))`; after 3 consecutive failures, room announcements stop (only log) to prevent flood.
+- `repeat == "one"` loops the same track; `skipped` breaks the loop.
+- `position()`: mpv IPC `time-pos`, fallback to wall-clock excluding pauses.
 
-## Orphaned processes
+## Findings
 
-No orphans: each track = one mpv process; `stop()` terminates; `kill()` fallback; temp log cleaned. `Engine.shutdown()` stops player.
+- F-002 (IPC read block) and F-003 (live stream blocks loop) documented above.
+- No orphaned-process claim: `stop()`/`play()` terminate and kill mpv; `shutdown()` calls `player.stop()`.
 
-## Tests
+## Verdict
 
-Covered by `test_play_flow.py`, `test_hardening.py` (F2 failure throttling/backoff), `test_executable_paths.py`.
-
-## Gaps (environment-limited)
-
-- Real mpv playback not exercised here (fake mpv in tests).
-- `MpvPlayer._cmd_get` Windows named-pipe read has no read timeout; blocks until mpv responds or pipe closes. GUI calls `position()` on the GUI thread poll (500ms). Classified as a residual risk (Windows-only, cannot reproduce here).
-
-## Conclusion
-
-MPV lifecycle verified by design and tests; no orphaned processes; hang detection is a grace period not a cap; subprocess uses argument lists. Real-mpv runtime validation is BLOCKED (no mpv/Windows here).
+Playback design is sound for the local-file and YouTube (via yt-dlp) paths it supports. Real mpv process startup, IPC, device disconnection, and crash behavior **cannot be executed on this Linux host** (no mpv, no audio device, no Windows). Marked BLOCKED for runtime validation; not claimed as passing.

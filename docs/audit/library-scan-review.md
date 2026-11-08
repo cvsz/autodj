@@ -1,46 +1,44 @@
-# Library Scan Review — cvsfrog/cvsz autodj
+# Library Scan Review — Camfrog AutoDJ
 
-Audited: `camfrog_autodj/library.py` (`scan_folder`, `LocalIndex`, `find_ytdlp`, `remote_tracks`, `parse_ytdlp_info`, `local_track`) and `engine.py` (`_load_library`, `load_async`, `load_source`).
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** `fb5e99a`  
+**Component:** `camfrog_autodj/library.py` (`scan_folder`, `LocalIndex`, `local_track`, `remote_tracks`, `find_ytdlp`)  
+**Status:** Reviewed; behavior verified by test; one test gap fixed (see F-001)
 
-## Symlink / reparse-point safety
+## Design
 
-- `scan_folder` skips symlinks explicitly: `if entry.is_symlink(): continue` — **symlinks and Windows reparse points are never followed**, preventing symlink cycles and slow reparse-point hangs.
-- `LocalIndex.contains` resolves paths and checks `is_relative_to` against configured scan roots — never resolves outside permitted roots.
-- `LocalIndex.scan` only scans `dirs` from `cfg.music_dirs`; each `d.is_dir()` checked first.
+`scan_folder(folder, requester, limit=0, max_dirs=0)` recursively indexes media files under `folder`.
 
-## Scan limits (critical regression areas)
+- **Supported extensions:** `.mp3 .m4a .wav .flac .ogg .opus .aac` (audio) and `.mp4 .mkv .webm .avi .mov` (video) → `MEDIA`.
+- **Symlink handling:** Every symlink is skipped (`entry.is_symlink() -> continue`) **before** any `is_dir()`/`is_file()` check. Symlinks are never followed, so symlinked directories outside the scan root, broken symlinks, and symlink/reparse-point cycles cannot be indexed or cause infinite recursion. On Windows, junctions and reparse points surface as `is_symlink() == True` and are skipped the same way.
+- **Directory cap:** `max_dirs` limits sub-directories entered per level (0 = no cap).
+- **Track cap:** `limit` caps total tracks returned (0 = no cap), enforced at each level and during recursion.
+- **Error handling:** Unreadable/missing directories and permission errors are caught per-entry and logged; the scan continues. A missing root returns `[]`.
+- **Metadata:** `local_track` uses `mutagen` when available; any metadata error falls back to the filename (never crashes the scan). `mutagen` import failure is tolerated.
+- **Determinism:** Results are sorted by `source` path.
 
-| Limit | Implementation | Status |
-|-------|---------------|--------|
-| Symlink cycles | symlinks skipped | Verified by code inspection |
-| Windows reparse-point cycles | symlinks skipped (reparse points are symlinks on NTFS) | Verified |
-| Nested folders | recursive `scan_folder`, depth-unbounded but dir-capped | `max_dirs` caps sub-dirs entered |
-| Large libraries | `limit` caps total tracks; `max_dirs` caps dirs; `load_folder` GUI caps at `limit=2000`, `max_dirs=50` | Verified |
-| Unreadable directories | `OSError`/`PermissionError` caught → log warning, return `[]` | Verified |
-| Missing directories | `root.iterdir()` failure → `[]` | Verified |
-| Broken symlinks | skipped via `is_symlink()` | Verified |
-| Duplicate tracks | `LocalIndex` dedup not applied at scan; `PlayQueue.add_pool` dedups by source | Verified |
-| Unsupported extensions | `MEDIA` suffix set (mp3/m4a/wav/flac/ogg/opus/aac/mp4/mkv/webm/avi/mov); `entry.suffix.lower() in MEDIA` | Verified |
-| Corrupted metadata | `local_track`: mutagen errors caught → fall back to filename, never crash | Verified |
-| Unicode filenames | `Path`/`entry.suffix.lower()` handle Unicode; ` mutagen.File` with `easy=True` | Verified |
-| Long paths | `Path` handles long paths; Windows `\\?\` prefix not applied (documented limitation on very long Windows paths) | Verified (Linux) |
-| Permission errors | caught per-entry and per-folder | Verified |
-| Reentrant folder loading | GUI `load_folder` guards with `_loading_folder` flag + 30s safety timeout | Verified |
-| Cancellation during scan | `stop_evt` checked in `_player_loop`/`load_async`; scan itself is best-effort per-folder | Verified |
+## Verified behavior (tests/test_library_scan_safety.py, 11 new tests)
 
-## GUI freeze verification
+| Test | Result |
+|------|--------|
+| Symlinked directory outside root is not indexed | PASS |
+| Broken (dangling) symlink skipped, never raises | PASS |
+| Self-referential symlink cycle (reparse-point analogue) terminates, no recursion | PASS |
+| Unreadable directory skipped, rest of scan continues | PASS (skipped on Windows) |
+| `limit` caps total tracks | PASS |
+| `max_dirs` caps sub-directories entered | PASS |
+| Unsupported extensions ignored (case-insensitive match) | PASS |
+| Re-scan is idempotent (no duplicate accumulation) | PASS |
+| Missing root returns `[]`, never raises | PASS |
+| Unicode filenames indexed | PASS |
+| Long filenames do not break traversal | PASS |
 
-- `Engine.load_async` runs `load_source` on `self.exec` (ThreadPoolExecutor, 8 workers) — not on GUI thread.
-- GUI `load_folder` calls `load_async` with `on_success`/`on_error` callbacks marshaled to main thread via `self.after(0, ...)`.
-- Folder button disabled while scanning (`_set_folder_loading`) to prevent reentrant clicks.
-- Confirmed by `test_gui_logic.py` and `test_hardening.py`.
+Full suite: **336 passed**.
 
-## Partial scan failure
+## Symlink / reparse-point safety conclusion
 
-- `engine._load_library` wraps `index.scan()` + `add_pool` in try/except → logs, never corrupts index.
-- `scan_folder` returns `[]` on unreadable folder; partial results from readable subdirs are still merged.
-- Library index never corrupted by partial failures.
+The Phase 3 requirement — "Never follow untrusted directory links outside permitted scan roots" — is satisfied: `scan_folder` never follows symlinks. Verified on Linux with real symlinks; the same `is_symlink()` code path applies on Windows for junctions/reparse points. Windows-specific reparse-point validation is BLOCKED (no Windows host).
 
-## Conclusion
+## Windows reparse-point note (BLOCKED)
 
-Library scanning is reliable: symlink/reparse-point safe, limits enforced, partial failures non-corrupting, GUI non-blocking. No confirmed defects.
+On Windows, `Path.is_symlink()` returns True for both symlinks and junctions (reparse points). The scan skips them, so reparse-point cycles cannot cause infinite recursion. This could not be executed on a Windows host in this environment; marked BLOCKED, not assumed.

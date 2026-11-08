@@ -1,39 +1,50 @@
-# Build, Lint and Test Report — cvsz/autodj
+# Build / Lint / Test Report — Camfrog AutoDJ
 
-**Baseline SHA:** `9a5e829870d6cf11450a6ec56ff063f37aa616f8`
-**Environment:** Linux (WSL), Python 3.11+, `pwsh` absent → Windows targets BLOCKED.
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** `fb5e99a`  
+**Platform:** Linux, Python 3.14.4  
+**Audit date:** 2026-11-08
 
-## Exact commands and results
+## Commands run and results
 
-| # | Command | Exit code | Result |
-|---|---------|-----------|--------|
-| 1 | `python -m compileall -q camfrog_autodj tests tools` | 0 | All modules compile |
-| 2 | `python -m pytest -q -p no:faulthandler -p no:cacheprovider` | 0 | **325 passed, 3 subtests passed** (15.17s) |
-| 3 | `ruff check camfrog_autodj tests tools` | 0 | All checks passed |
-| 4 | `ruff format --check camfrog_autodj tests tools` | 0 | 56 files already formatted |
-| 5 | `python -m mypy camfrog_autodj` | 0 | Success: no issues in 29 source files |
-| 6 | `shellcheck scripts/*.sh tools/*.sh` | 0 | Pass (style notes: SC2181, SC2034 only) |
-| 7 | `bash -n scripts/*.sh tools/*.sh` | 0 | All scripts syntactically valid |
-| 8 | `python scripts/validate_repo.py` | 0 | Repository structure + local Markdown links valid |
-| 9 | `git commit -S` (GPG test) + `git verify-commit HEAD` | 0 | **Good signature** from `cvsz (zcoder signing) <seaza@msn.com>` |
-| 10 | `gh auth status` + `gh api user --jq .login` | 0 | **cvsz** active; `policedbc` available |
-| 11 | `git grep` secret scan | 0 | No secrets/tokens/keys tracked |
-| 12 | `python -c "import tomllib; ..."` on config*.toml | 0 | All TOML valid |
-| 13 | YAML parse on `.github/workflows/*.yml` | 0 | All 7 workflow files valid |
+| Command | Exit code | Result |
+|---------|-----------|--------|
+| `python3 -m pytest -q -p no:cacheprovider` | 0 | **336 passed, 3 subtests passed** |
+| `ruff check camfrog_autodj tests tools` | 0 | **All checks passed** |
+| `ruff format --check camfrog_autodj tests tools` | 0 | **57 files already formatted** |
+| `python3 -m compileall -q camfrog_autodj tests tools` | 0 | **Compiled cleanly** |
+| `shellcheck scripts/*.sh tools/*.sh` | 0 (warnings) | Minor style warnings only (SC2181, SC2034) |
 
-## Makefile targets reviewed (not all executable here)
+## Test detail
 
-- `test`, `test-v`, `test-one`, `coverage`, `mutation-smoke` — `mutation-smoke` requires `tools/mutate.sh` which is **not present** (NOT APPLICABLE).
-- `lint`, `fmt`, `typecheck` — executable; pass.
-- `validate-playlists`, `fix-playlists` — use `tools/validate_playlists.py`.
-- `validate-template` — `scripts/validate_repo.py`; passes.
-- `full-validation` — lint + typecheck + validate-playlists + test + changelog-check + config-check.
-- `build`, `build-clean`, `sign`, `build-all`, `installer`, `nsiswindows11`, `trustsign` — **Windows-only, BLOCKED**.
-- `install-auto`, `build-all-linux` — Windows/Wine-only, BLOCKED.
+- Baseline before this audit: **325 passed**.
+- Added: `tests/test_library_scan_safety.py` — **11 new regression tests** for library scan symlink/reparse-point safety.
+- After this audit: **336 passed, 3 subtests passed**, in ~15.6s.
+- No tests skipped, no failures.
 
-## Notes
+## Ruff detail
 
-- No `|| echo warning` suppression used on critical operations.
-- All genuine Ruff warnings fixed; only narrowly justified, documented suppressions remain (`pyproject.toml` `[tool.ruff.lint] ignore`).
-- `changelog-check`: version `0.2.8` has a CHANGELOG entry.
-- `config-check`: `config.toml` valid TOML with required keys.
+`pyproject.toml` configures a focused rule set (`E, F, B, I, C, N, S`) with `line-length = 100`. The one fixable finding (unsorted import in the new test file) was fixed with `ruff check --fix` and re-verified: `ruff check` passes clean. No warnings were swallowed with `|| echo warning`. No `noqa` suppressions were added to hide genuine issues.
+
+## ShellCheck detail
+
+Ran against `scripts/*.sh` and `tools/*.sh`:
+- `scripts/build_installer_linux.sh:77` SC2181 — check exit code directly, not via `$?`. (Style; script is Linux/WSL-only installer helper.)
+- `scripts/deploy-workflow-all-repos.sh:19` SC2034 — `ACCOUNTS_FILE` appears unused. (Style.)
+- `scripts/gh-switch.sh:49` SC2034 — `ORIG_URL` appears unused. (Style.)
+
+None are defects; all are pre-existing style notes in multi-repo/tooling scripts outside the application core. No `bash -n` failures.
+
+## Windows build (BLOCKED)
+
+- `build.ps1`, PyInstaller, `installer.nsi`, `makensis` require Windows. Not executed on Linux. Not claimed as passing.
+- `make build`/`make installer` require Windows PowerShell; Makefile states this explicitly. Not executed.
+- `test_windows_build_script.py` and `test_windows_qualification_scripts.py` are present and run as part of pytest (they parse/validate scripts where platform-appropriate).
+
+## Docker
+
+`Dockerfile` is present. Docker build was not part of this audit's executed commands (no container runtime target specified); the Makefile has no `docker` target.
+
+## New regression test added
+
+`tests/test_library_scan_safety.py` — 11 tests pinning `scan_folder`/`LocalIndex` symlink safety (Phase 3 critical regression tests: symlink cycles, reparse-point cycles, broken symlinks, unreadable directories, limits, Unicode).

@@ -1,33 +1,35 @@
-# Installer Review — cvsz/autodj
+# Installer Review — Camfrog AutoDJ
 
-**BLOCKED — Windows-only.** NSIS (`makensis`) and `install.ps1` require Windows 11. No installer was built or tested here. Nothing is assumed.
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** `fb5e99a`  
+**Status:** BLOCKED — no Windows host / makensis available
 
-## Installer.nsi audited (source inspection)
+## Installer scripts reviewed
 
-- Per-user installation to `%APPDATA%\Camfrog AutoDJ` (no admin rights required) — README 0.2.6 highlight.
-- HKCU registry, no admin required.
-- Shortcuts: Desktop, Start Menu, Config editor, Uninstaller.
-- `config.toml` handling: nonfatal / optional (PRs #23/#24/#47); bundled standard config.toml (#64).
-- mpv + yt-dlp + VBCable: marked optional/nonfatal (#48); post-install `mpv-register.bat` + VBCable silent execution (#66).
-- Upgrade behavior: auto-uninstall old version (#17).
-- Uninstall: Start Menu → Uninstall or `uninstall.ps1`.
-- Version checks, reinstallation, Windows compatibility: documented in `install.ps1`.
+- `installer.nsi` (primary NSIS script)
+- `install.ps1` / `install.bat` (automated Windows 11 installer)
+- `scripts/build_installer.ps1`, `scripts/build_installer_linux.sh`
 
-## Verification items not executable here
+## Design (per installer.nsi and README)
 
-| Item | State | Reason |
-|------|-------|--------|
-| `makensis` build | BLOCKED | Windows + NSIS |
-| Install directory / upgrade / uninstall | BLOCKED | Windows runtime |
-| Shortcuts / file permissions | BLOCKED | Windows runtime |
-| User data preservation | BLOCKED | Windows runtime |
-| Version checks / rollback / reinstallation | BLOCKED | Windows runtime |
-| `install.ps1` end-to-end (Python/mpv/yt-dlp via winget) | BLOCKED | Windows 11 + winget |
+- Install directory: `%APPDATA%\Camfrog AutoDJ` (no admin rights required for the app).
+- Upgrade behavior: in-place; existing `config.toml` preserved (not overwritten).
+- Uninstall: removes app-owned files only; keeps `config.toml`, `playlist.json`, logs, playlists, user data.
+- Shortcuts: Desktop, Start Menu, "Edit Config" (notepad), Uninstall.
+- Registry: HKCU Uninstall + App Paths (per-user), no HKLM.
+- Optional components: mpv + yt-dlp (`SEC_MPV`), VBCable driver (`SEC_VBCable`, requires admin for driver install).
+- `MUI_FINISHPAGE_RUN` launches `AutoDJ.exe` after install.
 
-## Existing artifacts (not produced by this audit)
+## Installer safety checks
 
-`dist/Camfrog-AutoDJ-Setup-0.2.6.exe`, `dist/Camfrog-AutoDJ-Setup-0.2.8.exe`, `dist/Camfrog-AutoDJ-Setup-0.2.8.zip` are present in the repo but are **pre-existing artifacts**, not built or signed in this audit. Their signatures were not verified; no claim is made about them.
+| Check | Result |
+|-------|--------|
+| config.toml preserved on upgrade | PASS (design: `IfFileExists config.toml config_exists`) |
+| User data not deleted on uninstall | PASS (design: uninstall keeps config/playlists/logs) |
+| No silent overwrite of user config | PASS |
+| Nonfatal external mpv/vbcable | PASS (`/nonfatal`, optional sections) |
+| makensis execution | BLOCKED (no Windows/NSIS) |
 
-## Conclusion
+## Verdict
 
-Installer reviewed by source inspection only. Build/install/test on Windows is BLOCKED and must be done before any release claim.
+Installer design is sound and consistent across `installer.nsi`, `install.ps1`, and README. **Execution and real-install testing are BLOCKED** (no Windows host). Not claimed as tested.
