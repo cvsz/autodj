@@ -24,6 +24,11 @@
 - **Punish User/Bot**: Admin commands `!punish` / `!punishbot` (config-gated: `admin_punish_user`, `admin_punish_bot`). (`camfrog_autodj/commands.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
 - **Delete Message**: Admin command `!delete <msg id>` to delete a message by ID (config-gated: `admin_delete_message_enabled`). (`camfrog_autodj/commands.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
 - **Welcome Message**: Welcome message feature with configurable text (config-gated: `welcome_message_enabled`). (`camfrog_autodj/commands.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Camfrog Gift Detection**: Detect virtual-gift messages in room chat (`GIFT_RECEIVED`, `room_gift_message`, `camfrog://gift`, etc.) and announce them. Config-gated: `gift_announce_enabled`. (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Camfrog Avatar Change Detection**: Detect avatar change messages in room chat (`updateAvatarMessage`) and announce them. Config-gated: `avatar_change_enabled`. (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Camfrog Status Indicators**: Detect user status changes in room chat (online/away/busy/invisible/admin/moderator/owner) and announce them. Config-gated: `status_indicator_enabled`. (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Camfrog Upgrade/Payment Alerts**: Detect upgrade/payment-required status text and alert admin. Config-gated: `status_alert_enabled`. (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Camfrog Name Color Tracking**: Read nickname color (`color: #RRGGBB`) from incoming chat HTML for GUI preview (read-only; AutoDJ cannot set name color). (`camfrog_autodj/engine.py`)
 - **Documentation**: `docs/camfrog-re/autodj-commands.en.md` / `.th.md`, `docs/camfrog-re/user-manual.en.md` / `.th.md`, `docs/camfrog-re/admin-manual.en.md` / `.th.md`. README and CHANGELOG updated.
 
 ### Fixed

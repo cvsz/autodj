@@ -6,6 +6,7 @@ import logging
 import os
 import queue
 import random
+import re
 import textwrap
 import threading
 import time
@@ -92,6 +93,7 @@ class Engine:
         self._im_reply_cooldowns: dict[str, float] = {}  # user -> last IM reply time
         self._admin_greeting_cooldowns: dict[str, float] = {}  # admin -> last greeting time
         self._welcome_cooldowns: dict[str, float] = {}  # user -> last welcome message time
+        self._name_colors: dict[str, str] = {}  # user -> nickname color hex (GUI preview only)
         self._active_room_users: set[str] = set()  # users currently in room (seen in chat)
         self._last_user_request_time: float = 0.0  # monotonic time of last user !play request
         self._autoplay_mode: bool = (
@@ -913,6 +915,8 @@ class Engine:
                 # Track active room users (non-IM messages only)
                 if not msg.is_im:
                     self._active_room_users.add(msg.user.lower())
+                    # Camfrog RE integrations: gift announcement + upgrade/payment status alert
+                    self._handle_re_events(msg)
 
                 # Admin greeting on first message in session
                 if self.cfg.admin_greeting_enabled and msg.user.lower() in self.admins:
@@ -940,6 +944,153 @@ class Engine:
                 log.exception("chat loop ended")
         finally:
             self.chat_done.set()
+
+    # ---- Camfrog reverse-engineering integrations -------------------------
+
+    _GIFT_KEYWORDS = (
+        "gift_received",
+        "room_gift_message",
+        "camfrog://gift",
+        "camfrog://vgift",
+        "send_vgift",
+        "virtual_gift",
+        "vgift_",
+        "you_give_virtual_gift_report",
+        "give_virtual_gift_report",
+        "top_gifter",
+        "recent_gifter",
+        "gift_store",
+    )
+    _STATUS_KEYWORDS = ("upgrade required", "payment required", "payment gateway capabilities")
+    # Avatar change keywords (Camfrog avatar system; see docs/camfrog-re/16-user-icon-avatar.md)
+    _AVATAR_KEYWORDS = ("updateavatarmessage", "avatar_changed", "avatarchange", "changavatar")
+    # Status indicator keywords -> message key (Camfrog status PNGs; see docs/camfrog-re/14-png-assets.md)
+    _STATUS_INDICATOR_KEYWORDS: dict[str, str] = {
+        "online": "status_online",
+        "away": "status_away",
+        "busy": "status_busy",
+        "invisible": "status_invisible",
+        "admin": "status_admin",
+        "moderator": "status_moderator",
+        "owner": "status_owner",
+    }
+    # Name color regex: style='color: #RRGGBB' or style="color: #RRGGBB" (Camfrog nickname color; see docs/camfrog-re/15-name-color.md)
+    _NICK_COLOR_RE = re.compile(r"color:\s*#([0-9a-fA-F]{6})")
+
+    def _handle_re_events(self, msg) -> None:
+        """Handle Camfrog reverse-engineering events from a room chat message.
+
+        Detects virtual-gift messages (announce them), avatar changes (announce them),
+        user status indicators (online/away/busy/invisible/admin/moderator/owner), and
+        upgrade/payment-required status text (alert the admin). See docs/camfrog-re/.
+        """
+        body = self._chat_body(msg.text)
+        if not body:
+            return
+        nick = msg.user
+        if self.cfg.gift_announce_enabled and self._is_gift_message(body):
+            self._announce_gift(nick, body)
+        if self.cfg.avatar_change_enabled and self._is_avatar_change(body):
+            self._announce_avatar_change(nick)
+        if self.cfg.status_indicator_enabled:
+            self._announce_status_indicator(nick, body)
+        if self.cfg.status_alert_enabled and self._is_status_message(body):
+            self._alert_status(nick, body)
+        # Track name colors from incoming chat HTML for GUI preview (read-only; see docs/camfrog-re/15-name-color.md)
+        self._track_name_color(nick, body)
+
+    def _chat_body(self, text: str) -> str:
+        """Extract the message body from a 'TIME nick: BODY' chat line."""
+        m = re.match(
+            r"^(?:\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?\s+)?(?P<nick>[^:]{1,30}):\s*(?P<rest>.*)$",
+            text,
+            re.IGNORECASE,
+        )
+        if m:
+            return m.group("rest")
+        _, sep, rest = text.partition(": ")
+        return rest if sep else text
+
+    def _is_gift_message(self, body: str) -> bool:
+        low = body.lower()
+        return any(k in low for k in self._GIFT_KEYWORDS)
+
+    def _is_avatar_change(self, body: str) -> bool:
+        low = body.lower()
+        return any(k in low for k in self._AVATAR_KEYWORDS)
+
+    def _is_status_message(self, body: str) -> bool:
+        low = body.lower()
+        return any(k in low for k in self._STATUS_KEYWORDS)
+
+    def _is_status_indicator(self, body: str) -> str | None:
+        """Return the message key for a status indicator keyword found in body, else None."""
+        low = body.lower()
+        for keyword, msg_key in self._STATUS_INDICATOR_KEYWORDS.items():
+            if keyword in low:
+                return msg_key
+        return None
+
+    def _announce_gift(self, nick: str, body: str) -> None:
+        """Announce a virtual gift detected in room chat."""
+        try:
+            text = self.t("gift_announce", nick=nick)
+        except Exception:
+            text = f"{nick} sent a virtual gift! 🎁"
+        self.say(text)
+        log.info("gift announced from %s: %r", nick, body[:120])
+
+    def _announce_avatar_change(self, nick: str) -> None:
+        """Announce an avatar change detected in room chat."""
+        try:
+            text = self.t("avatar_change_announce", nick=nick)
+        except Exception:
+            text = f"{nick} changed their avatar! 🖼️"
+        self.say(text)
+        log.info("avatar change announced from %s", nick)
+
+    def _announce_status_indicator(self, nick: str, body: str) -> None:
+        """Announce a user status indicator detected in room chat."""
+        msg_key = self._is_status_indicator(body)
+        if not msg_key:
+            return
+        try:
+            text = self.t(msg_key, nick=nick)
+        except Exception:
+            text = f"{nick} status update: {msg_key}"
+        self.say(text)
+        log.info("status indicator announced from %s: %s", nick, msg_key)
+
+    def _alert_status(self, nick: str, body: str) -> None:
+        """Alert when Camfrog shows upgrade/payment-required status text."""
+        log.warning("Camfrog status from %s: %r", nick, body[:160])
+        low = body.lower()
+        text = (
+            self.t("status_payment_required")
+            if "payment" in low
+            else self.t("status_upgrade_required")
+        )
+        try:
+            self.say(text)
+        except Exception:
+            log.exception("failed to announce status alert")
+
+    def _track_name_color(self, nick: str, body: str) -> None:
+        """Extract nickname color from incoming chat HTML for GUI preview.
+
+        Camfrog renders usernames with inline style='color: #RRGGBB'. AutoDJ cannot
+        set name color (client-controlled, outgoing messages are plain text), but it
+        can read/display the colors from incoming messages for its local GUI preview,
+        mirroring Camfrog's default palette. See docs/camfrog-re/15-name-color.md.
+        """
+        m = self._NICK_COLOR_RE.search(body)
+        if not m:
+            return
+        color = f"#{m.group(1)}"
+        if not hasattr(self, "_name_colors"):
+            self._name_colors: dict[str, str] = {}
+        self._name_colors[nick.lower()] = color
+        log.debug("tracked name color for %s: %s", nick, color)
 
     def _handle_welcome_message(self, msg):
         """Send welcome message to a user on their first message in a session.

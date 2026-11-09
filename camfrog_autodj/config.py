@@ -204,6 +204,14 @@ class Config:
         "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"  # greeting message, {admin} will be replaced
     )
     admin_greeting_cooldown: float = 3600.0  # seconds between greetings for same admin (1 hour)
+    # Gift / virtual-gift announcement (detect gift messages in room chat; see docs/camfrog-re/08-feature-gift.md)
+    gift_announce_enabled: bool = True  # announce virtual-gift messages sent to the room
+    # Avatar change announcement (detect avatar change in room chat; see docs/camfrog-re/16-user-icon-avatar.md)
+    avatar_change_enabled: bool = True  # announce avatar change messages sent to the room
+    # Status indicator announcement (detect status changes: online/away/busy/invisible/admin/moderator/owner; see docs/camfrog-re/14-png-assets.md)
+    status_indicator_enabled: bool = True  # announce user status changes in room chat
+    # Status alerts (detect upgrade / payment-required status text from Camfrog; see docs/camfrog-re/07-upgrade-logic.md, 09-payment.md)
+    status_alert_enabled: bool = True  # alert when Camfrog shows upgrade/payment-required status
     # Welcome message - welcome message config
     welcome_message_enabled: bool = False  # enable welcome message
     welcome_message_message: str = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"  # welcome message

@@ -3,7 +3,7 @@
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
 ## What's new in 0.2.8
-Highlights: **Font/Style customization** for GUI preview (Camfrog desktop does not support rich text in sent messages), **Admin greeting** on first message, **Delete history** command, **IM-only play commands** (room users must DM the bot), **Autoplay idle timeout** (30 min no requests → autoplay), **New Thai aliases** `!ขอเพลง`, `!เล่นเพลง`, auto-reply every 60s, REA reverse-engineering evidence for Camfrog font logic, **Admin mute/unmute mic**, **Block/unblock bot**, **Kick/ban/unban user**, **Punish user/bot**, **Welcome message**, **Delete message**. Full list: `CHANGELOG.md`.
+Highlights: **Font/Style customization** for GUI preview (Camfrog desktop does not support rich text in sent messages), **Admin greeting** on first message, **Delete history** command, **IM-only play commands** (room users must DM the bot), **Autoplay idle timeout** (30 min no requests → autoplay), **New Thai aliases** `!ขอเพลง`, `!เล่นเพลง`, auto-reply every 60s, REA reverse-engineering evidence for Camfrog font logic, **Admin mute/unmute mic**, **Block/unblock bot**, **Kick/ban/unban user**, **Punish user/bot**, **Welcome message**, **Delete message**, **Camfrog RE integrations**: gift detection, avatar change detection, status indicators, upgrade/payment alerts, name color tracking. Full list: `CHANGELOG.md`.
 
 ### New in 0.2.8
 1. **Font/Style Customization (GUI Preview Only)**: New `message_style` config section with font family, size, color, bold, italic, underline. Live preview in Settings tab. **Note**: Camfrog desktop client does NOT support rich text in outgoing messages — sent messages are always plain text via UIA. This feature is for the GUI preview panel only.
@@ -20,6 +20,11 @@ Highlights: **Font/Style customization** for GUI preview (Camfrog desktop does n
 12. **Punish User/Bot**: Admin commands `!punish` / `!punishbot` (config-gated: `admin_punish_user`, `admin_punish_bot`).
 13. **Delete Message**: Admin command `!delete <msg id>` to delete a message by ID (config-gated: `admin_delete_message_enabled`).
 14. **Welcome Message**: Welcome message feature with configurable text (config-gated: `welcome_message_enabled`).
+15. **Camfrog Gift Detection**: Detect virtual-gift messages in room chat (`GIFT_RECEIVED`, `room_gift_message`, `camfrog://gift`, etc.) and announce them. Config-gated: `gift_announce_enabled`. (see `docs/camfrog-re/08-feature-gift.md`)
+16. **Camfrog Avatar Change Detection**: Detect avatar change messages in room chat (`updateAvatarMessage`) and announce them. Config-gated: `avatar_change_enabled`. (see `docs/camfrog-re/16-user-icon-avatar.md`)
+17. **Camfrog Status Indicators**: Detect user status changes in room chat (online/away/busy/invisible/admin/moderator/owner) and announce them. Config-gated: `status_indicator_enabled`. (see `docs/camfrog-re/14-png-assets.md`)
+18. **Camfrog Upgrade/Payment Alerts**: Detect upgrade/payment-required status text and alert admin. Config-gated: `status_alert_enabled`. (see `docs/camfrog-re/07-upgrade-logic.md`, `09-payment.md`)
+19. **Camfrog Name Color Tracking**: Read nickname color (`color: #RRGGBB`) from incoming chat HTML for GUI preview (read-only; AutoDJ cannot set name color). (see `docs/camfrog-re/15-name-color.md`)
 
 ## Makefile (optional, for Linux/macOS/WSL/Git-Bash)
 `make help` lists every target: `install`, `run-gui`/`run-console`/`run-headless`, `check`/`discover`/`windows`/`say`, `test`/`test-one`/`coverage`, `lint`/`fmt`/`typecheck`, `build`/`build-clean`/`sign` (wrap `build.ps1` -- still Windows PowerShell only; a clear message elsewhere), `release` (test -> build+sign -> package, one command), `package`, `clean`/`clean-all`/`distclean`.

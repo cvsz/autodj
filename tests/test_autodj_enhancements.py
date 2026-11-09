@@ -391,3 +391,192 @@ def test_load_auto_reply_messages_missing_file(tmp_path):
     """_load_auto_reply_messages returns [] for missing file."""
     result = Engine._load_auto_reply_messages(str(tmp_path / "nope.json"))
     assert result == []
+
+
+# ============================================================================
+# Camfrog reverse-engineering integration: gift announcement + status alert
+# (see docs/camfrog-re/07-upgrade-logic.md, 08-feature-gift.md, 09-payment.md)
+# ============================================================================
+
+
+def _re_engine():
+    e = make()
+    return e
+
+
+def test_chat_body_extracts_body():
+    e = _re_engine()
+    assert e._chat_body("10:30 bob: camfrog://gift?id=42") == "camfrog://gift?id=42"
+    assert e._chat_body("10:30 amy: hello there") == "hello there"
+
+
+def test_chat_body_no_time_prefix():
+    e = _re_engine()
+    assert e._chat_body("bob: camfrog://vgift?id=1&size=20") == "camfrog://vgift?id=1&size=20"
+
+
+def test_is_gift_message_detects_gift_keywords():
+    e = _re_engine()
+    assert e._is_gift_message("camfrog://gift?id=42")
+    assert e._is_gift_message("camfrog://vgift?id=1&size=20")
+    assert e._is_gift_message("you_give_virtual_gift_report2")
+    assert e._is_gift_message("send_vgift")
+    assert e._is_gift_message("GIFT_RECEIVED")
+    assert e._is_gift_message("room_gift_message_to_room")
+    assert e._is_gift_message("top_gifter")
+
+
+def test_is_gift_message_rejects_plain_text():
+    e = _re_engine()
+    assert not e._is_gift_message("hello there")
+    assert not e._is_gift_message("!play queen")
+    assert not e._is_gift_message("now playing: x")
+
+
+def test_is_status_message_detects_upgrade_payment():
+    e = _re_engine()
+    assert e._is_status_message("upgrade required")
+    assert e._is_status_message("Payment required")
+    assert e._is_status_message("payment gateway capabilities")
+
+
+def test_is_status_message_rejects_plain_text():
+    e = _re_engine()
+    assert not e._is_status_message("hello there")
+    assert not e._is_status_message(
+        "upgrade_now_to_access2"
+    )  # different token, not "upgrade required"
+
+
+def test_handle_re_events_announces_gift():
+    e = _re_engine()
+    e._handle_re_events(ChatMessage("bob", "10:30 bob: camfrog://gift?id=42"))
+    assert out(e) == ["bob sent a virtual gift! 🎁"]
+
+
+def test_handle_re_events_alerts_upgrade_required():
+    e = _re_engine()
+    e._handle_re_events(ChatMessage("bob", "10:30 bob: upgrade required"))
+    msgs = out(e)
+    assert any("upgrade required" in m.lower() for m in msgs), msgs
+
+
+def test_handle_re_events_alerts_payment_required():
+    e = _re_engine()
+    e._handle_re_events(ChatMessage("bob", "10:30 bob: Payment required"))
+    msgs = out(e)
+    assert any("payment required" in m.lower() for m in msgs), msgs
+
+
+def test_handle_re_events_gift_disabled_by_config():
+    e = _re_engine()
+    e.cfg.gift_announce_enabled = False
+    e._handle_re_events(ChatMessage("bob", "10:30 bob: camfrog://gift?id=42"))
+    assert out(e) == []
+
+
+def test_handle_re_events_status_disabled_by_config():
+    e = _re_engine()
+    e.cfg.status_alert_enabled = False
+    e._handle_re_events(ChatMessage("bob", "10:30 bob: upgrade required"))
+    assert out(e) == []
+
+
+def test_re_config_defaults():
+    c = Config()
+    assert c.gift_announce_enabled is True
+    assert c.status_alert_enabled is True
+    assert c.avatar_change_enabled is True
+    assert c.status_indicator_enabled is True
+
+
+# ============================================================================
+# Camfrog reverse-engineering integration: avatar change + status indicator
+# (see docs/camfrog-re/14-png-assets.md, 16-user-icon-avatar.md)
+# ============================================================================
+
+
+def test_is_avatar_change_detects_avatar_keywords():
+    e = _re_engine()
+    assert e._is_avatar_change("updateAvatarMessage")
+    assert e._is_avatar_change("avatar_changed")
+    assert e._is_avatar_change("avatarchange")
+    assert e._is_avatar_change("changAvatar")
+
+
+def test_is_avatar_change_rejects_plain_text():
+    e = _re_engine()
+    assert not e._is_avatar_change("hello there")
+    assert not e._is_avatar_change("!play queen")
+
+
+def test_handle_re_events_announces_avatar_change():
+    e = _re_engine()
+    e._handle_re_events(ChatMessage("bob", "10:30 bob: updateAvatarMessage"))
+    assert out(e) == ["bob changed their avatar! 🖼️"]
+
+
+def test_handle_re_events_avatar_disabled_by_config():
+    e = _re_engine()
+    e.cfg.avatar_change_enabled = False
+    e._handle_re_events(ChatMessage("bob", "10:30 bob: updateAvatarMessage"))
+    assert out(e) == []
+
+
+def test_is_status_indicator_detects_status_keywords():
+    e = _re_engine()
+    assert e._is_status_indicator("bob is now online") == "status_online"
+    assert e._is_status_indicator("bob is now away") == "status_away"
+    assert e._is_status_indicator("bob is now busy") == "status_busy"
+    assert e._is_status_indicator("bob is now invisible") == "status_invisible"
+    assert e._is_status_indicator("bob is an admin") == "status_admin"
+    assert e._is_status_indicator("bob is a moderator") == "status_moderator"
+    assert e._is_status_indicator("bob is the room owner") == "status_owner"
+
+
+def test_is_status_indicator_rejects_plain_text():
+    e = _re_engine()
+    assert e._is_status_indicator("hello there") is None
+    assert e._is_status_indicator("!play queen") is None
+
+
+def test_handle_re_events_announces_status_indicator():
+    e = _re_engine()
+    e._handle_re_events(ChatMessage("bob", "10:30 bob: is now online"))
+    assert out(e) == ["bob is now online."]
+
+
+def test_handle_re_events_status_indicator_disabled_by_config():
+    e = _re_engine()
+    e.cfg.status_indicator_enabled = False
+    e._handle_re_events(ChatMessage("bob", "10:30 bob: is now online"))
+    assert out(e) == []
+
+
+# ============================================================================
+# Camfrog reverse-engineering integration: name color tracking
+# (see docs/camfrog-re/15-name-color.md)
+# ============================================================================
+
+
+def test_track_name_color_extracts_hex_from_style():
+    e = _re_engine()
+    e._track_name_color("bob", "10:30 bob: style='color: #FF5733'")
+    assert e._name_colors.get("bob") == "#FF5733"
+
+
+def test_track_name_color_double_quotes():
+    e = _re_engine()
+    e._track_name_color("amy", '10:30 amy: style="color: #00FF00"')
+    assert e._name_colors.get("amy") == "#00FF00"
+
+
+def test_track_name_color_no_color_leaves_default():
+    e = _re_engine()
+    e._track_name_color("bob", "10:30 bob: hello there")
+    assert "bob" not in e._name_colors
+
+
+def test_name_colors_initialized_empty():
+    e = _re_engine()
+    assert e._name_colors == {}

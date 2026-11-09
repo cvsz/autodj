@@ -125,3 +125,13 @@ message_style = { font_family = "Consolas", font_size = 14, font_color = "#FF000
 # --- welcome message ---
 # welcome_message_enabled = false          # enable welcome message
 # welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"
+
+# --- Camfrog RE integrations (gift / avatar / status / status alert) ---
+# Gift / virtual-gift announcement (detect gift messages in room chat; see docs/camfrog-re/08-feature-gift.md)
+# gift_announce_enabled = true             # announce virtual-gift messages sent to the room
+# Avatar change announcement (detect avatar changes in room chat; see docs/camfrog-re/16-user-icon-avatar.md)
+# avatar_change_enabled = true             # announce avatar change messages sent to the room
+# Status indicator announcement (detect online/away/busy/invisible/admin/moderator/owner; see docs/camfrog-re/14-png-assets.md)
+# status_indicator_enabled = true          # announce user status changes in room chat
+# Status alerts (detect upgrade/payment-required status text; see docs/camfrog-re/07-upgrade-logic.md, 09-payment.md)
+# status_alert_enabled = true              # alert when Camfrog shows upgrade/payment-required status
