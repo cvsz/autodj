@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import logging
 
-from .base import ChatAdapter
+from .base import ChatAdapter, ChatMessage
 
 log = logging.getLogger(__name__)
+
+__all__ = ["ChatAdapter", "ChatMessage", "Composite", "NullAdapter", "build_adapter"]
 
 
 class Composite(ChatAdapter):

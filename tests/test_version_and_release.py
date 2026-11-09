@@ -6,7 +6,7 @@ import camfrog_autodj
 
 def test_version_consistency():
     version = camfrog_autodj.__version__
-    assert version == "0.2.8"
+    assert version == "0.3.0"
 
     # pyproject.toml
     root = Path(__file__).resolve().parent.parent
@@ -25,10 +25,10 @@ def test_version_consistency():
 
     # version_info.txt
     version_info = (root / "version_info.txt").read_text(encoding="utf-8")
-    assert "filevers=(0, 2, 8, 0)" in version_info
-    assert "prodvers=(0, 2, 8, 0)" in version_info
-    assert "FileVersion', '0.2.8.0'" in version_info
-    assert "ProductVersion', '0.2.8.0'" in version_info
+    assert "filevers=(0, 3, 0, 0)" in version_info
+    assert "prodvers=(0, 3, 0, 0)" in version_info
+    assert "FileVersion', '0.3.0.0'" in version_info
+    assert "ProductVersion', '0.3.0.0'" in version_info
 
     # install scripts
     install_bat = (root / "install.bat").read_text(encoding="utf-8")

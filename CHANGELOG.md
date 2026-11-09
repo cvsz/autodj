@@ -6,6 +6,37 @@
 - **Test: library scan symlink / reparse-point safety regression tests** — added `tests/test_library_scan_safety.py` (11 tests) pinning that `scan_folder`/`LocalIndex` never follow symlinks, skip broken symlinks and cycles, skip unreadable directories, enforce `limit`/`max_dirs`, and ignore unsupported extensions. (`docs/audit/library-scan-review.md`, `docs/audit/bugs-and-findings.md`)
 - **Docs: full PR inventory + audit reports** — all 142 pull requests enumerated, dispositioned, and recorded in `docs/audit/all-pr-*.md`; architecture, security, playback, GUI, playlist, library-scan, Windows build, installer, dependency, penetration-test, performance, GPG/merge-evidence, production-readiness, and residual-risk reports added under `docs/audit/`. (`docs/audit/`)
 
+## 0.3.0
+2026-11-09
+
+### Enterprise Architecture
+- **Exception Hierarchy** (`camfrog_autodj/exceptions.py`): 20+ structured exception types with machine-readable codes (`config.error`, `chat.send_failed`, `player.hung`, `security.unauthorized`, etc.) and contextual metadata. All inherit from `AutoDJError` for unified catching. Backward-compatible `UserError = AutoDJError` alias preserved.
+- **Circuit Breakers** (`camfrog_autodj/engine.py`): 
+  - Playback: Opens after 5 consecutive failures, pauses 60s, half-opens for recovery
+  - Chat Send: Suspends after 10 consecutive delivery failures, auto-recovers on success
+- **Per-Nick Chat Rate Limiting** (`camfrog_autodj/engine.py`): Sliding window (20 messages/60s per nick), admins exempt, thread-safe with locks.
+- **Health Check Endpoint** (`engine.health_check()`): Returns structured dict with mpv availability, circuit breaker state, send suspension, queue depth, IM viewer status — safe for Prometheus/Grafana/Loki ingestion. Never raises.
+- **Code Quality**: C901 complexity refactored (`_chat_loop` split into `_handle_im`, `_handle_room_message`, `_should_ignore_message`), all methods < 10 branches.
+
+### Added
+- **IM Viewer GUI** (`camfrog_autodj/gui.py`): New IM tab in desktop window shows private/instant messages with 2 Hz polling. Settings dialog includes IM viewer enable/disable, auto-reply message, cooldown, and room presence requirement.
+- **IM Auto-Reply** (`camfrog_autodj/engine.py`): Configurable auto-reply to private messages with per-user cooldown (default 30s, min 10s). Uses `[IM]` prefix. Respects `im_require_room_presence` (default true).
+- **Camfrog Gift Detection** (`camfrog_autodj/engine.py`): Detect virtual-gift messages in room chat (`GIFT_RECEIVED`, `room_gift_message`, `camfrog://gift`, `vgift_`, etc.) and announce them. Config-gated: `gift_announce_enabled`. (see `docs/camfrog-re/08-feature-gift.md`)
+- **Camfrog Avatar Change Detection** (`camfrog_autodj/engine.py`): Detect avatar change messages (`updateAvatarMessage`, `avatar_changed`) and announce. Config-gated: `avatar_change_enabled`. (see `docs/camfrog-re/16-user-icon-avatar.md`)
+- **Camfrog Status Indicators** (`camfrog_autodj/engine.py`): Detect user status changes (online/away/busy/invisible/admin/moderator/owner) and announce. Config-gated: `status_indicator_enabled`. (see `docs/camfrog-re/14-png-assets.md`)
+- **Camfrog Upgrade/Payment Alerts** (`camfrog_autodj/engine.py`): Detect upgrade/payment-required status text and alert admin. Config-gated: `status_alert_enabled`. (see `docs/camfrog-re/07-upgrade-logic.md`, `09-payment.md`)
+- **Camfrog Name Color Tracking** (`camfrog_autodj/engine.py`): Read nickname color (`color: #RRGGBB`) from incoming chat HTML for GUI preview (read-only; AutoDJ cannot set name color). (see `docs/camfrog-re/15-name-color.md`)
+
+### Changed
+- **Version bump**: 0.2.8 → 0.3.0 across all artifacts (`pyproject.toml`, `version_info.txt`, `installer.nsi`, `install.bat`, `install.ps1`, `scripts/build_installer*.sh/ps1`, `camfrog_autodj/__init__.py`)
+- **Config**: New IM viewer/auto-reply fields, all RE integration toggles (default enabled)
+- **Tests**: Added `tests/test_autodj_enhancements.py` (21 new tests covering circuit breakers, rate limiting, health checks, exceptions, IM viewer, RE integrations)
+
+### Fixed
+- **C901 complexity**: `_chat_loop` refactored from 11 branches to 3 (split into 3 helper methods)
+- **Import sorting**: `library.py` imports organized per ruff I001
+- **Type hints**: All exception classes properly typed for mypy compatibility
+
 ## 0.2.8
 2026-11-09
 

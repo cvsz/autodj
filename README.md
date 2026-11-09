@@ -2,8 +2,25 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
-## What's new in 0.2.8
-Highlights: **Font/Style customization** for GUI preview (Camfrog desktop does not support rich text in sent messages), **Admin greeting** on first message, **Delete history** command, **IM-only play commands** (room users must DM the bot), **Autoplay idle timeout** (30 min no requests → autoplay), **New Thai aliases** `!ขอเพลง`, `!เล่นเพลง`, auto-reply every 60s, REA reverse-engineering evidence for Camfrog font logic, **Admin mute/unmute mic**, **Block/unblock bot**, **Kick/ban/unban user**, **Punish user/bot**, **Welcome message**, **Delete message**, **Camfrog RE integrations**: gift detection, avatar change detection, status indicators, upgrade/payment alerts, name color tracking. Full list: `CHANGELOG.md`.
+## What's new in 0.3.0 (Enterprise Production Release)
+Highlights: **Enterprise-grade exception hierarchy** with structured error codes, **Circuit breaker** for playback resilience, **Per-nick chat rate limiting**, **Health check endpoint** for monitoring, **C901 complexity fixes** in chat/player loops, **IM viewer GUI** with settings, **IM auto-reply** with cooldown, **Camfrog RE integrations**: gift detection, avatar change detection, status indicators, upgrade/payment alerts, name color tracking. Full list: `CHANGELOG.md`.
+
+### Enterprise Architecture Improvements
+1. **Exception Hierarchy** (`camfrog_autodj/exceptions.py`): 20+ structured exception types with machine-readable codes (`config.error`, `chat.send_failed`, `player.hung`, `security.unauthorized`, etc.) and contextual metadata. All exceptions inherit from `AutoDJError` for unified catching.
+2. **Circuit Breaker** (engine.py): Tracks consecutive playback failures; opens after 5 failures, pauses playback for 60s, then half-opens for recovery. Prevents cascading failures on broken tracks/yt-dlp issues.
+3. **Chat Send Circuit Breaker**: Suspends chat sends after 10 consecutive delivery failures to prevent API bans.
+4. **Per-Nick Rate Limiting**: Sliding window (20 messages/60s per nick) prevents chat flooding. Admins exempt.
+5. **Health Check Endpoint** (`engine.health_check()`): Returns structured dict with mpv availability, circuit breaker state, send suspension, queue depth, IM viewer status — safe for monitoring dashboards.
+6. **Code Quality**: C901 complexity refactored (`_chat_loop` split into `_handle_im`, `_handle_room_message`, `_should_ignore_message`), all 375 tests pass, ruff/mypy/format/shellcheck clean.
+
+### New in 0.3.0
+1. **IM Viewer GUI**: New IM tab in the desktop window shows private/instant messages with polling. Settings dialog includes IM viewer enable/disable, auto-reply message, cooldown, and room presence requirement.
+2. **IM Auto-Reply**: Configurable auto-reply to private messages with per-user cooldown (default 30s). Uses `[IM]` prefix in sent replies.
+3. **Camfrog Gift Detection**: Detect virtual-gift messages in room chat (`GIFT_RECEIVED`, `room_gift_message`, `camfrog://gift`, etc.) and announce them. Config-gated: `gift_announce_enabled`. (see `docs/camfrog-re/08-feature-gift.md`)
+4. **Camfrog Avatar Change Detection**: Detect avatar change messages in room chat (`updateAvatarMessage`) and announce them. Config-gated: `avatar_change_enabled`. (see `docs/camfrog-re/16-user-icon-avatar.md`)
+5. **Camfrog Status Indicators**: Detect user status changes in room chat (online/away/busy/invisible/admin/moderator/owner) and announce them. Config-gated: `status_indicator_enabled`. (see `docs/camfrog-re/14-png-assets.md`)
+6. **Camfrog Upgrade/Payment Alerts**: Detect upgrade/payment-required status text and alert admin. Config-gated: `status_alert_enabled`. (see `docs/camfrog-re/07-upgrade-logic.md`, `09-payment.md`)
+7. **Camfrog Name Color Tracking**: Read nickname color (`color: #RRGGBB`) from incoming chat HTML for GUI preview (read-only; AutoDJ cannot set name color). (see `docs/camfrog-re/15-name-color.md`)
 
 ### New in 0.2.8
 1. **Font/Style Customization (GUI Preview Only)**: New `message_style` config section with font family, size, color, bold, italic, underline. Live preview in Settings tab. **Note**: Camfrog desktop client does NOT support rich text in outgoing messages — sent messages are always plain text via UIA. This feature is for the GUI preview panel only.
