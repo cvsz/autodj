@@ -136,3 +136,98 @@ When modifying behavior, update:
 - `library.py`: `scan_folder` never follows symlinks
 - `commands.py`: IM play-only for non-admins; sliding window rate limit
 - `config.py`: `_validate` order — type → choices → ranges → regex → semantic
+
+---
+
+## GitHub CLI Workflow (cvsz ↔ policedbc)
+
+### Credentials & GPG
+
+- **Git credentials:** `/home/cvsz/.git-credentials` (never expose contents)
+- **GPG signing:** `commit.gpgsign=true`, `gpg.program=/home/cvsz/.local/bin/gpg-loopback.sh`
+- **GPG key:** `cvsz <seaza@msn.com>` (key `515DB3BD9BF14AA6646AC6770C54E869DE49D872`)
+
+### Phase A — Developer (cvsz): Implement & Open PR
+
+```bash
+# Authenticate as cvsz
+gh auth switch -u cvsz
+gh auth status  # verify: active account cvsz
+
+# Git identity
+git config user.name "cvsz"
+git config user.email "seaza@msn.com"
+
+# Create feature branch
+git checkout -b feat/autodj-<feature-name>
+
+# Develop: fix bugs, add features, update docs
+# Run validation gates
+python -m pytest -q -p no:faulthandler -p no:cacheprovider
+ruff check camfrog_autodj tests tools
+ruff format --check camfrog_autodj tests tools
+mypy camfrog_autodj
+
+# GPG-signed commit
+git add -A
+git commit -S -m "feat: <description>
+
+<details>"
+
+# Push branch
+git push origin feat/autodj-<feature-name>
+
+# Open PR as cvsz
+gh pr create --title "feat: <description>" --body "<body>" --base main
+# PR must state: scope, tests, security impact, compat/migration, docs, deployment, rollback
+```
+
+### Phase B — Independent Reviewer (policedbc): Audit & Approve
+
+```bash
+# Switch to reviewer identity
+gh auth switch -u policedbc
+gh auth status  # verify: active account policedbc
+
+# Review exact HEAD SHA (no new commits after approval)
+gh pr view <PR_NUMBER> --json headRefOid --jq .headRefOid
+# Verify: pytest, ruff, mypy, format all pass
+# Verify: git verify-commit <HEAD_SHA> → Good signature
+
+# Approve (not self-approval — cvsz authored)
+gh pr review <PR_NUMBER> --approve --body "Independent review: <summary>"
+# Check: reviewDecision=APPROVED, author=policedbc
+```
+
+### Phase C — Developer (cvsz): Controlled Merge
+
+```bash
+# Switch back to cvsz
+gh auth switch -u cvsz
+gh auth status
+
+# Pre-merge verification
+# - policedbc APPROVAL for exact HEAD SHA ✓
+# - No new commits after approval ✓
+# - CI/local validation green ✓
+# - Mergeable, open, not draft ✓
+# - No unresolved Critical/High findings ✓
+
+# Merge with exact head commit enforcement
+gh pr merge <PR_NUMBER> --merge --match-head-commit <EXPECTED_HEAD_SHA>
+# Exit 0; PR state MERGED, merge commit SHA recorded
+
+# Post-merge verification
+git fetch origin
+git checkout main
+git pull origin main  # fast-forward
+# Verify: code present on main, pytest 336 pass, ruff clean
+```
+
+### Rules
+
+- **Never** force-push, bypass branch protection, self-approve, merge with pending checks
+- **Never** commit directly to main — all changes via PR
+- **Always** verify exact HEAD SHA before merge (`--match-head-commit`)
+- **GPG signing required** for merge commit and feature commits
+- **Credential reference:** `/home/cvsz/.git-credentials` — never print or expose
