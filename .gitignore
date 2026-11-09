@@ -14,7 +14,7 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
-
+camfrog.exe
 # Build artifacts (Windows exe)
 build/
 dist/
@@ -97,6 +97,7 @@ scripts/build-all-hybrid.ps1
 
 # Forensic / RE reference artifacts (do not distribute)
 docs/rea/
+docs/camfrog-re/
 *.pcap
 *.dmp
 *_pw_infected.zip

@@ -7,6 +7,55 @@ from dataclasses import dataclass, field, fields
 from pathlib import Path
 
 
+@dataclass
+class MessageStyle:
+    """Font/style configuration for GUI preview only.
+
+    Camfrog desktop client does NOT support rich text in outgoing messages.
+    This configuration is used ONLY for the FontEditor preview panel in the GUI.
+    Sent messages are always plain text via UIA.
+    """
+
+    font_family: str = "Consolas"
+    font_size: int = 14
+    font_color: str = "#FF0000"
+    bold: bool = False
+    italic: bool = False
+    underline: bool = False
+
+    def validate(self) -> None:
+        """Validate style values. Raises ValueError on invalid config."""
+        if not self.font_family or not self.font_family.strip():
+            raise ValueError("font_family must not be empty")
+        if not (8 <= self.font_size <= 72):
+            raise ValueError("font_size must be between 8 and 72")
+        if not re.match(r"^#[0-9A-Fa-f]{6}$", self.font_color):
+            raise ValueError("font_color must be a valid hex color (e.g., #FFFFFF)")
+
+    def to_toml_dict(self) -> dict:
+        """Convert to dict for TOML serialization."""
+        return {
+            "font_family": self.font_family,
+            "font_size": self.font_size,
+            "font_color": self.font_color,
+            "bold": self.bold,
+            "italic": self.italic,
+            "underline": self.underline,
+        }
+
+    @classmethod
+    def from_toml_dict(cls, data: dict) -> "MessageStyle":
+        """Create from TOML dict with defaults."""
+        return cls(
+            font_family=data.get("font_family", "Consolas"),
+            font_size=int(data.get("font_size", 12)),
+            font_color=data.get("font_color", "#FFFFFF"),
+            bold=bool(data.get("bold", False)),
+            italic=bool(data.get("italic", False)),
+            underline=bool(data.get("underline", False)),
+        )
+
+
 class ConfigError(Exception):
     """config.toml is unreadable or has a bad value. The message is written for the person editing the file."""
 
@@ -126,6 +175,42 @@ class Config:
     im_auto_reply_cooldown: float = (
         60.0  # seconds between auto-replies to the same user (avoid spam)
     )
+    # IM Security: require user to be in the room (seen in chat) to use IM commands
+    im_require_room_presence: bool = True  # only users currently in room can DM the bot
+    # Autoplay: switch to autoplay pool after idle timeout with no user requests
+    autoplay_idle_timeout: float = 30.0  # seconds before autoplay starts when no user requests
+    # Mic mute state
+    mute_enabled: bool = False  # mic muted state
+    # Admin mute mic - admin can mute mic
+    admin_mute_mic: bool = False  # admin can mute mic
+    admin_unmute_mic: bool = False  # admin can unmute mic
+    # Admin block user - admin can block user
+    admin_block_user: bool = False  # admin can block user
+    admin_unblock_user: bool = False  # admin can unblock user
+    # Admin block bot - admin can block bot
+    admin_block_bot: bool = False  # admin can block bot
+    admin_unblock_bot: bool = False  # admin can unblock bot
+    # Admin kick user - admin can kick user
+    admin_kick_user: bool = False  # admin can kick user
+    # Admin ban user - admin can ban user
+    admin_ban_user: bool = False  # admin can ban user
+    admin_unban_user: bool = False  # admin can unban user
+    # Admin punish user - admin can punish user
+    admin_punish_user: bool = False  # admin can punish user
+    admin_punish_bot: bool = False  # admin can punish bot
+    # Admin greeting: greet admin when they send first message in session
+    admin_greeting_enabled: bool = False  # enable admin greeting
+    admin_greeting_message: str = (
+        "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"  # greeting message, {admin} will be replaced
+    )
+    admin_greeting_cooldown: float = 3600.0  # seconds between greetings for same admin (1 hour)
+    # Welcome message - welcome message config
+    welcome_message_enabled: bool = False  # enable welcome message
+    welcome_message_message: str = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"  # welcome message
+    # Admin delete message - admin delete message feature
+    admin_delete_message_enabled: bool = False  # enable admin delete message feature
+    # Font/style customization for GUI preview only (Camfrog does not support rich text in sent messages)
+    message_style: MessageStyle = field(default_factory=MessageStyle)
 
     @classmethod
     def load(cls, path: str | None) -> Config:
@@ -152,6 +237,9 @@ class Config:
                 near = difflib.get_close_matches(k, names, n=1)
                 lines.append(f"  {k}" + (f"   (did you mean '{near[0]}'?)" if near else ""))
             raise ConfigError(f"{p or 'config'}: unknown setting(s):\n" + "\n".join(lines))
+        # Handle nested message_style dataclass
+        if "message_style" in data and isinstance(data["message_style"], dict):
+            data["message_style"] = MessageStyle.from_toml_dict(data["message_style"])
         cfg = cls(**data)
         _validate(cfg, data, str(p) if p else "config")
         return cfg
@@ -193,6 +281,8 @@ _RANGES = {
     "rate_limit_window": (10.0, 86400.0),
     "auto_reply_interval": (60.0, 86400.0),
     "im_auto_reply_cooldown": (10.0, 3600.0),
+    "autoplay_idle_timeout": (30.0, 86400.0),
+    "admin_greeting_cooldown": (60.0, 86400.0),
 }
 
 
@@ -227,12 +317,22 @@ def _type_name(v) -> str:
     }.get(type(v), type(v).__name__)
 
 
+def _validate_message_style(cfg: Config, data: dict, where: str) -> None:
+    """Validate message_style if present in data."""
+    if "message_style" in data:
+        try:
+            cfg.message_style.validate()
+        except ValueError as ex:
+            raise ConfigError(f"{where}: 'message_style' {ex}") from None
+
+
 def _validate(cfg: Config, data: dict, where: str) -> None:
     defaults = Config()
     for f in fields(Config):
         if f.name not in data:
             continue
         _validate_field(cfg, data, f, defaults, where)
+    _validate_message_style(cfg, data, where)
     for k, allowed in _CHOICES.items():
         if getattr(cfg, k) not in allowed:
             raise ConfigError(
@@ -254,6 +354,9 @@ def _validate(cfg: Config, data: dict, where: str) -> None:
 def _validate_field(cfg: Config, data: dict, f, defaults: Config, where: str) -> None:
     v = data[f.name]
     want = type(getattr(defaults, f.name))
+    # Skip type validation for message_style (handled specially in load())
+    if f.name == "message_style":
+        return
     if not _is_type(v, want):
         hint = ' (a list looks like ["nick1", "nick2"])' if want is list else ""
         raise ConfigError(

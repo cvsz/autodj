@@ -2,18 +2,24 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
-## What's new in 0.2.6
-A full audit (see `AUDIT.md`) and a new look. Highlights: the bot no longer reads its own lines as commands; a broken track can no longer flood the room; `config.toml` mistakes are explained instead of crashing; YouTube lookups work with `yt-dlp.exe` or the bundled module; `AutoDJ.exe --check` diagnoses the setup; `!history`, `!block`, duplicate-request guard; and a redesigned GUI. Full list: `CHANGELOG.md`.
+## What's new in 0.2.8
+Highlights: **Font/Style customization** for GUI preview (Camfrog desktop does not support rich text in sent messages), **Admin greeting** on first message, **Delete history** command, **IM-only play commands** (room users must DM the bot), **Autoplay idle timeout** (30 min no requests → autoplay), **New Thai aliases** `!ขอเพลง`, `!เล่นเพลง`, auto-reply every 60s, REA reverse-engineering evidence for Camfrog font logic, **Admin mute/unmute mic**, **Block/unblock bot**, **Kick/ban/unban user**, **Punish user/bot**, **Welcome message**, **Delete message**. Full list: `CHANGELOG.md`.
 
-### New in 0.2.6
-1. **YouTube Playlist Support**: Auto-detects YouTube playlist URLs (`youtube.com/playlist?list=...`, `watch?v=...&list=...`) and plays all videos in sequence
-2. **Per-User Installation**: Installs to `%APPDATA%\Camfrog AutoDJ` (no admin rights required)
-3. **Settings Tab**: New ⚙️ Settings button in the GUI header to edit all settings live and save to `config.toml`
-4. **Auto-Config Relocation**: If `config.toml` is in a protected location (e.g. Program Files), AutoDJ automatically copies it to `%APPDATA%\Camfrog AutoDJ\config.toml`
-5. **Log Directory Auto-Creation**: Log directory is created automatically on first run
-6. **Relative Config Paths**: `config.example.toml` uses `%APPDATA%\Camfrog AutoDJ\mpv\...` paths for portability
-7. **Installer**: Per-user installation to `%APPDATA%\Camfrog AutoDJ` (no admin required)
-8. **NSIS Installer**: Per-user install to `%APPDATA%\Camfrog AutoDJ`, HKCU registry, no admin required
+### New in 0.2.8
+1. **Font/Style Customization (GUI Preview Only)**: New `message_style` config section with font family, size, color, bold, italic, underline. Live preview in Settings tab. **Note**: Camfrog desktop client does NOT support rich text in outgoing messages — sent messages are always plain text via UIA. This feature is for the GUI preview panel only.
+2. **Admin Greeting**: Greet admin on first message in session with configurable message and cooldown (default 1 hour).
+3. **Delete History**: Admin command `!deletehistory <all|N>` to clear history or remove oldest N entries.
+4. **IM-Only Play Commands**: `!play`, `!request`, `!req`, `!p`, `!เล่น`, `!ขอเพลง`, `!เล่นเพลง` now only work via private message (IM). Room users must DM the bot. Admins can still use in room.
+5. **Autoplay Idle Timeout**: After 30 minutes (configurable) with no user requests, bot switches to autoplay pool. New `!play` immediately exits autoplay mode.
+6. **New Thai Aliases**: `!ขอเพลง` (request song), `!เล่นเพลง` (play song).
+7. **Auto-Reply**: Every 60 seconds from `ads-list.json` (configurable).
+8. **REA Reverse Engineering**: Documented Camfrog font logic (GDI imports, chat/IM font settings, HTML rendering for display only).
+9. **Mic Mute/Unmute**: Admin commands `!mute` / `!unmute` to mute/unmute the mic (config-gated: `admin_mute_mic`, `admin_unmute_mic`).
+10. **Block/Unblock Bot**: Admin commands `!blockbot` / `!unblockbot` to block/unblock bots (config-gated: `admin_block_bot`, `admin_unblock_bot`).
+11. **Kick/Ban/Unban User**: Admin commands `!kick` / `!ban` / `!unban` (config-gated: `admin_kick_user`, `admin_ban_user`, `admin_unban_user`).
+12. **Punish User/Bot**: Admin commands `!punish` / `!punishbot` (config-gated: `admin_punish_user`, `admin_punish_bot`).
+13. **Delete Message**: Admin command `!delete <msg id>` to delete a message by ID (config-gated: `admin_delete_message_enabled`).
+14. **Welcome Message**: Welcome message feature with configurable text (config-gated: `welcome_message_enabled`).
 
 ## Makefile (optional, for Linux/macOS/WSL/Git-Bash)
 `make help` lists every target: `install`, `run-gui`/`run-console`/`run-headless`, `check`/`discover`/`windows`/`say`, `test`/`test-one`/`coverage`, `lint`/`fmt`/`typecheck`, `build`/`build-clean`/`sign` (wrap `build.ps1` -- still Windows PowerShell only; a clear message elsewhere), `release` (test -> build+sign -> package, one command), `package`, `clean`/`clean-all`/`distclean`.
@@ -35,11 +41,15 @@ A dark "studio" window: a spinning record and an animated equaliser while a trac
 Keys: `Space` pause/resume (when no text box has focus), `Ctrl+Right` skip. A red banner appears if `mpv` cannot be found. Display scaling (125 % / 150 %) is handled; the title bar follows Windows dark mode on recent Windows 10/11.
 
 ## Commands (prefix `!`; Thai aliases in brackets)
-Everyone: `play` (เล่น), `np` (เพลงนี้), `next` (ถัดไป), `queue` (คิว), `history` (ประวัติ), `voteskip` (โหวตข้าม), `remove <n>` (ลบ), `help` (ช่วยเหลือ).
+Everyone: `np` (เพลงนี้), `next` (ถัดไป), `queue` (คิว), `history` (ประวัติ), `voteskip` (โหวตข้าม), `remove <n>` (ลบ), `help` (ช่วยเหลือ), `mute` (ปิดไมค์), `unmute` (เปิดไมค์), `welcome` (ต้อนรับ).
 Requester/admin: `skip` (ข้าม).
-Admin: `pause` (หยุดชั่วคราว), `resume` (เล่นต่อ), `vol` (เสียง), `shuffle` (สุ่ม), `repeat` (วนซ้ำ), `clear` (ล้างคิว), `load` (โหลด), `say` (พูด), `speak` (ออกเสียง), `block <nick>` (บล็อก) / `unblock <nick>` (เลิกบล็อก): a blocked nick's commands are ignored silently (admins cannot be blocked; also settable as `blocked_users` in config).
+Admin: `pause` (หยุดชั่วคราว), `resume` (เล่นต่อ), `vol` (เสียง), `shuffle` (สุ่ม), `repeat` (วนซ้ำ), `clear` (ล้างคิว), `load` (โหลด), `say` (พูด), `speak` (ออกเสียง), `block <nick>` (บล็อก) / `unblock <nick>` (เลิกบล็อก), `blockbot <nick>` (บล็อกบอท) / `unblockbot <nick>` (เลิกบล็อกบอท), `kick <nick>` (เตะ), `ban <nick>` (แบน), `unban <nick>` (เลิกแบน), `punish <nick>` (ลงโทษ), `punishbot <nick>` (ลงโทษบอท), `deletehistory <all|N>` (ลบประวัติ), `delete <msg id>` (ลบข้อความ), `welcome <text>` (ต้อนรับ): a blocked nick's commands are ignored silently (admins cannot be blocked; also settable as `blocked_users` in config).
+
+**Play commands (`!play`, `!request`, `!req`, `!p`, `!เล่น`, `!ขอเพลง`, `!เล่นเพลง`) now only work via IM (private message).** Room users must DM the bot. Admins can still use in room.
 
 Non-admins: YouTube links only, 1 track, `max_duration`, no live, `max_requests_per_user`, and a song already queued or playing is refused. Name requests search `music_dirs` first, then YouTube.
+
+**Requested songs play immediately:** `!play` inserts at the front of the queue so the song plays next. If no user requests arrive within `autoplay_idle_timeout` (default 30 seconds), AutoDJ switches to the autoplay pool automatically. A new `!play` request immediately exits autoplay mode.
 
 ## Auto launch
 `auto_launch = true` starts `camfrog_exe`, opens `join_uri_template` for `room`, then waits for `window_title_re`. It does not call the control-server API. If the control-server agent already launches/joins Camfrog, keep `auto_launch = false`: AutoDJ waits for the room window.

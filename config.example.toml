@@ -58,10 +58,10 @@ tts_duck = 25                  # music volume while speaking
 
 # --- auto launch (Windows). Off = you open Camfrog/the room yourself; AutoDJ waits for the window.
 auto_launch = false            # set true to have AutoDJ launch Camfrog and join the room automatically
-# camfrog_exe = "REPLACE_ME:/path/to/Camfrog Video Chat.exe"
-# client_title_re = ".*"          # main client window
-# room = "My Room"
-# join_uri_template = ""          # URI your Camfrog build accepts for joining; {room} is URL-encoded
+camfrog_exe = "%USERPROFILE%\\AppData\\Local\\Programs\\Camfrog Video Chat\\Camfrog Video Chat.exe"  # path to Camfrog exe, required if auto_launch = true
+client_title_re = ".*"          # main client window
+room = "ZeaZDev"              # your Camfrog room name, required if auto_launch = true
+join_uri_template = "camfrog://room/{room}"          # URI your Camfrog build accepts for joining; {room} is URL-encoded
 # launch_timeout = 60
 
 # --- added in 0.2.0 ---------------------------------------------------------------------------------
@@ -84,3 +84,44 @@ auto_reply_file = "ads-list.json"   # JSON file with messages to rotate through
 im_auto_reply_enabled = false       # enable auto-reply to private/instant messages
 im_auto_reply_message = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
 im_auto_reply_cooldown = 60.0       # seconds between auto-replies to the same user (avoid spam)
+
+# --- autoplay: switch to autoplay pool after idle timeout ---
+autoplay_idle_timeout = 30.0      # seconds before autoplay starts when no user requests
+
+# --- admin greeting ---
+admin_greeting_enabled = false      # enable admin greeting on first message
+admin_greeting_message = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"
+admin_greeting_cooldown = 3600.0    # seconds between greetings for same admin (1 hour)
+
+# --- IM security: require user to be in room to use IM commands ---
+im_require_room_presence = true     # only users seen in room chat can DM the bot
+
+# --- font/style customization for GUI preview only ---
+# Camfrog desktop client does NOT support rich text in outgoing messages.
+# This configuration is used ONLY for the FontEditor preview panel in the GUI.
+# Sent messages are always plain text via UIA.
+message_style = { font_family = "Consolas", font_size = 14, font_color = "#FF0000", bold = false, italic = false, underline = false }
+
+# --- admin mic mute/unmute (config-gated) ---
+# admin_mute_mic = false             # enable !mute command
+# admin_unmute_mic = false           # enable !unmute command
+
+# --- block/unblock bot (config-gated) ---
+# admin_block_bot = false            # enable !blockbot command
+# admin_unblock_bot = false          # enable !unblockbot command
+
+# --- kick/ban/unban user (config-gated) ---
+# admin_kick_user = false            # enable !kick command
+# admin_ban_user = false             # enable !ban command
+# admin_unban_user = false           # enable !unban command
+
+# --- punish user/bot (config-gated) ---
+# admin_punish_user = false          # enable !punish command
+# admin_punish_bot = false           # enable !punishbot command
+
+# --- delete message (config-gated) ---
+# admin_delete_message_enabled = false   # enable !delete <msg id> command
+
+# --- welcome message ---
+# welcome_message_enabled = false          # enable welcome message
+# welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"
