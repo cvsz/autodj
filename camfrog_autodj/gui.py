@@ -1258,6 +1258,118 @@ class App(tk.Tk):
         _setting_row(
             "g_settings_admin_greeting_cooldown",
             self.s_admin_greeting_cooldown,
+            "g_settings_gift_announce_enabled",
+        )
+
+        # gift_announce_enabled toggle
+        self.s_gift_announce_enabled = self.e.cfg.gift_announce_enabled
+        cb_gift_announce = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_gift_announce_enabled", cb_gift_announce),
+            "chip",
+            icon="✓" if self.e.cfg.gift_announce_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_gift_announce.set_active(self.e.cfg.gift_announce_enabled)
+        cb_gift_announce.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_gift_announce_enabled",
+            self._lbl(sp_inner, "g_settings_gift_announce_enabled"),
+            "g_settings_avatar_change_enabled",
+        )
+
+        # avatar_change_enabled toggle
+        self.s_avatar_change_enabled = self.e.cfg.avatar_change_enabled
+        cb_avatar_change = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_avatar_change_enabled", cb_avatar_change),
+            "chip",
+            icon="✓" if self.e.cfg.avatar_change_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_avatar_change.set_active(self.e.cfg.avatar_change_enabled)
+        cb_avatar_change.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_avatar_change_enabled",
+            self._lbl(sp_inner, "g_settings_avatar_change_enabled"),
+            "g_settings_status_indicator_enabled",
+        )
+
+        # status_indicator_enabled toggle
+        self.s_status_indicator_enabled = self.e.cfg.status_indicator_enabled
+        cb_status_indicator = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_status_indicator_enabled", cb_status_indicator),
+            "chip",
+            icon="✓" if self.e.cfg.status_indicator_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_status_indicator.set_active(self.e.cfg.status_indicator_enabled)
+        cb_status_indicator.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_status_indicator_enabled",
+            self._lbl(sp_inner, "g_settings_status_indicator_enabled"),
+            "g_settings_status_alert_enabled",
+        )
+
+        # status_alert_enabled toggle
+        self.s_status_alert_enabled = self.e.cfg.status_alert_enabled
+        cb_status_alert = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_status_alert_enabled", cb_status_alert),
+            "chip",
+            icon="✓" if self.e.cfg.status_alert_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_status_alert.set_active(self.e.cfg.status_alert_enabled)
+        cb_status_alert.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_status_alert_enabled",
+            self._lbl(sp_inner, "g_settings_status_alert_enabled"),
             "g_settings_message_style_font_family",
         )
 
@@ -2729,6 +2841,16 @@ class App(tk.Tk):
             lines.append(f"admin_greeting_enabled = {str(cfg.admin_greeting_enabled).lower()}")
             lines.append(f"admin_greeting_message = {_toml_str(cfg.admin_greeting_message)}")
             lines.append(f"admin_greeting_cooldown = {cfg.admin_greeting_cooldown}")
+
+            # Gift / avatar / status / status alert (Camfrog RE integrations)
+            cfg.gift_announce_enabled = self.s_gift_announce_enabled
+            cfg.avatar_change_enabled = self.s_avatar_change_enabled
+            cfg.status_indicator_enabled = self.s_status_indicator_enabled
+            cfg.status_alert_enabled = self.s_status_alert_enabled
+            lines.append(f"gift_announce_enabled = {str(cfg.gift_announce_enabled).lower()}")
+            lines.append(f"avatar_change_enabled = {str(cfg.avatar_change_enabled).lower()}")
+            lines.append(f"status_indicator_enabled = {str(cfg.status_indicator_enabled).lower()}")
+            lines.append(f"status_alert_enabled = {str(cfg.status_alert_enabled).lower()}")
 
             # Admin mute/unmute mic
             cfg.admin_mute_mic = self.s_admin_mute_mic
