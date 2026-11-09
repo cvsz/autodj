@@ -340,6 +340,7 @@ class UiaAdapter(ChatAdapter):
 
     def _bg_after_loop(self, text: str, ok: bool, before, mode: str) -> str:
         """Decide what to do after the background retry loop exhausted its attempts."""
+        # Increment failure counter exactly once per call (avoid double-counting)
         with self._bg_fails_lock:
             self._bg_fails += 1
             bg_fails = self._bg_fails
@@ -356,11 +357,4 @@ class UiaAdapter(ChatAdapter):
             with self._bg_fails_lock:
                 self._bg_fails = 0
             return "sent"
-        with self._bg_fails_lock:
-            self._bg_fails += 1
-            bg_fails = self._bg_fails
-        log.info(
-            "background send not confirmed in the room (%d in a row): falling back to foreground",
-            bg_fails,
-        )
         return "fallback"

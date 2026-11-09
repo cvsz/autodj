@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .adapters.base import ChatMessage
+    from .engine import Engine
 
 from .models import UserError
 
@@ -27,6 +33,9 @@ class Router:
         self.e = engine
         self.last: dict[str, float] = {}
         self.user_requests: dict[str, list[float]] = {}
+        self._lock: threading.Lock = (
+            threading.Lock()
+        )  # guards last + user_requests (TOCTOU protection)
 
     def is_admin(self, msg) -> bool:
         # NOTE: Nickname-based authorization is spoofable — any user can adopt an
@@ -50,39 +59,31 @@ class Router:
         name, arg = parsed
         entry = COMMANDS.get(name.lower())
         admin = self.is_admin(msg)
-        if is_im:
-            log.info(
-                "im command %s (%s) from %s%s",
-                name,
-                arg,
-                msg.user,
-                ", admin" if admin else "",
-            )
-        else:
-            log.info(
-                "command %s%s (%s) from %s%s",
-                p,
-                name,
-                arg,
-                msg.user,
-                ", admin" if admin else "",
-            )
+        self._log_command(msg, name, arg, admin, is_im, p)
         if not entry:
             return
         fn, need_admin = entry
+
+        # IM Security: require user to be in the room (seen in chat) to use IM commands
+        if is_im and not admin and getattr(e.cfg, "im_require_room_presence", True):
+            active_users = getattr(e, "_active_room_users", None)
+            if active_users is not None and msg.user.lower() not in active_users:
+                log.info("IM command %s from %s rejected: user not in room", name, msg.user)
+                e.say(f"{msg.user}: {e.t('im_user_not_in_room')}")
+                return
+
         if not admin and msg.user.lower() in e.blocked:
-            log.info(
-                "blocked: ignoring %s's command from %s",
-                msg.user,
-                "IM" if is_im else "room",
-            )
-            return  # blocked users get no reply at all
+            self._log_blocked(msg, is_im)
+            return
+
         if need_admin and not admin:
             e.say(f"{msg.user}: {e.t('admin_only')}")
             return
+
         now = time.monotonic()
         if not admin and not self._within_limits(msg, name, now, is_im):
             return
+
         try:
             fn(e, msg, arg.strip(), admin)
         except UserError as ex:
@@ -90,6 +91,33 @@ class Router:
         except Exception:
             log.exception("command failed: %s", text)
             e.say(f"{msg.user}: {e.t('error')}")
+
+    def _log_command(self, msg, name: str, arg: str, admin: bool, is_im: bool, prefix: str):
+        if is_im:
+            log.info(
+                "im command %s (%s) from %s%s", name, arg, msg.user, ", admin" if admin else ""
+            )
+        else:
+            log.info(
+                "command %s%s (%s) from %s%s",
+                prefix,
+                name,
+                arg,
+                msg.user,
+                ", admin" if admin else "",
+            )
+
+    def _is_play_command_blocked_in_room(self, msg, name: str, is_im: bool, admin: bool) -> bool:
+        """Play/Request commands only work via IM for non-admins."""
+        play_commands = ("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง")
+        if name.lower() in play_commands and not is_im:
+            if not admin:
+                self.e.say(f"{msg.user}: {self.e.t('im_only_command')}")
+                return True
+        return False
+
+    def _log_blocked(self, msg, is_im: bool):
+        log.info("blocked: ignoring %s's command from %s", msg.user, "IM" if is_im else "room")
 
     def _parse_command(self, text: str, p: str, is_im: bool) -> tuple[str, str] | None:
         """Return (name, arg) when *text* is a command, else None."""
@@ -107,37 +135,51 @@ class Router:
         """Cooldown + per-user sliding-window request limit.
 
         Returns False when the command must be dropped (a reply is sent for rate limits).
+        Thread-safe: all reads/writes to self.last and self.user_requests are guarded
+        by self._lock to prevent TOCTOU races under concurrent command handling.
         """
         e = self.e
         who = (
             msg.user.lower()
         )  # "Bob" and "bob" are one person: changing case must not dodge the cooldown
-        if now - self.last.get(who, -1e9) < e.cfg.cooldown:
-            log.info(
-                "cooldown: dropping %s's command from %s (%.1fs to go)",
-                msg.user,
-                "IM" if is_im else "room",
-                e.cfg.cooldown - (now - self.last[who]),
-            )
-            return False
-        # Sliding window request limit per user
-        if name.lower() in ("play", "request", "req", "p", "เล่น"):
-            limit = getattr(e.cfg, "user_request_limit", 5)
-            window = getattr(e.cfg, "rate_limit_window", 300.0)
-            reqs = [t for t in self.user_requests.get(who, []) if now - t < window]
-            if len(reqs) >= limit:
+
+        with self._lock:
+            # Cooldown check
+            if now - self.last.get(who, -1e9) < e.cfg.cooldown:
                 log.info(
-                    "rate limit: user %s exceeded %d requests in %.0fs",
-                    who,
-                    limit,
-                    window,
+                    "cooldown: dropping %s's command from %s (%.1fs to go)",
+                    msg.user,
+                    "IM" if is_im else "room",
+                    e.cfg.cooldown - (now - self.last[who]),
                 )
-                e.say(f"{msg.user}: {e.t('max_requests', n=limit)}")
                 return False
-            reqs.append(now)
-            self.user_requests[who] = reqs
-        self.last[who] = now
-        return True
+
+            # Prune expired entries to prevent unbounded memory growth (memory leak fix)
+            window = getattr(e.cfg, "rate_limit_window", 300.0)
+            cutoff = now - window
+            expired = [
+                u for u, ts_list in self.user_requests.items() if all(t < cutoff for t in ts_list)
+            ]
+            for u in expired:
+                del self.user_requests[u]
+
+            # Sliding window request limit per user
+            if name.lower() in ("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง"):
+                limit = getattr(e.cfg, "user_request_limit", 5)
+                reqs = [t for t in self.user_requests.get(who, []) if now - t < window]
+                if len(reqs) >= limit:
+                    log.info(
+                        "rate limit: user %s exceeded %d requests in %.0fs",
+                        who,
+                        limit,
+                        window,
+                    )
+                    e.say(f"{msg.user}: {e.t('max_requests', n=limit)}")
+                    return False
+                reqs.append(now)
+                self.user_requests[who] = reqs
+            self.last[who] = now
+            return True
 
 
 def _line(t) -> str:
@@ -145,13 +187,13 @@ def _line(t) -> str:
 
 
 @command("help", "commands", "ช่วยเหลือ")
-def _help(e, m, a, admin):
+def _help(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     p = e.cfg.prefix
     e.say(e.t("help_base", p=p) + (e.t("help_admin", p=p) if admin else ""))
 
 
-@command("play", "request", "req", "p", "เล่น")
-def _play(e, m, a, admin):
+@command("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง")
+def _play(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     c, p = e.cfg, e.cfg.prefix
     if not a:
         raise UserError(e.t("usage_play", p=p))
@@ -168,8 +210,14 @@ def _play(e, m, a, admin):
             _assert_queue_capacity(e, m.user)
             _assert_not_already_queued(e, tracks[0])
         for t in tracks:
-            pos = e.queue.add_request(t)
+            pos = e.queue.add_request(t, position=0)  # insert at front: play next immediately
     e.wake.set()
+    # Update last user request time for autoplay idle timeout
+    e._last_user_request_time = time.monotonic()
+    # Exit autoplay mode immediately when user makes a request
+    if e._autoplay_mode:
+        e._autoplay_mode = False
+        log.info("Autoplay mode deactivated: new user request received")
     if e.playlist:  # promised by the playlist docs / config: chat requests are saved too (feeds !last and the pool)
         e.playlist.add(tracks)
     if len(tracks) == 1:
@@ -205,7 +253,7 @@ def _assert_not_already_queued(e, t) -> None:
 
 
 @command("last", "requested", "ขอล่าสุด")
-def _last(e, m, a, admin):
+def _last(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     items = e.recent_requests(5)
     if not items:
         raise UserError(e.t("requested_none"))
@@ -213,19 +261,19 @@ def _last(e, m, a, admin):
 
 
 @command("np", "nowplaying", "เพลงนี้")
-def _np(e, m, a, admin):
+def _np(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     t = e.current
     e.say(e.fmt_now(t) if t else e.t("nothing_playing").capitalize())
 
 
 @command("next", "upnext", "ถัดไป")
-def _next(e, m, a, admin):
+def _next(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     t = e.queue.peek()
     e.say(e.fmt_next(t) if t else e.t("nothing_queued"))
 
 
 @command("queue", "q", "คิว")
-def _queue(e, m, a, admin):
+def _queue(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     with e.queue.lock:
         items = list(e.queue.requests)
     if not items:
@@ -236,7 +284,7 @@ def _queue(e, m, a, admin):
 
 
 @command("skip", "ข้าม")
-def _skip(e, m, a, admin):
+def _skip(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     cur = e.current
     if not cur:
         raise UserError(e.t("nothing_playing"))
@@ -248,7 +296,7 @@ def _skip(e, m, a, admin):
 
 
 @command("voteskip", "vs", "โหวตข้าม")
-def _voteskip(e, m, a, admin):
+def _voteskip(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not e.current:
         raise UserError(e.t("nothing_playing"))
     e.votes.add(m.user.lower())
@@ -267,7 +315,7 @@ def _voteskip(e, m, a, admin):
 
 
 @command("remove", "rm", "ลบ")
-def _remove(e, m, a, admin):
+def _remove(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not a.isascii() or not a.isdigit():  # "²".isdigit() is True but int("²") raises
         raise UserError(e.t("remove_usage", p=e.cfg.prefix))
     t = e.queue.get(int(a))
@@ -282,24 +330,24 @@ def _remove(e, m, a, admin):
 
 
 @command("pause", "หยุดชั่วคราว", admin=True)
-def _pause(e, m, a, admin):
+def _pause(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     e.pause()
 
 
 @command("resume", "unpause", "เล่นต่อ", admin=True)
-def _resume(e, m, a, admin):
+def _resume(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     e.resume()
 
 
 @command("vol", "volume", "เสียง", admin=True)
-def _vol(e, m, a, admin):
+def _vol(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if a.isascii() and a.isdigit():
         e.set_volume(int(a[:6]))
     e.say(e.t("volume", v=e.volume))
 
 
 @command("shuffle", "สุ่ม", admin=True)
-def _shuffle(e, m, a, admin):
+def _shuffle(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if a.lower() not in ("on", "off"):
         raise UserError(e.t("usage_shuffle", p=e.cfg.prefix))
     e.queue.set_shuffle(a.lower() == "on")
@@ -307,7 +355,7 @@ def _shuffle(e, m, a, admin):
 
 
 @command("repeat", "วนซ้ำ", admin=True)
-def _repeat(e, m, a, admin):
+def _repeat(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if a.lower() not in ("off", "one"):
         raise UserError(e.t("usage_repeat", p=e.cfg.prefix))
     e.queue.repeat = a.lower()
@@ -315,19 +363,47 @@ def _repeat(e, m, a, admin):
 
 
 @command("clear", "ล้างคิว", admin=True)
-def _clear(e, m, a, admin):
+def _clear(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     e.say(e.t("cleared", n=e.queue.clear()))
 
 
 @command("clearhistory", "ล้างประวัติ", admin=True)
-def _clearhistory(e, m, a, admin):
+def _clearhistory(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     n = len(e.history)
     e.history.clear()
     e.say(e.t("history_cleared", n=n))
 
 
+@command("deletehistory", "delhistory", "ลบประวัติ", admin=True)
+def _deletehistory(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """Delete history entries: !deletehistory all | !deletehistory N (delete last N entries)"""
+    if not a:
+        raise UserError(e.t("delete_history_usage", p=e.cfg.prefix))
+    if a.lower() == "all":
+        n = len(e.history)
+        e.history.clear()
+        e.say(e.t("history_deleted", n=n))
+    else:
+        try:
+            n = int(a)
+        except ValueError as err:
+            raise UserError(e.t("delete_history_usage", p=e.cfg.prefix)) from err
+        if n <= 0:
+            raise UserError(e.t("delete_history_usage", p=e.cfg.prefix))
+
+        # Delete last N entries (oldest first, since history is newest first)
+        with e.queue.lock:
+            to_delete = list(e.history)[-n:]  # oldest N entries
+            for t in to_delete:
+                try:
+                    e.history.remove(t)
+                except ValueError:
+                    pass
+        e.say(e.t("history_deleted", n=min(n, len(to_delete))))
+
+
 @command("load", "โหลด", admin=True)
-def _load(e, m, a, admin):
+def _load(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not a:
         raise UserError(e.t("load_usage", p=e.cfg.prefix))
     src = a.strip('"')
@@ -344,21 +420,21 @@ def _load(e, m, a, admin):
 
 
 @command("say", "พูด", admin=True)
-def _say(e, m, a, admin):
+def _say(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not a:
         raise UserError(e.t("say_usage", p=e.cfg.prefix))
     e.say(a)
 
 
 @command("speak", "tts", "ออกเสียง", admin=True)
-def _speak(e, m, a, admin):
+def _speak(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not a:
         raise UserError(e.t("speak_usage", p=e.cfg.prefix))
     e.speak(a)
 
 
 @command("history", "recent", "ประวัติ")
-def _history(e, m, a, admin):
+def _history(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     items = list(e.history)[:5]
     if not items:
         e.say(e.t("history_empty"))
@@ -369,7 +445,7 @@ def _history(e, m, a, admin):
 
 
 @command("block", "บล็อก", admin=True)
-def _block(e, m, a, admin):
+def _block(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     nick = a.strip()
     if not nick:
         raise UserError(e.t("block_usage", p=e.cfg.prefix))
@@ -380,9 +456,137 @@ def _block(e, m, a, admin):
 
 
 @command("unblock", "เลิกบล็อก", admin=True)
-def _unblock(e, m, a, admin):
+def _unblock(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     nick = a.strip()
     if not nick:
         raise UserError(e.t("unblock_usage", p=e.cfg.prefix))
     e.blocked.discard(nick.lower())
     e.say(e.t("unblocked_state", nick=nick))
+
+
+# ---- Mic mute / unmute --------------------------------------------------
+
+
+@command("mute", "ปิดไมค์", admin=True)
+def _mute(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_mute_mic", False):
+        raise UserError(e.t("admin_only"))
+    e.mute_mic(True)
+    e.say(e.t("mute_on"))
+
+
+@command("unmute", "เปิดไมค์", admin=True)
+def _unmute(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_unmute_mic", False):
+        raise UserError(e.t("admin_only"))
+    e.mute_mic(False)
+    e.say(e.t("mute_off"))
+
+
+# ---- Block / unblock bot ------------------------------------------------
+
+
+@command("blockbot", "บล็อกบอท", admin=True)
+def _blockbot(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    nick = a.strip()
+    if not nick:
+        raise UserError(e.t("block_bot_usage", p=e.cfg.prefix))
+    if nick.lower() in e.admins:
+        raise UserError(e.t("cannot_block_bot_admin"))
+    e.blocked.add(nick.lower())
+    e.say(e.t("bot_blocked", nick=nick))
+
+
+@command("unblockbot", "เลิกบล็อกบอท", admin=True)
+def _unblockbot(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    nick = a.strip()
+    if not nick:
+        raise UserError(e.t("unblock_bot_usage", p=e.cfg.prefix))
+    e.blocked.discard(nick.lower())
+    e.say(e.t("bot_unblocked", nick=nick))
+
+
+# ---- Kick / ban / unban user --------------------------------------------
+
+
+@command("kick", "เตะ", admin=True)
+def _kick_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    nick = a.strip()
+    if not nick:
+        raise UserError(e.t("kick_user_usage", p=e.cfg.prefix))
+    if nick.lower() in e.admins:
+        raise UserError(e.t("cannot_block_admin"))
+    e.kick_user(nick)
+    e.say(e.t("kicked_user", nick=nick))
+
+
+@command("ban", "แบน", admin=True)
+def _ban_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    nick = a.strip()
+    if not nick:
+        raise UserError(e.t("ban_user_usage", p=e.cfg.prefix))
+    if nick.lower() in e.admins:
+        raise UserError(e.t("cannot_block_admin"))
+    e.ban_user(nick)
+    e.say(e.t("banned_user", nick=nick))
+
+
+@command("unban", "เลิกแบน", admin=True)
+def _unban_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    nick = a.strip()
+    if not nick:
+        raise UserError(e.t("unban_user_usage", p=e.cfg.prefix))
+    e.unban_user(nick)
+    e.say(e.t("unbanned_user", nick=nick))
+
+
+# ---- Punish user / bot --------------------------------------------------
+
+
+@command("punish", "ลงโทษ", admin=True)
+def _punish_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    nick = a.strip()
+    if not nick:
+        raise UserError(e.t("punish_user_usage", p=e.cfg.prefix))
+    if nick.lower() in e.admins:
+        raise UserError(e.t("cannot_block_admin"))
+    e.punish_user(nick)
+    e.say(e.t("punished_user", nick=nick))
+
+
+@command("punishbot", "ลงโทษบอท", admin=True)
+def _punish_bot(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    nick = a.strip()
+    if not nick:
+        raise UserError(e.t("punish_bot_usage", p=e.cfg.prefix))
+    e.punish_bot(nick)
+    e.say(e.t("punished_bot", nick=nick))
+
+
+# ---- Admin delete message ------------------------------------------------
+
+
+@command("delete", "ลบข้อความ", admin=True)
+def _delete_message(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_delete_message_enabled", False):
+        raise UserError(e.t("admin_only"))
+    msg_id = a.strip()
+    if not msg_id:
+        raise UserError(e.t("delete_message_usage", p=e.cfg.prefix))
+    ok = e.delete_message(msg_id)
+    if ok:
+        e.say(e.t("message_deleted"))
+    else:
+        raise UserError(e.t("cannot_delete_message"))
+
+
+# ---- Welcome message ------------------------------------------------------
+
+
+@command("welcome", "ต้อนรับ", admin=True)
+def _welcome_message(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not a:
+        raise UserError(e.t("usage", p=e.cfg.prefix))
+    # toggle or set welcome message
+    e.set_welcome_message(a.strip())
+    e.say(e.t("welcome_enabled") if e.cfg.welcome_message_enabled else e.t("welcome_disabled"))

@@ -616,7 +616,7 @@ def test_user_request_rate_limit():
     from camfrog_autodj.config import Config
     from camfrog_autodj.models import Track
 
-    Msg = namedtuple("Msg", ["user", "text", "local"], defaults=["", "", False])
+    Msg = namedtuple("Msg", ["user", "text", "is_im", "local"], defaults=["", "", False, False])
 
     class FakeEngine:
         def __init__(self):
@@ -650,10 +650,11 @@ def test_user_request_rate_limit():
 
     e = FakeEngine()
     r = Router(e)
-    r.handle(Msg("user1", "!play song1"))
-    r.handle(Msg("user1", "!play song2"))
+    # Use IM for play commands (they only work via IM now)
+    r.handle(Msg("user1", "play song1", True))
+    r.handle(Msg("user1", "play song2", True))
     assert len(r.user_requests["user1"]) == 2
 
     # 3rd request within window should be rejected
-    r.handle(Msg("user1", "!play song3"))
+    r.handle(Msg("user1", "play song3", True))
     assert any("max_requests" in m for m in e.messages)

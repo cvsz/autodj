@@ -1207,7 +1207,576 @@ class App(tk.Tk):
         # auto_reply_file
         self.s_auto_reply_file = self._entry(sp_inner)
         self.s_auto_reply_file.insert(0, self.e.cfg.auto_reply_file)
-        _setting_row("g_settings_auto_reply_file", self.s_auto_reply_file, "g_settings_tts_voice")
+        _setting_row(
+            "g_settings_auto_reply_file", self.s_auto_reply_file, "g_settings_autoplay_idle_timeout"
+        )
+
+        # autoplay_idle_timeout
+        self.s_autoplay_idle_timeout = self._entry(sp_inner)
+        self.s_autoplay_idle_timeout.insert(0, str(self.e.cfg.autoplay_idle_timeout))
+        _setting_row(
+            "g_settings_autoplay_idle_timeout",
+            self.s_autoplay_idle_timeout,
+            "g_settings_admin_greeting_enabled",
+        )
+
+        # admin_greeting_enabled toggle
+        self.s_admin_greeting_enabled = self.e.cfg.admin_greeting_enabled
+        cb_admin_greeting = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_greeting_enabled", cb_admin_greeting),
+            "chip",
+            icon="✓" if self.e.cfg.admin_greeting_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_greeting.set_active(self.e.cfg.admin_greeting_enabled)
+        cb_admin_greeting.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+
+        # admin_greeting_message
+        self.s_admin_greeting_message = self._entry(sp_inner)
+        self.s_admin_greeting_message.insert(0, self.e.cfg.admin_greeting_message)
+        _setting_row(
+            "g_settings_admin_greeting_message",
+            self.s_admin_greeting_message,
+            "g_settings_admin_greeting_cooldown",
+        )
+
+        # admin_greeting_cooldown
+        self.s_admin_greeting_cooldown = self._entry(sp_inner)
+        self.s_admin_greeting_cooldown.insert(0, str(self.e.cfg.admin_greeting_cooldown))
+        _setting_row(
+            "g_settings_admin_greeting_cooldown",
+            self.s_admin_greeting_cooldown,
+            "g_settings_message_style_font_family",
+        )
+
+        # message_style_font_family
+        self.s_msg_font_family = self._entry(sp_inner)
+        self.s_msg_font_family.insert(0, self.e.cfg.message_style.font_family)
+        _setting_row(
+            "g_settings_message_style_font_family",
+            self.s_msg_font_family,
+            "g_settings_message_style_font_size",
+        )
+
+        # message_style_font_size
+        self.s_msg_font_size = self._entry(sp_inner)
+        self.s_msg_font_size.insert(0, str(self.e.cfg.message_style.font_size))
+        _setting_row(
+            "g_settings_message_style_font_size",
+            self.s_msg_font_size,
+            "g_settings_message_style_font_color",
+        )
+
+        # message_style_font_color
+        self.s_msg_font_color = self._entry(sp_inner)
+        self.s_msg_font_color.insert(0, self.e.cfg.message_style.font_color)
+        _setting_row(
+            "g_settings_message_style_font_color",
+            self.s_msg_font_color,
+            "g_settings_message_style_bold",
+        )
+
+        # message_style_bold (checkbox)
+        self.s_msg_bold = self.e.cfg.message_style.bold
+        cb_msg_bold = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_msg_bold", cb_msg_bold),
+            "chip",
+            icon="✓" if self.e.cfg.message_style.bold else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_msg_bold.set_active(self.e.cfg.message_style.bold)
+        cb_msg_bold.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        # Add label for bold checkbox
+        _setting_row(
+            "g_settings_message_style_bold",
+            self._lbl(sp_inner, "g_settings_message_style_bold"),
+            "g_settings_message_style_italic",
+        )
+
+        # message_style_italic (checkbox)
+        self.s_msg_italic = self.e.cfg.message_style.italic
+        cb_msg_italic = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_msg_italic", cb_msg_italic),
+            "chip",
+            icon="✓" if self.e.cfg.message_style.italic else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_msg_italic.set_active(self.e.cfg.message_style.italic)
+        cb_msg_italic.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_message_style_italic",
+            self._lbl(sp_inner, "g_settings_message_style_italic"),
+            "g_settings_message_style_underline",
+        )
+
+        # message_style_underline (checkbox)
+        self.s_msg_underline = self.e.cfg.message_style.underline
+        cb_msg_underline = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_msg_underline", cb_msg_underline),
+            "chip",
+            icon="✓" if self.e.cfg.message_style.underline else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_msg_underline.set_active(self.e.cfg.message_style.underline)
+        cb_msg_underline.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_message_style_underline",
+            self._lbl(sp_inner, "g_settings_message_style_underline"),
+            "g_settings_tts_voice",
+        )
+
+        # mute_enabled toggle
+        self.s_mute_enabled = self.e.cfg.mute_enabled
+        cb_mute_enabled = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_mute_enabled", cb_mute_enabled),
+            "chip",
+            icon="✓" if self.e.cfg.mute_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_mute_enabled.set_active(self.e.cfg.mute_enabled)
+        cb_mute_enabled.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_mute_enabled",
+            self._lbl(sp_inner, "g_settings_mute_enabled"),
+            "g_settings_admin_mute_mic",
+        )
+
+        # admin_mute_mic toggle
+        self.s_admin_mute_mic = self.e.cfg.admin_mute_mic
+        cb_admin_mute_mic = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_mute_mic", cb_admin_mute_mic),
+            "chip",
+            icon="✓" if self.e.cfg.admin_mute_mic else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_mute_mic.set_active(self.e.cfg.admin_mute_mic)
+        cb_admin_mute_mic.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_mute_mic",
+            self._lbl(sp_inner, "g_settings_admin_mute_mic"),
+            "g_settings_admin_unmute_mic",
+        )
+
+        # admin_unmute_mic toggle
+        self.s_admin_unmute_mic = self.e.cfg.admin_unmute_mic
+        cb_admin_unmute_mic = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_unmute_mic", cb_admin_unmute_mic),
+            "chip",
+            icon="✓" if self.e.cfg.admin_unmute_mic else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_unmute_mic.set_active(self.e.cfg.admin_unmute_mic)
+        cb_admin_unmute_mic.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_unmute_mic",
+            self._lbl(sp_inner, "g_settings_admin_unmute_mic"),
+            "g_settings_admin_block_user",
+        )
+
+        # admin_block_user toggle
+        self.s_admin_block_user = self.e.cfg.admin_block_user
+        cb_admin_block_user = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_block_user", cb_admin_block_user),
+            "chip",
+            icon="✓" if self.e.cfg.admin_block_user else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_block_user.set_active(self.e.cfg.admin_block_user)
+        cb_admin_block_user.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_block_user",
+            self._lbl(sp_inner, "g_settings_admin_block_user"),
+            "g_settings_admin_unblock_user",
+        )
+
+        # admin_unblock_user toggle
+        self.s_admin_unblock_user = self.e.cfg.admin_unblock_user
+        cb_admin_unblock_user = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_unblock_user", cb_admin_unblock_user),
+            "chip",
+            icon="✓" if self.e.cfg.admin_unblock_user else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_unblock_user.set_active(self.e.cfg.admin_unblock_user)
+        cb_admin_unblock_user.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_unblock_user",
+            self._lbl(sp_inner, "g_settings_admin_unblock_user"),
+            "g_settings_admin_block_bot",
+        )
+
+        # admin_block_bot toggle
+        self.s_admin_block_bot = self.e.cfg.admin_block_bot
+        cb_admin_block_bot = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_block_bot", cb_admin_block_bot),
+            "chip",
+            icon="✓" if self.e.cfg.admin_block_bot else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_block_bot.set_active(self.e.cfg.admin_block_bot)
+        cb_admin_block_bot.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_block_bot",
+            self._lbl(sp_inner, "g_settings_admin_block_bot"),
+            "g_settings_admin_unblock_bot",
+        )
+
+        # admin_unblock_bot toggle
+        self.s_admin_unblock_bot = self.e.cfg.admin_unblock_bot
+        cb_admin_unblock_bot = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_unblock_bot", cb_admin_unblock_bot),
+            "chip",
+            icon="✓" if self.e.cfg.admin_unblock_bot else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_unblock_bot.set_active(self.e.cfg.admin_unblock_bot)
+        cb_admin_unblock_bot.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_unblock_bot",
+            self._lbl(sp_inner, "g_settings_admin_unblock_bot"),
+            "g_settings_admin_kick_user",
+        )
+
+        # admin_kick_user toggle
+        self.s_admin_kick_user = self.e.cfg.admin_kick_user
+        cb_admin_kick_user = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_kick_user", cb_admin_kick_user),
+            "chip",
+            icon="✓" if self.e.cfg.admin_kick_user else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_kick_user.set_active(self.e.cfg.admin_kick_user)
+        cb_admin_kick_user.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_kick_user",
+            self._lbl(sp_inner, "g_settings_admin_kick_user"),
+            "g_settings_admin_ban_user",
+        )
+
+        # admin_ban_user toggle
+        self.s_admin_ban_user = self.e.cfg.admin_ban_user
+        cb_admin_ban_user = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_ban_user", cb_admin_ban_user),
+            "chip",
+            icon="✓" if self.e.cfg.admin_ban_user else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_ban_user.set_active(self.e.cfg.admin_ban_user)
+        cb_admin_ban_user.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_ban_user",
+            self._lbl(sp_inner, "g_settings_admin_ban_user"),
+            "g_settings_admin_unban_user",
+        )
+
+        # admin_unban_user toggle
+        self.s_admin_unban_user = self.e.cfg.admin_unban_user
+        cb_admin_unban_user = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_unban_user", cb_admin_unban_user),
+            "chip",
+            icon="✓" if self.e.cfg.admin_unban_user else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_unban_user.set_active(self.e.cfg.admin_unban_user)
+        cb_admin_unban_user.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_unban_user",
+            self._lbl(sp_inner, "g_settings_admin_unban_user"),
+            "g_settings_admin_punish_user",
+        )
+
+        # admin_punish_user toggle
+        self.s_admin_punish_user = self.e.cfg.admin_punish_user
+        cb_admin_punish_user = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_punish_user", cb_admin_punish_user),
+            "chip",
+            icon="✓" if self.e.cfg.admin_punish_user else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_punish_user.set_active(self.e.cfg.admin_punish_user)
+        cb_admin_punish_user.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_punish_user",
+            self._lbl(sp_inner, "g_settings_admin_punish_user"),
+            "g_settings_admin_punish_bot",
+        )
+
+        # admin_punish_bot toggle
+        self.s_admin_punish_bot = self.e.cfg.admin_punish_bot
+        cb_admin_punish_bot = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_punish_bot", cb_admin_punish_bot),
+            "chip",
+            icon="✓" if self.e.cfg.admin_punish_bot else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_punish_bot.set_active(self.e.cfg.admin_punish_bot)
+        cb_admin_punish_bot.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_punish_bot",
+            self._lbl(sp_inner, "g_settings_admin_punish_bot"),
+            "g_settings_welcome_message_enabled",
+        )
+
+        # welcome_message_enabled toggle
+        self.s_admin_greeting_enabled = (
+            self.e.cfg.admin_greeting_enabled
+        )  # reuse existing admin greeting enabled toggle
+        cb_admin_greeting_enabled = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_admin_greeting_enabled", cb_admin_greeting_enabled),
+            "chip",
+            icon="✓" if self.e.cfg.admin_greeting_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_greeting_enabled.set_active(self.e.cfg.admin_greeting_enabled)
+        cb_admin_greeting_enabled.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_welcome_message_enabled",
+            self._lbl(sp_inner, "g_settings_welcome_message_enabled"),
+            "g_settings_welcome_message_message",
+        )
+
+        # welcome_message_message entry
+        self.s_welcome_message_message = self._entry(sp_inner)
+        self.s_welcome_message_message.insert(0, self.e.cfg.admin_greeting_message)
+        _setting_row(
+            "g_settings_welcome_message_message",
+            self.s_welcome_message_message,
+            "g_settings_admin_delete_message_enabled",
+        )
+
+        # admin_delete_message_enabled toggle
+        self.s_admin_delete_message_enabled = self.e.cfg.admin_delete_message_enabled
+        cb_admin_delete_message_enabled = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool(
+                "s_admin_delete_message_enabled", cb_admin_delete_message_enabled
+            ),
+            "chip",
+            icon="✓" if self.e.cfg.admin_delete_message_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_admin_delete_message_enabled.set_active(self.e.cfg.admin_delete_message_enabled)
+        cb_admin_delete_message_enabled.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_admin_delete_message_enabled",
+            self._lbl(sp_inner, "g_settings_admin_delete_message_enabled"),
+            "g_settings_tts_voice",
+        )
 
         # tts_voice
         self.s_tts_voice = self._entry(sp_inner)
@@ -2049,6 +2618,26 @@ class App(tk.Tk):
             )
             cfg.auto_reply_file = self.s_auto_reply_file.get().strip()
 
+            # Autoplay idle timeout
+            cfg.autoplay_idle_timeout = self._parse_float(
+                self.s_autoplay_idle_timeout, "autoplay idle timeout"
+            )
+
+            # Admin greeting
+            cfg.admin_greeting_enabled = self.s_admin_greeting_enabled
+            cfg.admin_greeting_message = self.s_admin_greeting_message.get().strip()
+            cfg.admin_greeting_cooldown = self._parse_float(
+                self.s_admin_greeting_cooldown, "admin greeting cooldown"
+            )
+
+            # Message style (font customization for GUI preview only)
+            cfg.message_style.font_family = self.s_msg_font_family.get().strip()
+            cfg.message_style.font_size = self._parse_int(self.s_msg_font_size, "font size")
+            cfg.message_style.font_color = self.s_msg_font_color.get().strip()
+            cfg.message_style.bold = self.s_msg_bold
+            cfg.message_style.italic = self.s_msg_italic
+            cfg.message_style.underline = self.s_msg_underline
+
             # Write to config.toml using tomllib-compatible format
             import tomllib
             from pathlib import Path
@@ -2136,6 +2725,63 @@ class App(tk.Tk):
             lines.append(f"auto_reply_enabled = {str(cfg.auto_reply_enabled).lower()}")
             lines.append(f"auto_reply_interval = {cfg.auto_reply_interval}")
             lines.append(f"auto_reply_file = {_toml_str(cfg.auto_reply_file)}")
+            lines.append(f"autoplay_idle_timeout = {cfg.autoplay_idle_timeout}")
+            lines.append(f"admin_greeting_enabled = {str(cfg.admin_greeting_enabled).lower()}")
+            lines.append(f"admin_greeting_message = {_toml_str(cfg.admin_greeting_message)}")
+            lines.append(f"admin_greeting_cooldown = {cfg.admin_greeting_cooldown}")
+
+            # Admin mute/unmute mic
+            cfg.admin_mute_mic = self.s_admin_mute_mic
+            cfg.admin_unmute_mic = self.s_admin_unmute_mic
+            lines.append(f"admin_mute_mic = {str(cfg.admin_mute_mic).lower()}")
+            lines.append(f"admin_unmute_mic = {str(cfg.admin_unmute_mic).lower()}")
+
+            # Mic mute state
+            cfg.mute_enabled = self.s_mute_enabled
+            lines.append(f"mute_enabled = {str(cfg.mute_enabled).lower()}")
+
+            # Admin block/unblock user
+            cfg.admin_block_user = self.s_admin_block_user
+            cfg.admin_unblock_user = self.s_admin_unblock_user
+            lines.append(f"admin_block_user = {str(cfg.admin_block_user).lower()}")
+            lines.append(f"admin_unblock_user = {str(cfg.admin_unblock_user).lower()}")
+
+            # Admin block/unblock bot
+            cfg.admin_block_bot = self.s_admin_block_bot
+            cfg.admin_unblock_bot = self.s_admin_unblock_bot
+            lines.append(f"admin_block_bot = {str(cfg.admin_block_bot).lower()}")
+            lines.append(f"admin_unblock_bot = {str(cfg.admin_unblock_bot).lower()}")
+
+            # Admin kick/ban/unban user
+            cfg.admin_kick_user = self.s_admin_kick_user
+            cfg.admin_ban_user = self.s_admin_ban_user
+            cfg.admin_unban_user = self.s_admin_unban_user
+            lines.append(f"admin_kick_user = {str(cfg.admin_kick_user).lower()}")
+            lines.append(f"admin_ban_user = {str(cfg.admin_ban_user).lower()}")
+            lines.append(f"admin_unban_user = {str(cfg.admin_unban_user).lower()}")
+
+            # Admin punish user/bot
+            cfg.admin_punish_user = self.s_admin_punish_user
+            cfg.admin_punish_bot = self.s_admin_punish_bot
+            lines.append(f"admin_punish_user = {str(cfg.admin_punish_user).lower()}")
+            lines.append(f"admin_punish_bot = {str(cfg.admin_punish_bot).lower()}")
+
+            # Welcome message
+            cfg.welcome_message_enabled = (
+                self.s_admin_greeting_enabled
+            )  # reuse admin_greeting_enabled toggle
+            cfg.welcome_message_message = self.s_welcome_message_message.get().strip()
+            lines.append(f"welcome_message_enabled = {str(cfg.welcome_message_enabled).lower()}")
+            lines.append(f"welcome_message_message = {_toml_str(cfg.welcome_message_message)}")
+
+            # Admin delete message
+            cfg.admin_delete_message_enabled = self.s_admin_delete_message_enabled
+            lines.append(
+                f"admin_delete_message_enabled = {str(cfg.admin_delete_message_enabled).lower()}"
+            )
+            lines.append(
+                f"message_style = {{ font_family = {_toml_str(cfg.message_style.font_family)}, font_size = {cfg.message_style.font_size}, font_color = {_toml_str(cfg.message_style.font_color)}, bold = {str(cfg.message_style.bold).lower()}, italic = {str(cfg.message_style.italic).lower()}, underline = {str(cfg.message_style.underline).lower()} }}"
+            )
 
             new_text = "\n".join(lines) + "\n"
 
@@ -2149,6 +2795,15 @@ class App(tk.Tk):
             from .config import _validate as _cfg_validate
 
             _candidate_data = tomllib.loads(new_text)
+            # Convert message_style dict to MessageStyle for validation
+            if "message_style" in _candidate_data and isinstance(
+                _candidate_data["message_style"], dict
+            ):
+                from .config import MessageStyle
+
+                _candidate_data["message_style"] = MessageStyle.from_toml_dict(
+                    _candidate_data["message_style"]
+                )
             _probe = Config(**_candidate_data)
             try:
                 _cfg_validate(_probe, _candidate_data, "settings")

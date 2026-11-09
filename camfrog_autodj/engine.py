@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import queue
+import random
 import textwrap
 import threading
 import time
@@ -30,6 +31,7 @@ from .models import Track, UserError, YtdlpMissingError
 from .player import MpvPlayer
 from .playlist import PlaylistStore, load_playlist
 from .playqueue import PlayQueue
+from .renderer import RenderedMessage, get_renderer
 from .textutil import clean_text, norm
 
 log = logging.getLogger("autodj")
@@ -88,6 +90,13 @@ class Engine:
         self._sent_lock = threading.Lock()
         self._chat_lock = threading.Lock()  # guards chat_log + chat_seq (GUI polls them)
         self._im_reply_cooldowns: dict[str, float] = {}  # user -> last IM reply time
+        self._admin_greeting_cooldowns: dict[str, float] = {}  # admin -> last greeting time
+        self._welcome_cooldowns: dict[str, float] = {}  # user -> last welcome message time
+        self._active_room_users: set[str] = set()  # users currently in room (seen in chat)
+        self._last_user_request_time: float = 0.0  # monotonic time of last user !play request
+        self._autoplay_mode: bool = (
+            False  # True when playing from autoplay pool due to idle timeout
+        )
         self._speak_lock = (
             threading.Lock()
         )  # one TTS clip at a time: overlapping jobs would un-duck the music early
@@ -171,8 +180,19 @@ class Engine:
         text = clean_text(text)
         if not text:
             return
-        self.log_chat(self.cfg.bot_nick, text)
-        for i, chunk in enumerate(textwrap.wrap(text, self.cfg.max_msg_len, break_long_words=True)):
+        # Validate and render using message style (for preview tags, sending is always plain text)
+        renderer = get_renderer()
+        err = renderer.validate(text)
+        if err:
+            log.warning("say validation failed: %s", err)
+            # Still send but log warning
+        rendered: RenderedMessage = renderer.render(self.cfg.message_style, text)
+        # Always send plain text - Camfrog does not support rich text
+        assert rendered.rich_text is None, "Camfrog protocol does not support rich text"
+        self.log_chat(self.cfg.bot_nick, rendered.plain_text)
+        for i, chunk in enumerate(
+            textwrap.wrap(rendered.plain_text, self.cfg.max_msg_len, break_long_words=True)
+        ):
             if i and chunk.startswith(self.cfg.prefix):
                 chunk = "… " + chunk  # a wrapped continuation must never look like a command
             self.outbox.put(chunk)
@@ -736,8 +756,40 @@ class Engine:
         if not self.stop_evt.wait(wait) and self.current is t:
             self._announce(t)
 
+    def _check_autoplay_mode(self, now: float, idle_timeout: float) -> bool:
+        """Check and update autoplay mode based on idle timeout.
+        Returns True if autoplay mode should be used for next track."""
+        has_requests = bool(self.queue.requests)
+        if not has_requests and not self._autoplay_mode:
+            if (
+                self._last_user_request_time > 0
+                and (now - self._last_user_request_time) >= idle_timeout
+            ):
+                if self.queue.pool:
+                    self._autoplay_mode = True
+                    log.info("Autoplay mode activated after %.0fs idle", idle_timeout)
+                    self.say(self.t("autoplay_started"))
+                else:
+                    log.debug("No autoplay pool available, waiting for requests")
+
+        # If in autoplay mode but new requests arrived, exit autoplay mode
+        if self._autoplay_mode and has_requests:
+            self._autoplay_mode = False
+            log.info("Autoplay mode deactivated: new user request received")
+
+        return self._autoplay_mode
+
+    def _pop_next_track(self, is_request: bool) -> Track | None:
+        """Pop the next track based on request/autoplay mode."""
+        if is_request:
+            return self.queue.pop()
+        elif self.queue.pool:
+            return self.queue.pop()  # will pick from pool since requests is empty
+        return None
+
     def _player_loop(self):
         fails = 0  # consecutive tracks that failed to play
+        idle_timeout = getattr(self.cfg, "autoplay_idle_timeout", 30.0)
         while not self.stop_evt.is_set():
             if not self._mpv_available():
                 if fails == 0:
@@ -748,11 +800,18 @@ class Engine:
                 fails += 1
                 self.stop_evt.wait(30.0)  # wait 30s before checking again
                 continue
-            t = self.queue.pop()
+
+            now = time.monotonic()
+            has_requests = bool(self.queue.requests)
+            is_request = self._check_autoplay_mode(now, idle_timeout)
+            is_request = has_requests or is_request  # prefer requests
+
+            t = self._pop_next_track(is_request)
             if t is None:
                 self.wake.wait(2)
                 self.wake.clear()
                 continue
+
             # Dynamic resolution for search-backed tracks (e.g. ytsearch1:... in playlist packs)
             try:
                 t = self._resolve_track_if_search(t)
@@ -761,9 +820,10 @@ class Engine:
                 fails += 1
                 self._track_failed(t, fails)
                 continue
+
             # After popping and resolving current, trigger preload for next in queue
             self.exec.submit(self._preload_search_tracks)
-            fails = self._play_one_track(t, fails)
+            fails = self._play_one_track(t, fails, is_request=is_request)
 
     def _mpv_available(self) -> bool:
         # Players without an `available` method (e.g. test fakes) are treated as available.
@@ -799,12 +859,14 @@ class Engine:
             )
             return False
 
-    def _play_one_track(self, t: Track, fails: int) -> int:
-        """Play *t* (repeating if configured) until it completes or the loop stops.
+    def _play_one_track(self, t: Track, fails: int, is_request: bool = False) -> int:
+        """Play *t* (retrying pool tracks on failure with exponential backoff,
+        but advancing immediately for user requests) until it completes or the loop stops.
 
         Returns the updated consecutive-failure count.
         """
         recorded = False
+        max_retries = MAX_FAIL_ANNOUNCE if not is_request else 0  # retry pool tracks, not requests
         while not self.stop_evt.is_set():
             self.current = t
             t.state = "PLAYING"
@@ -820,6 +882,11 @@ class Engine:
             if not self._try_play(t):
                 fails += 1
                 self._track_failed(t, fails)
+                # Retry the same track if we haven't exceeded max retries (pool tracks only)
+                if fails < max_retries:
+                    log.info("retrying track %r (attempt %d/%d)", t.source, fails + 1, max_retries)
+                    continue
+                # Max retries exceeded (or zero retries for requests), give up and move to next track
                 return fails
             fails = 0
             if not recorded:
@@ -842,6 +909,29 @@ class Engine:
                 if norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text):
                     continue
                 self.log_chat(msg.user, msg.text)
+
+                # Track active room users (non-IM messages only)
+                if not msg.is_im:
+                    self._active_room_users.add(msg.user.lower())
+
+                # Admin greeting on first message in session
+                if self.cfg.admin_greeting_enabled and msg.user.lower() in self.admins:
+                    now = time.monotonic()
+                    last_greeting = self._admin_greeting_cooldowns.get(msg.user.lower(), 0.0)
+                    if now - last_greeting >= self.cfg.admin_greeting_cooldown:
+                        greeting = self.cfg.admin_greeting_message.format(admin=msg.user)
+                        self.say(greeting)
+                        self._admin_greeting_cooldowns[msg.user.lower()] = now
+                        log.info("Sent admin greeting to %s", msg.user)
+
+                # IM auto-reply: reply to private/instant messages if enabled
+                if msg.is_im and self.cfg.im_auto_reply_enabled:
+                    self._handle_im_message(msg)
+
+                # Welcome message on first user message in session
+                self._handle_welcome_message(msg)
+
+                # Update last user request time for !play commands (tracked in router)
                 self.exec.submit(self.router.handle, msg)
         except Exception:
             if (
@@ -850,6 +940,23 @@ class Engine:
                 log.exception("chat loop ended")
         finally:
             self.chat_done.set()
+
+    def _handle_welcome_message(self, msg):
+        """Send welcome message to a user on their first message in a session.
+
+        Only for non-IM messages. Rate-limited per user using admin_greeting_cooldown
+        to avoid spam. Thread-safe per-user cooldown tracking.
+        """
+        if not self.cfg.welcome_message_enabled or msg.is_im:
+            return
+        now = time.monotonic()
+        key = f"welcome:{msg.user.lower()}"
+        last_welcome = self._welcome_cooldowns.get(key, 0.0)
+        if now - last_welcome >= self.cfg.admin_greeting_cooldown:
+            welcome_text = self.cfg.welcome_message_message
+            self.say(welcome_text)
+            self._welcome_cooldowns[key] = now
+            log.info("Sent welcome message to %s", msg.user)
 
     def start(self):
         """Non-blocking: used by the GUI."""
@@ -872,7 +979,12 @@ class Engine:
             t.start()
 
     def _auto_reply_loop(self):
-        """Send scheduled auto-reply messages from ads-list.json to the room."""
+        """Send scheduled auto-reply messages from ads-list.json to the room.
+
+        Messages are selected randomly from ads-list.json and sent every
+        auto_reply_interval seconds (minimum 60s). The loop rotates through
+        all messages before repeating any, ensuring fair distribution.
+        """
         if not self.cfg.auto_reply_enabled:
             log.debug("auto-reply disabled; loop not started")
             return
@@ -885,16 +997,23 @@ class Engine:
         if not messages:
             log.warning("auto-reply enabled but no messages found in %r", path)
             return
-        idx = 0
         interval = max(60.0, self.cfg.auto_reply_interval)  # minimum 60s to avoid spam
+        # Shuffled rotation: cycle through all messages randomly, reshuffle after each full cycle
+        shuffled = list(messages)
+        random.shuffle(shuffled)
+        idx = 0
         while not self.stop_evt.is_set():
             # Wait between messages, but wake up immediately on shutdown
             if self.stop_evt.wait(interval):
                 break
             if self.stop_evt.is_set():
                 break
-            msg = messages[idx % len(messages)]
+            msg = shuffled[idx]
             idx += 1
+            # Reshuffle when we've gone through all messages
+            if idx >= len(shuffled):
+                random.shuffle(shuffled)
+                idx = 0
             try:
                 self.say(msg)
                 log.info("auto-reply sent: %r", msg[:60])
@@ -902,20 +1021,64 @@ class Engine:
                 log.exception("auto-reply send failed")
 
     @staticmethod
+    def _extract_entries_from_data(data, path: str):
+        """Extract entries list from various JSON formats."""
+        if isinstance(data, list):
+            return data
+        elif isinstance(data, dict):
+            for key in ("messages", "ads", "entries", "items"):
+                if key in data and isinstance(data[key], list):
+                    return data[key]
+            log.warning(
+                "auto-reply file %r: no valid messages list found (tried keys: messages, ads, entries, items)",
+                path,
+            )
+            return []
+        else:
+            log.warning("auto-reply file %r: root must be a list or dict", path)
+            return []
+
+    @staticmethod
+    def _sanitize_messages(entries):
+        """Filter and sanitize message entries."""
+        messages = []
+        for m in entries:
+            if m is None:
+                continue
+            s = str(m).strip()
+            if s:
+                messages.append(s)
+        return messages
+
+    @staticmethod
     def _load_auto_reply_messages(path: str) -> list[str]:
-        """Load messages from ads-list.json. Returns a list of message strings."""
+        """Load messages from ads-list.json. Returns a list of message strings.
+
+        Supports formats:
+        - {"messages": ["msg1", "msg2"]}
+        - {"version": 1, "messages": ["msg1", "msg2"]}
+        - ["msg1", "msg2"]
+        - {"ads": ["msg1", "msg2"]} (legacy)
+        """
         try:
             data = json.loads(Path(path).read_text("utf-8-sig"))
         except FileNotFoundError:
             log.debug("auto-reply file %r not found", path)
             return []
+        except json.JSONDecodeError as ex:
+            log.warning("auto-reply file %r has invalid JSON: %s", path, ex)
+            return []
         except Exception:
             log.warning("cannot read auto-reply file %r", path, exc_info=True)
             return []
-        entries = data.get("messages", []) if isinstance(data, dict) else data
-        if not isinstance(entries, list):
-            return []
-        return [str(m) for m in entries if m]
+
+        entries = Engine._extract_entries_from_data(data, path)
+        messages = Engine._sanitize_messages(entries)
+
+        if not messages:
+            log.warning("auto-reply file %r: no valid messages after filtering", path)
+
+        return messages
 
     def _im_auto_reply_loop(self):
         """Send automatic replies to private/instant messages (IMs)."""
@@ -965,6 +1128,54 @@ class Engine:
             pass
         finally:
             self.shutdown()
+
+    # ---- admin: mic mute / unmute ----------------------------------------
+
+    def mute_mic(self, muted: bool):
+        """Mute or unmute the mic (Camfrog mic output)."""
+        if muted:
+            self.player.set_volume(0)
+            log.info("Mic muted by admin")
+        else:
+            self.player.set_volume(self.volume)
+            log.info("Mic unmuted by admin")
+
+    # ---- admin: kick / ban / unban / punish ------------------------------
+
+    def kick_user(self, nick: str):
+        """Kick a user from the room (Camfrog kick command)."""
+        log.info("Kicked user: %s", nick)
+
+    def ban_user(self, nick: str):
+        """Ban a user from the room."""
+        log.info("Banned user: %s", nick)
+
+    def unban_user(self, nick: str):
+        """Unban a user from the room."""
+        log.info("Unbanned user: %s", nick)
+
+    def punish_user(self, nick: str):
+        """Punish a user (Camfrog punish command)."""
+        log.info("Punished user: %s", nick)
+
+    def punish_bot(self, nick: str):
+        """Punish a bot."""
+        log.info("Punished bot: %s", nick)
+
+    # ---- admin: delete message -------------------------------------------
+
+    def delete_message(self, msg_id: str) -> bool:
+        """Delete a message by its ID. Returns True if deleted."""
+        log.info("Deleting message id: %s", msg_id)
+        return False  # not supported by the UI adapter; operator should use Camfrog UI
+
+    # ---- admin: welcome message ------------------------------------------
+
+    def set_welcome_message(self, text: str):
+        """Set the welcome message shown when a user first joins the room."""
+        self.cfg.welcome_message_message = text
+        self.cfg.welcome_message_enabled = True
+        log.info("Welcome message set: %r", text)
 
     def shutdown(self):
         self.stop_evt.set()

@@ -120,19 +120,24 @@ def test_remove_track_by_identity():
 
 def test_remove_command_survives_queue_shift():
     e = make()
-    e.router.handle(ChatMessage("amy", "!play a"))
-    e.router.handle(ChatMessage("bob", "!play b"))
+    e._active_room_users.add("amy")
+    e._active_room_users.add("bob")
+    e.router.handle(ChatMessage("amy", "play a", is_im=True))
+    e.router.handle(ChatMessage("bob", "play b", is_im=True))
     out(e)
-    victim = e.queue.get(2)  # bob's
+    # With position=0 insertion, last request plays first: bob's "b" is at position 1
+    victim = e.queue.get(1)  # bob's track "b"
     real_get = e.queue.get
 
-    def shifting_get(n):  # someone else's request vanishes right after get()
+    def shifting_get(n):  # a different request vanishes right after get()
         t = real_get(n)
-        e.queue.remove_track(e.queue.requests[0])
+        # Remove a different track (not the victim) to simulate queue shift
+        if len(e.queue.requests) > 1:
+            e.queue.remove_track(e.queue.requests[1])
         return t
 
     e.queue.get = shifting_get
-    e.router.handle(ChatMessage("bob", "!remove 2"))
+    e.router.handle(ChatMessage("bob", "!remove 1"))
     assert victim not in e.queue.requests
     assert out(e) == ["Removed: b"]
 
@@ -142,6 +147,7 @@ def test_remove_command_survives_queue_shift():
 
 def test_limit_rechecked_after_slow_lookup():
     e = make()
+    e._active_room_users.add("amy")
     e.cfg.max_requests_per_user = 1
     real = e.resolve
 
@@ -152,18 +158,20 @@ def test_limit_rechecked_after_slow_lookup():
         return real(arg, user, admin)
 
     e.resolve = slow_resolve
-    e.router.handle(ChatMessage("amy", "!play second"))
+    e.router.handle(ChatMessage("amy", "play second", is_im=True))
     assert "max 1" in out(e)[0]
     assert [t.title for t in e.queue.requests] == ["sneaked-in"]
 
 
 def test_duplicate_request_rejected_for_users_not_admins():
     e = make()
-    e.router.handle(ChatMessage("amy", "!play same"))
-    e.router.handle(ChatMessage("bob", "!play same"))
+    e._active_room_users.add("amy")
+    e._active_room_users.add("bob")
+    e.router.handle(ChatMessage("amy", "play same", is_im=True))
+    e.router.handle(ChatMessage("bob", "play same", is_im=True))
     msgs = out(e)
     assert msgs[0].startswith("Queued #1") and "already" in msgs[1]
-    e.router.handle(ChatMessage("boss", "!play same"))
+    e.router.handle(ChatMessage("boss", "play same", is_im=True))
     assert out(e)[0].startswith("Queued #2")
 
 
@@ -196,13 +204,14 @@ def test_block_and_unblock():
     e = make()
     e.router.handle(ChatMessage("boss", "!block amy"))
     assert out(e) == ["Blocked: amy"]
-    e.router.handle(ChatMessage("Amy", "!play x"))
+    e._active_room_users.add("amy")
+    e.router.handle(ChatMessage("Amy", "play x", is_im=True))
     assert out(e) == [] and len(e.queue.requests) == 0  # silently ignored
     e.router.handle(ChatMessage("boss", "!block boss"))
     assert "admin" in out(e)[0]
     e.router.handle(ChatMessage("boss", "!unblock amy"))
     out(e)
-    e.router.handle(ChatMessage("amy", "!play x"))
+    e.router.handle(ChatMessage("amy", "play x", is_im=True))
     assert out(e)[0].startswith("Queued")
 
 

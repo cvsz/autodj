@@ -159,6 +159,7 @@ def test_im_command_requires_admin_for_admin_cmd():
     """IM admin commands still require admin authorization."""
     e = make()
     e.admins = {"boss"}
+    e._active_room_users.add("amy")  # Add user to room for IM security check
     e.player.play = lambda s, v, d=None: True
     e.current = Track("s", "now", 90, "boss")
 
@@ -171,6 +172,7 @@ def test_im_command_requires_admin_for_admin_cmd():
 def test_im_play_command_no_prefix():
     """IM play command works without prefix."""
     e = make()
+    e._active_room_users.add("amy")
     e.router.handle(ChatMessage("amy", "play song one", is_im=True))
     assert out(e) == ["Queued #1: song one [2:00] for amy"]
 
@@ -186,6 +188,7 @@ def test_room_message_without_prefix_is_ignored():
 def test_im_cooldown_still_applies():
     """IM commands are subject to cooldown."""
     e = make()
+    e._active_room_users.add("amy")
     e.cfg.cooldown = 10.0
     e.router.handle(ChatMessage("amy", "play song one", is_im=True))
     out(e)
@@ -199,6 +202,7 @@ def test_im_blocked_user_ignored():
     e = make()
     e.admins = {"boss"}
     e.blocked.add("amy")
+    e._active_room_users.add("amy")
     e.router.handle(ChatMessage("amy", "pause", is_im=True))
     assert out(e) == []
     assert e.paused is False

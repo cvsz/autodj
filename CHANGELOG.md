@@ -7,6 +7,38 @@
 - **Docs: full PR inventory + audit reports** — all 142 pull requests enumerated, dispositioned, and recorded in `docs/audit/all-pr-*.md`; architecture, security, playback, GUI, playlist, library-scan, Windows build, installer, dependency, penetration-test, performance, GPG/merge-evidence, production-readiness, and residual-risk reports added under `docs/audit/`. (`docs/audit/`)
 
 ## 0.2.8
+2026-11-09
+
+### Added
+- **Font/Style Customization (GUI Preview Only)**: New `message_style` config section with `font_family`, `font_size`, `font_color`, `bold`, `italic`, `underline`. Live preview in Settings ⚙️ tab. **Note**: Camfrog desktop client does NOT support rich text in outgoing messages — sent messages are always plain text via UIA. This feature is for the GUI preview panel only. (`camfrog_autodj/config.py`, `camfrog_autodj/renderer.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Admin Greeting**: Greet admin on first message in session with configurable message (`{admin}` placeholder) and cooldown (default 1 hour). (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/messages.py`, `camfrog_autodj/gui.py`)
+- **Delete History**: Admin command `!deletehistory <all|N>` to clear history or remove oldest N entries. (`camfrog_autodj/commands.py`, `camfrog_autodj/messages.py`)
+- **IM-Only Play Commands**: `!play`, `!request`, `!req`, `!p`, `!เล่น`, `!ขอเพลง`, `!เล่นเพลง` now only work via IM (private message). Room users must DM the bot. Admins can still use in room. (`camfrog_autodj/commands.py`, `camfrog_autodj/messages.py`)
+- **Autoplay Idle Timeout**: After 30 minutes (configurable `autoplay_idle_timeout`) with no user requests, bot switches to autoplay pool. New `!play` immediately exits autoplay mode. (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`)
+- **New Thai Aliases**: `!ขอเพลง` (request song), `!เล่นเพลง` (play song). (`camfrog_autodj/commands.py`, `camfrog_autodj/messages.py`)
+- **Auto-Reply**: Every 60 seconds from `ads-list.json` (configurable `auto_reply_interval`). (`camfrog_autodj/engine.py`, `config.toml`)
+- **REA Reverse Engineering Evidence**: Documented Camfrog font logic (GDI imports: `CreateFontIndirectW`, `EnumFontFamiliesExW`, `ChooseFontW`; chat/IM font settings; HTML rendering for display only; no rich text send capability). (`docs/protocols/camfrog-font-logic.md`)
+- **Mic Mute/Unmute**: Admin commands `!mute` / `!unmute` to mute/unmute the mic (config-gated: `admin_mute_mic`, `admin_unmute_mic`). (`camfrog_autodj/commands.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Block/Unblock Bot**: Admin commands `!blockbot` / `!unblockbot` to block/unblock bots (config-gated: `admin_block_bot`, `admin_unblock_bot`). (`camfrog_autodj/commands.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Kick/Ban/Unban User**: Admin commands `!kick` / `!ban` / `!unban` (config-gated: `admin_kick_user`, `admin_ban_user`, `admin_unban_user`). (`camfrog_autodj/commands.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Punish User/Bot**: Admin commands `!punish` / `!punishbot` (config-gated: `admin_punish_user`, `admin_punish_bot`). (`camfrog_autodj/commands.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Delete Message**: Admin command `!delete <msg id>` to delete a message by ID (config-gated: `admin_delete_message_enabled`). (`camfrog_autodj/commands.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Welcome Message**: Welcome message feature with configurable text (config-gated: `welcome_message_enabled`). (`camfrog_autodj/commands.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
+- **Documentation**: `docs/camfrog-re/autodj-commands.en.md` / `.th.md`, `docs/camfrog-re/user-manual.en.md` / `.th.md`, `docs/camfrog-re/admin-manual.en.md` / `.th.md`. README and CHANGELOG updated.
+
+### Fixed
+- **Chat send retry loop**: Fixed `UnboundLocalError` in `uia.py:_appeared()` where `norm_l` was referenced outside the loop. (Already in 0.2.8 HEAD)
+- **Queue logic**: Pool tracks retry on failure (up to 3x); user requests advance immediately on failure. (`camfrog_autodj/engine.py`)
+- **IM command handling**: Fixed rate limiting and cooldown for IM commands. (`camfrog_autodj/commands.py`)
+
+### Changed
+- **Autoplay idle timeout**: Default changed from 1800s (30 min) to 30 seconds. When no user requests arrive within this time, AutoDJ switches to the autoplay pool. (`camfrog_autodj/engine.py`, `config.toml`)
+- **Requested songs play immediately**: `!play` inserts at the front of the queue (`position=0`) so the requested song plays next. (`camfrog_autodj/commands.py`)
+- **Default font settings**: `font_size = 14`, `font_color = "#FF0000"` (red) for better visibility in preview.
+- **Play commands**: Now IM-only (room users must DM the bot). Admins can still use in room.
+- **Auto-reply interval**: Default 60 seconds (was 300).
+
+## 0.2.8 (Initial)
 2026-11-07
 
 - **Fix: GUI hangs when clicking Load Folder** — `library.scan_folder()` now skips symlinks (avoids cycle/reparse-point hangs on Windows) and caps returned tracks via a `limit` argument; `gui.load_folder()` disables the folder button while scanning, guards against reentrant clicks, and shows loaded/failed status. (`camfrog_autodj/library.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)

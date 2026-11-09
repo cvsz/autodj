@@ -97,12 +97,13 @@ def test_remove_track_survives_concurrent_modification():
     # ============================================================================
     """Concurrent commands from the same user must respect cooldown."""
     e = make()
+    e._active_room_users.add("amy")
     e.cfg.cooldown = 5.0
     results = []
     lock = threading.Lock()
 
     def fire_cmd(user, idx):
-        e.router.handle(ChatMessage(user, f"!play song{idx}"))
+        e.router.handle(ChatMessage(user, f"play song{idx}", is_im=True))
         with lock:
             results.append(out(e))
 
@@ -122,11 +123,13 @@ def test_concurrent_commands_different_users():
     """Different users can each queue without blocking each other."""
     e = make()
     e.cfg.cooldown = 0
+    for i in range(10):
+        e._active_room_users.add(f"user{i}")
     results = []
     lock = threading.Lock()
 
     def fire_cmd(user, idx):
-        e.router.handle(ChatMessage(user, f"!play song{idx}"))
+        e.router.handle(ChatMessage(user, f"play song{idx}", is_im=True))
         with lock:
             results.append(out(e))
 
@@ -143,11 +146,12 @@ def test_concurrent_commands_different_users():
 def test_duplicate_events_idempotent():
     """The same command delivered twice must not double-queue (dedup via already_queued)."""
     e = make()
+    e._active_room_users.add("amy")
     e.cfg.cooldown = 0
-    e.router.handle(ChatMessage("amy", "!play unique-song"))
+    e.router.handle(ChatMessage("amy", "play unique-song", is_im=True))
     out(e)
     # Same song again immediately — should be rejected as already queued
-    e.router.handle(ChatMessage("amy", "!play unique-song"))
+    e.router.handle(ChatMessage("amy", "play unique-song", is_im=True))
     assert "already in the queue" in out(e)[0]
 
 

@@ -14,8 +14,9 @@ def test_en_th_same_keys():
 
 def test_thai_replies_and_aliases():
     e = make()
+    e._active_room_users.add("amy")
     e.lang = "th"
-    e.router.handle(ChatMessage("amy", "!เล่น เพลงหนึ่ง"))
+    e.router.handle(ChatMessage("amy", "เล่น เพลงหนึ่ง", is_im=True))
     assert out(e) == ["เข้าคิวที่ 1: เพลงหนึ่ง [2:00] ขอโดย amy"]
     e.current = Track("s", "now", 90, "bob")
     e.router.handle(ChatMessage("amy", "!เพลงนี้"))

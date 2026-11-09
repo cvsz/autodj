@@ -96,6 +96,12 @@ def make():
     return e
 
 
+def make_im():
+    """Create engine for IM command testing (play commands work in IM)."""
+    e = make()
+    return e
+
+
 def out(e):
     r = []
     while not e.outbox.empty():
@@ -105,7 +111,8 @@ def out(e):
 
 def test_play_np_next_queue():
     e = make()
-    e.router.handle(ChatMessage("amy", "!play song one"))
+    e._active_room_users.add("amy")
+    e.router.handle(ChatMessage("amy", "play song one", is_im=True))
     assert out(e) == ["Queued #1: song one [2:00] for amy"]
     e.current = Track("s", "now", 90, "bob")
     e.router.handle(ChatMessage("amy", "!np"))
@@ -120,10 +127,11 @@ def test_play_np_next_queue():
 
 def test_limits_and_permissions():
     e = make()
+    e._active_room_users.add("amy")
     for i in range(3):
-        e.router.handle(ChatMessage("amy", f"!play s{i}"))
+        e.router.handle(ChatMessage("amy", f"play s{i}", is_im=True))
     out(e)
-    e.router.handle(ChatMessage("amy", "!play s9"))
+    e.router.handle(ChatMessage("amy", "play s9", is_im=True))
     assert "max 3" in out(e)[0]
     e.router.handle(ChatMessage("amy", "!vol 10"))
     assert out(e) == ["amy: admin only"]
@@ -133,11 +141,12 @@ def test_limits_and_permissions():
 
 def test_long_and_live_rejected_for_users():
     e = make()
+    e._active_room_users.add("amy")
     e.resolve = lambda a, u, ad: [Track("https://youtu.be/x", "t", 99999, u)]
-    e.router.handle(ChatMessage("amy", "!play t"))
+    e.router.handle(ChatMessage("amy", "play t", is_im=True))
     assert "too long" in out(e)[0]
     e.resolve = lambda a, u, ad: [Track("https://youtu.be/x", "t", None, u)]
-    e.router.handle(ChatMessage("amy", "!play t"))
+    e.router.handle(ChatMessage("amy", "play t", is_im=True))
     assert "live" in out(e)[0]
 
 
@@ -158,7 +167,8 @@ def test_skip_and_voteskip():
 
 def test_remove_own_only_and_say_local():
     e = make()
-    e.router.handle(ChatMessage("amy", "!play a"))
+    e._active_room_users.add("amy")
+    e.router.handle(ChatMessage("amy", "play a", is_im=True))
     out(e)
     e.router.handle(ChatMessage("bob", "!remove 1"))
     assert "only remove your own" in out(e)[0]
