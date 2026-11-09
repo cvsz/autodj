@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-VERSION="${1:-0.2.8}"
+VERSION="${1:-0.3.0}"
 SRCDIR="${2:-dist}"
 OUTDIR="${3:-dist}"
 NSIS_PATH="${NSIS_PATH:-$HOME/.wine/drive_c/NSIS/makensis.exe}"

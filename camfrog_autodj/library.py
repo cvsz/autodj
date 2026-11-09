@@ -9,7 +9,8 @@ import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .models import Track, YtdlpMissingError
+from .exceptions import YtdlpMissingError
+from .models import Track
 from .paths import resolve_executable
 
 log = logging.getLogger("autodj")

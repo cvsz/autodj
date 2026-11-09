@@ -18,7 +18,7 @@ class MessageStyle:
 
     font_family: str = "Consolas"
     font_size: int = 14
-    font_color: str = "#FF0000"
+    font_color: str = "#000000"
     bold: bool = False
     italic: bool = False
     underline: bool = False
@@ -212,6 +212,8 @@ class Config:
     status_indicator_enabled: bool = True  # announce user status changes in room chat
     # Status alerts (detect upgrade / payment-required status text from Camfrog; see docs/camfrog-re/07-upgrade-logic.md, 09-payment.md)
     status_alert_enabled: bool = True  # alert when Camfrog shows upgrade/payment-required status
+    # IM viewer: show private/instant messages in a dedicated GUI tab (see docs/camfrog-re/)
+    im_viewer_enabled: bool = True  # show the IM / private message viewer tab in the GUI
     # Welcome message - welcome message config
     welcome_message_enabled: bool = False  # enable welcome message
     welcome_message_message: str = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"  # welcome message

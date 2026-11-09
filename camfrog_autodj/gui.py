@@ -440,7 +440,8 @@ class App(tk.Tk):
         self._q_tracks: list = []  # the Track objects behind the queue list box, in display order
         self._drag = False
         self._seen = 0  # show whatever is already in the log
-        self._q_cache = self._h_cache = None
+        self._im_seen = 0  # show whatever is already in the IM log
+        self._q_cache = self._h_cache = self._im_cache = None
         self._state = "idle"  # idle | playing | paused (drives the animations)
         self._level, self._spin, self._angle, self._t_prev = (
             0.05,
@@ -911,13 +912,14 @@ class App(tk.Tk):
             ("queue", "g_queue"),
             ("history", "g_history"),
             ("chat", "g_chat"),
+            ("im", "g_im"),
         ):
             b = self._btn(bar, lab, lambda k=key: self.show_tab(k), "tab", height=34)
             b.pack(side="left", padx=(0, px(6)))
             self.tabs[key] = b
         pages = tk.Frame(panel, bg=SURFACE)
         pages.pack(fill="both", expand=True, padx=px(14), pady=(0, px(14)))
-        self.pages = {k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat")}
+        self.pages = {k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat", "im")}
 
         qp = self.pages["queue"]
         qb = tk.Frame(qp, bg=SURFACE)
@@ -970,6 +972,39 @@ class App(tk.Tk):
         cs.configure(command=self.chat.yview)
         self.chat.tag_configure("bot", foreground=CYAN)
         self.chat.tag_configure("who", foreground="#b79cff", font=self.f_bold)
+
+        # ---- IM / private message viewer panel ----
+        ip = self.pages["im"]
+        ih = tk.Label(
+            ip,
+            text=self.e.t("g_im"),
+            bg=SURFACE,
+            fg=TEXT,
+            font=self.f_section,
+            anchor="w",
+        )
+        ih.pack(fill="x", padx=px(14), pady=(px(14), px(6)))
+        ihs = ttk.Scrollbar(ip, orient="vertical")
+        ihs.pack(side="right", fill="y")
+        self.im_chat = tk.Text(
+            ip,
+            bg=SURFACE,
+            fg=TEXT,
+            wrap="word",
+            state="disabled",
+            relief="flat",
+            highlightthickness=0,
+            padx=px(8),
+            pady=px(6),
+            font=self.f_body,
+            insertbackground=CYAN,
+            selectbackground=VIOLET,
+            bd=0,
+        )
+        self.im_chat.pack(side="left", fill="both", expand=True)
+        self.im_chat.configure(yscrollcommand=ihs.set)
+        ihs.configure(command=self.im_chat.yview)
+        self.im_chat.tag_configure("who", foreground=PINK, font=self.f_bold)
 
     # ---- settings popup ------------------------------------------------------
     def open_settings(self):
@@ -1370,6 +1405,108 @@ class App(tk.Tk):
         _setting_row(
             "g_settings_status_alert_enabled",
             self._lbl(sp_inner, "g_settings_status_alert_enabled"),
+            "g_settings_im_viewer_enabled",
+        )
+
+        # IM viewer toggle
+        self.s_im_viewer_enabled = self.e.cfg.im_viewer_enabled
+        cb_im_viewer = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_im_viewer_enabled", cb_im_viewer),
+            "chip",
+            icon="✓" if self.e.cfg.im_viewer_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_im_viewer.set_active(self.e.cfg.im_viewer_enabled)
+        cb_im_viewer.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_im_viewer_enabled",
+            self._lbl(sp_inner, "g_settings_im_viewer_enabled"),
+            "g_settings_im_auto_reply_enabled",
+        )
+
+        # IM auto-reply toggle
+        self.s_im_auto_reply_enabled = self.e.cfg.im_auto_reply_enabled
+        cb_im_auto_reply = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_im_auto_reply_enabled", cb_im_auto_reply),
+            "chip",
+            icon="✓" if self.e.cfg.im_auto_reply_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_im_auto_reply.set_active(self.e.cfg.im_auto_reply_enabled)
+        cb_im_auto_reply.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_im_auto_reply_enabled",
+            self._lbl(sp_inner, "g_settings_im_auto_reply_enabled"),
+            "g_settings_im_auto_reply_message",
+        )
+
+        # IM auto-reply message
+        self.s_im_auto_reply_message = self._entry(sp_inner)
+        self.s_im_auto_reply_message.insert(0, self.e.cfg.im_auto_reply_message)
+        _setting_row(
+            "g_settings_im_auto_reply_message",
+            self.s_im_auto_reply_message,
+            "g_settings_im_auto_reply_cooldown",
+        )
+
+        # IM auto-reply cooldown
+        self.s_im_auto_reply_cooldown = self._entry(sp_inner)
+        self.s_im_auto_reply_cooldown.insert(0, str(self.e.cfg.im_auto_reply_cooldown))
+        _setting_row(
+            "g_settings_im_auto_reply_cooldown",
+            self.s_im_auto_reply_cooldown,
+            "g_settings_im_require_room_presence",
+        )
+
+        # IM require room presence toggle
+        self.s_im_require_room_presence = self.e.cfg.im_require_room_presence
+        cb_im_require = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_im_require_room_presence", cb_im_require),
+            "chip",
+            icon="✓" if self.e.cfg.im_require_room_presence else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_im_require.set_active(self.e.cfg.im_require_room_presence)
+        cb_im_require.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_im_require_room_presence",
+            self._lbl(sp_inner, "g_settings_im_require_room_presence"),
             "g_settings_message_style_font_family",
         )
 
@@ -2742,6 +2879,15 @@ class App(tk.Tk):
                 self.s_admin_greeting_cooldown, "admin greeting cooldown"
             )
 
+            # IM viewer / private message settings
+            cfg.im_viewer_enabled = self.s_im_viewer_enabled
+            cfg.im_auto_reply_enabled = self.s_im_auto_reply_enabled
+            cfg.im_auto_reply_message = self.s_im_auto_reply_message.get().strip()
+            cfg.im_auto_reply_cooldown = self._parse_float(
+                self.s_im_auto_reply_cooldown, "IM auto-reply cooldown"
+            )
+            cfg.im_require_room_presence = self.s_im_require_room_presence
+
             # Message style (font customization for GUI preview only)
             cfg.message_style.font_family = self.s_msg_font_family.get().strip()
             cfg.message_style.font_size = self._parse_int(self.s_msg_font_size, "font size")
@@ -2841,6 +2987,13 @@ class App(tk.Tk):
             lines.append(f"admin_greeting_enabled = {str(cfg.admin_greeting_enabled).lower()}")
             lines.append(f"admin_greeting_message = {_toml_str(cfg.admin_greeting_message)}")
             lines.append(f"admin_greeting_cooldown = {cfg.admin_greeting_cooldown}")
+
+            # IM viewer / private message settings
+            lines.append(f"im_viewer_enabled = {str(cfg.im_viewer_enabled).lower()}")
+            lines.append(f"im_auto_reply_enabled = {str(cfg.im_auto_reply_enabled).lower()}")
+            lines.append(f"im_auto_reply_message = {_toml_str(cfg.im_auto_reply_message)}")
+            lines.append(f"im_auto_reply_cooldown = {cfg.im_auto_reply_cooldown}")
+            lines.append(f"im_require_room_presence = {str(cfg.im_require_room_presence).lower()}")
 
             # Gift / avatar / status / status alert (Camfrog RE integrations)
             cfg.gift_announce_enabled = self.s_gift_announce_enabled
@@ -3013,6 +3166,22 @@ class App(tk.Tk):
             if not self._closing:
                 self._ref = self.after(500, self.refresh)
 
+    def _refresh_im(self):
+        """Poll new IM / private messages from the engine and append them to the IM tab."""
+        im_seq, im_entries = self.e.im_snapshot()
+        im_new = min(im_seq - self._im_seen, len(im_entries))
+        if im_new > 0 and self.cfg.im_viewer_enabled:
+            self.im_chat.configure(state="normal")
+            for who, text in im_entries[-im_new:]:
+                self.im_chat.insert("end", who + ": ", ("who",))
+                self.im_chat.insert("end", text + "\n")
+            im_extra = int(self.im_chat.index("end-1c").split(".")[0]) - 1000
+            if im_extra > 0:
+                self.im_chat.delete("1.0", f"{im_extra + 1}.0")
+            self.im_chat.see("end")
+            self.im_chat.configure(state="disabled")
+        self._im_seen = im_seq
+
     def _refresh(self):
         s = self.e.snapshot()
         t = s["current"]
@@ -3074,3 +3243,5 @@ class App(tk.Tk):
             self.chat.see("end")
             self.chat.configure(state="disabled")
         self._seen = seq
+
+        self._refresh_im()

@@ -17,6 +17,9 @@ from urllib.parse import parse_qs, urlparse
 
 from .adapters.base import ChatMessage
 from .commands import Router
+from .exceptions import (
+    YtdlpMissingError,
+)
 from .library import (
     MEDIA,
     SEARCH_PREFIX,
@@ -28,7 +31,7 @@ from .library import (
     scan_folder,
 )
 from .messages import tr
-from .models import Track, UserError, YtdlpMissingError
+from .models import Track, UserError
 from .player import MpvPlayer
 from .playlist import PlaylistStore, load_playlist
 from .playqueue import PlayQueue
@@ -51,7 +54,16 @@ FAIL_CRASH = "playback_crashed"  # mpv exited with non-zero code
 FAIL_DELIVERY = "chat_delivery_failed"  # chat message could not be delivered
 FAIL_CONFIG = "config_error"  # configuration problem
 
-_req_ids = itertools.count()  # global request ID counter
+_req_ids = itertools.count()  # global request ID_counter
+
+# Circuit breaker thresholds
+_CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5  # consecutive failures before opening
+_CIRCUIT_BREAKER_RESET_TIMEOUT = 60.0  # seconds before attempting half-open
+_MAX_CONSECUTIVE_SEND_FAILURES = 10  # stop retrying chat sends after this many failures
+
+# Per-nick chat rate limiting (prevents spam flooding)
+_CHAT_RATE_LIMIT_WINDOW = 60.0  # seconds
+_CHAT_RATE_LIMIT_MAX = 20  # max messages per nick per window
 
 
 class Engine:
@@ -94,6 +106,8 @@ class Engine:
         self._admin_greeting_cooldowns: dict[str, float] = {}  # admin -> last greeting time
         self._welcome_cooldowns: dict[str, float] = {}  # user -> last welcome message time
         self._name_colors: dict[str, str] = {}  # user -> nickname color hex (GUI preview only)
+        self.im_log: deque[tuple[str, str]] = deque(maxlen=300)  # IM / private messages
+        self.im_seq = 0  # IM message sequence counter for GUI polling
         self._active_room_users: set[str] = set()  # users currently in room (seen in chat)
         self._last_user_request_time: float = 0.0  # monotonic time of last user !play request
         self._autoplay_mode: bool = (
@@ -110,6 +124,17 @@ class Engine:
         self._delivery_counter = itertools.count()  # per-engine delivery attempt ID counter
         self._active_requests: dict[str, dict] = {}  # request_id -> {user, arg, start, state}
         self._delivery_attempts: dict[int, dict] = {}  # attempt_id -> {text, stage, confirmed}
+        # ---- Circuit breaker state ------------------------------------------------
+        self._circuit_breaker_failures: int = 0  # consecutive track failures
+        self._circuit_breaker_open_until: float = 0.0  # monotonic time when breaker closes
+        self._send_failure_count: int = 0  # consecutive chat send failures
+        self._send_failure_lock: threading.Lock = threading.Lock()  # guards send failure count
+        # ---- Per-nick chat rate limiting -----------------------------------------
+        self._chat_rate_window: dict[str, list[float]] = {}  # nick -> list of message times
+        self._chat_rate_lock: threading.Lock = threading.Lock()  # guards rate window dict
+        # ---- Health check state --------------------------------------------------
+        self._last_health_check: float = 0.0
+        self._health_check_interval: float = 30.0  # seconds between auto health checks
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -178,10 +203,26 @@ class Engine:
         with self._chat_lock:
             return self.chat_seq, list(self.chat_log)
 
-    def say(self, text: str):
+    def im_snapshot(self) -> tuple[int, list[tuple[str, str]]]:
+        """Thread-safe snapshot of (im_seq, im_log) for the IM viewer GUI poller."""
+        with self._chat_lock:
+            return self.im_seq, list(self.im_log)
+
+    def say(self, text: str) -> bool:
+        """Queue a message for sending to the chat room.
+
+        Returns True if the message was queued, False if chat sends are
+        suspended due to repeated failures (circuit breaker).
+        """
         text = clean_text(text)
         if not text:
-            return
+            return True
+
+        # Check send circuit breaker
+        if self._is_send_suspended():
+            log.warning("Chat send suspended; dropping message: %r", text[:60])
+            return False
+
         # Validate and render using message style (for preview tags, sending is always plain text)
         renderer = get_renderer()
         err = renderer.validate(text)
@@ -198,6 +239,7 @@ class Engine:
             if i and chunk.startswith(self.cfg.prefix):
                 chunk = "… " + chunk  # a wrapped continuation must never look like a command
             self.outbox.put(chunk)
+        return True
 
     # The room shows our own lines back to us under the account's nick, which may differ from bot_nick.
     # Remembering what we posted lets us ignore those echoes instead of treating them as commands.
@@ -333,9 +375,11 @@ class Engine:
             try:
                 self.adapter.send(m)
                 self.confirm_delivery(attempt_id)
+                self._record_send_success()
                 log.info("send ok: %r", m)
             except (OSError, RuntimeError) as ex:
                 self.fail_delivery(attempt_id, FAIL_DELIVERY)
+                self._record_send_failure()
                 log.warning("send failed (%s); retrying once in 2s", ex)
                 self.stop_evt.wait(2.0)
                 if self.stop_evt.is_set():
@@ -343,9 +387,11 @@ class Engine:
                 try:
                     self.adapter.send(m)
                     self.confirm_delivery(attempt_id)
+                    self._record_send_success()
                     log.info("send retry ok: %r", m)
                 except Exception:
                     self.fail_delivery(attempt_id, FAIL_DELIVERY)
+                    self._record_send_failure()
                     log.exception("send retry failed too, dropped: %r", m)
             self.stop_evt.wait(self.cfg.send_interval)  # flood control (wakes up at shutdown)
 
@@ -793,6 +839,12 @@ class Engine:
         fails = 0  # consecutive tracks that failed to play
         idle_timeout = getattr(self.cfg, "autoplay_idle_timeout", 30.0)
         while not self.stop_evt.is_set():
+            # Check circuit breaker before attempting playback
+            if self._is_circuit_open():
+                log.info("Circuit breaker open; waiting before next playback attempt")
+                self.stop_evt.wait(10.0)
+                continue
+
             if not self._mpv_available():
                 if fails == 0:
                     log.warning(
@@ -821,6 +873,7 @@ class Engine:
                 log.warning("failed to resolve track %r: %s", t.source, ex)
                 fails += 1
                 self._track_failed(t, fails)
+                self._record_circuit_failure()
                 continue
 
             # After popping and resolving current, trigger preload for next in queue
@@ -884,6 +937,7 @@ class Engine:
             if not self._try_play(t):
                 fails += 1
                 self._track_failed(t, fails)
+                self._record_circuit_failure()
                 # Retry the same track if we haven't exceeded max retries (pool tracks only)
                 if fails < max_retries:
                     log.info("retrying track %r (attempt %d/%d)", t.source, fails + 1, max_retries)
@@ -891,6 +945,7 @@ class Engine:
                 # Max retries exceeded (or zero retries for requests), give up and move to next track
                 return fails
             fails = 0
+            self._record_circuit_success()
             if not recorded:
                 t.state = "COMPLETED"
                 self._log_track(t, "COMPLETED")
@@ -907,36 +962,13 @@ class Engine:
             for msg in self.adapter.messages():
                 if self.stop_evt.is_set():
                     break
-                # Ignore our own messages: match by normalized nick or by echo detection
-                if norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text):
+                if self._should_ignore_message(msg):
                     continue
-                self.log_chat(msg.user, msg.text)
 
-                # Track active room users (non-IM messages only)
-                if not msg.is_im:
-                    self._active_room_users.add(msg.user.lower())
-                    # Camfrog RE integrations: gift announcement + upgrade/payment status alert
-                    self._handle_re_events(msg)
-
-                # Admin greeting on first message in session
-                if self.cfg.admin_greeting_enabled and msg.user.lower() in self.admins:
-                    now = time.monotonic()
-                    last_greeting = self._admin_greeting_cooldowns.get(msg.user.lower(), 0.0)
-                    if now - last_greeting >= self.cfg.admin_greeting_cooldown:
-                        greeting = self.cfg.admin_greeting_message.format(admin=msg.user)
-                        self.say(greeting)
-                        self._admin_greeting_cooldowns[msg.user.lower()] = now
-                        log.info("Sent admin greeting to %s", msg.user)
-
-                # IM auto-reply: reply to private/instant messages if enabled
-                if msg.is_im and self.cfg.im_auto_reply_enabled:
-                    self._handle_im_message(msg)
-
-                # Welcome message on first user message in session
-                self._handle_welcome_message(msg)
-
-                # Update last user request time for !play commands (tracked in router)
-                self.exec.submit(self.router.handle, msg)
+                if msg.is_im:
+                    self._handle_im(msg)
+                else:
+                    self._handle_room_message(msg)
         except Exception:
             if (
                 not self.stop_evt.is_set()
@@ -944,6 +976,58 @@ class Engine:
                 log.exception("chat loop ended")
         finally:
             self.chat_done.set()
+
+    def _should_ignore_message(self, msg: ChatMessage) -> bool:
+        """Return True if the message should be ignored (echo or own message)."""
+        return norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text)
+
+    def _handle_im(self, msg: ChatMessage) -> None:
+        """Handle an instant/private message."""
+        self.log_chat(msg.user, msg.text)
+        self._log_im_message(msg)
+        if self.cfg.im_auto_reply_enabled:
+            self._handle_im_message(msg)
+
+    def _handle_room_message(self, msg: ChatMessage) -> None:
+        """Handle a room message (non-IM)."""
+        # Per-nick chat rate limiting (non-admins only)
+        if msg.user.lower() not in self.admins:
+            if not self._check_chat_rate_limit(msg.user):
+                log.info("Chat rate limit: dropping message from %s", msg.user)
+                return
+
+        self.log_chat(msg.user, msg.text)
+
+        # Track active room users
+        self._active_room_users.add(msg.user.lower())
+        # Camfrog RE integrations: gift announcement + upgrade/payment status alert
+        self._handle_re_events(msg)
+
+        self._handle_admin_greeting(msg)
+        self._handle_welcome_message(msg)
+
+        # Update last user request time for !play commands (tracked in router)
+        self.exec.submit(self.router.handle, msg)
+
+    def _log_im_message(self, msg) -> None:
+        """Log an IM / private message for the IM viewer GUI (read-only)."""
+        self.im_log.append((msg.user, msg.text))
+        self.im_seq += 1
+
+    def _handle_admin_greeting(self, msg) -> None:
+        """Greet an admin on their first message of the session (if enabled)."""
+        if not self.cfg.admin_greeting_enabled:
+            return
+        if msg.user.lower() not in self.admins:
+            return
+        now = time.monotonic()
+        last_greeting = self._admin_greeting_cooldowns.get(msg.user.lower(), 0.0)
+        if now - last_greeting < self.cfg.admin_greeting_cooldown:
+            return
+        greeting = self.cfg.admin_greeting_message.format(admin=msg.user)
+        self.say(greeting)
+        self._admin_greeting_cooldowns[msg.user.lower()] = now
+        log.info("Sent admin greeting to %s", msg.user)
 
     # ---- Camfrog reverse-engineering integrations -------------------------
 
@@ -1087,8 +1171,6 @@ class Engine:
         if not m:
             return
         color = f"#{m.group(1)}"
-        if not hasattr(self, "_name_colors"):
-            self._name_colors: dict[str, str] = {}
         self._name_colors[nick.lower()] = color
         log.debug("tracked name color for %s: %s", nick, color)
 
@@ -1279,6 +1361,153 @@ class Engine:
             pass
         finally:
             self.shutdown()
+
+    # ---- Circuit breaker -------------------------------------------------------
+
+    def _record_circuit_failure(self) -> None:
+        """Record a playback failure and open the circuit breaker if threshold exceeded."""
+        self._circuit_breaker_failures += 1
+        if self._circuit_breaker_failures >= _CIRCUIT_BREAKER_FAILURE_THRESHOLD:
+            self._circuit_breaker_open_until = time.monotonic() + _CIRCUIT_BREAKER_RESET_TIMEOUT
+            log.warning(
+                "Circuit breaker OPEN: %d consecutive failures; pausing playback for %.0fs",
+                self._circuit_breaker_failures,
+                _CIRCUIT_BREAKER_RESET_TIMEOUT,
+            )
+
+    def _record_circuit_success(self) -> None:
+        """Record a successful playback and reset the circuit breaker."""
+        if self._circuit_breaker_failures > 0:
+            log.info(
+                "Circuit breaker CLOSED after %d failures; playback recovered",
+                self._circuit_breaker_failures,
+            )
+        self._circuit_breaker_failures = 0
+        self._circuit_breaker_open_until = 0.0
+
+    def _is_circuit_open(self) -> bool:
+        """Return True if the circuit breaker is open (playback paused due to failures)."""
+        if self._circuit_breaker_open_until <= 0.0:
+            return False
+        if time.monotonic() >= self._circuit_breaker_open_until:
+            # Half-open: allow one attempt
+            self._circuit_breaker_open_until = 0.0
+            self._circuit_breaker_failures = 0
+            log.info("Circuit breaker HALF-OPEN: allowing one playback attempt")
+            return False
+        return True
+
+    def _record_send_failure(self) -> None:
+        """Record a chat send failure and track consecutive count."""
+        with self._send_failure_lock:
+            self._send_failure_count += 1
+            count = self._send_failure_count
+        if count >= _MAX_CONSECUTIVE_SEND_FAILURES:
+            log.error(
+                "Chat send circuit breaker: %d consecutive send failures; suspending sends",
+                count,
+            )
+
+    def _record_send_success(self) -> None:
+        """Record a successful chat send and reset failure count."""
+        with self._send_failure_lock:
+            if self._send_failure_count > 0:
+                log.info("Chat send recovered after %d failures", self._send_failure_count)
+            self._send_failure_count = 0
+
+    def _is_send_suspended(self) -> bool:
+        """Return True if chat sends are suspended due to repeated failures."""
+        with self._send_failure_lock:
+            return self._send_failure_count >= _MAX_CONSECUTIVE_SEND_FAILURES
+
+    # ---- Per-nick chat rate limiting -----------------------------------------
+
+    def _check_chat_rate_limit(self, nick: str) -> bool:
+        """Return True if *nick* is allowed to send a chat message now.
+
+        Uses a sliding window: at most _CHAT_RATE_LIMIT_MAX messages per
+        _CHAT_RATE_LIMIT_WINDOW seconds per nick.
+        """
+        now = time.monotonic()
+        with self._chat_rate_lock:
+            window = self._chat_rate_window.setdefault(nick, [])
+            # Prune expired entries
+            cutoff = now - _CHAT_RATE_LIMIT_WINDOW
+            window[:] = [t for t in window if t > cutoff]
+            if len(window) >= _CHAT_RATE_LIMIT_MAX:
+                log.warning("Chat rate limit exceeded for nick=%s", nick)
+                return False
+            window.append(now)
+            return True
+
+    # ---- Health check ----------------------------------------------------------
+
+    def health_check(self) -> dict[str, object]:
+        """Return a structured health status dict for monitoring dashboards.
+
+        Never raises — every check is wrapped in try/except so a single
+        failing subsystem cannot break the whole report.
+        """
+        checks: dict[str, dict[str, object]] = {}
+        ok = True
+
+        # mpv availability
+        try:
+            mpv_ok = bool(self._mpv_available())
+            checks["mpv"] = {
+                "ok": mpv_ok,
+                "details": "available" if mpv_ok else "not available",
+            }
+            if not mpv_ok:
+                ok = False
+        except Exception as ex:  # noqa: BLE001 - health check must not crash
+            checks["mpv"] = {"ok": False, "details": str(ex)}
+            ok = False
+
+        # Circuit breaker state
+        checks["circuit_breaker"] = {
+            "ok": not self._is_circuit_open(),
+            "failures": self._circuit_breaker_failures,
+            "open_until": self._circuit_breaker_open_until,
+        }
+        if self._is_circuit_open():
+            ok = False
+
+        # Send suspension state
+        checks["chat_send"] = {
+            "ok": not self._is_send_suspended(),
+            "failures": self._send_failure_count,
+        }
+        if self._is_send_suspended():
+            ok = False
+
+        # Queue state
+        try:
+            with self.queue.lock:
+                q_len = len(self.queue.requests)
+                p_len = len(self.queue.pool)
+            checks["queue"] = {
+                "ok": True,
+                "requests": q_len,
+                "pool": p_len,
+            }
+        except Exception as ex:  # noqa: BLE001
+            checks["queue"] = {"ok": False, "details": str(ex)}
+            ok = False
+
+        # IM log state
+        try:
+            im_seq, im_entries = self.im_snapshot()
+            checks["im_viewer"] = {
+                "ok": True,
+                "seq": im_seq,
+                "entries": len(im_entries),
+            }
+        except Exception as ex:  # noqa: BLE001
+            checks["im_viewer"] = {"ok": False, "details": str(ex)}
+            ok = False
+
+        return {"ok": ok, "checks": checks, "timestamp": time.monotonic()}
 
     # ---- admin: mic mute / unmute ----------------------------------------
 
