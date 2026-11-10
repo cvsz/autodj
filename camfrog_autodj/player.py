@@ -250,7 +250,7 @@ class MpvPlayer:
             else:
                 import socket
 
-                with socket.socket(socket.AF_UNIX) as s:
+                with socket.socket(socket.AF_UNIX) as s:  # type: ignore[attr-defined]  # AF_UNIX only on non-Windows
                     s.connect(ipc)
                     s.sendall(data)
             return True
@@ -311,7 +311,7 @@ class MpvPlayer:
 
         start = time.monotonic()
         try:
-            with socket.socket(socket.AF_UNIX) as s:
+            with socket.socket(socket.AF_UNIX) as s:  # type: ignore[attr-defined]  # AF_UNIX only on non-Windows
                 s.settimeout(timeout)
                 s.connect(ipc)
                 s.sendall(data)
