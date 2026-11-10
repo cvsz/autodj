@@ -71,7 +71,8 @@ class Engine:
         self.cfg, self.adapter = cfg, adapter
         self.cfg_path = cfg_path
         self.lang = cfg.lang
-        self.player = player or MpvPlayer(cfg)
+        self.stop_evt = threading.Event()
+        self.player = player or MpvPlayer(cfg, self.stop_evt)
         self.index = index or LocalIndex(cfg.music_dirs)
         pf = getattr(cfg, "playlist_file", "")
         self.playlist = PlaylistStore(pf) if pf else None
@@ -1314,18 +1315,26 @@ class Engine:
         return messages
 
     def _im_auto_reply_loop(self):
-        """Send automatic replies to private/instant messages (IMs)."""
+        """Background cleanup for IM reply cooldowns.
+
+        The actual IM auto-reply is handled in _handle_im_message (called from chat loop).
+        This loop just periodically cleans up stale cooldown entries to prevent memory growth.
+        """
         if not self.cfg.im_auto_reply_enabled:
             log.debug("IM auto-reply disabled; loop not started")
             return
-        interval = max(10.0, self.cfg.im_auto_reply_cooldown)  # minimum 10s
-        log.info("IM auto-reply enabled with cooldown %.1fs", interval)
+        log.info("IM auto-reply cooldown cleanup enabled")
         while not self.stop_evt.is_set():
-            if self.stop_evt.wait(1.0):
+            if self.stop_evt.wait(60.0):  # cleanup every 60 seconds
                 break
-            # Check for pending IM messages that need replies
-            # The chat loop handles IM messages and calls _handle_im_message
-            time.sleep(0.5)
+            now = time.monotonic()
+            cutoff = now - self.cfg.im_auto_reply_cooldown * 2  # keep 2x cooldown window
+            with self._chat_lock:  # reuse existing lock for thread safety
+                stale = [u for u, t in self._im_reply_cooldowns.items() if t < cutoff]
+                for u in stale:
+                    del self._im_reply_cooldowns[u]
+                if stale:
+                    log.debug("Cleaned up %d stale IM reply cooldowns", len(stale))
 
     def _handle_im_message(self, msg: ChatMessage):
         """Handle incoming IM (private message) and send auto-reply if enabled."""
@@ -1335,19 +1344,20 @@ class Engine:
             return
         user = msg.user.lower()
         now = time.monotonic()
-        last_reply = self._im_reply_cooldowns.get(user, 0.0)
-        if now - last_reply < self.cfg.im_auto_reply_cooldown:
-            log.debug("IM auto-reply on cooldown for %s", user)
-            return
-        # Send auto-reply
-        reply_text = self.cfg.im_auto_reply_message
-        if reply_text:
-            try:
-                self.adapter.send(f"[IM] {reply_text}")
-                self._im_reply_cooldowns[user] = time.monotonic()
-                log.info("Sent IM auto-reply to %s", msg.user)
-            except Exception:
-                log.exception("Failed to send IM auto-reply to %s", msg.user)
+        with self._chat_lock:  # protect _im_reply_cooldowns across chat loop and cleanup loop
+            last_reply = self._im_reply_cooldowns.get(user, 0.0)
+            if now - last_reply < self.cfg.im_auto_reply_cooldown:
+                log.debug("IM auto-reply on cooldown for %s", user)
+                return
+            # Send auto-reply
+            reply_text = self.cfg.im_auto_reply_message
+            if reply_text:
+                try:
+                    self.adapter.send(f"[IM] {reply_text}")
+                    self._im_reply_cooldowns[user] = time.monotonic()
+                    log.info("Sent IM auto-reply to %s", msg.user)
+                except Exception:
+                    log.exception("Failed to send IM auto-reply to %s", msg.user)
 
     def run(self):
         self.start()
@@ -1366,36 +1376,39 @@ class Engine:
 
     def _record_circuit_failure(self) -> None:
         """Record a playback failure and open the circuit breaker if threshold exceeded."""
-        self._circuit_breaker_failures += 1
-        if self._circuit_breaker_failures >= _CIRCUIT_BREAKER_FAILURE_THRESHOLD:
-            self._circuit_breaker_open_until = time.monotonic() + _CIRCUIT_BREAKER_RESET_TIMEOUT
-            log.warning(
-                "Circuit breaker OPEN: %d consecutive failures; pausing playback for %.0fs",
-                self._circuit_breaker_failures,
-                _CIRCUIT_BREAKER_RESET_TIMEOUT,
-            )
+        with self._send_failure_lock:  # reuse lock for circuit breaker state
+            self._circuit_breaker_failures += 1
+            if self._circuit_breaker_failures >= _CIRCUIT_BREAKER_FAILURE_THRESHOLD:
+                self._circuit_breaker_open_until = time.monotonic() + _CIRCUIT_BREAKER_RESET_TIMEOUT
+                log.warning(
+                    "Circuit breaker OPEN: %d consecutive failures; pausing playback for %.0fs",
+                    self._circuit_breaker_failures,
+                    _CIRCUIT_BREAKER_RESET_TIMEOUT,
+                )
 
     def _record_circuit_success(self) -> None:
         """Record a successful playback and reset the circuit breaker."""
-        if self._circuit_breaker_failures > 0:
-            log.info(
-                "Circuit breaker CLOSED after %d failures; playback recovered",
-                self._circuit_breaker_failures,
-            )
-        self._circuit_breaker_failures = 0
-        self._circuit_breaker_open_until = 0.0
+        with self._send_failure_lock:
+            if self._circuit_breaker_failures > 0:
+                log.info(
+                    "Circuit breaker CLOSED after %d failures; playback recovered",
+                    self._circuit_breaker_failures,
+                )
+            self._circuit_breaker_failures = 0
+            self._circuit_breaker_open_until = 0.0
 
     def _is_circuit_open(self) -> bool:
         """Return True if the circuit breaker is open (playback paused due to failures)."""
-        if self._circuit_breaker_open_until <= 0.0:
-            return False
-        if time.monotonic() >= self._circuit_breaker_open_until:
-            # Half-open: allow one attempt
-            self._circuit_breaker_open_until = 0.0
-            self._circuit_breaker_failures = 0
-            log.info("Circuit breaker HALF-OPEN: allowing one playback attempt")
-            return False
-        return True
+        with self._send_failure_lock:
+            if self._circuit_breaker_open_until <= 0.0:
+                return False
+            if time.monotonic() >= self._circuit_breaker_open_until:
+                # Half-open: allow one attempt
+                self._circuit_breaker_open_until = 0.0
+                self._circuit_breaker_failures = 0
+                log.info("Circuit breaker HALF-OPEN: allowing one playback attempt")
+                return False
+            return True
 
     def _record_send_failure(self) -> None:
         """Record a chat send failure and track consecutive count."""
@@ -1464,21 +1477,28 @@ class Engine:
             checks["mpv"] = {"ok": False, "details": str(ex)}
             ok = False
 
-        # Circuit breaker state
+        # Circuit breaker state (read under lock for consistent snapshot)
+        with self._send_failure_lock:  # reuse lock for circuit breaker state
+            cb_open = self._is_circuit_open()
+            cb_failures = self._circuit_breaker_failures
+            cb_open_until = self._circuit_breaker_open_until
         checks["circuit_breaker"] = {
-            "ok": not self._is_circuit_open(),
-            "failures": self._circuit_breaker_failures,
-            "open_until": self._circuit_breaker_open_until,
+            "ok": not cb_open,
+            "failures": cb_failures,
+            "open_until": cb_open_until,
         }
-        if self._is_circuit_open():
+        if cb_open:
             ok = False
 
         # Send suspension state
+        with self._send_failure_lock:
+            send_suspended = self._is_send_suspended()
+            send_failures = self._send_failure_count
         checks["chat_send"] = {
-            "ok": not self._is_send_suspended(),
-            "failures": self._send_failure_count,
+            "ok": not send_suspended,
+            "failures": send_failures,
         }
-        if self._is_send_suspended():
+        if send_suspended:
             ok = False
 
         # Queue state

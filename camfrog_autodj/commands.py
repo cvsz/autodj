@@ -163,6 +163,12 @@ class Router:
             for u in expired:
                 del self.user_requests[u]
 
+            # Also prune stale cooldown entries (last dict) - keep only entries within 2x window
+            cooldown_cutoff = now - window * 2
+            stale_last = [u for u, t in self.last.items() if t < cooldown_cutoff]
+            for u in stale_last:
+                del self.last[u]
+
             # Sliding window request limit per user
             if name.lower() in ("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง"):
                 limit = getattr(e.cfg, "user_request_limit", 5)
