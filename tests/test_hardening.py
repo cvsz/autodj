@@ -745,6 +745,7 @@ def test_build_env_checker_lists_what_is_missing():
 def test_play_saves_to_playlist_json(tmp_path):
     """Chat requests (!play) are appended to playlist.json and deduplicated by source."""
     playlist_path = tmp_path / "playlist.json"
+    song_path = str(tmp_path / "song one.mp3")  # cross-platform absolute path
     e = make()
     e.playlist_file = str(playlist_path)
     from camfrog_autodj.library import local_track
@@ -755,7 +756,7 @@ def test_play_saves_to_playlist_json(tmp_path):
     # make() overrides resolve to return YouTube URLs; override back for local files
     e.resolve = lambda arg, user, admin: [local_track(arg, user) if os.path.isabs(arg) else []]
 
-    tracks = e.resolve("/m/song one.mp3", "amy", True)
+    tracks = e.resolve(song_path, "amy", True)
     e.queue.add_request(tracks[0])
     e.playlist.add(tracks)
 
@@ -765,7 +766,7 @@ def test_play_saves_to_playlist_json(tmp_path):
     assert [t["added_by"] for t in data["tracks"]] == ["amy"]
 
     # Duplicate request is refused
-    tracks2 = e.resolve("/m/song one.mp3", "amy", True)
+    tracks2 = e.resolve(song_path, "amy", True)
     e.queue.add_request(tracks2[0])
     e.playlist.add(tracks2)
     data2 = json.loads(playlist_path.read_text("utf-8"))
