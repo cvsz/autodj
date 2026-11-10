@@ -6,7 +6,7 @@ def test_installer_preserves_existing_user_config_on_upgrade():
     script = (root / "installer.nsi").read_text(encoding="utf-8")
 
     assert 'IfFileExists "$INSTDIR\\config.toml" config_exists' in script
-    assert "File /oname=config.toml config.example.toml" in script
+    assert 'File "config.toml"' in script
 
 
 def test_uninstaller_removes_only_application_owned_files():
