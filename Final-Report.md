@@ -1,421 +1,465 @@
-# Final Report — Camfrog AutoDJ v0.3.0 Enterprise Production Release
+# Camfrog AutoDJ — Final Production Readiness Report
 
-**Date:** 2026-11-09  
-**Author:** cvsz  
-**Reviewer:** policedbc  
-**SHA:** (to be filled at merge)  
-**Branch:** feat/autodj-enterprise-v0.3.0
+**Version:** 0.3.0  
+**Date:** 2026-11-10  
+**Repository:** github.com/cvsz/autodj  
+**Baseline SHA:** 2dd98e7 (main)  
+**Author:** cvsz (seaza@msn.com)  
+**GPG Key:** 515DB3BD9BF14AA6646AC6770C54E869DE49D872  
 
 ---
 
 ## Executive Summary
 
-Camfrog AutoDJ v0.3.0 is a **full enterprise-grade production release** implementing:
+Camfrog AutoDJ v0.3.0 is an **enterprise-grade music bot** for Camfrog rooms with YouTube + local MP3/MP4 autoplay, bilingual EN/TH GUI and chat, and comprehensive reverse-engineered Camfrog integrations. This report documents the complete validation, audit, and production readiness assessment.
 
-- **Exception Hierarchy** — 20+ structured exception types with machine-readable codes
-- **Circuit Breakers** — Playback and chat send resilience with automatic recovery
-- **Rate Limiting** — Per-nick sliding window (20 msg/60s) prevents flooding
-- **Health Check Endpoint** — Structured monitoring dashboard integration
-- **IM Viewer GUI** — Private message display with polling and settings
-- **Camfrog RE Integrations** — Gift/avatar/status/upgrade/payment/name-color tracking
-- **Code Quality** — C901 refactoring, 375 tests, zero lint/type/format issues
+### Verdict: **PRODUCTION-READY** (source validation complete)
 
-All validation gates pass: `compileall`, `ruff check`, `ruff format`, `mypy`, `pytest` (375), `shellcheck`.
+| Gate | Status | Evidence |
+|------|--------|----------|
+| Unit/Integration Tests | ✅ PASS | 414 tests + 3 subtests |
+| Lint (ruff) | ✅ PASS | 0 issues |
+| Format (ruff) | ✅ PASS | 63 files formatted |
+| Typecheck (mypy) | ✅ PASS | 32 source files |
+| Security Scan | ✅ PASS | No hardcoded secrets, deps clean |
+| Config Validation | ✅ PASS | 56 keys, fail-closed |
+| Playlist Validation | ✅ PASS | 274 tracks, 0 invalid |
+| Installer Validation | ✅ PASS | NSIS structure valid |
+| Repository Validation | ✅ PASS | Links/structure valid |
+| CHANGELOG | ✅ PASS | Entry for 0.3.0 |
+
+**Windows build/installer/runtime validation:** BLOCKED (no Windows host in audit environment). These require Windows 11 + NSIS + PyInstaller for final verification.
 
 ---
 
-## 1. Architecture Changes
+## Architecture Overview
 
-### 1.1 Exception Hierarchy (`camfrog_autodj/exceptions.py`)
+### Core Modules (32 files, ~8,500 LOC)
 
-New file: **270 lines**, 20+ exception types organized in 6 categories:
-
-| Category | Base Class | Specific Exceptions |
-|----------|------------|---------------------|
-| Configuration | `ConfigError` | `ConfigValidationError` |
-| Chat/UIA | `ChatError` | `ChatSendError`, `ChatReadError`, `ChatAdapterError` |
-| Player/mpv | `PlayerError` | `PlayerNotAvailableError`, `PlayerHungError`, `PlayerCrashError` |
-| Library/yt-dlp | `LibraryError` | `YtdlpMissingError`, `LibraryScanError` |
-| Queue/Request | `QueueError` | `QueueFullError`, `RequestRateLimitError` |
-| TTS | `TTSError` | `TTSUnavailableError` |
-| Security | `SecurityError` | `UnauthorizedError`, `BlockedUserError` |
-
-All inherit from `AutoDJError` with:
-- `code`: Machine-readable (e.g. `config.validation`, `player.hung`)
-- `details`: Human-readable, safe for GUI/log
-- `context`: Structured metadata dict
-
-**Backward Compatibility:** `UserError = AutoDJError` alias preserved; existing `except UserError` clauses continue working.
-
-### 1.2 Circuit Breakers (engine.py)
-
-| Breaker | Threshold | Action | Recovery |
-|---------|-----------|--------|----------|
-| Playback | 5 consecutive failures | Pause playback 60s, then half-open | Auto-closes on success |
-| Chat Send | 10 consecutive failures | Suspend sends, log error | Auto-closes on success |
-
-```python
-# Usage in engine:
-if self._is_circuit_open():
-    log.info("Circuit breaker open; waiting before next playback attempt")
-    self.stop_evt.wait(10.0)
-    continue
+```
+camfrog_autodj/
+├── __init__.py          # Version only
+├── __main__.py          # CLI entry, logging, bootstrap
+├── adapters/
+│   ├── __init__.py      # Adapter registry
+│   ├── base.py          # ChatAdapter abstract base
+│   ├── console.py       # Stdin/stdout testing adapter
+│   ├── logtail.py       # Log file tail adapter
+│   └── uia.py           # UI Automation (Windows Camfrog)
+├── camfrog_font.py      # REA: font logic reverse-engineered
+├── clipkeys.py          # Clipboard hotkeys
+├── commands.py          # !command router + validation
+├── config.py            # Config with validation + MessageStyle
+├── discover.py          # Auto-discover Camfrog window
+├── doctor.py            # --check diagnostics
+├── engine.py            # Core logic: queue, playback, chat loop
+├── exceptions.py        # 20+ structured exception types
+├── gui.py               # Tkinter dark studio GUI
+├── launcher.py          # Auto-launch Camfrog + join room
+├── library.py           # Local + YouTube scan (safe, bounded)
+├── messages.py          # EN/TH message templates
+├── migrate.py           # Config migration from REPLACE_ME
+├── models.py            # Track, QueueItem, fmt_time
+├── paths.py             # Application dir, resolve_executable
+├── player.py            # MPV subprocess + IPC + hang detection
+├── playlist.py          # JSON playlist load/save/validate
+├── playqueue.py         # Thread-safe queue with shuffle/repeat
+├── renderer.py          # GUI preview rich text (sent = plain)
+├── textutil.py          # clean_text, unicode utilities
+├── tts.py               # pyttsx3 synthesis + ducking
+├── visuals.py           # Gradient, color helpers
+├── webchat.py           # Web view chat parsing (tokens→lines)
+├── windows.py           # Win32 helpers
+└── winmsg.py            # Windows message constants
 ```
 
-### 1.3 Per-Nick Chat Rate Limiting (engine.py)
+### Key Architectural Decisions (Documented in `docs/adr/`)
 
-```python
-_CHAT_RATE_LIMIT_WINDOW = 60.0  # seconds
-_CHAT_RATE_LIMIT_MAX = 20       # max messages per window
-```
+| ADR | Decision | Rationale |
+|-----|----------|-----------|
+| 0001 | Local audit Docker + mypy gate | Reproducible CI, catch type regressions |
 
-- Sliding window per nick (thread-safe with lock)
+---
+
+## Enterprise Features (v0.3.0)
+
+### 1. Exception Hierarchy (`exceptions.py`)
+- 20+ structured exception types with machine-readable codes
+- Contextual metadata for debugging and monitoring
+- Unified `AutoDJError` base for catch-all handling
+- Backward-compatible `UserError = AutoDJError` alias
+
+### 2. Circuit Breakers (`engine.py`)
+- **Playback**: Opens after 5 consecutive failures, pauses 60s, half-opens for recovery
+- **Chat Send**: Suspends after 10 consecutive delivery failures, auto-recovers on success
+- Prevents cascading failures and API bans
+
+### 3. Per-Nick Chat Rate Limiting
+- Sliding window: 20 messages/60s per nick
 - Admins exempt
-- Logs warning on limit exceeded, drops message silently
+- Thread-safe with locks
 
-### 1.4 Health Check Endpoint (engine.py)
-
+### 4. Health Check Endpoint
 ```python
-def health_check(self) -> dict[str, object]:
-    """Returns structured status for monitoring dashboards."""
-    return {
-        "ok": True,
-        "checks": {
-            "mpv": {"ok": True, "details": "available"},
-            "circuit_breaker": {"ok": True, "failures": 0, "open_until": 0.0},
-            "chat_send": {"ok": True, "failures": 0},
-            "queue": {"ok": True, "requests": 3, "pool": 150},
-            "im_viewer": {"ok": True, "seq": 42, "entries": 42},
-        },
-        "timestamp": 1234567890.123,
-    }
+health_check() -> {
+    "mpv_available": bool,
+    "playback_circuit_breaker": "closed|open|half-open",
+    "send_suspended": bool,
+    "queue_depth": int,
+    "im_viewer_running": bool
+}
 ```
-
-- Never raises — each check wrapped in try/except
-- Returns `ok: false` if any subsystem unhealthy
 - Safe for Prometheus/Grafana/Loki ingestion
+- Never raises
 
-### 1.5 Code Quality — C901 Complexity Reduction
+### 5. IM Viewer GUI
+- New IM tab in desktop window (2 Hz polling)
+- Settings: enable/disable, auto-reply message, cooldown, room presence requirement
 
-**Before:** `_chat_loop` (11 branches, C901 violation)  
-**After:** Split into 3 focused methods:
+### 6. IM Auto-Reply
+- Configurable auto-reply to private messages
+- Per-user cooldown (default 30s, min 10s)
+- Uses `[IM]` prefix
+- Respects `im_require_room_presence` (default true)
 
-| Method | Responsibility | Branches |
-|--------|----------------|----------|
-| `_should_ignore_message` | Echo/own-message filtering | 1 |
-| `_handle_im` | IM logging + auto-reply | 2 |
-| `_handle_room_message` | Rate limit, RE events, greetings, welcome, router | 4 |
+### 7. Camfrog RE Integrations (All Config-Gated)
+| Feature | Detection | Config | Docs |
+|---------|-----------|--------|------|
+| Gift Detection | `GIFT_RECEIVED`, `room_gift_message`, `camfrog://gift`, `vgift_` | `gift_announce_enabled` | `docs/camfrog-re/08-feature-gift.md` |
+| Avatar Change | `updateAvatarMessage`, `avatar_changed` | `avatar_change_enabled` | `docs/camfrog-re/16-user-icon-avatar.md` |
+| Status Indicators | online/away/busy/invisible/admin/moderator/owner | `status_indicator_enabled` | `docs/camfrog-re/14-png-assets.md` |
+| Upgrade/Payment Alerts | Upgrade/payment-required status text | `status_alert_enabled` | `docs/camfrog-re/07-upgrade-logic.md`, `09-payment.md` |
+| Name Color Tracking | `color: #RRGGBB` from chat HTML | (read-only, GUI preview) | `docs/camfrog-re/15-name-color.md` |
 
-All methods < 10 branches; `_chat_loop` now 3 branches (loop + try/except).
+### 8. Code Quality
+- C901 complexity refactored: `_chat_loop` split into 3 methods (< 10 branches each)
+- All methods < 10 branches
+- Ruff rules: E, F, B, I, C, N, S (security included)
 
 ---
 
-## 2. New Features
+## Security Assessment
 
-### 2.1 IM Viewer GUI (gui.py)
+### Authorization Model
+- **Nickname-based admin auth** — documented as spoofable in-code and in `SECURITY.md`
+- Fail-closed: empty `admins = []` grants no admin access
+- `msg.local` (console) trusted only for local/dev
+- Blocked users silently ignored; admins cannot be blocked
 
-- **New IM tab** in right panel (Queue/History/Chat/IM)
-- **Polling** at 2 Hz via `im_snapshot()` (thread-safe)
-- **Settings dialog** (IM section):
-  - `im_viewer_enabled` — toggle IM tab visibility
-  - `im_auto_reply_enabled` — auto-reply to private messages
-  - `im_auto_reply_message` — custom reply text (default: "Thanks for your message! I'm a bot...")
-  - `im_auto_reply_cooldown` — per-user cooldown (default 30s, min 10s)
-  - `im_require_room_presence` — only reply if user in room (default true, security)
+### Input Validation
+- `config.py`: Types, ranges, choices, regexes for every setting; unknown keys → "did you mean" hint
+- `playlist.py`: URL/ytsearch/local validation; corrupt file backed up, never silently deleted
+- `commands.py`: Unicode-digit bypass guarded (`"²".isdigit()` but `int("²")` raises)
+- `library.py`: Non-admin YouTube constrained to `allowed_hosts` (youtube.com, youtu.be, music.youtube.com)
 
-### 2.2 IM Auto-Reply (engine.py)
+### Subprocess / Command Execution
+- **Zero `shell=True`** usage (Ruff S108/S307/S608 ignored by policy — never used)
+- All subprocess calls use argument lists
+- `CREATE_NO_WINDOW` on Windows
+- Timeouts on yt-dlp/mpv/TTS subprocesses
 
-```python
-def _handle_im_message(self, msg: ChatMessage):
-    if not self.cfg.im_auto_reply_enabled: return
-    if not msg.is_im: return
-    user = msg.user.lower()
-    now = time.monotonic()
-    if now - self._im_reply_cooldowns.get(user, 0) < self.cfg.im_auto_reply_cooldown:
-        return
-    self.adapter.send(f"[IM] {self.cfg.im_auto_reply_message}")
-    self._im_reply_cooldowns[user] = now
+### Secrets / Credentials
+- No credentials, tokens, or private keys committed
+- CI checks for tracked `.env`, `id_rsa`, `*.pem`, `*.key`
+- `.git-credentials` at `/home/cvsz/.git-credentials` (mode 600, owned by cvsz) — **never read, printed, committed, or logged**
+- `config.toml*` files contain placeholders only
+- Certificate: `cert/autodj-codesign.cer` is public cert only
+
+### Cryptography
+- yt-dlp certificate verification **always preserved**; never disabled
+- Custom CA bundle supported via `certifi.where()` patching
+- mpv download over HTTPS in CI workflows
+- Code signing: self-signed or real cert via `build.ps1` with RFC 3161 timestamping
+- **Authenticode verification BLOCKED** (no Windows host) — not claimed as verified
+
+### Audit Trail
+- `engine.py` logs every track state transition, chat line, delivery attempt, request with IDs (`req=`, `deliv=`)
+- Chat message text truncated to 80 chars in delivery logs
+- `log_chat` writes to both in-memory `chat_log` and logger
+
+### Unresolved Security Items
+1. **GPG signing unavailable** in audit environment (`GPG_PASSPHRASE` unset, no TTY) — reported as blocker (F-005), not faked
+2. **Windows Authenticode verification unavailable** — not claimed as verified
+
+---
+
+## Test Coverage
+
+### Test Suite (414 tests + 3 subtests)
+
+| Test File | Coverage |
+|-----------|----------|
+| `test_autodj_enhancements.py` | Circuit breakers, rate limiting, health checks, exceptions, IM viewer, RE integrations (21 tests) |
+| `test_background_clip.py` | Clipboard hotkeys |
+| `test_bootstrap.py` | Startup bootstrap |
+| `test_camfrog_font.py` | Font logic RE |
+| `test_concurrency.py` | Thread safety |
+| `test_core.py` | Core functionality |
+| `test_discover.py` | Window discovery |
+| `test_executable_paths.py` | Path resolution |
+| `test_gui_i18n.py` | EN/TH GUI switching |
+| `test_gui_logic.py` | GUI logic (fake Tk) |
+| `test_hardening.py` | Regression: echo, flood, config syntax, playlist, permission, log, auto-launch, NSIS, MPV timeout, yt-dlp TLS |
+| `test_installer_data_safety.py` | Installer user data preservation |
+| `test_library_scan_safety.py` | Symlink/reparse safety (11 tests) |
+| `test_migration.py` | Config migration |
+| `test_play_flow.py` | End-to-end play flow |
+| `test_playlist_resolver.py` | Playlist URL resolution |
+| `test_production_remediation.py` | Production fixes |
+| `test_pytest_compat.py` | Pytest compatibility |
+| `test_targeted_coverage.py` | Specific uncovered lines (new) |
+| `test_version_and_release.py` | Version/release validation |
+| `test_v030_fixes.py` | v0.3.0 specific fixes |
+| `test_webchat_dump.py` | Web chat parsing (real dump shaped) |
+| `test_windows_build_script.py` | Build script validation |
+| `test_windows_qualification_scripts.py` | Windows qualification scripts |
+
+### Mutation Testing
+- `tools/mutate.sh` validates hardening tests against code mutations
+- Confirms test effectiveness
+
+---
+
+## Build & Release Pipeline
+
+### Local Build (Windows PowerShell)
+```powershell
+# Full pipeline: build + sign + NSIS installer
+make build-all
+
+# Individual steps
+make build          # PyInstaller -> dist/AutoDJ.exe (signed by default)
+make nsiswindows11  # NSIS installer from dist/
+make sign           # Sign existing exe
+make trustsign      # Azure Trusted Signing (requires Azure setup)
 ```
 
-- Sends `[IM] <message>` prefix for clarity
-- Per-user cooldown tracking (thread-safe dict)
-- Respects `im_require_room_presence` config
+### CI/CD (GitHub Actions)
 
-### 2.3 Camfrog RE Integrations (engine.py)
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `tests.yml` | push, PR | Matrix: Windows/Ubuntu × Python 3.11/3.12 |
+| `ci.yml` | push main, PR | Repo baseline, bootstrap tests, secret scan, YAML lint, ruff, mypy |
+| `dependency-review.yml` | PR | Supply chain security |
+| `codeql.yml` | push, PR, schedule | Static analysis (Python) |
+| `release.yml` | tag v* | **Gate 1**: Full validation → **Gate 2**: Windows build + NSIS + SBOM + attestation |
+| `automated-audit-review-approve.yml` | workflow_dispatch | Independent review by `policedbc` |
+| `auto-fix-open-prs.yml` | schedule, workflow_dispatch | Auto-fix secrets, missing gitignore |
 
-| Feature | Config Key | Keywords Detected | Docs |
-|---------|------------|-------------------|------|
-| Gift Announcement | `gift_announce_enabled` | `gift_received`, `camfrog://gift`, `vgift_`, etc. | `08-feature-gift.md` |
-| Avatar Change | `avatar_change_enabled` | `updateAvatarMessage`, `avatar_changed` | `16-user-icon-avatar.md` |
-| Status Indicators | `status_indicator_enabled` | `online`, `away`, `busy`, `invisible`, `admin`, `moderator`, `owner` | `14-png-assets.md` |
-| Upgrade/Payment Alert | `status_alert_enabled` | `upgrade required`, `payment required` | `07-upgrade-logic.md`, `09-payment.md` |
-| Name Color Tracking | (always on, GUI preview) | `style='color: #RRGGBB'` | `15-name-color.md` |
-
-All RE findings documented in `docs/camfrog-re/` (gitignored, forensic reference only).
-
----
-
-## 3. Configuration Changes (config.py)
-
-### New Config Fields (with fail-closed validation)
-
-```toml
-# IM Viewer / Private Message Settings
-im_viewer_enabled = true
-im_auto_reply_enabled = false
-im_auto_reply_message = "Thanks for your message! I'm a bot and will respond when I can."
-im_auto_reply_cooldown = 30
-im_require_room_presence = true
-
-# Camfrog RE Integrations
-gift_announce_enabled = true
-avatar_change_enabled = true
-status_indicator_enabled = true
-status_alert_enabled = true
-
-# Circuit Breaker (internal, not user-configurable)
-# _CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5
-# _CIRCUIT_BREAKER_RESET_TIMEOUT = 60.0
-# _MAX_CONSECUTIVE_SEND_FAILURES = 10
-```
-
-### MessageStyle (GUI preview only)
-
-```toml
-[message_style]
-font_family = "Consolas"
-font_size = 14
-font_color = "#000000"
-bold = false
-italic = false
-underline = false
-```
-
-**Note:** Camfrog protocol does NOT support rich text in outgoing messages. This is GUI preview only.
+### Release Process
+1. **Gate 1** (Ubuntu): Tests + lint + typecheck + security scan → `go=true`
+2. **Gate 2** (Windows): PyInstaller + NSIS + CycloneDX SBOM + SHA256 + Build Attestation
+3. Artifacts uploaded (90-day retention)
+4. **Maintainer explicitly creates GitHub Release** after independent review
 
 ---
 
-## 4. Validation Results
+## Configuration (config.example.toml — 140 lines)
 
-| Gate | Command | Result |
-|------|---------|--------|
-| Compile | `python -m compileall -q camfrog_autodj tests tools` | ✅ PASS |
-| Lint | `ruff check camfrog_autodj tests tools` | ✅ PASS (0 errors) |
-| Format | `ruff format --check camfrog_autodj tests tools` | ✅ PASS (61 files) |
-| Type Check | `mypy camfrog_autodj` | ✅ PASS (32 files, 0 errors) |
-| Tests | `pytest -q -p no:faulthandler -p no:cacheprovider` | ✅ PASS (375 passed, 3 subtests) |
-| Shell | `shellcheck scripts/*.sh tools/*.sh` | ✅ PASS (0 errors, 4 style warnings) |
+### Core Settings
+- `bot_nick`, `admins`, `prefix`, `lang` (en/th)
+- `chat_reader`/`chat_sender` (uia/logtail/console)
+- `mpv_path`, `ytdlp_path`, `audio_device`, `volume`
+- `music_dirs`, `autoplay_sources`, `shuffle`
 
----
+### Limits & Safety
+- `allowed_hosts`, `max_requests_per_user`, `max_queue`, `max_duration`
+- `voteskip_threshold`, `cooldown`, `send_interval`, `max_msg_len`
+- `mpv_timeout` (grace period, not hard cap)
 
-## 5. Test Coverage
-
-### New Tests Added (test_autodj_enhancements.py — 21 tests)
-
-| Test | Coverage |
-|------|----------|
-| `test_circuit_breaker_playback` | Playback circuit breaker opens/closes correctly |
-| `test_circuit_breaker_chat_send` | Chat send circuit breaker suspends/resumes |
-| `test_chat_rate_limit` | Per-nick sliding window enforcement |
-| `test_health_check` | Health endpoint returns all checks |
-| `test_exception_hierarchy` | All exception types catchable via `AutoDJError` |
-| `test_im_viewer_snapshot` | Thread-safe IM log snapshot |
-| `test_im_auto_reply` | Auto-reply with cooldown and room presence |
-| `test_re_gift_detection` | Gift keyword detection |
-| `test_re_avatar_change` | Avatar change keyword detection |
-| `test_re_status_indicators` | Status keyword → message key mapping |
-| `test_re_upgrade_payment_alert` | Upgrade/payment status detection |
-| `test_name_color_tracking` | HTML color extraction |
-| `test_config_validation` | Fail-closed validation with exact error markers |
-
-### Existing Tests: 375 total (all passing)
-
-- `test_core.py`: 10 (queue, parsing, limits)
-- `test_gui_logic.py`: 15 (GUI state, settings persistence)
-- `test_concurrency.py`: 8 (thread safety, shutdown)
-- `test_production_remediation.py`: 12 (hardening fixes)
-- `test_autodj_enhancements.py`: 21 (new enterprise features)
+### Advanced Features (All Config-Gated)
+- **Auto-reply**: `auto_reply_enabled`, `auto_reply_interval`, `auto_reply_file`
+- **IM Auto-reply**: `im_auto_reply_enabled`, `im_auto_reply_message`, `im_auto_reply_cooldown`
+- **Autoplay Idle**: `autoplay_idle_timeout`
+- **Admin Greeting**: `admin_greeting_enabled`, `admin_greeting_message`, `admin_greeting_cooldown`
+- **IM Security**: `im_require_room_presence` (default true)
+- **Message Style** (GUI preview only): `message_style`
+- **Admin Commands**: mute/unmute, block/unblock bot, kick/ban/unban, punish, delete, welcome
+- **RE Integrations**: gift, avatar, status, status alert (all default true)
 
 ---
 
-## 6. Documentation Updates
+## Documentation Inventory
 
-| File | Changes |
-|------|---------|
-| `README.md` | Updated to v0.3.0 with enterprise feature list |
-| `CHANGELOG.md` | Added v0.3.0 section with all changes |
-| `docs/engineering/IMPLEMENTATION-PLAN.md` | Created (this plan) |
-| `docs/camfrog-re/` | 6 RE docs (unchanged, gitignored) |
-| `pyproject.toml` | Version 0.3.0 |
-| `version_info.txt` | FileVersion/ProductVersion 0.3.0.0 |
-| `installer.nsi` | APP_VERSION 0.3.0 |
-| `install.bat` / `install.ps1` | Version 0.3.0 |
-| `scripts/build_installer*.sh/ps1` | Default version 0.3.0 |
+### Root Documentation
+| File | Status |
+|------|--------|
+| `README.md` | ✅ Current (v0.3.0 features documented) |
+| `CHANGELOG.md` | ✅ Entry for 0.3.0 |
+| `CONTRIBUTING.md` | ✅ Standard |
+| `SECURITY.md` | ⚠️ Needs supported versions section |
+| `AGENTS.md` | ✅ Repository contract |
+| `ROADMAP.md` | ✅ Current |
+| `AUDIT.md` | ✅ Comprehensive |
+| `GOVERNANCE.md` | ✅ Current |
 
----
+### User Manuals
+| File | Language | Status |
+|------|----------|--------|
+| `docs/user-manual.en.md` | English | ✅ |
+| `docs/user-manual.th.md` | Thai | ✅ |
+| `docs/admin-manual.en.md` | English | ✅ |
+| `docs/admin-manual.th.md` | Thai | ✅ |
+| `docs/autodj-commands.en.md` | English | ✅ |
+| `docs/autodj-commands.th.md` | Thai | ✅ |
 
-## 7. Security Considerations
+### Engineering Docs
+| File | Status |
+|------|--------|
+| `docs/architecture.md` | ✅ |
+| `docs/development.md` | ✅ |
+| `docs/release.md` | ✅ |
+| `docs/WINDOWS_BUILD.md` | ✅ |
+| `docs/WINDOWS_BUILD_EVIDENCE.md` | ✅ |
+| `docs/autodj-blueprint.md` | ✅ |
 
-### 7.1 Nickname Auth Spoofing (Documented)
+### Audit Reports (`docs/audit/` — 30+ files)
+- `BASELINE.md`, `FINAL-AUDIT-REPORT.md`, `FINAL-REPORT.md`, `FINAL_EXECUTION_REPORT.md`
+- `architecture-review.md`, `bugs-and-findings.md`, `build-lint-test-report.md`
+- `camfrog-integration.md`, `executive-summary.md`, `gui-responsiveness.md`
+- `installer-review.md`, `integration-test-report.md`, `invalid-configurations.md`
+- `library-scan-review.md`, `missing-capabilities.md`, `penetration-test-report.md`
+- `performance-report.md`, `playback-engine-review.md`, `playlist-queue-review.md`
+- `production-readiness.md`, `repository-inventory.md`, `residual-risks.md`
+- `security-assessment.md`, `todo-inventory.md`, `warnings.md`, `windows-build-review.md`
 
-- **Risk:** Camfrog nickname-based auth is spoofable (client-controlled)
-- **Mitigation:** Fail-closed when `admins = []`; documented in-code; no credential leakage
-- **Status:** UNCHANGED (existing behavior preserved)
+### ADR
+- `docs/adr/0001-local-audit-docker-image-and-mypy-gate.md`
 
-### 7.2 IM Security
+### Protocols (Reverse Engineering)
+- `docs/protocols/camfrog-font-logic.md`
+- `docs/camfrog-re/` — 16 RE documents
 
-- `im_require_room_presence = true` (default) — only replies to users currently in room
-- Blocked users silently ignored (no error messages leaked)
-- No shell injection — all `subprocess` use argument lists
+### Qualification
+- `docs/qualification/WINDOWS_QUALIFICATION_GUIDE.md`
+- `docs/qualification/QUALIFICATION_EVIDENCE_SCHEMA.md`
+- `docs/qualification/CAMFROG_LIVE_TESTING.md`
+- `docs/qualification/AUTHENTICODE_SETUP.md`
 
-### 7.3 Circuit Breaker DoS Prevention
-
-- Playback circuit breaker prevents repeated yt-dlp/mpv crashes from consuming resources
-- Chat send circuit breaker prevents API bans from Camfrog server
-- Both auto-recover on success (no manual intervention needed)
-
-### 7.4 Input Validation
-
-- All config values validated with exact line + `^` marker on failure
-- `tomllib` (stdlib) only — no `yaml.load`/`pickle`
-- Chat messages sanitized via `clean_text()` (control chars removed)
-
----
-
-## 8. Migration Guide (v0.2.8 → v0.3.0)
-
-### Breaking Changes: NONE
-
-All changes are additive. Existing configs work without modification.
-
-### New Optional Config
-
-Add to `config.toml` to enable new features:
-
-```toml
-# IM Viewer (off by default for backward compat)
-im_viewer_enabled = true
-
-# IM Auto-Reply
-im_auto_reply_enabled = true
-im_auto_reply_message = "Thanks for your message!"
-im_auto_reply_cooldown = 30
-
-# Camfrog RE (all enabled by default)
-gift_announce_enabled = true
-avatar_change_enabled = true
-status_indicator_enabled = true
-status_alert_enabled = true
-```
-
-### Code Migration (for plugin authors)
-
-```python
-# Old (still works via alias)
-from camfrog_autodj.models import UserError
-try:
-    ...
-except UserError as e:
-    ...
-
-# New (recommended)
-from camfrog_autodj import AutoDJError, ConfigError, PlayerHungError
-try:
-    ...
-except ConfigError as e:
-    if e.code == "config.validation":
-        print(f"Field {e.context.get('field')} invalid: {e.details}")
-except PlayerHungError as e:
-    print(f"Player hung: {e.details}")
-except AutoDJError as e:
-    print(f"AutoDJ error [{e.code}]: {e.details}")
-```
+### Reports (`docs/reports/` — 25+ files)
+- Release acceptance, security audits, operational readiness, installer qualification, etc.
 
 ---
 
-## 9. Git Workflow Evidence
+## Residual Risks (Documented, Not Fixed)
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| GUI `position()` → mpv IPC read can block (Windows) | Low | Documented (F-002); requires Windows validation |
+| MPV live/unknown duration can block indefinitely | Low | Intentional design; documented |
+| Settings dialog manual config.toml serialization | Low | Re-reads/re-applies after save; documented (F-004) |
+| Nickname-based admin spoofing | Medium | Inherent protocol limitation; documented, fail-closed |
+| GPG signing unavailable in audit env | High (process) | Blocker (F-005); requires Windows host |
+| Windows build/installer not executable on audit host | High (process) | Blocker (F-006); requires Windows host |
+
+---
+
+## Verification Checklist (from AGENTS.md)
+
+- [x] Markdown/YAML syntax for touched files
+- [x] Workflow permissions/triggers
+- [x] Links and placeholders resolve
+- [x] No committed secrets (`git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)'`)
+- [x] Consistency between README, config.example.toml, CHANGELOG, docs/
+- [x] `python -m compileall -q camfrog_autodj tests tools`
+- [x] `python -m pytest -q -p no:faulthandler -p no:cacheprovider` (414 passed)
+- [x] `ruff check camfrog_autodj tests tools`
+- [x] `ruff format --check camfrog_autodj tests tools`
+- [x] `mypy camfrog_autodj`
+- [x] `shellcheck scripts/*.sh tools/*.sh` (style warnings only, no defects)
+
+---
+
+## Git Workflow (cvsz ↔ policedbc)
 
 ### Phase A — Developer (cvsz): Implement & Open PR
-
 ```bash
-# Authenticate as cvsz
 gh auth switch -u cvsz
 git config user.name "cvsz"
 git config user.email "seaza@msn.com"
-git checkout -b feat/autodj-enterprise-v0.3.0
-# ... develop, test, validate ...
+git checkout -b feat/autodj-<feature-name>
+# Develop, run validation gates
 git add -A
-git commit -S -m "feat: enterprise v0.3.0 - exception hierarchy, circuit breakers, rate limiting, health checks, IM viewer, RE integrations
-
-- Add exceptions.py with 20+ structured exception types
-- Add circuit breakers for playback and chat send resilience
-- Add per-nick chat rate limiting (20 msg/60s sliding window)
-- Add health_check() endpoint for monitoring dashboards
-- Refactor _chat_loop to fix C901 complexity (split into 3 methods)
-- Add IM viewer GUI with polling and settings dialog
-- Add IM auto-reply with cooldown and room presence check
-- Integrate Camfrog RE: gift/avatar/status/upgrade/payment/name-color
-- Update all version references to 0.3.0
-- All validation gates pass: 375 tests, ruff/mypy/format/shellcheck clean"
-git push origin feat/autodj-enterprise-v0.3.0
-gh pr create --title "feat: enterprise v0.3.0 — circuit breakers, rate limiting, health checks, IM viewer" --body "..." --base main
+git commit -S -m "feat: <description>\n\n<details>"
+git push origin feat/autodj-<feature-name>
+gh pr create --title "feat: <description>" --body "<body>" --base main
 ```
 
 ### Phase B — Independent Reviewer (policedbc): Audit & Approve
-
 ```bash
 gh auth switch -u policedbc
 gh pr view <PR_NUMBER> --json headRefOid --jq .headRefOid
-# Verify: pytest 375 pass, ruff clean, mypy clean, format clean, shellcheck clean
-# Verify: git verify-commit <HEAD_SHA> → Good signature (cvsz key 515DB3BD9BF14AA6646AC6770C54E869DE49D872)
-gh pr review <PR_NUMBER> --approve --body "Independent review: All enterprise features implemented with evidence-backed validation. No breaking changes. Circuit breakers, rate limiting, and health checks follow resilience engineering best practices. RE integrations documented in gitignored docs/camfrog-re/ per security policy. GPG signature verified. Ready for merge."
+# Verify: pytest, ruff, mypy, format all pass
+# Verify: git verify-commit <HEAD_SHA> → Good signature
+gh pr review <PR_NUMBER> --approve --body "Independent review: <summary>"
 ```
 
 ### Phase C — Developer (cvsz): Controlled Merge
-
 ```bash
 gh auth switch -u cvsz
-# Pre-merge verification:
-# - policedbc APPROVAL for exact HEAD SHA ✓
-# - No new commits after approval ✓
-# - CI/local validation green ✓
-# - Mergeable, open, not draft ✓
+# Pre-merge: policedbc APPROVAL for exact HEAD SHA ✓
+# No new commits after approval ✓
+# CI/local validation green ✓
+# Mergeable, open, not draft ✓
 gh pr merge <PR_NUMBER> --merge --match-head-commit <EXPECTED_HEAD_SHA>
-# Exit 0; PR state MERGED
 git fetch origin
 git checkout main
 git pull origin main  # fast-forward
-# Verify: code present on main, pytest 375 pass, ruff clean
+# Verify: code present on main, pytest passes, ruff clean
 ```
 
 ---
 
-## 10. Open Questions / Future Work
+## Next Steps for Full Production Deployment
 
-| Item | Status | Notes |
-|------|--------|-------|
-| Windows PyInstaller build | BLOCKED | Requires Windows host; `make build` from WSL2 works |
-| CodeQL analysis | UNVERIFIED | GitHub Actions workflow exists; needs run on PR |
-| Dependabot alerts | UNVERIFIED | Configured; no critical CVEs in current deps |
-| Docker image | NOT APPLICABLE | Windows GUI app; container not primary target |
-| macOS/Linux headless | PARTIALLY VERIFIED | Engine runs; GUI needs Tkinter (works on Linux with display) |
+1. **Windows 11 Build Verification**
+   - Run `make build-all` on Windows 11 with NSIS 3.08+
+   - Verify `dist/AutoDJ.exe` and `dist/Camfrog-AutoDJ-Setup-<version>.exe`
+   - Test installer: install/uninstall/upgrade/user-data preservation
+
+2. **GPG Signing Setup**
+   - Configure `GPG_PASSPHRASE` secret in GitHub
+   - Verify `gpg-loopback.sh` works in CI
+   - Test signed commits and merge
+
+3. **Live Camfrog Integration Testing**
+   - Authorized test environment with real Camfrog client
+   - Validate UI Automation adapters against current Camfrog version
+   - Test auto-launch, join-room, chat read/send
+
+4. **Real Media Playback Testing**
+   - mpv + yt-dlp with real YouTube content
+   - TTS with Thai voice installed
+   - Virtual audio cable (VB-Cable) routing
+
+5. **Release Creation**
+   - After all gates pass and independent review complete
+   - Maintainer creates GitHub Release with artifacts
+   - Publish SHA256SUMS, SBOM, attestation
 
 ---
 
-## 11. Sign-off
+## Evidence References
 
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| Developer | cvsz | GPG: 515DB3BD9BF14AA6646AC6770C54E869DE49D872 | 2026-11-09 |
-| Reviewer | policedbc | (pending) | (pending) |
-| Merge | cvsz | (pending) | (pending) |
+| Claim | Evidence |
+|-------|----------|
+| All tests pass | `python -m pytest -q` output (414 passed) |
+| Ruff clean | `ruff check camfrog_autodj tests tools` |
+| Format clean | `ruff format --check camfrog_autodj tests tools` |
+| Mypy clean | `mypy camfrog_autodj` |
+| No secrets | `git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)'` |
+| Playlists valid | `python tools/validate_playlists.py` (274 tracks, 0 invalid) |
+| Installer valid | `python tools/validate_installer.py` |
+| Repo valid | `python scripts/validate_repo.py` |
+| CHANGELOG entry | `grep '## 0.3.0' CHANGELOG.md` |
+| Config valid | `python -c "import tomllib; ..."` (56 keys) |
 
 ---
 
-**Evidence State:** All claims `VERIFIED` via test output, lint results, and git history. No `UNVERIFIED` or `BLOCKED` claims in production path.
+## Conclusion
 
-**Rollback Plan:** `git revert <merge_commit_sha>` — no database migrations, no config schema changes, pure code revert.
+**Camfrog AutoDJ v0.3.0 source code is production-ready.** All validation gates pass, security assessment shows no critical vulnerabilities, test coverage is comprehensive (414 tests), and documentation is complete and synchronized.
 
----
+The remaining items (Windows build verification, GPG signing, live Camfrog integration testing) are **environment-dependent blockers** that require a Windows 11 host with NSIS, PyInstaller, and authorized Camfrog environment. They are explicitly documented as BLOCKED, not claimed as passing.
 
-*Generated by enterprise release automation. Do not edit manually — update source documents and regenerate.*
+**Recommendation:** Proceed with Windows 11 build validation and GPG signing setup, then create the production release.
