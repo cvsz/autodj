@@ -1,0 +1,5 @@
+{
+  "version": "0.3.0",
+  "installed": false,
+  "note": "ecc-install.json is retained as a minimal placeholder. Code signing certificates are not tracked in this repository."
+}

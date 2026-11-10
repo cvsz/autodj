@@ -5,7 +5,6 @@
 - [ZEAZ-INTRODUCTION.md](../../ZEAZ-INTRODUCTION.md)
 - [AGENTS.md](../../AGENTS.md)
 - [CLAUDE.md](../../CLAUDE.md)
-- [OPENCODE.md](../../OPENCODE.md)
 
 ## Guides
 
