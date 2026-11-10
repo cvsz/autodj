@@ -32,8 +32,9 @@ def failure_reasons(log_text: str, keep: int = 4) -> list[str]:
 class MpvPlayer:
     """One mpv process per track. mpv plays local files and YouTube (via yt-dlp) alike."""
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, stop_evt: threading.Event | None = None):
         self.cfg = cfg
+        self.stop_evt = stop_evt
         self.proc: subprocess.Popen | None = None
         self._ipc: str | None = None
         self.skipped = False
@@ -89,15 +90,27 @@ class MpvPlayer:
     def _wait_for_mpv_end(
         self, p: subprocess.Popen, started: float, limit: float | None
     ) -> tuple[int | None, bool]:
-        """Wait for mpv to exit; return (returncode, hung). hung means the grace limit was exceeded."""
+        """Wait for mpv to exit; return (returncode, hung). hung means the grace limit was exceeded.
+
+        For live streams (limit=None), we still poll at POLL interval to allow cooperative
+        cancellation via stop_evt, but we don't enforce a hard timeout since live duration
+        is unknown. The caller is responsible for managing overall track lifecycle.
+        """
         rc, hung = None, False
         while rc is None:
             try:
-                rc = p.wait(timeout=POLL if limit is not None else None)
+                # Always use POLL timeout to allow periodic checks; when limit is None
+                # (live stream), we don't treat timeout as "hung" but just continue waiting.
+                rc = p.wait(timeout=POLL)
             except subprocess.TimeoutExpired:
+                # Check for cooperative cancellation
+                if self.stop_evt is not None and self.stop_evt.is_set():
+                    log.debug("mpv wait cancelled via stop_evt")
+                    break
                 if limit is not None and self._played(started) >= limit:
                     hung = True
                     break
+                # For live streams (limit=None), continue waiting - no hung detection
         return rc, hung
 
     def play(self, source: str, volume: int, duration: float | None = None) -> bool:
@@ -245,7 +258,11 @@ class MpvPlayer:
             return False
 
     def _cmd_get(self, *cmd) -> float | None:
-        """Send a command to mpv via IPC and read the JSON response. Returns the property value or None on failure."""
+        """Send a command to mpv via IPC and read the JSON response. Returns the property value or None on failure.
+
+        Uses a 2-second timeout for reading the response to avoid hanging indefinitely
+        if mpv doesn't respond or the IPC pipe/socket is in a bad state.
+        """
         ipc = self._ipc
         if not ipc:
             return None
@@ -253,38 +270,61 @@ class MpvPlayer:
         data = (json.dumps({"command": list(cmd), "request_id": request_id}) + "\n").encode()
         try:
             if _is_windows():
-                # Windows named pipe: open for read/write, send request, then read response
-                with open(ipc, "r+b", buffering=0) as f:
-                    f.write(data)
-                    # Read response (may need multiple reads)
-                    response = b""
-                    while b"\n" not in response:
-                        chunk = f.read(4096)
-                        if not chunk:
-                            break
-                        response += chunk
+                response = self._ipc_read_windows(ipc, data)
             else:
-                import socket
-
-                with socket.socket(socket.AF_UNIX) as s:
-                    s.connect(ipc)
-                    s.sendall(data)
-                    # Read response
-                    response = b""
-                    while b"\n" not in response:
-                        chunk = s.recv(4096)
-                        if not chunk:
-                            break
-                        response += chunk
+                response = self._ipc_read_unix(ipc, data)
             if not response:
                 return None
             # Parse JSON response
             resp = json.loads(response.decode("utf-8", errors="replace"))
             if resp.get("request_id") == request_id and "data" in resp:
                 return resp["data"]
-        except (OSError, json.JSONDecodeError, StopIteration):
+        except (OSError, json.JSONDecodeError, StopIteration, TimeoutError):
             return None
         return None
+
+    def _ipc_read_windows(self, ipc: str, data: bytes, timeout: float = 2.0) -> bytes | None:
+        """Read IPC response from Windows named pipe with timeout."""
+        import time
+        start = time.monotonic()
+        try:
+            with open(ipc, "r+b", buffering=0) as f:
+                f.write(data)
+                response = b""
+                while b"\n" not in response:
+                    if time.monotonic() - start > timeout:
+                        log.debug("_cmd_get timed out reading from IPC pipe")
+                        return None
+                    chunk = f.read(4096)
+                    if not chunk:
+                        break
+                    response += chunk
+                return response
+        except OSError:
+            return None
+
+    def _ipc_read_unix(self, ipc: str, data: bytes, timeout: float = 2.0) -> bytes | None:
+        """Read IPC response from Unix socket with timeout."""
+        import socket
+        import time
+        start = time.monotonic()
+        try:
+            with socket.socket(socket.AF_UNIX) as s:
+                s.settimeout(timeout)
+                s.connect(ipc)
+                s.sendall(data)
+                response = b""
+                while b"\n" not in response:
+                    if time.monotonic() - start > timeout:
+                        log.debug("_cmd_get timed out reading from IPC socket")
+                        return None
+                    chunk = s.recv(4096)
+                    if not chunk:
+                        break
+                    response += chunk
+                return response
+        except (OSError, TimeoutError):
+            return None
 
     def get_time_pos(self) -> float | None:
         """Get the current playback position in seconds from mpv via IPC. Returns None if unavailable."""

@@ -31,7 +31,11 @@ _SEARCH_RE = re.compile(r"^ytsearch\d+:", re.IGNORECASE)
 
 
 def _is_valid_source(source: str) -> bool:
-    """Return True if source is a valid URL, yt-dlp search query, or local file path."""
+    """Return True if source is a valid URL, yt-dlp search query, or local file path.
+
+    For local paths, performs basic sanity checks to prevent path traversal.
+    Full path validation against music_dirs happens at playback time in engine.resolve().
+    """
     if not source or not isinstance(source, str):
         return False
     s = source.strip()
@@ -39,8 +43,14 @@ def _is_valid_source(source: str) -> bool:
         return False
     if _URL_RE.match(s) or _SEARCH_RE.match(s):
         return True
-    # Local file path: contains path separator, starts with '.', or has a file extension
-    return "/" in s or "\\" in s or s.startswith(".") or bool(Path(s).suffix)
+    # Local file path: basic validation - must have path separator or extension
+    # Reject obvious path traversal attempts
+    if ".." in s:
+        return False
+    # Must look like a path (separator) or have a media extension
+    has_sep = "/" in s or "\\" in s
+    has_ext = bool(Path(s).suffix)
+    return has_sep or has_ext or s.startswith(".")
 
 
 def load_playlist(path: str) -> list[Track]:

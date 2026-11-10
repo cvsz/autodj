@@ -57,9 +57,16 @@ def scan_folder(
 
     Symlinks are never followed (avoids symlink cycles and slow reparse-point
     hangs on Windows). *limit* caps the total tracks returned (0 = no cap).
-    *max_dirs* caps the number of sub-directories entered (0 = no cap) so a
-    very deep folder tree cannot scan forever.
+    *max_dirs* caps the total number of sub-directories entered across the
+    entire scan (0 = no cap) so a very deep/wide folder tree cannot scan forever.
     """
+    return _scan_folder_recursive(folder, requester, limit, max_dirs)
+
+
+def _scan_folder_recursive(
+    folder: str, requester: str, limit: int, remaining_dirs: int
+) -> list[Track]:
+    """Internal recursive implementation with global directory budget."""
     root = Path(folder)
     try:
         entries = list(root.iterdir())
@@ -67,7 +74,6 @@ def scan_folder(
         log.warning("cannot read folder %r: permission denied", folder)
         return []
     tracks: list[Track] = []
-    dirs_entered = 0
     for entry in entries:
         if limit and len(tracks) >= limit:
             break
@@ -75,11 +81,11 @@ def scan_folder(
             if entry.is_symlink():
                 continue  # never follow symlinks: avoids cycles and slow reparse points
             if entry.is_dir():
-                if max_dirs and dirs_entered >= max_dirs:
-                    continue  # stop descending: directory cap reached
-                dirs_entered += 1
+                if remaining_dirs <= 0:
+                    continue  # global directory budget exhausted
+                remaining_dirs -= 1
                 need = limit - len(tracks) if limit else 0
-                sub = scan_folder(str(entry), requester, limit=limit, max_dirs=max_dirs)
+                sub = _scan_folder_recursive(str(entry), requester, limit, remaining_dirs)
                 tracks.extend(sub[:need] if need else sub)
                 if limit and len(tracks) >= limit:
                     break
