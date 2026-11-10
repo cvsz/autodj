@@ -292,7 +292,7 @@ endif
 
 nsiswindows11:  ## Build NSIS installer for Windows 11 (requires NSIS + AutoDJ.exe in dist/)
 ifeq ($(OS),Windows_NT)
-	@if not exist dist\AutoDJ.exe (echo "ERROR: dist\AutoDJ.exe not found. Run 'make build' first." && exit 1)
+	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found. Run 'make build' first."; exit 1; fi
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_installer.ps1 -Version $(VERSION) -Sign
 else
 	@echo "nsiswindows11 requires Windows 11 with NSIS installed"
@@ -302,15 +302,13 @@ endif
 trustsign:  ## Azure Trusted Signing: Sign EXE + Installer via Azure Key Vault (requires Azure setup)
 ifeq ($(OS),Windows_NT)
 	@echo "=== Azure Trusted Signing ==="
-	@if not defined AZURE_KEYVAULT_NAME (echo "ERROR: AZURE_KEYVAULT_NAME not set. Set in env or GitHub Secrets." && exit 1)
-	@if not defined AZURE_CERT_NAME (echo "ERROR: AZURE_CERT_NAME not set. Set in env or GitHub Secrets." && exit 1)
-	@if not exist dist\AutoDJ.exe (echo "ERROR: dist\AutoDJ.exe not found. Run 'make build' first." && exit 1)
+	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found. Run 'make build' first."; exit 1; fi
 	@echo "Signing AutoDJ.exe via Azure Key Vault: $(AZURE_KEYVAULT_NAME)/$(AZURE_CERT_NAME)"
 	az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist\AutoDJ.exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com
-	@if exist dist\Camfrog-AutoDJ-Setup-$(VERSION).exe ( \
+	@if [ -f dist/Camfrog-AutoDJ-Setup-$(VERSION).exe ]; then \
 		echo "Signing Installer via Azure Key Vault..." && \
-		az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist\Camfrog-AutoDJ-Setup-$(VERSION).exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com \
-	)
+		az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist\Camfrog-AutoDJ-Setup-$(VERSION).exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com; \
+	fi
 	@echo "=== Azure Signing Complete ==="
 else
 	@echo "trustsign requires Windows (uses az signtool)"

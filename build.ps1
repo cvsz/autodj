@@ -96,6 +96,25 @@ if (Test-Path mpv) {
     }
 }
 
+# Copy additional files needed by the installer
+$installerFiles = @(
+    "app.ico",
+    "config.example.toml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "install.ps1",
+    "run_autodj.py"
+)
+foreach ($file in $installerFiles) {
+    if (Test-Path $file) {
+        Copy-Item $file "dist\$file" -Force
+        "copied $file -> dist\$file" | Write-Host
+    } else {
+        Write-Warning "Installer source file not found: $file"
+    }
+}
+
 Step "smoke test"
 & $exe --version
 if ($LASTEXITCODE -ne 0) { throw "the built exe does not start (see the error above)" }
