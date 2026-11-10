@@ -1,5 +1,6 @@
 # CamfrogAutoDJ -- dev convenience targets.
 # Cross-platform (Linux/macOS/Windows PowerShell/Git-Bash).
+# Windows 11 ready: validates OS build >= 22000, NSIS 3.09+, mpv, PyInstaller.
 
 ifeq ($(OS),Windows_NT)
 SHELL       := $(shell where bash 2>NUL || echo cmd.exe)
@@ -25,6 +26,9 @@ VERSION     := $(shell $(PY) -c "import tomllib,sys; print(tomllib.load(open('py
 DIST_ZIP    := dist/camfrog-autodj-$(VERSION).zip
 IS_WINDOWS  := $(filter Windows_NT,$(OS))
 
+# Windows 11 minimum build number (22000 = Windows 11 21H2)
+WIN11_MIN_BUILD := 22000
+
 .DEFAULT_GOAL := help
 .PHONY: help install install-dev install-build install-auto venv \
         run run-gui run-console run-headless check discover windows say join-room \
@@ -32,15 +36,52 @@ IS_WINDOWS  := $(filter Windows_NT,$(OS))
         lint lint-src fmt typecheck validate-playlists fix-playlists validate-template full-validation security-check config-check \
         build build-clean sign build-all build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
         clean clean-all distclean \
-        config version bump-patch changelog-check pre-commit ci docs all
+        config version bump-patch changelog-check pre-commit ci docs all \
+        win11-check mpv-check nsis-check pyinstaller-check
 
 ## ---- help -----------------------------------------------------------------
 help:  ## Show this help
-	@echo "CamfrogAutoDJ -- make targets"
+	@echo "CamfrogAutoDJ -- make targets (Windows 11 ready)"
 	@echo ""
 	@$(PY) -c "import re; [print(f'  \033[36m{m.group(1):<24}\033[0m {m.group(2)}') for line in open('Makefile', encoding='utf-8') if (m := re.match(r'^([a-zA-Z0-9_.-]+):[^#]*##\s*(.*)', line))]"
 	@echo ""
 	@echo "Variables: PY=$(PY)  CONFIG=$(CONFIG)  VERSION=$(VERSION)"
+	@echo "Windows targets require: Windows 11 (build 22000+), NSIS 3.09+, mpv, PyInstaller"
+
+## ---- Windows 11 prerequisite checks ---------------------------------------
+win11-check:  ## Verify Windows 11 (build 22000+) and NSIS/mpv/PyInstaller availability
+ifeq ($(OS),Windows_NT)
+	@echo "=== Windows 11 Prerequisite Check ==="
+	@powershell.exe -NoProfile -Command "$$v = (Get-Item 'C:\Windows\System32\ntoskrnl.exe').VersionInfo.ProductVersion; $$build = [int]($$v.Split('.')[2]); Write-Host 'OS Build: ' $$build; if ($$build -lt $(WIN11_MIN_BUILD)) { Write-Error 'ERROR: Windows 11 (build $(WIN11_MIN_BUILD)+) required, found build ' $$build; exit 1 }" || (echo "ERROR: Not Windows 11." && exit 1)
+	@echo "  OK: Windows 11 detected"
+	@if (Get-Command makensis -ErrorAction SilentlyContinue) { echo "  OK: NSIS (makensis) in PATH" } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { echo "  OK: NSIS found at C:\Program Files (x86)\NSIS\makensis.exe" } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { echo "  OK: NSIS found at C:\Program Files\NSIS\makensis.exe" } else { echo "ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis)." && exit 1 }
+	@if (Get-Command mpv.exe -ErrorAction SilentlyContinue) { echo "  OK: mpv.exe in PATH" } elseif (Test-Path 'C:\Program Files\mpv\mpv.exe') { echo "  OK: mpv found at C:\Program Files\mpv\mpv.exe" } else { echo "WARN: mpv.exe not found in PATH. Install: choco install mpv --version=2024.01.01 --yes" }
+	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed"; else echo "WARN: PyInstaller not installed. Run: $(PIP) install pyinstaller"; fi
+else
+	@echo "win11-check requires Windows 11"
+	@exit 1
+endif
+
+mpv-check:  ## Verify mpv is available for Windows builds
+ifeq ($(OS),Windows_NT)
+	@powershell.exe -NoProfile -Command "if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\mpv\mpv.exe')) { Write-Error 'mpv.exe not found. Install: choco install mpv --yes'; exit 1 }" || (echo "ERROR: mpv not found." && exit 1)
+	@echo "  OK: mpv available"
+else
+	@echo "mpv-check is Windows-only"
+	@exit 1
+endif
+
+nsis-check:  ## Verify NSIS (makensis) is available
+ifeq ($(OS),Windows_NT)
+	@powershell.exe -NoProfile -Command "if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') -and -not (Test-Path 'C:\Program Files\NSIS\makensis.exe')) { Write-Error 'NSIS not found. Install: choco install nsis --yes'; exit 1 }" || (echo "ERROR: NSIS not found." && exit 1)
+	@echo "  OK: NSIS available"
+else
+	@echo "nsis-check is Windows-only"
+	@exit 1
+endif
+
+pyinstaller-check:  ## Verify PyInstaller is available
+	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed"; else echo "ERROR: PyInstaller not installed. Run: $(PIP) install pyinstaller" && exit 1; fi
 
 ## ---- environment ------------------------------------------------------------
 venv:  ## Create a local .venv and show how to activate it
@@ -146,7 +187,7 @@ fmt:  ## Format with ruff/black if installed (no-op if none installed)
 	else echo "no formatter installed (pip install ruff or black)"; fi
 
 typecheck:  ## Type-check with mypy if installed
-	@if $(PY) -c "import mypy" 2>/dev/null; then $(PY) -m mypy $(PROJECT) || echo "NOTE: pre-existing mypy issues (missing stubs)"; \
+	@if $(PY) -c "import mypy" 2>/dev/null; then $(PY) -m mypy $(PROJECT); \
 	else echo "mypy not installed (pip install mypy)"; fi
 
 ## ---- playlist validation -------------------------------------------------------
@@ -194,9 +235,12 @@ endif
 
 build:  ## Build AutoDJ.exe with PyInstaller (Windows PowerShell)
 ifeq ($(OS),Windows_NT)
+	@echo "=== Building AutoDJ.exe (PyInstaller) ==="
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
+	@powershell.exe -NoProfile -Command "if (-not (Test-Path 'dist\\AutoDJ.exe')) { Write-Error 'ERROR: dist\\AutoDJ.exe not found after build.'; exit 1 }"
+	@echo "  OK: dist\\AutoDJ.exe built"
 else
-	@echo "build requires Windows (runs build.ps1). On Linux/WSL use 'make build' from PowerShell."
+	@echo "build requires Windows (runs build.ps1). On Linux/WSL use 'make build-all-linux'."
 	@exit 1
 endif
 
@@ -210,31 +254,34 @@ endif
 
 sign:  ## Sign existing AutoDJ.exe (Windows)
 ifeq ($(OS),Windows_NT)
+	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found. Run 'make build' first."; exit 1; fi
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -NoSign=false $(BUILD_ARGS)
 else
 	@echo "sign requires Windows."
 	@exit 1
 endif
 
-build-all:  ## Full pipeline: build AutoDJ.exe -> connect Windows 11 -> make nsiswindows11
+build-all:  ## Full pipeline: win11-check -> build AutoDJ.exe -> make nsiswindows11
 ifeq ($(OS),Windows_NT)
+	$(MAKE) win11-check
+	$(MAKE) mpv-check
+	$(MAKE) nsis-check
+	$(MAKE) pyinstaller-check
 	@echo "=== Step 1/3: Building AutoDJ.exe (PyInstaller) ==="
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
 	@powershell.exe -NoProfile -Command "if (-not (Test-Path 'dist\\AutoDJ.exe')) { Write-Error 'ERROR: dist\\AutoDJ.exe not found after build.'; exit 1 }"
 	@echo ""
 	@echo "=== Step 2/3: Verifying Windows 11 environment ==="
-	@powershell.exe -NoProfile -Command "[System.Environment]::OSVersion.Version.Major -ge 10 -and [System.Environment]::OSVersion.Version.Build -ge 22000" || (echo "ERROR: Windows 11 (Build 22000+) required." && exit 1)
-	@powershell.exe -NoProfile -Command "if (Get-Command makensis -ErrorAction SilentlyContinue) { exit 0 } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { exit 0 } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { exit 0 } else { echo 'ERROR: NSIS (makensis) not found in PATH or C:\Program Files (x86)\NSIS\. Install NSIS 3.08+.'; exit 1 }" || (echo "ERROR: NSIS (makensis) not found. Install NSIS 3.08+." && exit 1)
+	@powershell.exe -NoProfile -Command "$$v = (Get-Item 'C:\Windows\System32\ntoskrnl.exe').VersionInfo.ProductVersion; $$build = [int]($$v.Split('.')[2]); if ($$build -lt $(WIN11_MIN_BUILD)) { Write-Error 'ERROR: Windows 11 (Build $(WIN11_MIN_BUILD)+) required, found build ' $$build; exit 1 }" || (echo "ERROR: Windows 11 (Build 22000+) required." && exit 1)
 	@echo "  OK: Windows 11 detected"
-	@echo "  OK: NSIS (makensis) found"
 	@echo ""
-	@echo "=== Step 3/3: Building NSIS Installer (make nsiswindows11) ==="
+	@echo "=== Step 3/3: Building NSIS Installer ==="
 	$(MAKE) nsiswindows11
 	@echo ""
 	@echo "=== Build Complete ==="
 	@echo "Installer: dist\Camfrog-AutoDJ-Setup-$(VERSION).exe"
 else
-	@echo "build-all requires Windows 11 (runs build.ps1 + NSIS)"
+	@echo "build-all requires Windows 11 (runs build.ps1 + NSIS). On Linux/WSL use 'make build-all-linux'."
 	@exit 1
 endif
 
@@ -243,27 +290,13 @@ ifeq ($(OS),Windows_NT)
 	@echo "build-all-linux is for Linux/WSL only. Use 'make build-all' on Windows."
 	@exit 1
 else
-	@echo "=== Step 1/3: Building AutoDJ.exe (PyInstaller via Wine) ==="
+	@echo "=== Step 1/2: Verifying Wine + NSIS environment ==="
 	@if command -v wine64 >/dev/null 2>&1; then \
 		echo "Found Wine: $$(wine64 --version)"; \
 	else \
 		echo "ERROR: wine64 not found. Install: sudo apt install wine64"; \
 		exit 1; \
 	fi
-	@if [ -f "build.ps1" ]; then \
-		wine64 powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS); \
-	else \
-		echo "ERROR: build.ps1 not found"; \
-		exit 1; \
-	fi
-	@if [ -f "dist/AutoDJ.exe" ]; then \
-		echo "  OK: dist/AutoDJ.exe built"; \
-	else \
-		echo "ERROR: dist/AutoDJ.exe not found after build"; \
-		exit 1; \
-	fi
-	@echo ""
-	@echo "=== Step 2/3: Verifying Wine + NSIS environment ==="
 	@NSIS_PATH="$$HOME/.wine/drive_c/NSIS/makensis.exe"; \
 	if [ -f "$$NSIS_PATH" ]; then \
 		echo "  OK: NSIS found at $$NSIS_PATH"; \
@@ -275,7 +308,7 @@ else
 		exit 1; \
 	fi
 	@echo ""
-	@echo "=== Step 3/3: Building NSIS Installer (via scripts/build_installer_linux.sh) ==="
+	@echo "=== Step 2/2: Building NSIS Installer (via scripts/build_installer_linux.sh) ==="
 	bash scripts/build_installer_linux.sh $(VERSION) dist dist
 	@echo ""
 	@echo "=== Build Complete ==="
@@ -294,6 +327,12 @@ nsiswindows11:  ## Build NSIS installer for Windows 11 (requires NSIS + AutoDJ.e
 ifeq ($(OS),Windows_NT)
 	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found. Run 'make build' first."; exit 1; fi
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_installer.ps1 -Version $(VERSION) -Sign
+	@if [ -f dist/Camfrog-AutoDJ-Setup-$(VERSION).exe ]; then \
+		echo "  OK: dist/Camfrog-AutoDJ-Setup-$(VERSION).exe created"; \
+	else \
+		echo "ERROR: Installer not created."; \
+		exit 1; \
+	fi
 else
 	@echo "nsiswindows11 requires Windows 11 with NSIS installed"
 	@exit 1
