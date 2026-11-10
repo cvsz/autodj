@@ -48,7 +48,7 @@ Both paths share the same **prerequisites, configuration, and verification logic
 │  4. SETUP PROJECT   → Clone repo or use existing directory     │
 │  5. PYTHON DEPS     → pip install -e .[build,dev]              │
 │  6. BUILD EXE       → PyInstaller (build.ps1)                  │
-│  7. CREATE CONFIG   → Copy config.example.toml → config.toml   │
+│  7. CREATE CONFIG   → config.toml (production config bundled)  │
 │  8. CREATE SHORTCUTS→ Desktop, Start Menu, Config, Uninstall   │
 │  9. AUTO-START      → (Optional) Startup folder shortcut       │
 │ 10. VERIFY          → AutoDJ.exe --check                       │
@@ -73,7 +73,7 @@ camfrog-autodj/
 ├── dist/                      # Build output (created by build.ps1)
 │   ├── AutoDJ.exe             # Main executable
 │   ├── app.ico                # Application icon
-│   ├── config.example.toml    # Config template
+│   ├── config.toml            # Production config (bundled with installer)
 │   ├── README.md
 │   ├── CHANGELOG.md
 │   ├── LICENSE.md
@@ -91,7 +91,7 @@ camfrog-autodj/
 %PROGRAMFILES64%\CamfrogAutoDJ\
 ├── AutoDJ.exe                 # Main executable
 ├── app.ico                    # Icon
-├── config.toml                # User config (copied from example)
+├── config.toml                # User config (production config, preserved on upgrade)
 ├── config.example.toml        # Template
 ├── README.md
 ├── CHANGELOG.md
@@ -160,8 +160,14 @@ crossfade_seconds = 2
 prefer_opus = true
 ```
 
+### config.toml (Production Config — Bundled with Installer)
+Committed to repo with production defaults - packaged by NSIS installer.
+- Contains sensible defaults: bundled mpv/yt-dlp relative paths, Thai language, Music folder
+- Fresh installs get production-ready config immediately
+- Upgrades preserve existing user config.toml
+
 ### config.example.toml (Template)
-Committed to repo - copied to `config.toml` on first install.
+Committed to repo - reference template for manual setups and documentation.
 
 ---
 
@@ -202,7 +208,7 @@ Committed to repo - copied to `config.toml` on first install.
 dist/
 ├── AutoDJ.exe
 ├── app.ico
-├── config.example.toml
+├── config.toml            # Production config (bundled)
 ├── README.md
 ├── CHANGELOG.md
 ├── LICENSE.md

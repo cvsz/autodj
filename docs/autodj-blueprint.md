@@ -775,7 +775,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1
 ### NSIS Installer (`installer.nsi`)
 
 **Sections:**
-- `SEC_MAIN` — AutoDJ.exe, config.example.toml, ads-list.json, README, CHANGELOG, LICENSE
+- `SEC_MAIN` — AutoDJ.exe, config.toml, ads-list.json, README, CHANGELOG, LICENSE
 - `SEC_PLAYLIST` — `playlist\*.json` (34 files, 274 tracks)
 - `SEC_MPV` — mpv.exe, yt-dlp.exe, `_internal\*`, mpv-register.bat
 - `SEC_VBCABLE` — Optional virtual audio driver
@@ -911,7 +911,8 @@ camfrog-autodj/
 ├── build.ps1               # PyInstaller build
 ├── Makefile                # Validation pipeline
 ├── pyproject.toml          # Project config (mypy, ruff, pytest)
-├── config.example.toml     # Example config
+├── config.toml             # Production config (bundled with installer)
+├── config.example.toml     # Example config (manual setups)
 ├── README.md
 ├── CHANGELOG.md
 ├── AGENTS.md

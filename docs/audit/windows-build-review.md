@@ -22,7 +22,7 @@
 
 - Verifies required packages (`yt-dlp`, `mutagen`, `pyttsx3`, `pywinauto`, ...) via `tools/check_build_env.py` before building — prevents an exe that starts but fails at runtime with `No module named 'yt_dlp'`.
 - Builds `--onefile --noupx --windowed` with `--collect-all yt_dlp`, `--collect-submodules camfrog_autodj/pywinauto/pyttsx3`, hidden imports `comtypes`, `pyperclip`, `mutagen`.
-- Copies `config.example.toml` → `dist/config.toml` (writable) and `mpv/` → `dist/mpv/` (mpv.exe + yt-dlp.exe).
+- Copies `config.toml` (production config) → `dist/config.toml` (writable) and `mpv/` → `dist/mpv/` (mpv.exe + yt-dlp.exe).
 - Smoke-tests `dist\AutoDJ.exe --version`; kills leftover processes.
 - Signing: Pfx / Thumbprint / self-signed cert; RFC 3161 timestamping; `Get-AuthenticodeSignature` verification. Self-signed cert trusted on local machine via `cert\autodj-codesign.cer`.
 

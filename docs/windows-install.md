@@ -46,9 +46,15 @@ pip install pyinstaller
 
 ### ขั้นตอนที่ 3: สร้าง config.toml
 
+**สำหรับการติดตั้งด้วยตนเอง (Manual Setup):**
+
 ```cmd
 copy config.example.toml config.toml
 ```
+
+**สำหรับการใช้ตัวติดตั้ง NSIS (จาก GitHub Releases):**
+- `config.toml` จะถูกติดตั้งมาพร้อมกับโปรแกรมแล้ว (มีค่าเริ่มต้นที่พร้อมใช้งาน)
+- ไม่ต้องคัดลอกจาก `config.example.toml`
 
 แก้ไข `config.toml` ให้ตรงกับสภาพแวดล้อมของคุณ:
 
@@ -58,8 +64,13 @@ admins = ["YourNick"]
 prefix = "!"
 lang = "th"
 
-mpv_path = "C:/mpv/mpv.exe"           # แก้เป็น path จริงบนเครื่องคุณ
-ytdlp_path = ""                        # ว่างได้ ถ้า yt-dlp อยู่ใน PATH หรืออยู่ถัดจาก mpv.exe
+# สำหรับการติดตั้งด้วยตนเอง ให้ใช้ full path
+# mpv_path = "C:/mpv/mpv.exe"
+# ytdlp_path = ""
+
+# สำหรับตัวติดตั้ง NSIS ใช้ relative path (mpv ถูกติดตั้งมาพร้อมกัน)
+# mpv_path = "mpv/mpv.exe"
+# ytdlp_path = "mpv/yt-dlp.exe"
 
 music_dirs = ["D:/Music"]              # โฟลเดอร์เพลงของคุณ
 autoplay_sources = []                  # ปล่อยว่างได้ ถ้าไม่ต้องการเพลงอัตโนมัติ

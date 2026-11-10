@@ -73,7 +73,7 @@ The script performs these steps:
 5. **PyInstaller Build**
    - Clean build using `--clean`, `--noupx`, `--windowed`
    - Bundles: `camfrog_autodj`, `pywinauto`, `pyttsx3`, `yt_dlp`, `comtypes`, `pyperclip`, `mutagen`
-   - Copies `config.example.toml` → `dist/config.toml`
+   - Copies `config.toml` (production config) → `dist/config.toml`
    - Bundles `mpv/` directory
    - Smoke test: `AutoDJ.exe --version`
 
