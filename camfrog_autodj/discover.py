@@ -214,12 +214,14 @@ def _toml_value(v) -> str:
     )
 
 
-def update_config_text(text: str, updates: dict) -> str:
+def update_config_text(text: str, updates: dict[str, object]) -> str:
     lines = text.splitlines()
     for key, val in updates.items():
         new = f"{key} = {_toml_value(val)}"
+        # Match: key = value (quoted or unquoted, optionally followed by comment)
+        # Value match is lazy (+?) so spaces before a trailing # comment are preserved
         rx = re.compile(
-            rf"^(\s*){re.escape(key)}\s*=\s*(?:'[^']*'|\"(?:[^\"\\]|\\.)*\"|[^#\n]*?)(\s*#.*)?$"
+            rf"^(\s*){re.escape(key)}\s*=\s*(?:'[^']*'|\"(?:[^\"\\]|\\.)*\"|[^#\n]+?)(\s*#.*)?$"
         )
         for i, ln in enumerate(lines):
             m = rx.match(ln)

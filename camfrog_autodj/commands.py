@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .adapters.base import ChatMessage
     from .engine import Engine
 
-from .models import UserError
+from .exceptions import UserError
 
 log = logging.getLogger("autodj")
 COMMANDS: dict[str, tuple] = {}
@@ -50,7 +50,11 @@ class Router:
         return msg.user.lower() in self.e.admins
 
     def handle(self, msg):
-        e, p = self.e, self.e.cfg.prefix
+        e = self.e
+        p = e.cfg.prefix
+        if not p.strip():
+            # Fail-closed: empty prefix means no commands are recognized
+            return
         text = msg.text.strip()
         is_im = getattr(msg, "is_im", False)
         parsed = self._parse_command(text, p, is_im)
@@ -58,12 +62,17 @@ class Router:
             return
         name, arg = parsed
         entry = COMMANDS.get(name.lower())
-        admin = self.is_admin(msg)
-        self._log_command(msg, name, arg, admin, is_im, p)
         if not entry:
             return
         fn, need_admin = entry
+        admin = self.is_admin(msg)
+        self._log_command(msg, name, arg, admin, is_im, p)
+        self._dispatch_command(e, fn, msg, name, arg, admin, is_im, need_admin)
 
+    def _dispatch_command(
+        self, e, fn, msg, name: str, arg: str, admin: bool, is_im: bool, need_admin: bool
+    ) -> None:
+        """Run *fn* after authorization checks; send replies on failure."""
         # IM Security: require user to be in the room (seen in chat) to use IM commands
         if is_im and not admin and getattr(e.cfg, "im_require_room_presence", True):
             active_users = getattr(e, "_active_room_users", None)
@@ -89,7 +98,7 @@ class Router:
         except UserError as ex:
             e.say(f"{msg.user}: {ex}")
         except Exception:
-            log.exception("command failed: %s", text)
+            log.exception("command failed: %s", msg.text)
             e.say(f"{msg.user}: {e.t('error')}")
 
     def _log_command(self, msg, name: str, arg: str, admin: bool, is_im: bool, prefix: str):

@@ -49,6 +49,7 @@ from .exceptions import (
     TTSError,
     TTSUnavailableError,
     UnauthorizedError,
+    UserError,
     YtdlpMissingError,
 )
 from .library import (
@@ -62,7 +63,7 @@ from .library import (
     remote_tracks,
     scan_folder,
 )
-from .models import Track, UserError, fmt_time
+from .models import Track, fmt_time
 from .playqueue import PlayQueue
 from .renderer import MessageRenderer, RenderedMessage, get_renderer
 

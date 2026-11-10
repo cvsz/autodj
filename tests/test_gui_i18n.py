@@ -43,6 +43,7 @@ def test_position_pause():
     e = make()
     e.current = Track("s", "x", 100, "u")
     e.started_at = 100.0
+    e.player.set_pause = lambda v: True  # mock IPC accept
     import time
 
     real = time.monotonic

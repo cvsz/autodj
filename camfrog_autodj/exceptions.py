@@ -302,9 +302,8 @@ class BlockedUserError(SecurityError):
 
 
 # UserError is the original AutoDJ exception (messages safe to show in the room).
-# Keep it as an alias so existing ``except UserError`` clauses keep working.
+# Kept as an alias in exceptions.py so existing ``except UserError`` clauses keep working.
 UserError = AutoDJError
-YtdlpMissingError = YtdlpMissingError  # noqa: F811  intentional alias for compatibility
 
 
 __all__ = [

@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .exceptions import AutoDJError
-
 
 def fmt_time(sec: float | None) -> str:
     if not sec:
@@ -12,10 +10,6 @@ def fmt_time(sec: float | None) -> str:
     h, r = divmod(sec, 3600)
     m, s = divmod(r, 60)
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
-
-
-# Backward-compatible alias: UserError == AutoDJError
-UserError = AutoDJError
 
 
 @dataclass

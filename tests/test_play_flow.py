@@ -19,8 +19,9 @@ import pytest
 from camfrog_autodj.commands import COMMANDS
 from camfrog_autodj.config import Config
 from camfrog_autodj.engine import Engine
+from camfrog_autodj.exceptions import UserError
 from camfrog_autodj.messages import tr
-from camfrog_autodj.models import Track, UserError
+from camfrog_autodj.models import Track
 from camfrog_autodj.player import MpvPlayer
 from camfrog_autodj.playlist import PlaylistStore, load_playlist
 

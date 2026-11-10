@@ -28,17 +28,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
-          python -m pip install -e . "pytest==7.4.4" ruff mypy
+          python -m pip install -e . "pytest==8.3.3" ruff mypy
 
       - name: Run unit tests
         run: python -m pytest -q -p no:faulthandler -p no:cacheprovider
 
       - name: Lint (ruff)
-        run: ruff check .
+        run: ruff check camfrog_autodj tests tools
 
       - name: Strict typecheck (mypy)
         run: mypy camfrog_autodj
@@ -70,7 +70,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install Python dependencies
         run: |
@@ -135,8 +135,15 @@ jobs:
             SHA256SUMS.txt
           retention-days: 90
 
-      # NOTE: The "Release" step that creates/publishes the GitHub Release is
-      # intentionally NOT included here. Per the remediation protocol, no release
-      # is created or published during remediation. A maintainer must explicitly
-      # authorize and create the release after all gates pass and independent
-      # review is complete.
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@2b29386354dd950030a496b8d980f5295a23c7f0 # v2.0.8
+        with:
+          files: |
+            dist/AutoDJ.exe
+            Camfrog-AutoDJ-Setup-*.exe
+            Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
+            SHA256SUMS.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false

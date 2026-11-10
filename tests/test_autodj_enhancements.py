@@ -148,6 +148,7 @@ def test_im_command_without_prefix():
     e = make()
     e.admins = {"boss"}
     e.player.play = lambda s, v, d=None: True
+    e.player.set_pause = lambda v: True
     e.current = Track("s", "now", 90, "boss")
 
     # IM pause command (no "!" prefix)

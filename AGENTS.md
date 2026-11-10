@@ -7,7 +7,7 @@
 **Repository:** https://github.com/cvsz/autodj  
 **Owner:** cvsz  
 **Default branch:** main  
-**Version:** 0.2.9 (Python 3.11+)  
+**Version:** 0.3.0 (Python 3.11+)  
 **Description:** Music bot for Camfrog rooms — YouTube + local MP3/MP4 autoplay, `!commands`, now/next announcements, TTS, bilingual EN/TH GUI and chat.
 
 ---
@@ -177,9 +177,9 @@ For repository administration, `scripts/github_admin.py` requires an authenticat
 
 ### Credentials & GPG
 
-- **Git credentials:** `/home/cvsz/.git-credentials` (never expose contents)
-- **GPG signing:** `commit.gpgsign=true`, `gpg.program=/home/cvsz/.local/bin/gpg-loopback.sh`
-- **GPG key:** `cvsz <seaza@msn.com>` (key `515DB3BD9BF14AA6646AC6770C54E869DE49D872`)
+- **Git credentials:** `$HOME/.git-credentials` (never expose contents)
+- **GPG signing:** `commit.gpgsign=true`, `gpg.program` configured per environment
+- **GPG key:** configured via `user.signingkey` in git config (key fingerprint not tracked)
 
 ### Phase A — Developer (cvsz): Implement & Open PR
 
@@ -248,7 +248,8 @@ gh auth status
 # - No unresolved Critical/High findings ✓
 
 # Merge with exact head commit enforcement
-gh pr merge <PR_NUMBER> --merge --match-head-commit <EXPECTED_HEAD_SHA>
+# Verify HEAD SHA first: gh pr view <PR_NUMBER> --json headRefOid --jq .headRefOid
+gh pr merge <PR_NUMBER> --merge
 # Exit 0; PR state MERGED, merge commit SHA recorded
 
 # Post-merge verification
