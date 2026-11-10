@@ -16,15 +16,15 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .config import MessageStyle
 
 log = __import__("logging").getLogger("autodj.camfrog_font")
 
-_winreg_cache: object | None = None
-winreg: object | None = None  # type: ignore[assignment]
+_winreg_cache: Any = None
+winreg: Any = None
 
 
 def _get_winreg():
@@ -44,7 +44,7 @@ def _get_winreg():
     if _winreg_cache is not None:
         return _winreg_cache
     try:
-        import winreg as _wr  # type: ignore[import]
+        import winreg as _wr
 
         _winreg_cache = _wr
         globals()["winreg"] = _wr
@@ -143,9 +143,7 @@ def _open_camfrog_key(writable: bool = False):
 
     for path in _CAMFROG_REG_PATHS:
         try:
-            key = wr.OpenKey(  # type: ignore[attr-defined]
-                wr.HKEY_CURRENT_USER, path, 0, access
-            )
+            key = wr.OpenKey(wr.HKEY_CURRENT_USER, path, 0, access)
             return key, path
         except (FileNotFoundError, OSError):
             continue
@@ -154,7 +152,7 @@ def _open_camfrog_key(writable: bool = False):
     return None, None
 
 
-def _query_value(key, valname: str):
+def _query_value(key: object, valname: str):
     """Query a single registry value.  Returns the value or None."""
     wr = _get_winreg()
     if wr is None:
@@ -168,7 +166,7 @@ def _query_value(key, valname: str):
         return None
 
 
-def _set_value(key, valname: str, value) -> bool:
+def _set_value(key: object, valname: str, value) -> bool:
     """Set a single registry value.  Returns True on success."""
     wr = _get_winreg()
     if wr is None:

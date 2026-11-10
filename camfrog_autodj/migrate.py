@@ -106,7 +106,7 @@ def _read_registry_values() -> dict[str, str]:
     if os.name != "nt":
         return {}
     try:
-        import winreg
+        import winreg  # Windows-only module
 
         values: dict[str, str] = {}
         try:
@@ -116,9 +116,7 @@ def _read_registry_values() -> dict[str, str]:
             ) as key:
                 for valname in ("mpv_path", "ytdlp_path"):
                     try:
-                        values[valname] = (  # type: ignore[attr-defined]
-                            winreg.QueryValueEx(key, valname)[0]  # type: ignore[attr-defined]
-                        )
+                        values[valname] = winreg.QueryValueEx(key, valname)[0]  # type: ignore[attr-defined]
                     except FileNotFoundError:
                         pass
         except FileNotFoundError:
