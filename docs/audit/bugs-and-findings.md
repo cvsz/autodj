@@ -1,4 +1,4 @@
-# Bugs and Findings — Camfrog AutoDJ
+# Bugs and Findings — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  

@@ -1,4 +1,4 @@
-# Repository Baseline — AutoDJ (Camfrog AutoDJ)
+# Repository Baseline — AutoDJ (CamfrogAutoDJ)
 
 **Generated:** 2026-11-06  
 **Branch:** `feat/autodj-enhancements-and-fixes`  
@@ -92,7 +92,7 @@ Local branches:
 
 - `AutoDJ.spec` — PyInstaller spec
 - `build.ps1` — PowerShell build/sign script
-- `installer.nsi` — NSIS installer (per-user, `%APPDATA%\Camfrog AutoDJ`)
+- `installer.nsi` — NSIS installer (per-user, `%APPDATA%\CamfrogAutoDJ`)
 - `install.ps1` / `install.bat` — Automated Windows 11 installer
 - `Camfrog-AutoDJ-Setup-0.2.6.exe` — Built installer (119 MB)
 - `pyproject.toml`, `Dockerfile`, `Makefile`

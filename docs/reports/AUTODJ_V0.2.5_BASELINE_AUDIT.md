@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.5 — Baseline Discovery & Architecture Audit
+# CamfrogAutoDJ v0.2.5 — Baseline Discovery & Architecture Audit
 
 **Date:** 2026-11-01  
 **Auditor:** Super Ultra AI ORC (Principal Systems Architect & Release Orchestrator)  

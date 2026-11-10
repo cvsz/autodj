@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.6 — Final Release Acceptance
+# CamfrogAutoDJ v0.2.6 — Final Release Acceptance
 
 **Repository:** `cvsz/autodj`  
 **Official Release Target:** `v0.2.6`  

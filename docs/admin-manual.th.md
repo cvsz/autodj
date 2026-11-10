@@ -293,7 +293,7 @@ blocked_users = []               # นามเดิมที่คำสั่
 เข้าถึงผ่านปุ่ม **⚙️ Settings** ทุกการตั้งค่าใน config.toml แก้ไขได้ พร้อม:
 - ตรวจสอบค่าที่ป้อน (ช่วงค่า, regex, ตัวเลือก)
 - บันทึกแบบ atomic พร้อม backup `.bak`
-- ย้ายไป `%APPDATA%\Camfrog AutoDJ\` อัตโนมัติถ้าโฟลเดอร์ติดตั้งเขียนไม่ได้
+- ย้ายไป `%APPDATA%\CamfrogAutoDJ\` อัตโนมัติถ้าโฟลเดอร์ติดตั้งเขียนไม่ได้
 - สลับภาษา label แบบเรียลไทม์
 
 ---
@@ -347,7 +347,7 @@ AutoDJ.exe --console --lang th
 - **ค่าเริ่มต้น:** แสดงผลบนคอนโซล (stdout/stderr)
 - **ไฟล์:** ตั้ง `log_file = "autodj.log"` ใน config
 - **หมุนเวียน:** 1 MB × 3 ไฟล์
-- **ตำแหน่ง:** พาธสัมพัทธ์ resolve ไป `%APPDATA%\Camfrog AutoDJ\`
+- **ตำแหน่ง:** พาธสัมพัทธ์ resolve ไป `%APPDATA%\CamfrogAutoDJ\`
 
 ### ปัญหาที่พบบ่อยและวิธีแก้
 
@@ -414,7 +414,7 @@ makensis installer.nsi
 
 ### คุณสมบัติ Installer
 
-- ติดตั้งต่อผู้ใช้ไป `%APPDATA%\Camfrog AutoDJ` (ไม่ต้อง admin)
+- ติดตั้งต่อผู้ใช้ไป `%APPDATA%\CamfrogAutoDJ` (ไม่ต้อง admin)
 - ติดตั้ง Python, mpv, yt-dlp, VB-Cable ผ่าน winget
 - สร้าง Shortcut บน Desktop/Start Menu
 - สร้าง config.toml แบบโต้ตอบ
@@ -474,7 +474,7 @@ AutoDJ migrate อัตโนมัติ:
 
 | ไฟล์ | ตำแหน่งค่าเริ่มต้น | คำอธิบาย |
 |------|------------------|-----------|
-| `config.toml` | `%APPDATA%\Camfrog AutoDJ\` | การตั้งค่าหลัก |
+| `config.toml` | `%APPDATA%\CamfrogAutoDJ\` | การตั้งค่าหลัก |
 | `playlist.json` | เหมือน config | คำขอผู้ใช้ที่คงอยู่ |
 | `ads-list.json` | เหมือน config | ข้อความตอบกลับอัตโนมัติ |
 | `autodj.log` | เหมือน config | Log ไฟล์หมุนเวียน |

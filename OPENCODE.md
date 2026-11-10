@@ -2,7 +2,7 @@
 
 Read `AGENTS.md` first and use `ZEAZ-INTRODUCTION.md` as the shared execution framework.
 
-## Project: Camfrog AutoDJ v0.2.8
+## Project: CamfrogAutoDJ v0.2.8
 
 **Repository:** https://github.com/cvsz/autodj  
 **Stack:** Python 3.11+, Tkinter, mpv/yt-dlp, UIA, PyInstaller/NSIS (Windows)

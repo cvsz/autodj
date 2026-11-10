@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.6 — Operational Handover & Deployment Guide
+# CamfrogAutoDJ v0.2.6 — Operational Handover & Deployment Guide
 
 **Repository:** `cvsz/autodj`  
 **Official Release Target:** `v0.2.6`  
@@ -12,7 +12,7 @@
 
 ## 1. Executive Summary
 
-This Operational Handover document provides complete engineering, release, security, governance, and operational instructions for **Camfrog AutoDJ v0.2.6**.
+This Operational Handover document provides complete engineering, release, security, governance, and operational instructions for **CamfrogAutoDJ v0.2.6**.
 
 All functional features, audio processing upgrades, bot moderation controls, Windows Hi-DPI GUI enhancements, packaging automation, supply-chain attestations, and documentation have been tested, approved by independent reviewer `policedbc`, merged by administrator `cvsz`, built on a clean Windows runner, and published to GitHub Releases.
 
@@ -32,7 +32,7 @@ All functional features, audio processing upgrades, bot moderation controls, Win
 
 ## 3. Governance Evidence
 
-- **PR #54 (`chore: release Camfrog AutoDJ v0.2.6`):**
+- **PR #54 (`chore: release CamfrogAutoDJ v0.2.6`):**
   - Peer Review Approval: `policedbc`
   - Merge Authority: `cvsz` (Squash merge at `e2ec101`)
   - CI Checks: 12/12 successful (`tests` Ubuntu/Windows Python 3.11/3.12, CodeQL, Dependency Review, Repository Baseline)

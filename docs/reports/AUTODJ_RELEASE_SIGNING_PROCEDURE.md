@@ -66,7 +66,7 @@ git rev-parse <commit-sha>
 python -m pytest tests/test_version_and_release.py::test_versions_agree -v
 
 # 3. Create the annotated, GPG-signed tag
-git tag -s v<version> <commit-sha> -m "Camfrog AutoDJ v<version>
+git tag -s v<version> <commit-sha> -m "CamfrogAutoDJ v<version>
 
 Release notes summary."
 

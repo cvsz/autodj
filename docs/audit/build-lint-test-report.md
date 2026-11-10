@@ -1,4 +1,4 @@
-# Build / Lint / Test Report — Camfrog AutoDJ
+# Build / Lint / Test Report — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  

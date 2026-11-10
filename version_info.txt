@@ -5,7 +5,7 @@ VSVersionInfo(
   kids=[
     StringFileInfo([StringTable('040904B0', [
       StringStruct('CompanyName', 'ZEAZDEV COMPANY LIMITED'),
-      StringStruct('FileDescription', 'Camfrog AutoDJ'),
+      StringStruct('FileDescription', 'CamfrogAutoDJ'),
       StringStruct('FileVersion', '0.3.0.0'),
       StringStruct('InternalName', 'AutoDJ'),
       StringStruct('LegalCopyright', 'Copyright (c) ZEAZDEV COMPANY LIMITED'),

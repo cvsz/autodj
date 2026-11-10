@@ -1,4 +1,4 @@
-# Pull Request Inventory — Camfrog AutoDJ
+# Pull Request Inventory — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Enumeration method:** `gh api --paginate repos/cvsz/autodj/pulls -X GET -f state=all -f per_page=100`  
@@ -117,7 +117,7 @@
 | 57 | closed | no | docs/v026-post-release-verification | fix: settings config.toml write, hidden CMD launcher, type safety | MERGED_VERIFIED |
 | 56 | closed | no | fix/playlist-ytdlp-tls-cross-platform | fix: make playlist yt-dlp resolution TLS-safe across platforms | MERGED_VERIFIED |
 | 55 | closed | no | docs/v026-release-documentation | docs: add v0.2.6 release audit, security, acceptance and operational handover reports | MERGED_VERIFIED |
-| 54 | closed | no | release/autodj-v0.2.6 | chore: release Camfrog AutoDJ v0.2.6 | MERGED_VERIFIED |
+| 54 | closed | no | release/autodj-v0.2.6 | chore: release CamfrogAutoDJ v0.2.6 | MERGED_VERIFIED |
 | 53 | closed | no | docs/v025-official-handover | docs: add v0.2.5 official release handover report | MERGED_VERIFIED |
 | 52 | closed | no | docs/v025-release-gate-acceptance | docs: add v0.2.5 final release gate audit and acceptance report | MERGED_VERIFIED |
 | 51 | closed | no | docs/v025-final-reports | docs: add v0.2.5 baseline, release, and final verification reports | MERGED_VERIFIED |

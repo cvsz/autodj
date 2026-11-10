@@ -1,4 +1,4 @@
-# zpostgresql — local audit container image for Camfrog AutoDJ.
+# zpostgresql — local audit container image for CamfrogAutoDJ.
 #
 # Reviewers and auditors use this image to run the project's test suite,
 # lint, and format checks in a reproducible environment. It mirrors

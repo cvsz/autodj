@@ -1,4 +1,4 @@
-# Camfrog AutoDJ — Complete Architecture Blueprint
+# CamfrogAutoDJ — Complete Architecture Blueprint
 
 **Version:** 0.3.0 (Enterprise Production Release)  
 **Generated:** 2026-11-10  
@@ -32,7 +32,7 @@
 
 ## System Overview
 
-Camfrog AutoDJ is a **production-grade music bot** for Camfrog chat rooms. It provides:
+CamfrogAutoDJ is a **production-grade music bot** for Camfrog chat rooms. It provides:
 
 - **YouTube + Local playback** via mpv/yt-dlp
 - **Command system** with 30+ commands (`!play`, `!queue`, `!voteskip`, admin commands)
@@ -185,7 +185,7 @@ AutoDJError (base)
 4. Nested `message_style` → `MessageStyle.from_toml_dict()`
 5. Validation order: type → choices → ranges → regexes → semantic
 6. Atomic write: temp file + `os.replace()` + `.bak` backup
-7. Auto-relocation: if not writable → `%APPDATA%\Camfrog AutoDJ\`
+7. Auto-relocation: if not writable → `%APPDATA%\CamfrogAutoDJ\`
 
 ### Key Config Sections (56 validated keys)
 
@@ -784,7 +784,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1
 - `SEC_SCRIPTS` — `scripts\*`
 
 **Features:**
-- Install to `%APPDATA%\Camfrog AutoDJ` (user-writable)
+- Install to `%APPDATA%\CamfrogAutoDJ` (user-writable)
 - Preserves `config.toml`, `playlist.json` on upgrade
 - Uninstaller preserves user data
 - Creates Start Menu shortcut
@@ -997,4 +997,4 @@ audio_fade_out_sec = 1.5
 
 ---
 
-*Blueprint generated from source code analysis — Camfrog AutoDJ v0.3.0*
+*Blueprint generated from source code analysis — CamfrogAutoDJ v0.3.0*

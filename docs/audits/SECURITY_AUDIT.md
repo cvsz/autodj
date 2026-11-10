@@ -1,4 +1,4 @@
-# Security Audit — Camfrog AutoDJ
+# Security Audit — CamfrogAutoDJ
 
 **Repository:** cvsz/autodj  
 **Branch:** `feat/autodj-enhancements-and-fixes`  

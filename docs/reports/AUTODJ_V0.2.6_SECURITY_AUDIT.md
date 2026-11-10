@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.6 — Security Audit & Supply Chain Verification
+# CamfrogAutoDJ v0.2.6 — Security Audit & Supply Chain Verification
 
 **Repository:** `cvsz/autodj`  
 **Target Release:** `v0.2.6`  

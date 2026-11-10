@@ -53,7 +53,7 @@ A critical bug was discovered and fixed in the NSIS installer uninstaller: `RMDi
 
 | Feature | Implementation | Status |
 |---------|---------------|--------|
-| Per-user install dir | `$APPDATA\Camfrog AutoDJ` | Defined |
+| Per-user install dir | `$APPDATA\CamfrogAutoDJ` | Defined |
 | No admin rights required | `RequestExecutionLevel user` | Defined |
 | Windows 64-bit check | `.onInit` function | Defined |
 | In-place upgrade | Previous uninstaller not invoked | Defined |

@@ -4,12 +4,12 @@ from camfrog_autodj.library import find_ytdlp
 
 def test_resolve_expands_windows_environment_variables(monkeypatch, tmp_path):
     appdata = tmp_path / "AppData"
-    executable = appdata / "Camfrog AutoDJ" / "mpv" / "mpv.exe"
+    executable = appdata / "CamfrogAutoDJ" / "mpv" / "mpv.exe"
     executable.parent.mkdir(parents=True)
     executable.write_bytes(b"binary")
     monkeypatch.setenv("APPDATA", str(appdata))
 
-    assert paths.resolve_executable(r"%APPDATA%\Camfrog AutoDJ\mpv\mpv.exe") == str(
+    assert paths.resolve_executable(r"%APPDATA%\CamfrogAutoDJ\mpv\mpv.exe") == str(
         executable.resolve()
     )
 
@@ -41,9 +41,9 @@ def test_invalid_explicit_path_does_not_fall_back(monkeypatch):
 
 def test_find_ytdlp_expands_appdata_environment_path(monkeypatch, tmp_path):
     appdata = tmp_path / "AppData"
-    executable = appdata / "Camfrog AutoDJ" / "mpv" / "yt-dlp.exe"
+    executable = appdata / "CamfrogAutoDJ" / "mpv" / "yt-dlp.exe"
     executable.parent.mkdir(parents=True)
     executable.write_bytes(b"binary")
     monkeypatch.setenv("APPDATA", str(appdata))
 
-    assert find_ytdlp(r"%APPDATA%\Camfrog AutoDJ\mpv\yt-dlp.exe") == str(executable.resolve())
+    assert find_ytdlp(r"%APPDATA%\CamfrogAutoDJ\mpv\yt-dlp.exe") == str(executable.resolve())

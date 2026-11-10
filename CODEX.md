@@ -2,7 +2,7 @@
 
 Read `AGENTS.md` first. Use `ZEAZ-INTRODUCTION.md` as the shared execution framework.
 
-## Project: Camfrog AutoDJ v0.2.8
+## Project: CamfrogAutoDJ v0.2.8
 
 **Repository:** https://github.com/cvsz/autodj  
 **Type:** Production DJ automation platform (not template)  
@@ -61,7 +61,7 @@ Read `AGENTS.md` first. Use `ZEAZ-INTRODUCTION.md` as the shared execution frame
 ### Config
 - Fail-closed `ConfigError` with line+column marker
 - Atomic write: `.tmp` → `os.replace()` → `.bak`
-- Auto-relocate to `%APPDATA%\Camfrog AutoDJ\`
+- Auto-relocate to `%APPDATA%\CamfrogAutoDJ\`
 - `MessageStyle` = GUI preview only (Camfrog = plain text)
 
 ### Security

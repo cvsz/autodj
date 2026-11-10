@@ -1,4 +1,4 @@
-# Camfrog AutoDJ -- dev convenience targets.
+# CamfrogAutoDJ -- dev convenience targets.
 # Cross-platform (Linux/macOS/Windows PowerShell/Git-Bash).
 
 ifeq ($(OS),Windows_NT)
@@ -36,7 +36,7 @@ IS_WINDOWS  := $(filter Windows_NT,$(OS))
 
 ## ---- help -----------------------------------------------------------------
 help:  ## Show this help
-	@echo "Camfrog AutoDJ -- make targets"
+	@echo "CamfrogAutoDJ -- make targets"
 	@echo ""
 	@$(PY) -c "import re; [print(f'  \033[36m{m.group(1):<24}\033[0m {m.group(2)}') for line in open('Makefile', encoding='utf-8') if (m := re.match(r'^([a-zA-Z0-9_.-]+):[^#]*##\s*(.*)', line))]"
 	@echo ""

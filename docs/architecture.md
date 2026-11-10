@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Camfrog AutoDJ is a music bot for Camfrog rooms. It plays YouTube tracks and local audio files (mp3, mp4, flac, ogg, opus, aac, wav, mkv, webm, avi, mov) into a Camfrog room chat, responds to `!` commands (and Thai aliases), manages a request queue, and provides a desktop GUI. It runs on Windows (primary) and can be tested on Linux/macOS/WSL.
+CamfrogAutoDJ is a music bot for Camfrog rooms. It plays YouTube tracks and local audio files (mp3, mp4, flac, ogg, opus, aac, wav, mkv, webm, avi, mov) into a Camfrog room chat, responds to `!` commands (and Thai aliases), manages a request queue, and provides a desktop GUI. It runs on Windows (primary) and can be tested on Linux/macOS/WSL.
 
 ## High-level structure
 
@@ -38,7 +38,7 @@ AutoDJ.exe (frozen PyInstaller binary)
 - Choice fields (lang, chat_reader, view_kind, send_mode) are constrained
 - Ranges are validated (volume 0–100, max_duration 1–604800, etc.)
 - Regular expressions are compiled before acceptance
-- Relative log paths are resolved to `%APPDATA%\Camfrog AutoDJ\` so they are writable even when installed to Program Files
+- Relative log paths are resolved to `%APPDATA%\CamfrogAutoDJ\` so they are writable even when installed to Program Files
 - Non-writable `config.toml` is relocated to APPDATA at startup
 
 ### 2. Chat I/O (`adapters/`, `webchat.py`, `winmsg.py`)
@@ -120,7 +120,7 @@ return msg.local or msg.user.lower() in self.e.admins
 
 ## Installer and distribution
 
-- **NSIS installer** (`installer.nsi`): per-user install to `%APPDATA%\Camfrog AutoDJ`, preserves `config.toml` and `playlist.json` on upgrade, uninstaller removes only application-owned files
+- **NSIS installer** (`installer.nsi`): per-user install to `%APPDATA%\CamfrogAutoDJ`, preserves `config.toml` and `playlist.json` on upgrade, uninstaller removes only application-owned files
 - **PowerShell installers** (`install.ps1`, `install-full-auto.ps1`): staging-based installation with user-data backup/restore before any directory removal
 - **Build** (`build.ps1`): PyInstaller one-file exe, self-signing or real code-signing cert, `--noupx`, smoke-tested with `--version`
 - **Release workflow** (`.github/workflows/release.yml`): validation gate (tests, lint, typecheck, secret scan) before builder job; no automatic publish during remediation

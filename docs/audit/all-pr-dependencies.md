@@ -1,4 +1,4 @@
-# Pull Request Dependencies — Camfrog AutoDJ
+# Pull Request Dependencies — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Basis:** 142 PRs enumerated via `gh api --paginate repos/cvsz/autodj/pulls -f state=all`.

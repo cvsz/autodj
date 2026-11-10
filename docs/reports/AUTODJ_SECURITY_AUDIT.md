@@ -1,4 +1,4 @@
-# Camfrog AutoDJ — Security Audit Report
+# CamfrogAutoDJ — Security Audit Report
 
 **Repository:** `cvsz/autodj`  
 **Base Commit SHA (`main`):** `572aad9` (Merge PR #56)  

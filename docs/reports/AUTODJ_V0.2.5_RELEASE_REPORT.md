@@ -1,6 +1,6 @@
-# Camfrog AutoDJ v0.2.5 — Official Release Report
+# CamfrogAutoDJ v0.2.5 — Official Release Report
 
-**Product:** Camfrog AutoDJ  
+**Product:** CamfrogAutoDJ  
 **Target Release:** `v0.2.5`  
 **Organization:** ZEAZDEV COMPANY LIMITED  
 **Repository:** `cvsz/autodj`  

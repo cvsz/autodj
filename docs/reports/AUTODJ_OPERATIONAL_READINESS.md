@@ -24,7 +24,7 @@ AutoDJ has basic operational capabilities: structured logging via Python's `logg
 |---------|---------------|--------|
 | Structured logging | `logging.basicConfig(level, format="%(asctime)s %(levelname)s %(message)s")` | VERIFIED |
 | Rotating file handler | `RotatingFileHandler(maxBytes=1_000_000, backupCount=3)` | VERIFIED |
-| Log file path resolution | Relative paths resolved to `%APPDATA%\Camfrog AutoDJ\` | VERIFIED |
+| Log file path resolution | Relative paths resolved to `%APPDATA%\CamfrogAutoDJ\` | VERIFIED |
 | Log level control | `-v` / `--verbose` for DEBUG | VERIFIED |
 | Console output | `logging.basicConfig` to stderr | VERIFIED |
 | File logging failure handling | Caught, warning logged, continues without file logging | VERIFIED |

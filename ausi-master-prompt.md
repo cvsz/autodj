@@ -8,7 +8,7 @@
 
 \*\*Repository:\*\* `cvsz/autodj`  
 
-\*\*Product:\*\* Camfrog AutoDJ  
+\*\*Product:\*\* CamfrogAutoDJ  
 
 \*\*Mission:\*\* Transform AutoDJ into a thoroughly audited, independently reviewed, secure, reliable, maintainable, and production-qualified Windows desktop music automation application.
 
@@ -164,7 +164,7 @@ The repository must have a clear product-specific identity.
 
 
 
-The current application is Camfrog AutoDJ, not a generic repository template.
+The current application is CamfrogAutoDJ, not a generic repository template.
 
 
 

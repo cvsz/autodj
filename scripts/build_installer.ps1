@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Build NSIS installer for Camfrog AutoDJ
+    Build NSIS installer for CamfrogAutoDJ
 .DESCRIPTION
     This script builds the NSIS installer from the built artifacts in dist/
     Run from PowerShell on Windows (or via wine on Linux)
@@ -27,7 +27,7 @@ if ($PSVersionTable.PSVersion.Major -le 5) {
     }) -join ';'
 }
 
-Write-Host "=== Camfrog AutoDJ Installer Builder ===" -ForegroundColor Cyan
+Write-Host "=== CamfrogAutoDJ Installer Builder ===" -ForegroundColor Cyan
 Write-Host "Version: $Version"
 Write-Host "Source: $SrcDir"
 Write-Host "Output: $OutDir"

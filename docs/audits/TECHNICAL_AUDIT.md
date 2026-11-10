@@ -1,4 +1,4 @@
-# Technical Audit — Camfrog AutoDJ
+# Technical Audit — CamfrogAutoDJ
 
 **Repository:** cvsz/autodj  
 **Branch:** `feat/autodj-enhancements-and-fixes`  

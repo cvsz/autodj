@@ -1,4 +1,4 @@
-# Upgrade and Compatibility Report — Camfrog AutoDJ
+# Upgrade and Compatibility Report — CamfrogAutoDJ
 
 **Repository:** cvsz/autodj  
 **Branch:** `feat/autodj-enhancements-and-fixes`  

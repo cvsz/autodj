@@ -1,4 +1,4 @@
-# Playlist and Queue Review — Camfrog AutoDJ
+# Playlist and Queue Review — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  

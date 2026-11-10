@@ -1,4 +1,4 @@
-"""Enterprise-grade exception hierarchy for Camfrog AutoDJ.
+"""Enterprise-grade exception hierarchy for CamfrogAutoDJ.
 
 All exceptions inherit from ``AutoDJError`` so operators can catch the
 base class for any AutoDJ-specific failure.  Each exception carries a

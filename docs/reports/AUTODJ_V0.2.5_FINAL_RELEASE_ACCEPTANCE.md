@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.5 — Final Release Acceptance
+# CamfrogAutoDJ v0.2.5 — Final Release Acceptance
 
 **Repository:** `cvsz/autodj`  
 **Official Release Target:** `v0.2.5`  
@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-All functional engineering requirements, audio engine upgrades, bot moderation improvements, Windows desktop GUI enhancements, test coverage expansion (143 unit/regression tests passing), SBOM generation, cryptographic build provenance attestation, and installer build automation for Camfrog AutoDJ v0.2.5 are complete, verified, and merged into `main`.
+All functional engineering requirements, audio engine upgrades, bot moderation improvements, Windows desktop GUI enhancements, test coverage expansion (143 unit/regression tests passing), SBOM generation, cryptographic build provenance attestation, and installer build automation for CamfrogAutoDJ v0.2.5 are complete, verified, and merged into `main`.
 
 ---
 
