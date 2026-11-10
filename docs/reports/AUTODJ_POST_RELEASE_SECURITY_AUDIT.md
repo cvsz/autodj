@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.6 — Post-Release Security Audit
+# CamfrogAutoDJ v0.2.6 — Post-Release Security Audit
 
 **Repository:** `cvsz/autodj`  
 **Target Release:** `v0.2.6`  

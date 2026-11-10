@@ -3091,7 +3091,7 @@ class App(tk.Tk):
                 raise ValueError(f"invalid settings: {ex}") from ex
 
             # Write to config.toml; if not writable (e.g. installed to Program Files),
-            # relocate to %APPDATA%\Camfrog AutoDJ\config.toml and write there instead.
+            # relocate to %APPDATA%\CamfrogAutoDJ\config.toml and write there instead.
             try:
                 if p.exists():
                     shutil.copyfile(p, p.with_name(p.name + ".bak"))
@@ -3100,7 +3100,7 @@ class App(tk.Tk):
                 os.replace(tmp, p)
             except (OSError, PermissionError):
                 app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-                app_cfg_dir = Path(app_data) / "Camfrog AutoDJ"
+                app_cfg_dir = Path(app_data) / "CamfrogAutoDJ"
                 app_cfg_dir.mkdir(parents=True, exist_ok=True)
                 app_cfg_path = app_cfg_dir / "config.toml"
                 if app_cfg_path.exists():

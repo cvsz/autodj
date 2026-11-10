@@ -79,7 +79,7 @@
 
 - **Fix: GUI hangs when clicking Load Folder** — `library.scan_folder()` now skips symlinks (avoids cycle/reparse-point hangs on Windows) and caps returned tracks via a `limit` argument; `gui.load_folder()` disables the folder button while scanning, guards against reentrant clicks, and shows loaded/failed status. (`camfrog_autodj/library.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)
 - **Fix: chat-log race condition between engine and GUI poller** — `Engine.chat_log`/`chat_seq` are now guarded by `_chat_lock`; GUI reads via thread-safe `chat_snapshot()`. (`camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)
-- **Fix: `save_settings()` could leave a half-written `config.toml` on crash** — writes atomically via temp file + `os.replace()` with a `.bak` backup, with `%APPDATA%\\Camfrog AutoDJ\\` relocation fallback. (`camfrog_autodj/gui.py`)
+- **Fix: `save_settings()` could leave a half-written `config.toml` on crash** — writes atomically via temp file + `os.replace()` with a `.bak` backup, with `%APPDATA%\\CamfrogAutoDJ\\` relocation fallback. (`camfrog_autodj/gui.py`)
 - **Fix: `MpvPlayer.play_file()` could block forever on a bad WAV** — 30s subprocess timeout. (`camfrog_autodj/player.py`)
 - **Fix: folder scans in autoplay sources and `!load` could scan forever** — capped at 500 tracks. (`camfrog_autodj/engine.py`)
 - **Fix: `Add files` button lacked busy state** — now shows resolving state with a pending counter, matching `Add`. (`camfrog_autodj/gui.py`)
@@ -105,15 +105,15 @@
 - **Workflow Hardening & Persistent Artifact Retention**: Integrated `actions/upload-artifact@v4` in `.github/workflows/release.yml` for persistent operational retention of release build artifacts.
 - **SHA256 Manifest Generation**: Automated generation of `SHA256SUMS.txt` for all release assets.
 - **YouTube Playlist Support**: Auto-detects YouTube playlist URLs (`youtube.com/playlist?list=...`, `watch?v=...&list=...`) and plays all videos in sequence.
-- **Per-User Installation**: Installs to `%APPDATA%\Camfrog AutoDJ` (no admin rights required).
+- **Per-User Installation**: Installs to `%APPDATA%\CamfrogAutoDJ` (no admin rights required).
 - **Settings Tab**: New ⚙️ Settings button in the GUI header to edit all settings live and save to `config.toml`.
-- **Auto-Config Relocation**: If `config.toml` is in a protected location (e.g. Program Files), AutoDJ automatically copies it to `%APPDATA%\Camfrog AutoDJ\config.toml`.
+- **Auto-Config Relocation**: If `config.toml` is in a protected location (e.g. Program Files), AutoDJ automatically copies it to `%APPDATA%\CamfrogAutoDJ\config.toml`.
 - **Log Directory Auto-Creation**: Log directory is created automatically on first run.
 - **Settings Button**: New ⚙️ gear icon in the header bar opens the Settings tab.
-- **Relative Config Paths**: `config.example.toml` uses `%APPDATA%\Camfrog AutoDJ\mpv\...` paths for portability.
+- **Relative Config Paths**: `config.example.toml` uses `%APPDATA%\CamfrogAutoDJ\mpv\...` paths for portability.
 - **YouTube Playlist Support**: Auto-detects YouTube playlist URLs (`youtube.com/playlist?list=...`, `watch?v=...&list=...`) and plays all videos in sequence.
-- **Installer**: Per-user installation to `%APPDATA%\Camfrog AutoDJ` (no admin required).
-- **NSIS Installer**: Per-user install to `%APPDATA%\Camfrog AutoDJ`, HKCU registry, no admin required.
+- **Installer**: Per-user installation to `%APPDATA%\CamfrogAutoDJ` (no admin required).
+- **NSIS Installer**: Per-user install to `%APPDATA%\CamfrogAutoDJ`, HKCU registry, no admin required.
 
 ### Fixed
 - **GUI ไม่ขึ้น (GUI won't open)**: `camfrog_autodj/__main__.py` — auto-discovery (`discover.apply()`) crashed with `ImportError` on `pywinauto.Desktop` before `App(eng).mainloop()` was reached, so the Tk window never appeared. Auto-discovery is now wrapped in `try/except` and logs a warning instead of crashing; `build_adapter()` failures fall back to `NullAdapter` so the GUI still opens without chat (user can run `--check`/`--discover` from inside it).

@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-    Camfrog AutoDJ - Windows 11 Automated Installer
+    CamfrogAutoDJ - Windows 11 Automated Installer
     Installs prerequisites, builds AutoDJ.exe, configures the bot, and creates shortcuts.
 
 .DESCRIPTION
-    This script automates the complete setup of Camfrog AutoDJ on Windows 11:
+    This script automates the complete setup of CamfrogAutoDJ on Windows 11:
     1. Verifies Windows 11
     2. Installs/updates prerequisites:
        - Python 3.11+ (via winget or official installer)
@@ -568,7 +568,7 @@ function Restore-UserData {
 }
 
 function Setup-Project {
-    Step "Setting up Camfrog AutoDJ Project"
+    Step "Setting up CamfrogAutoDJ Project"
     $backupDir = $null
     if (Test-Path $ProjectDir) {
         # Check for user data before any destructive operation
@@ -766,27 +766,27 @@ function Create-Shortcuts {
 
     # Desktop shortcut
     $desktop = [Environment]::GetFolderPath("Desktop")
-    $desktopShortcut = Join-Path $desktop "Camfrog AutoDJ.lnk"
+    $desktopShortcut = Join-Path $desktop "CamfrogAutoDJ.lnk"
     $shortcut = $wsh.CreateShortcut($desktopShortcut)
     $shortcut.TargetPath = $exePath
     $shortcut.Arguments = "--gui"
     $shortcut.WorkingDirectory = "$ProjectDir\dist"
     $shortcut.IconLocation = $iconPath
-    $shortcut.Description = "Camfrog AutoDJ - Music bot for Camfrog rooms"
+    $shortcut.Description = "CamfrogAutoDJ - Music bot for Camfrog rooms"
     $shortcut.Save()
     SubStep "Desktop shortcut created" -Success
 
     # Start Menu shortcut
     $startMenu = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
-    $autoDjFolder = Join-Path $startMenu "Camfrog AutoDJ"
+    $autoDjFolder = Join-Path $startMenu "CamfrogAutoDJ"
     if (-not (Test-Path $autoDjFolder)) { New-Item -ItemType Directory -Path $autoDjFolder | Out-Null }
-    $startShortcut = Join-Path $autoDjFolder "Camfrog AutoDJ.lnk"
+    $startShortcut = Join-Path $autoDjFolder "CamfrogAutoDJ.lnk"
     $shortcut = $wsh.CreateShortcut($startShortcut)
     $shortcut.TargetPath = $exePath
     $shortcut.Arguments = "--gui"
     $shortcut.WorkingDirectory = "$ProjectDir\dist"
     $shortcut.IconLocation = $iconPath
-    $shortcut.Description = "Camfrog AutoDJ - Music bot for Camfrog rooms"
+    $shortcut.Description = "CamfrogAutoDJ - Music bot for Camfrog rooms"
     $shortcut.Save()
     SubStep "Start Menu shortcut created" -Success
 
@@ -806,7 +806,7 @@ function Create-Shortcuts {
     $shortcut.TargetPath = "powershell.exe"
     $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$ProjectDir\uninstall.ps1`""
     $shortcut.WorkingDirectory = $ProjectDir
-    $shortcut.Description = "Uninstall Camfrog AutoDJ"
+    $shortcut.Description = "Uninstall CamfrogAutoDJ"
     $shortcut.Save()
     SubStep "Uninstall shortcut created" -Success
 
@@ -824,7 +824,7 @@ function Create-AutoStart {
     }
 
     $startup = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
-    $autoStartShortcut = Join-Path $startup "Camfrog AutoDJ.lnk"
+    $autoStartShortcut = Join-Path $startup "CamfrogAutoDJ.lnk"
     $exePath = "$ProjectDir\dist\AutoDJ.exe"
     $wsh = New-Object -ComObject WScript.Shell
     $shortcut = $wsh.CreateShortcut($autoStartShortcut)
@@ -832,7 +832,7 @@ function Create-AutoStart {
     $shortcut.Arguments = "--gui"
     $shortcut.WorkingDirectory = "$ProjectDir\dist"
     $shortcut.IconLocation = "$ProjectDir\app.ico"
-    $shortcut.Description = "Camfrog AutoDJ - Auto-start on login"
+    $shortcut.Description = "CamfrogAutoDJ - Auto-start on login"
     $shortcut.Save()
     SubStep "Auto-start shortcut created in Startup folder" -Success
     $script:State.AutoStartCreated = $true
@@ -912,26 +912,26 @@ function Create-Uninstaller {
     $content = @"
 <#
 .SYNOPSIS
-    Camfrog AutoDJ Uninstaller
+    CamfrogAutoDJ Uninstaller
 #>
 param([switch]`$Force)
 
 `$ProjectDir = "$ProjectDir"
 `$ErrorActionPreference = "Continue"
 
-Write-Host "Uninstalling Camfrog AutoDJ..." -ForegroundColor Cyan
+Write-Host "Uninstalling CamfrogAutoDJ..." -ForegroundColor Cyan
 
 # Remove shortcuts
 `$startMenu = Join-Path `$env:APPDATA "Microsoft\Windows\Start Menu\Programs"
-`$autoDjFolder = Join-Path `$startMenu "Camfrog AutoDJ"
+`$autoDjFolder = Join-Path `$startMenu "CamfrogAutoDJ"
 if (Test-Path `$autoDjFolder) { Remove-Item -Recurse -Force `$autoDjFolder; "Removed Start Menu folder" }
 
 `$desktop = [Environment]::GetFolderPath("Desktop")
-`$desktopShortcut = Join-Path `$desktop "Camfrog AutoDJ.lnk"
+`$desktopShortcut = Join-Path `$desktop "CamfrogAutoDJ.lnk"
 if (Test-Path `$desktopShortcut) { Remove-Item -Force `$desktopShortcut; "Removed Desktop shortcut" }
 
 `$startup = Join-Path `$env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
-`$autoStartShortcut = Join-Path `$startup "Camfrog AutoDJ.lnk"
+`$autoStartShortcut = Join-Path `$startup "CamfrogAutoDJ.lnk"
 if (Test-Path `$autoStartShortcut) { Remove-Item -Force `$autoStartShortcut; "Removed auto-start shortcut" }
 
 # Remove project directory
@@ -953,11 +953,11 @@ function Main {
     # Header
     Write-Host ""
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
-    Write-Host "           Camfrog AutoDJ - Windows 11 Automated Installer" -ForegroundColor $C_CYAN
+    Write-Host "           CamfrogAutoDJ - Windows 11 Automated Installer" -ForegroundColor $C_CYAN
     Write-Host "                         Version 0.3.0" -ForegroundColor $C_CYAN
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
     Write-Host ""
-    Write-Log "=== Camfrog AutoDJ Installer Started ==="
+    Write-Log "=== CamfrogAutoDJ Installer Started ==="
     Write-Log "ProjectDir: $ProjectDir"
     Write-Log "NoBuild: $NoBuild, NoShortcuts: $NoShortcuts, AutoStart: $AutoStart"
     Write-Log "Detailed: $Detailed, Force: $Force, SkipVBCable: $SkipVBCable"

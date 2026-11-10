@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.6 — Baseline Audit & Release Discovery
+# CamfrogAutoDJ v0.2.6 — Baseline Audit & Release Discovery
 
 **Repository:** `cvsz/autodj`  
 **Target Release:** `v0.2.6`  

@@ -171,11 +171,11 @@ def _setup_log_file(a, cfg, level) -> None:
     if not (a.log_file or cfg.log_file):
         return
     log_path = a.log_file or cfg.log_file
-    # Resolve relative log paths to a user-writable directory (APPDATA/Camfrog AutoDJ)
+    # Resolve relative log paths to a user-writable directory (APPDATA/CamfrogAutoDJ)
     # instead of CWD which may be Program Files (write-protected).
     if log_path and not os.path.isabs(log_path):
         app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-        log_path = os.path.join(app_data, "Camfrog AutoDJ", log_path)
+        log_path = os.path.join(app_data, "CamfrogAutoDJ", log_path)
     try:
         _add_log_file(log_path, level)
     except (OSError, PermissionError):
@@ -192,7 +192,7 @@ def _relocate_config(a, cfg):
     if p.exists() and os.access(p, os.W_OK):
         return cfg
     app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-    app_cfg_dir = Path(app_data) / "Camfrog AutoDJ"
+    app_cfg_dir = Path(app_data) / "CamfrogAutoDJ"
     app_cfg_dir.mkdir(parents=True, exist_ok=True)
     app_cfg_path = app_cfg_dir / "config.toml"
     if p.exists() and not app_cfg_path.exists():

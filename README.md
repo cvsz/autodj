@@ -1,4 +1,4 @@
-# Camfrog AutoDJ
+# CamfrogAutoDJ
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
@@ -123,7 +123,7 @@ It handles the entire setup end-to-end:
 ```
 **Requirements:** Windows 11, PowerShell 5.1+, Administrator rights for VB-Cable install.  
 **Log file:** `%TEMP%\autodj-install-<timestamp>.log`  
-**Uninstall:** Start Menu → Camfrog AutoDJ → Uninstall, or run `uninstall.ps1` in the project folder.
+**Uninstall:** Start Menu → CamfrogAutoDJ → Uninstall, or run `uninstall.ps1` in the project folder.
 
 ## Chat reader (web view)
 Messages are split at the avatar images of the room's history pane, so date headers, system lines and bodies that look like a time ("10:30") no longer corrupt parsing. `web_strict_body = false` restores joining of adjacent text. Regression test: `tests/test_webchat_dump.py` (shaped after a real room dump).

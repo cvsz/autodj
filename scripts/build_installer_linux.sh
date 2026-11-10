@@ -1,5 +1,5 @@
 #!/bin/bash
-# Camfrog AutoDJ - NSIS Installer Builder (Linux/WSL via Wine)
+# CamfrogAutoDJ - NSIS Installer Builder (Linux/WSL via Wine)
 # Builds the NSIS installer using Wine + NSIS on Linux/WSL
 #
 # Prerequisites:
@@ -14,7 +14,7 @@ OUTDIR="${3:-dist}"
 NSIS_PATH="${NSIS_PATH:-$HOME/.wine/drive_c/NSIS/makensis.exe}"
 
 echo "=========================================="
-echo "Camfrog AutoDJ - NSIS Installer Builder (Linux/Wine)"
+echo "CamfrogAutoDJ - NSIS Installer Builder (Linux/Wine)"
 echo "=========================================="
 echo "Version: $VERSION"
 echo "Source:  $SRCDIR"

@@ -1,4 +1,4 @@
-# GUI Responsiveness — Camfrog AutoDJ
+# GUI Responsiveness — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  

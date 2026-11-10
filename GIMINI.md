@@ -2,7 +2,7 @@
 
 Read `AGENTS.md` first. Use `ZEAZ-INTRODUCTION.md` as the shared execution framework.
 
-## Project: Camfrog AutoDJ v0.2.9
+## Project: CamfrogAutoDJ v0.2.9
 
 **Repository:** https://github.com/cvsz/autodj  
 **Stack:** Python 3.11+, Tkinter GUI, mpv/yt-dlp audio, UIA Camfrog chat  
@@ -44,7 +44,7 @@ Transform AutoDJ into a **complete, stable, reliable, high-performance, producti
 ### 4. Config Integrity
 - Fail-closed validation with exact line+column error
 - Atomic writes (tmp + replace + .bak)
-- Auto-relocate to `%APPDATA%\Camfrog AutoDJ\` if needed
+- Auto-relocate to `%APPDATA%\CamfrogAutoDJ\` if needed
 - Nested `MessageStyle` for GUI preview only
 
 ### 5. Security Boundaries

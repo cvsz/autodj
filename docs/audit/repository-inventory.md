@@ -1,4 +1,4 @@
-# Repository Inventory — Camfrog AutoDJ
+# Repository Inventory — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  

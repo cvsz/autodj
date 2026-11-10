@@ -1,4 +1,4 @@
-# Camfrog AutoDJ — Comprehensive Remediation Report
+# CamfrogAutoDJ — Comprehensive Remediation Report
 
 **Repository:** `cvsz/autodj`  
 **Base Commit SHA (`main`):** `572aad9` (Merge PR #56)  

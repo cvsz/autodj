@@ -1,9 +1,9 @@
 @echo off
-REM Camfrog AutoDJ - NSIS Installer Builder
+REM CamfrogAutoDJ - NSIS Installer Builder
 REM Run this on Windows to build the NSIS installer
 
 echo ==========================================
-echo Camfrog AutoDJ - NSIS Installer Builder
+echo CamfrogAutoDJ - NSIS Installer Builder
 echo ==========================================
 echo.
 

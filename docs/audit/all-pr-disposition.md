@@ -1,4 +1,4 @@
-# Pull Request Disposition — Camfrog AutoDJ
+# Pull Request Disposition — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Every PR has a recorded disposition.** 142 / 142 dispositioned (100%).

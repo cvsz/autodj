@@ -1,4 +1,4 @@
-# Independent Reviewer Report — Camfrog AutoDJ
+# Independent Reviewer Report — CamfrogAutoDJ
 
 **Repository:** cvsz/autodj  
 **Branch:** `feat/autodj-enhancements-and-fixes`  
@@ -350,7 +350,7 @@ Reliability is strong. The only P2 is C-01 (auto-reply thread not cleanly joined
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| D-04 | P3 | `installer.nsi`, `install.ps1` | Installs to `%APPDATA%\Camfrog AutoDJ` (no admin required). Preserves `config.toml`, playlist, history across upgrades. |
+| D-04 | P3 | `installer.nsi`, `install.ps1` | Installs to `%APPDATA%\CamfrogAutoDJ` (no admin required). Preserves `config.toml`, playlist, history across upgrades. |
 
 **Impact:** Good installation practice. Cannot be tested on Linux.
 

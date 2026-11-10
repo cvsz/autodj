@@ -1,4 +1,4 @@
-# Camfrog AutoDJ — Validation Evidence Report
+# CamfrogAutoDJ — Validation Evidence Report
 
 **Repository:** `cvsz/autodj`  
 **Base Commit SHA (`main`):** `572aad9` (Merge PR #56)  

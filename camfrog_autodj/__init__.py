@@ -1,4 +1,4 @@
-"""Camfrog AutoDJ — Music bot for Camfrog rooms.
+"""CamfrogAutoDJ — Music bot for Camfrog rooms.
 
 Enterprise-grade production release.  All public symbols are re-exported here
 so operators can import from a single stable namespace.

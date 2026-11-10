@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.6 — Camfrog Runtime & Functional Validation Report
+# CamfrogAutoDJ v0.2.6 — Camfrog Runtime & Functional Validation Report
 
 **Repository:** `cvsz/autodj`  
 **Target Release:** `v0.2.6`  

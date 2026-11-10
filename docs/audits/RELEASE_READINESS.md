@@ -1,4 +1,4 @@
-# Release Readiness Assessment — Camfrog AutoDJ
+# Release Readiness Assessment — CamfrogAutoDJ
 
 **Repository:** cvsz/autodj  
 **Branch:** `feat/autodj-enhancements-and-fixes`  

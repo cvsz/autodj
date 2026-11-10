@@ -1,4 +1,4 @@
-# Executive Summary — Camfrog AutoDJ Engineering Audit
+# Executive Summary — CamfrogAutoDJ Engineering Audit
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a` (Merge pull request #144 from cvsz/feat/autodj-enterprise-hardening)  
@@ -8,7 +8,7 @@
 
 ## Overall verdict
 
-The Camfrog AutoDJ codebase (v0.2.8) is already substantially hardened: 135 pull requests have been merged into `main`, the test suite passes (336 tests, +11 added in this audit), Ruff passes, and the application architecture is sound with defensive threading, atomic config/playlist writes, fail-closed admin authorization, and symlink-safe library scanning.
+The CamfrogAutoDJ codebase (v0.2.8) is already substantially hardened: 135 pull requests have been merged into `main`, the test suite passes (336 tests, +11 added in this audit), Ruff passes, and the application architecture is sound with defensive threading, atomic config/playlist writes, fail-closed admin authorization, and symlink-safe library scanning.
 
 No open pull requests require action. All closed-not-merged and closed-draft PRs were inspected and are superseded or duplicated by merged work.
 

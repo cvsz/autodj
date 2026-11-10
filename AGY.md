@@ -2,7 +2,7 @@
 
 Read `AGENTS.md` first. Use `ZEAZ-INTRODUCTION.md` as the shared execution framework.
 
-## Project: Camfrog AutoDJ v0.2.9
+## Project: CamfrogAutoDJ v0.2.9
 
 **Repository:** https://github.com/cvsz/autodj  
 **Stack:** Python 3.11+, Tkinter GUI, mpv/yt-dlp audio, UIA Camfrog chat  
@@ -87,7 +87,7 @@ git verify-commit HEAD
 
 - `Config.load()` → fail-closed `ConfigError` with line+column marker
 - Atomic write: `.tmp` → `os.replace()` → `.bak` backup
-- Auto-relocate to `%APPDATA%\Camfrog AutoDJ\` if not writable
+- Auto-relocate to `%APPDATA%\CamfrogAutoDJ\` if not writable
 - `MessageStyle` dataclass for GUI preview only (Camfrog sends plain text)
 
 ---

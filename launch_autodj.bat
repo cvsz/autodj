@@ -12,11 +12,11 @@ if "%AUTODJ_HIDDEN%" neq "1" (
 )
 set AUTODJ_HIDDEN=1
 setlocal EnableDelayedExpansion
-rem Camfrog AutoDJ - Launcher for Windows
+rem CamfrogAutoDJ - Launcher for Windows
 rem Double-click to open GUI (CMD window hidden)
 
 echo ============================================
-echo   Camfrog AutoDJ - Launcher
+echo   CamfrogAutoDJ - Launcher
 echo ============================================
 echo.
 

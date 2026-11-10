@@ -1,4 +1,4 @@
-# Pull Request Matrix — Camfrog AutoDJ
+# Pull Request Matrix — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Basis:** 142 PRs enumerated via `gh api --paginate repos/cvsz/autodj/pulls -f state=all` (complete, single page).  

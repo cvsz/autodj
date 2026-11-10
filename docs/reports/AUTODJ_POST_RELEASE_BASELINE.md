@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.6 — Post-Release Production Baseline
+# CamfrogAutoDJ v0.2.6 — Post-Release Production Baseline
 
 **Repository:** `cvsz/autodj`  
 **Target Release:** `v0.2.6`  
@@ -13,7 +13,7 @@
 
 ## 1. Executive Discovery
 
-This report establishes the baseline status of the repository, environment, and release artifacts following the successful publication of Camfrog AutoDJ `v0.2.6`.
+This report establishes the baseline status of the repository, environment, and release artifacts following the successful publication of CamfrogAutoDJ `v0.2.6`.
 
 - **Default Branch:** `main`
 - **Main Commit SHA:** `15a0f27bb122be226bc8861bb9529ffb573d7211`

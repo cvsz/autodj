@@ -185,7 +185,7 @@ def test_window_pick_by_process():
     cs = [
         Cand(
             1,
-            "Camfrog AutoDJ - Claude - Google Chrome",
+            "CamfrogAutoDJ - Claude - Google Chrome",
             "Chrome_WidgetWin_1",
             5,
             "chrome.exe",

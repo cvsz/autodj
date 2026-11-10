@@ -1,4 +1,4 @@
-# Implementation Report — Camfrog AutoDJ
+# Implementation Report — CamfrogAutoDJ
 
 **Repository:** cvsz/autodj  
 **Branch:** `feat/autodj-enhancements-and-fixes`  

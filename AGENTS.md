@@ -2,7 +2,7 @@
 
 > **READ FIRST — Canonical organization-wide policy:** https://github.com/cvsz/zeaz/blob/main/zeaz.md (SUPER ULTRA AI ORC v2.1). This reference is required reading and takes precedence per Section 13.3 instruction precedence. Local rules below may be stricter but must not weaken mandatory security, safety, evidence, validation, or release requirements.
 
-## Project: Camfrog AutoDJ
+## Project: CamfrogAutoDJ
 
 **Repository:** https://github.com/cvsz/autodj  
 **Owner:** cvsz  
@@ -28,7 +28,7 @@ This repository is a **production-ready DJ automation platform**, not a template
 - Keep code, configuration, filenames, commit messages, and technical documentation in **English**
 - Prefer the smallest reviewable change that satisfies the requested scope
 - Never weaken CI, security scanning, dependency review, branch protections, or release controls
-- Never commit credentials, tokens, private keys, production endpoints, personal data, or realistic secrets — use documented placeholders (`REPLACE_ME`, `%APPDATA%\Camfrog AutoDJ\...`)
+- Never commit credentials, tokens, private keys, production endpoints, personal data, or realistic secrets — use documented placeholders (`REPLACE_ME`, `%APPDATA%\CamfrogAutoDJ\...`)
 - Do not invent project-specific owners, domains, deployment providers, package registries, cloud accounts, or credentials
 - Reuse existing workflows and documents instead of creating overlapping alternatives
 - Pin GitHub Actions permissions to least privilege; prefer maintained first-party/verified actions
@@ -71,7 +71,7 @@ This repository is a **production-ready DJ automation platform**, not a template
 
 - **Fail-closed validation** — `ConfigError` raised on any invalid value; exact line + `^` marker shown
 - **Atomic writes** — temp file + `os.replace()` + `.bak` backup
-- **Auto-relocation** — if config not writable (e.g., Program Files), write to `%APPDATA%\Camfrog AutoDJ\`
+- **Auto-relocation** — if config not writable (e.g., Program Files), write to `%APPDATA%\CamfrogAutoDJ\`
 - **Nested dataclass** — `MessageStyle` for font/style (GUI preview only; Camfrog sends plain text)
 - **Validation order** — type → choices → ranges → regexes → semantic (`_validate`)
 

@@ -1,4 +1,4 @@
-# Final Audit Report — Camfrog AutoDJ (cvsz/autodj)
+# Final Audit Report — CamfrogAutoDJ (cvsz/autodj)
 
 **Framework:** ZEAZ SUPER ULTRA AI ORC v2.1 (evidence states: VERIFIED / PARTIALLY VERIFIED / UNVERIFIED / BLOCKED / NOT IMPLEMENTED / NOT APPLICABLE)
 **Report date:** Sun Nov 08 2026

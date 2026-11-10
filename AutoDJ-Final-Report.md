@@ -1,4 +1,4 @@
-# AutoDJ Final Report — Camfrog AutoDJ v0.2.6
+# AutoDJ Final Report — CamfrogAutoDJ v0.2.6
 
 **Repository:** `cvsz/autodj`  
 **Branch:** `main` (clean, up to date with `origin/main`)  
@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-Camfrog AutoDJ is a music bot for Camfrog rooms that provides YouTube + local MP3/MP4 autoplay, command processing (`!commands`), now/next announcements, room chat interaction, and a graphical desktop GUI. It supports English and Thai language interfaces. The project is a reusable, secure-by-default GitHub template with full CI/CD, Windows installer, per-user installation (no admin required), and comprehensive validation.
+CamfrogAutoDJ is a music bot for Camfrog rooms that provides YouTube + local MP3/MP4 autoplay, command processing (`!commands`), now/next announcements, room chat interaction, and a graphical desktop GUI. It supports English and Thai language interfaces. The project is a reusable, secure-by-default GitHub template with full CI/CD, Windows installer, per-user installation (no admin required), and comprehensive validation.
 
 This report documents the complete project state after all fixes, validations, and cleanups completed in this session.
 
@@ -49,7 +49,7 @@ This report documents the complete project state after all fixes, validations, a
 | File | Purpose |
 |------|---------|
 | `build.ps1` | PowerShell build script: PyInstaller onefile exe, code signing, mpv/yt-dlp bundling, config.toml copying with writable flag |
-| `installer.nsi` | NSIS installer script: per-user install to `%APPDATA%\Camfrog AutoDJ`, HKCU registry, English+Thai languages, shortcuts, uninstaller |
+| `installer.nsi` | NSIS installer script: per-user install to `%APPDATA%\CamfrogAutoDJ`, HKCU registry, English+Thai languages, shortcuts, uninstaller |
 | `install.ps1` | Automated Windows 11 installer: prerequisites, Python, mpv, yt-dlp, VB-Cable, config creation, shortcuts |
 | `build_exe.bat` | Windows batch wrapper for build.ps1 |
 | `build_installer.bat` | Windows batch wrapper for installer |
@@ -298,7 +298,7 @@ This report documents the complete project state after all fixes, validations, a
 
 ### File Locations (Per-User Install)
 ```
-%APPDATA%\Camfrog AutoDJ\
+%APPDATA%\CamfrogAutoDJ\
 ├── AutoDJ.exe
 ├── config.toml
 ├── app.ico
@@ -349,7 +349,7 @@ This report documents the complete project state after all fixes, validations, a
 
 ### 2. Config.toml Read-Only Fallback
 **File:** `camfrog_autodj/gui.py`  
-**Fix:** Wrapped `p.write_text()` in `try/except (OSError, PermissionError)`; falls back to `%APPDATA%\Camfrog AutoDJ\config.toml`; updates `cfg_path` for subsequent saves.
+**Fix:** Wrapped `p.write_text()` in `try/except (OSError, PermissionError)`; falls back to `%APPDATA%\CamfrogAutoDJ\config.toml`; updates `cfg_path` for subsequent saves.
 
 ### 3. Build Script — config.toml Writability
 **File:** `build.ps1`  
@@ -467,4 +467,4 @@ All **34 playlist files** in `playlist/` validated:
 | Document end-user installation steps in `docs/windows-install.md` | Writer | Pending |
 ## 16. Conclusion
 
-Camfrog AutoDJ v0.2.6 is production-ready as a reusable GitHub template with a fully functional Camfrog AutoDJ music bot. All critical issues have been resolved, all tests pass, all CI checks pass, and the repository is clean with a working tree in sync with `origin/main`.
+CamfrogAutoDJ v0.2.6 is production-ready as a reusable GitHub template with a fully functional CamfrogAutoDJ music bot. All critical issues have been resolved, all tests pass, all CI checks pass, and the repository is clean with a working tree in sync with `origin/main`.

@@ -1,4 +1,4 @@
-; Camfrog AutoDJ - NSIS Installer Script
+; CamfrogAutoDJ - NSIS Installer Script
 ; Builds a professional Windows installer (.exe) for distribution
 ;
 ; Usage: makensis installer.nsi
@@ -25,7 +25,7 @@
 ; -----------------------------------------------------------------------------
 ; Metadata (overridable from command line)
 ; -----------------------------------------------------------------------------
-!define /IfNDef APP_NAME "Camfrog AutoDJ"
+!define /IfNDef APP_NAME "CamfrogAutoDJ"
 !define /IfNDef APP_VERSION "0.3.0"
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
@@ -45,7 +45,7 @@
 ; -----------------------------------------------------------------------------
 Name "${APP_NAME} ${APP_VERSION}"
 OutFile "${INSTALLER_NAME}"
-InstallDir "$APPDATA\Camfrog AutoDJ"
+InstallDir "$APPDATA\CamfrogAutoDJ"
 InstallDirRegKey HKCU "Software\CamfrogAutoDJ" "InstallDir"
 ShowInstDetails show
 ShowUninstDetails show
@@ -87,7 +87,7 @@ CRCCheck on
 !define MUI_DIRECTORYPAGE_TEXT_TOP "Choose the installation folder for ${APP_NAME}."
 !define MUI_DIRECTORYPAGE_TEXT_DESTINATION "Destination Folder"
 
-!define MUI_STARTMENUPAGE_DEFAULTFOLDER "Camfrog AutoDJ"
+!define MUI_STARTMENUPAGE_DEFAULTFOLDER "CamfrogAutoDJ"
 !define MUI_STARTMENUPAGE_NODISABLE
 
 !define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "Installation Complete"
@@ -182,7 +182,7 @@ FunctionEnd
 
 Function .onInstSuccess
     HideWindow
-    MessageBox MB_ICONINFORMATION|MB_OK "Camfrog AutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nIf you selected VBCable, its driver package is included under mpv\VBCABLE_Driver_Pack45. Driver installation requires Administrator approval; run VBCABLE_Setup_x64.exe manually using Run as administrator."
+    MessageBox MB_ICONINFORMATION|MB_OK "CamfrogAutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nIf you selected VBCable, its driver package is included under mpv\VBCABLE_Driver_Pack45. Driver installation requires Administrator approval; run VBCABLE_Setup_x64.exe manually using Run as administrator."
 FunctionEnd
 
 ; -----------------------------------------------------------------------------
@@ -193,17 +193,17 @@ Section -Post
     WriteUninstaller "$INSTDIR\uninstall.exe"
 
     ; Start Menu shortcuts
-    CreateDirectory "$SMPROGRAMS\Camfrog AutoDJ"
-    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Camfrog AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
-    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Uninstall Camfrog AutoDJ"
-    CreateShortcut "$SMPROGRAMS\Camfrog AutoDJ\Edit Config.lnk" "notepad.exe" "$INSTDIR\config.toml" "" 0 SW_SHOWNORMAL "" "Edit configuration"
+    CreateDirectory "$SMPROGRAMS\CamfrogAutoDJ"
+    CreateShortcut "$SMPROGRAMS\CamfrogAutoDJ\CamfrogAutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
+    CreateShortcut "$SMPROGRAMS\CamfrogAutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Uninstall CamfrogAutoDJ"
+    CreateShortcut "$SMPROGRAMS\CamfrogAutoDJ\Edit Config.lnk" "notepad.exe" "$INSTDIR\config.toml" "" 0 SW_SHOWNORMAL "" "Edit configuration"
 
     ; Desktop shortcut
-    CreateShortcut "$DESKTOP\Camfrog AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
+    CreateShortcut "$DESKTOP\CamfrogAutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
 
     ; Registry entries for Add/Remove Programs (per-user)
     ; Required values per NSIS Appendix D
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayName" "Camfrog AutoDJ"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayName" "CamfrogAutoDJ"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayVersion" "${APP_VERSION}"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "Publisher" "${APP_PUBLISHER}"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "URLInfoAbout" "${APP_WEBSITE}"
@@ -240,21 +240,21 @@ SectionEnd
 Function un.onInit
     ReadRegStr $INSTDIR HKCU "Software\CamfrogAutoDJ" "InstallDir"
     ${If} $INSTDIR == ""
-        StrCpy $INSTDIR "$APPDATA\Camfrog AutoDJ"
+        StrCpy $INSTDIR "$APPDATA\CamfrogAutoDJ"
     ${EndIf}
 FunctionEnd
 
 Section Uninstall
     ; Remove shortcuts
-    Delete "$SMPROGRAMS\Camfrog AutoDJ\Camfrog AutoDJ.lnk"
-    Delete "$SMPROGRAMS\Camfrog AutoDJ\Edit Config.lnk"
-    Delete "$SMPROGRAMS\Camfrog AutoDJ\Uninstall.lnk"
-    RMDir /r "$SMPROGRAMS\Camfrog AutoDJ"
-    Delete "$DESKTOP\Camfrog AutoDJ.lnk"
-    Delete "$SMPROGRAMS\Camfrog AutoDJ\Uninstall.lnk"
+    Delete "$SMPROGRAMS\CamfrogAutoDJ\CamfrogAutoDJ.lnk"
+    Delete "$SMPROGRAMS\CamfrogAutoDJ\Edit Config.lnk"
+    Delete "$SMPROGRAMS\CamfrogAutoDJ\Uninstall.lnk"
+    RMDir /r "$SMPROGRAMS\CamfrogAutoDJ"
+    Delete "$DESKTOP\CamfrogAutoDJ.lnk"
+    Delete "$SMPROGRAMS\CamfrogAutoDJ\Uninstall.lnk"
 
     ; Remove Startup shortcut if exists
-    Delete "$APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\Camfrog AutoDJ.lnk"
+    Delete "$APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\CamfrogAutoDJ.lnk"
 
     ; Remove application registration without deleting unrelated app settings.
     DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ"

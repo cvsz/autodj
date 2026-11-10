@@ -1,4 +1,4 @@
-# Camfrog AutoDJ — Windows Setup & Troubleshooting
+# CamfrogAutoDJ — Windows Setup & Troubleshooting
 
 คู่มือการติดตั้งและแก้ปัญหาสำหรับ Windows โดยเฉพาะ
 
@@ -8,7 +8,7 @@
 
 ตัวติดตั้งจะ:
 
-1. ติดตั้ง `AutoDJ.exe` ไปที่ `C:\Program Files\Camfrog AutoDJ\`
+1. ติดตั้ง `AutoDJ.exe` ไปที่ `C:\Program Files\CamfrogAutoDJ\`
 2. สร้าง shortcut ใน Start Menu และ Desktop
 3. ลงทะเบียนใน Add/Remove Programs
 4. สร้าง `uninstall.exe` สำหรับถอนการติดตั้ง
@@ -162,7 +162,7 @@ AutoDJ.exe
 
 ## 5. การลบการติดตั้ง (Uninstall)
 
-ใช้ตัวติดตั้งถอนการติดตั้งผ่าน **Start Menu → Camfrog AutoDJ → Uninstall** หรือไปที่ **หน้าต่างการตั้งค่า → แอป → Camfrog AutoDJ → ถอนการติดตั้ง**
+ใช้ตัวติดตั้งถอนการติดตั้งผ่าน **Start Menu → CamfrogAutoDJ → Uninstall** หรือไปที่ **หน้าต่างการตั้งค่า → แอป → CamfrogAutoDJ → ถอนการติดตั้ง**
 
 หรือรัน `uninstall.exe` ในโฟลเดอร์ติดตั้งโดยตรง
 
@@ -170,7 +170,7 @@ AutoDJ.exe
 
 ## 6. รายละเอียดไฟล์ที่ติดตั้ง
 
-หลังติดตั้ง โฟลดร์ `C:\Program Files\Camfrog AutoDJ\` จะมี:
+หลังติดตั้ง โฟลดร์ `C:\Program Files\CamfrogAutoDJ\` จะมี:
 
 | ไฟล์/โฟลเดอร์ | ความหมาย |
 |---------------|-----------|

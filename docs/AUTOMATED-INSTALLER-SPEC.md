@@ -1,4 +1,4 @@
-# Camfrog AutoDJ - Automated Windows 11 Installer Specification
+# CamfrogAutoDJ - Automated Windows 11 Installer Specification
 
 > **Single Source of Truth** for all installer-related logic, configuration, and build processes.
 
@@ -6,7 +6,7 @@
 
 ## 📋 Overview
 
-Camfrog AutoDJ provides **two complementary installation paths**:
+CamfrogAutoDJ provides **two complementary installation paths**:
 
 | Path | Use Case | Technology |
 |------|----------|------------|
@@ -88,7 +88,7 @@ camfrog-autodj/
 
 ### Installed Layout (NSIS installer target)
 ```
-%PROGRAMFILES64%\Camfrog AutoDJ\
+%PROGRAMFILES64%\CamfrogAutoDJ\
 ├── AutoDJ.exe                 # Main executable
 ├── app.ico                    # Icon
 ├── config.toml                # User config (copied from example)
@@ -108,27 +108,27 @@ camfrog-autodj/
 
 ### Start Menu Shortcuts Created
 ```
-Start Menu > Programs > Camfrog AutoDJ\
-├── Camfrog AutoDJ.lnk         → AutoDJ.exe --gui
+Start Menu > Programs > CamfrogAutoDJ\
+├── CamfrogAutoDJ.lnk         → AutoDJ.exe --gui
 ├── Edit Config.lnk            → notepad.exe config.toml
 └── Uninstall.lnk              → uninstall.exe
 ```
 
 ### Desktop Shortcut
 ```
-Desktop\Camfrog AutoDJ.lnk     → AutoDJ.exe --gui
+Desktop\CamfrogAutoDJ.lnk     → AutoDJ.exe --gui
 ```
 
 ### Registry (Add/Remove Programs)
 ```
 HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ
-  DisplayName        = "Camfrog AutoDJ"
+  DisplayName        = "CamfrogAutoDJ"
   DisplayVersion     = "0.2.3"
   Publisher          = "ZEAZDEV COMPANY LIMITED"
   URLInfoAbout       = "https://github.com/cvsz/autodj"
-  InstallLocation    = "%PROGRAMFILES64%\Camfrog AutoDJ"
-  UninstallString    = "%PROGRAMFILES64%\Camfrog AutoDJ\uninstall.exe"
-  DisplayIcon        = "%PROGRAMFILES64%\Camfrog AutoDJ\app.ico"
+  InstallLocation    = "%PROGRAMFILES64%\CamfrogAutoDJ"
+  UninstallString    = "%PROGRAMFILES64%\CamfrogAutoDJ\uninstall.exe"
+  DisplayIcon        = "%PROGRAMFILES64%\CamfrogAutoDJ\app.ico"
   NoModify           = 1
   NoRepair           = 1
 ```

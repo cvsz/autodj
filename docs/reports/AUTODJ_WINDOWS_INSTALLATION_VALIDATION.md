@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.6 — Windows Installation Validation Report
+# CamfrogAutoDJ v0.2.6 — Windows Installation Validation Report
 
 **Repository:** `cvsz/autodj`  
 **Target Release:** `v0.2.6`  

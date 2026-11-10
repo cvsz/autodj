@@ -293,7 +293,7 @@ blocked_users = []               # Nicks whose commands are ignored
 Access via **⚙️ Settings** button. All config.toml settings editable with:
 - Input validation (ranges, regex, choices)
 - Atomic save with `.bak` backup
-- Auto-relocation to `%APPDATA%\Camfrog AutoDJ\` if install dir not writable
+- Auto-relocation to `%APPDATA%\CamfrogAutoDJ\` if install dir not writable
 - Live language switch for labels
 
 ---
@@ -347,7 +347,7 @@ AutoDJ.exe --console --lang th
 - **Default:** Console output (stdout/stderr)
 - **File:** Set `log_file = "autodj.log"` in config
 - **Rotation:** 1 MB × 3 files
-- **Location:** Relative paths resolve to `%APPDATA%\Camfrog AutoDJ\`
+- **Location:** Relative paths resolve to `%APPDATA%\CamfrogAutoDJ\`
 
 ### Common Issues & Fixes
 
@@ -414,7 +414,7 @@ makensis installer.nsi
 
 ### Installer Features
 
-- Per-user install to `%APPDATA%\Camfrog AutoDJ` (no admin)
+- Per-user install to `%APPDATA%\CamfrogAutoDJ` (no admin)
 - Installs Python, mpv, yt-dlp, VB-Cable via winget
 - Creates Desktop/Start Menu shortcuts
 - Generates config.toml interactively
@@ -474,7 +474,7 @@ AutoDJ automatically migrates:
 
 | File | Default Location | Description |
 |------|------------------|-------------|
-| `config.toml` | `%APPDATA%\Camfrog AutoDJ\` | Main configuration |
+| `config.toml` | `%APPDATA%\CamfrogAutoDJ\` | Main configuration |
 | `playlist.json` | Same as config | Persisted user requests |
 | `ads-list.json` | Same as config | Auto-reply messages |
 | `autodj.log` | Same as config | Rotating log file |

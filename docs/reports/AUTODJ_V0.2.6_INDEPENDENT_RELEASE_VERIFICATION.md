@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.6 — Independent Release & Supply-Chain Verification
+# CamfrogAutoDJ v0.2.6 — Independent Release & Supply-Chain Verification
 
 **Repository:** `cvsz/autodj`  
 **Release Tag:** `v0.2.6`  

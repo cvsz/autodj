@@ -1,4 +1,4 @@
-# Camfrog AutoDJ v0.2.5 — Final Release Gate Audit
+# CamfrogAutoDJ v0.2.5 — Final Release Gate Audit
 
 **Repository:** `cvsz/autodj`  
 **Current HEAD SHA (`main`):** `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79`  

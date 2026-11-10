@@ -1,4 +1,4 @@
-# Production Readiness — Camfrog AutoDJ
+# Production Readiness — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Version:** 0.2.8 (`pyproject.toml`, `camfrog_autodj/__init__.py`)  

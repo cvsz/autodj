@@ -22,7 +22,7 @@ A critical bug was discovered and fixed in the NSIS installer uninstaller: `RMDi
 
 | Aspect | Implementation | Status |
 |--------|---------------|--------|
-| Per-user install dir | `$APPDATA\Camfrog AutoDJ` (`installer.nsi:48`) | Code reviewed |
+| Per-user install dir | `$APPDATA\CamfrogAutoDJ` (`installer.nsi:48`) | Code reviewed |
 | No admin rights required | `RequestExecutionLevel user` (`installer.nsi:52`) | Code reviewed |
 | Windows 11 check | Build 22000+ (`install.ps1:205`) | Code reviewed |
 | Prerequisite installation | winget: Python, mpv, yt-dlp, Git, NSIS | Code reviewed |

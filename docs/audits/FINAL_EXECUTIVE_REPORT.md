@@ -1,4 +1,4 @@
-# Final Executive Report — Camfrog AutoDJ AUSI
+# Final Executive Report — CamfrogAutoDJ AUSI
 
 **Repository:** cvsz/autodj  
 **Branch:** `feat/autodj-enhancements-and-fixes`  

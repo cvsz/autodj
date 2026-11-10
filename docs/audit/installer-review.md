@@ -1,4 +1,4 @@
-# Installer Review — Camfrog AutoDJ
+# Installer Review — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -12,7 +12,7 @@
 
 ## Design (per installer.nsi and README)
 
-- Install directory: `%APPDATA%\Camfrog AutoDJ` (no admin rights required for the app).
+- Install directory: `%APPDATA%\CamfrogAutoDJ` (no admin rights required for the app).
 - Upgrade behavior: in-place; existing `config.toml` preserved (not overwritten).
 - Uninstall: removes app-owned files only; keeps `config.toml`, `playlist.json`, logs, playlists, user data.
 - Shortcuts: Desktop, Start Menu, "Edit Config" (notepad), Uninstall.
