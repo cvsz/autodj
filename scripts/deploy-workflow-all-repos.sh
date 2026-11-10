@@ -16,7 +16,6 @@ TEST_MODE="${1:-}"
 
 WORKFLOW_SRC=".github/workflows/automated-audit-review-approve.yml"
 SCRIPT_SRC=".github/scripts/post-review-comment.sh"
-ACCOUNTS_FILE="scripts/gh-switch-accounts.conf"
 
 # Get policedbc PAT from credential store
 POLIEDBC_PAT="$(printf 'protocol=https\nhost=github.com\nusername=policedbc\n' | git credential fill | grep '^password=' | cut -d= -f2-)"

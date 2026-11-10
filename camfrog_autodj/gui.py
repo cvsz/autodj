@@ -1011,7 +1011,7 @@ class App(tk.Tk):
 
     # ---- settings popup ------------------------------------------------------
     def open_settings(self):
-        """Open the settings dialog as a popup (Toplevel) window."""
+        """Open the settings dialog as a standalone (non-modal) window."""
         # Bring existing settings window to front if already open
         win = self._settings_win
         if win is not None and win.winfo_exists():
@@ -1022,8 +1022,13 @@ class App(tk.Tk):
         sp = tk.Toplevel(self)
         sp.title(self.e.t("g_settings"))
         sp.configure(bg=BG)
-        sp.transient(self)
-        sp.grab_set()
+        # Standalone window: no transient, no grab_set (non-modal)
+        # Optional: mark as tool window on Windows to not show in taskbar separately
+        if os.name == "nt":
+            try:
+                sp.attributes("-toolwindow", True)
+            except (tk.TclError, AttributeError):
+                pass
 
         # Make it a decent size and center-ish
         sp.geometry(f"{self.px(700)}x{self.px(620)}")
@@ -3150,6 +3155,11 @@ class App(tk.Tk):
 
     def close(self):
         self._closing = True
+        # Close settings window if open
+        win = self._settings_win
+        if win is not None and win.winfo_exists():
+            win.destroy()
+            self._settings_win = None
         for attr in ("_anim", "_ref"):
             timer_id = getattr(self, attr, None)
             if timer_id:

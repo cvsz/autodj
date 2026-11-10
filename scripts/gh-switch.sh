@@ -44,20 +44,16 @@ parse_account() {
 
 # Detect owner/repo from a remote URL (ssh or https)
 parse_origin() {
-  # sets: ORIG_HOST ORIG_OWNER ORIG_REPO ORIG_URL
+  # sets: ORIG_OWNER ORIG_REPO
   local url="$1"
-  ORIG_URL="$url"
 
   if [[ "$url" =~ ^git@([^:]+):(.+)/(.+)\.git$ ]]; then
-    ORIG_HOST="${BASH_REMATCH[1]}"
     ORIG_OWNER="${BASH_REMATCH[2]}"
     ORIG_REPO="${BASH_REMATCH[3]%.git}"
   elif [[ "$url" =~ ^https://([^/]+)/(.+)/(.+)\.git$ ]]; then
-    ORIG_HOST="${BASH_REMATCH[1]}"
     ORIG_OWNER="${BASH_REMATCH[2]}"
     ORIG_REPO="${BASH_REMATCH[3]%.git}"
   elif [[ "$url" =~ ^https://[^@]+@([^/]+)/(.+)/(.+)\.git$ ]]; then
-    ORIG_HOST="${BASH_REMATCH[1]}"
     ORIG_OWNER="${BASH_REMATCH[2]}"
     ORIG_REPO="${BASH_REMATCH[3]%.git}"
   else
@@ -92,7 +88,7 @@ list_accounts() {
   fi
   echo ""
   echo "=== Current repo ($REPO_ROOT) ==="
-  local url mode alias owner repo
+  local url mode
   url="$(current_remote)"
   if [[ "$url" =~ ^git@ ]]; then mode="ssh"; elif [[ "$url" =~ ^https ]]; then mode="https"; else mode="unknown"; fi
   echo "  remote: $url ($mode)"
@@ -109,7 +105,7 @@ switch_account() {
   local acct="$1"
   parse_account "$acct"
 
-  local cur_url cur_mode
+  local cur_url
   cur_url="$(current_remote)"
   parse_origin "$cur_url"
 

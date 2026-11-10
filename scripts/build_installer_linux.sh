@@ -72,9 +72,7 @@ echo "Generated installer.nsi"
 INSTALLER_NAME="Camfrog-AutoDJ-Setup-${VERSION}.exe"
 echo "Building installer: $INSTALLER_NAME..."
 
-wine64 "$NSIS_PATH" /DVERSION="$VERSION" /DSRCDIR=. /DOUTDIR=. installer.nsi
-
-if [[ $? -ne 0 ]]; then
+if ! wine64 "$NSIS_PATH" /DVERSION="$VERSION" /DSRCDIR=. /DOUTDIR=. installer.nsi; then
     echo "ERROR: NSIS build failed"
     exit 1
 fi
