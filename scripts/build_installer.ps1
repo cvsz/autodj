@@ -18,6 +18,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Ensure Certificate provider is available (PS5.1 compat)
+if ($PSVersionTable.PSVersion.Major -le 5) {
+    $env:PSModulePath = ($env:PSModulePath -split ';' | Where-Object {
+        $_ -and $_ -notmatch 'PowerShell[\\/]7[\\/]Modules' -and
+        $_ -notmatch 'Documents[\\/]PowerShell[\\/]Modules' -and
+        $_ -notmatch 'Program Files[\\/]PowerShell[\\/]Modules'
+    }) -join ';'
+}
+
 Write-Host "=== Camfrog AutoDJ Installer Builder ===" -ForegroundColor Cyan
 Write-Host "Version: $Version"
 Write-Host "Source: $SrcDir"
@@ -52,9 +61,8 @@ $requiredFiles = @(
     "config.example.toml",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE.md",
+    "LICENSE",
     "install.ps1",
-    "uninstall.ps1",
     "run_autodj.py"
 )
 
