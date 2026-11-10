@@ -29,6 +29,11 @@ IS_WINDOWS  := $(filter Windows_NT,$(OS))
 # Windows 11 minimum build number (22000 = Windows 11 21H2)
 WIN11_MIN_BUILD := 22000
 
+# ---- logging ----------------------------------------------------------------
+# Log directory for build-all validations and build steps (kept, not cleaned).
+BUILD_LOG_DIR := logs
+BUILD_LOG_TS  := $(shell date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)
+
 .DEFAULT_GOAL := help
 .PHONY: help install install-dev install-build install-auto venv \
         run run-gui run-console run-headless check discover windows say join-room \
@@ -37,7 +42,7 @@ WIN11_MIN_BUILD := 22000
         build build-clean sign build-all build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
         clean clean-all distclean \
         config version bump-patch changelog-check pre-commit ci docs all \
-        win11-check mpv-check nsis-check pyinstaller-check
+        win11-check mpv-check nsis-check pyinstaller-check logs
 
 ## ---- help -----------------------------------------------------------------
 help:  ## Show this help
@@ -51,12 +56,14 @@ help:  ## Show this help
 ## ---- Windows 11 prerequisite checks ---------------------------------------
 win11-check:  ## Verify Windows 11 (build 22000+) and NSIS/mpv/PyInstaller availability
 ifeq ($(OS),Windows_NT)
-	@echo "=== Windows 11 Prerequisite Check ==="
-	@powershell.exe -NoProfile -Command "$$v = (Get-Item 'C:\Windows\System32\ntoskrnl.exe').VersionInfo.ProductVersion; $$build = [int]($$v.Split('.')[2]); Write-Host 'OS Build: ' $$build; if ($$build -lt $(WIN11_MIN_BUILD)) { Write-Error 'ERROR: Windows 11 (build $(WIN11_MIN_BUILD)+) required, found build ' $$build; exit 1 }" || (echo "ERROR: Not Windows 11." && exit 1)
-	@echo "  OK: Windows 11 detected"
-	@if (Get-Command makensis -ErrorAction SilentlyContinue) { echo "  OK: NSIS (makensis) in PATH" } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { echo "  OK: NSIS found at C:\Program Files (x86)\NSIS\makensis.exe" } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { echo "  OK: NSIS found at C:\Program Files\NSIS\makensis.exe" } else { echo "ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis)." && exit 1 }
-	@if (Get-Command mpv.exe -ErrorAction SilentlyContinue) { echo "  OK: mpv.exe in PATH" } elseif (Test-Path 'C:\Program Files\mpv\mpv.exe') { echo "  OK: mpv found at C:\Program Files\mpv\mpv.exe" } else { echo "WARN: mpv.exe not found in PATH. Install: choco install mpv --version=2024.01.01 --yes" }
-	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed"; else echo "WARN: PyInstaller not installed. Run: $(PIP) install pyinstaller"; fi
+	@mkdir -p "$(BUILD_LOG_DIR)" 2>/dev/null || true
+	@echo "=== Windows 11 Prerequisite Check ($(BUILD_LOG_TS)) ==="
+	@powershell.exe -NoProfile -Command "$$v = (Get-Item 'C:\Windows\System32\ntoskrnl.exe').VersionInfo.ProductVersion; $$build = [int]($$v.Split('.')[2]); Write-Host 'OS Build: ' $$build; if ($$build -lt $(WIN11_MIN_BUILD)) { Write-Error 'ERROR: Windows 11 (build $(WIN11_MIN_BUILD)+) required, found build ' $$build; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: Not Windows 11." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+	@echo "  OK: Windows 11 detected" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
+	@powershell.exe -NoProfile -Command "if (Get-Command makensis -ErrorAction SilentlyContinue) { echo '  OK: NSIS (makensis) in PATH' } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files (x86)\NSIS\makensis.exe' } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files\NSIS\makensis.exe' } else { echo 'ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis).'; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+	@powershell.exe -NoProfile -Command "if (Get-Command mpv.exe -ErrorAction SilentlyContinue) { echo '  OK: mpv.exe in PATH' } elseif (Test-Path 'C:\Program Files\mpv\mpv.exe') { echo '  OK: mpv found at C:\Program Files\mpv\mpv.exe' } else { echo 'WARN: mpv.exe not found in PATH. Install: choco install mpv --version=2024.01.01 --yes' }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
+	@$(PY) -c "import PyInstaller" 2>/dev/null && echo "  OK: PyInstaller installed" || echo "WARN: PyInstaller not installed. Run: $(PIP) install pyinstaller" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
+	@echo "Logs: $(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"
 else
 	@echo "win11-check requires Windows 11"
 	@exit 1
@@ -64,8 +71,8 @@ endif
 
 mpv-check:  ## Verify mpv is available for Windows builds
 ifeq ($(OS),Windows_NT)
-	@powershell.exe -NoProfile -Command "if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\mpv\mpv.exe')) { Write-Error 'mpv.exe not found. Install: choco install mpv --yes'; exit 1 }" || (echo "ERROR: mpv not found." && exit 1)
-	@echo "  OK: mpv available"
+	@powershell.exe -NoProfile -Command "if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\mpv\mpv.exe')) { Write-Error 'mpv.exe not found. Install: choco install mpv --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: mpv not found." >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+	@echo "  OK: mpv available" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1
 else
 	@echo "mpv-check is Windows-only"
 	@exit 1
@@ -73,15 +80,15 @@ endif
 
 nsis-check:  ## Verify NSIS (makensis) is available
 ifeq ($(OS),Windows_NT)
-	@powershell.exe -NoProfile -Command "if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') -and -not (Test-Path 'C:\Program Files\NSIS\makensis.exe')) { Write-Error 'NSIS not found. Install: choco install nsis --yes'; exit 1 }" || (echo "ERROR: NSIS not found." && exit 1)
-	@echo "  OK: NSIS available"
+	@powershell.exe -NoProfile -Command "if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') -and -not (Test-Path 'C:\Program Files\NSIS\makensis.exe')) { Write-Error 'NSIS not found. Install: choco install nsis --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found." >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+	@echo "  OK: NSIS available" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1
 else
 	@echo "nsis-check is Windows-only"
 	@exit 1
 endif
 
 pyinstaller-check:  ## Verify PyInstaller is available
-	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed"; else echo "ERROR: PyInstaller not installed. Run: $(PIP) install pyinstaller" && exit 1; fi
+	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed"; else echo "ERROR: PyInstaller not installed. Run: $(PIP) install pyinstaller" && exit 1; fi >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1
 
 ## ---- environment ------------------------------------------------------------
 venv:  ## Create a local .venv and show how to activate it
