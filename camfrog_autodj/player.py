@@ -286,6 +286,7 @@ class MpvPlayer:
     def _ipc_read_windows(self, ipc: str, data: bytes, timeout: float = 2.0) -> bytes | None:
         """Read IPC response from Windows named pipe with timeout."""
         import time
+
         start = time.monotonic()
         try:
             with open(ipc, "r+b", buffering=0) as f:
@@ -307,6 +308,7 @@ class MpvPlayer:
         """Read IPC response from Unix socket with timeout."""
         import socket
         import time
+
         start = time.monotonic()
         try:
             with socket.socket(socket.AF_UNIX) as s:
