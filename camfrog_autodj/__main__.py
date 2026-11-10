@@ -135,7 +135,7 @@ def _handle_windows(a) -> bool:
 def _handle_dump(a) -> bool:
     if not a.dump:
         return False
-    from pywinauto import Desktop  # type: ignore[import-untyped]  # pywinauto ships no py.typed stubs
+    from pywinauto import Desktop
 
     from .windows import candidates
 
