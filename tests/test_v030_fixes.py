@@ -289,7 +289,7 @@ def test_tts_synth_is_callable_and_thread_safe(monkeypatch):
 
     # Patch pyttsx3 so no real COM/SAPI needed
     fake_mod = types.ModuleType("pyttsx3")
-    fake_mod.init = lambda: FakeEngine()
+    fake_mod.init = lambda: FakeEngine()  # type: ignore[attr-defined]
 
     monkeypatch.setitem(sys.modules, "pyttsx3", fake_mod)
 
@@ -478,6 +478,7 @@ def test_player_loop_dynamically_resolves_ytsearch_tracks(monkeypatch):
 
     # Run one iteration of the player loop logic directly
     t = e.queue.pop()
+    assert t is not None
     assert t.source == "ytsearch1:some query"
     t = e._resolve_track_if_search(t)
     assert t.source == "https://www.youtube.com/watch?v=real_resolved_id"

@@ -602,8 +602,13 @@ def test_player_loop_queues_continue_after_failed_track(monkeypatch):
 def test_player_loop_no_duplicate_playback_on_repeat_off(monkeypatch):
     """With repeat off, a completed track must not be re-played."""
     e = make()
-    played = []
-    e.player.play = lambda s, v, d=None: (played.append(s), True)[1]
+    played: list[str] = []
+
+    def fake_play(s, v, d=None):
+        played.append(s)
+        return True
+
+    e.player.play = fake_play
     e.queue.add_request(Track("/m/one.mp3", "one", 60, "amy"))
     e.queue.add_request(Track("/m/two.mp3", "two", 60, "amy"))
 
@@ -848,8 +853,13 @@ def test_mpv_stop_noop_when_not_running():
 def test_player_loop_advances_queue_after_completion(monkeypatch):
     """When a track completes, the next queued track must be popped and played."""
     e = make()
-    played = []
-    e.player.play = lambda s, v, d=None: (played.append(s), True)[1]
+    played: list[str] = []
+
+    def fake_play(s, v, d=None):
+        played.append(s)
+        return True
+
+    e.player.play = fake_play
     e.queue.add_request(Track("/m/a.mp3", "a", 60, "amy"))
     e.queue.add_request(Track("/m/b.mp3", "b", 60, "amy"))
 
@@ -1216,10 +1226,12 @@ def test_discover_multiple_candidates_picks_best(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "pywinauto", mock_pywinauto)
 
     # Room A: 2 chat lines, Room B: 5 chat lines -> Room B should win
+    call_count: list[int] = [0]
+
     def fake_scan_window(win):
         if win is not None:
-            fake_scan_window.call_count += 1
-            if fake_scan_window.call_count == 1:
+            call_count[0] += 1
+            if call_count[0] == 1:
                 return [
                     discover.Ctl("Document", 0, "a: 1\nb: 2\n", 0, 0, 100, 50),
                     discover.Ctl("Edit", 0, "", 0, 60, 100, 30, True, True),
@@ -1231,7 +1243,6 @@ def test_discover_multiple_candidates_picks_best(monkeypatch):
                 ]
         return []
 
-    fake_scan_window.call_count = 0
     monkeypatch.setattr("camfrog_autodj.discover.scan_window", fake_scan_window)
 
     cfg = Config()

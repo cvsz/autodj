@@ -26,10 +26,24 @@ Write-Host "Output: $OutDir"
 # Check for NSIS
 $makensis = Get-Command "makensis" -ErrorAction SilentlyContinue
 if (-not $makensis) {
-    Write-Error "makensis (NSIS) not found in PATH. Install NSIS 3.08+ from https://nsis.sourceforge.io/"
+    # Check common install locations
+    $commonPaths = @(
+        "C:\Program Files (x86)\NSIS\makensis.exe",
+        "C:\Program Files\NSIS\makensis.exe"
+    )
+    foreach ($path in $commonPaths) {
+        if (Test-Path $path) {
+            $makensis = $path
+            Write-Host "Found NSIS at: $path" -ForegroundColor Yellow
+            break
+        }
+    }
+}
+if (-not $makensis) {
+    Write-Error "makensis (NSIS) not found in PATH or common locations. Install NSIS 3.08+ from https://nsis.sourceforge.io/"
     exit 1
 }
-Write-Host "Found NSIS: $($makensis.Source)"
+Write-Host "Found NSIS: $makensis"
 
 # Verify source files exist
 $requiredFiles = @(
@@ -77,7 +91,7 @@ $outPath = Join-Path (Get-Location) $installerName
 Write-Host "Building installer: $installerName"
 # Run makensis from repo root so installer.nsi paths work correctly
 $repoRoot = (Get-Location).Path
-$proc = Start-Process "makensis" -ArgumentList "/DVERSION=$Version", "/DSRCDIR=.", "/DOUTDIR=.", "installer.nsi" -WorkingDirectory $repoRoot -Wait -PassThru -NoNewWindow
+$proc = Start-Process $makensis -ArgumentList "/DVERSION=$Version", "/DSRCDIR=.", "/DOUTDIR=.", "installer.nsi" -WorkingDirectory $repoRoot -Wait -PassThru -NoNewWindow
 
 if ($proc.ExitCode -ne 0) {
     Write-Error "NSIS build failed with exit code $($proc.ExitCode)"

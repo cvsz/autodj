@@ -590,3 +590,30 @@ def _welcome_message(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None
     # toggle or set welcome message
     e.set_welcome_message(a.strip())
     e.say(e.t("welcome_enabled") if e.cfg.welcome_message_enabled else e.t("welcome_disabled"))
+
+
+# ---- Room owner/operator commands -------------------------------------------
+
+
+@command("owner", "เจ้าของห้อง", admin=True)
+def _set_owner(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """Set room owner via Camfrog command: !owner <nick>"""
+    if not a:
+        raise UserError(e.t("usage_owner", p=e.cfg.prefix))
+    e.say(f"/owner {a.strip()}")
+
+
+@command("op", "operator", admin=True)
+def _set_operator(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """Set room operator via Camfrog command: !op <nick>"""
+    if not a:
+        raise UserError(e.t("usage_op", p=e.cfg.prefix))
+    e.say(f"/op {a.strip()}")
+
+
+@command("deop", "เลิกออพ", admin=True)
+def _remove_operator(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """Remove room operator via Camfrog command: !deop <nick>"""
+    if not a:
+        raise UserError(e.t("usage_deop", p=e.cfg.prefix))
+    e.say(f"/deop {a.strip()}")

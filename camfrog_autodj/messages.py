@@ -93,6 +93,10 @@ STR = {
         "welcome_message": "Welcome to the room! {text}",
         "welcome_enabled": "Welcome message enabled.",
         "welcome_disabled": "Welcome message disabled.",
+        # Room owner/operator commands
+        "usage_owner": "usage: {p}owner <nick>",
+        "usage_op": "usage: {p}op <nick>",
+        "usage_deop": "usage: {p}deop <nick>",
         "yt_missing": "YouTube lookup is unavailable right now",
         "im_only_command": "This command only works via private message (IM). Please send your request directly to the bot.",
         "im_user_not_in_room": "You must be in the room to use this command. Join the room first.",
@@ -156,6 +160,7 @@ STR = {
         "g_settings_room": "Room",
         "g_settings_join_uri": "Join URI template",
         "g_settings_music_dirs": "Music dirs (comma-separated)",
+        "g_settings_playlist_dir": "Playlist directory (auto-loads *.json)",
         "g_settings_autoplay_sources": "Autoplay sources (comma-separated)",
         "g_settings_volume": "Default volume (0-100)",
         "g_settings_max_queue": "Max queue length",
@@ -294,6 +299,10 @@ STR = {
         "welcome_enabled": "เปิดข้อความต้อนรับแล้ว",
         "welcome_disabled": "ปิดข้อความต้อนรับแล้ว",
         "yt_missing": "ตอนนี้ค้นหาเพลงจาก YouTube ไม่ได้",
+        # Room owner/operator commands
+        "usage_owner": "วิธีใช้: {p}เจ้าของห้อง <ชื่อ>",
+        "usage_op": "วิธีใช้: {p}operator <ชื่อ>",
+        "usage_deop": "วิธีใช้: {p}เลิกออพ <ชื่อ>",
         "im_only_command": "คำสั่งนี้ใช้ได้เฉพาะข้อความส่วนตัว (IM) เท่านั้น กรุณาส่งขอเพลงตรงไปหาบอท",
         "im_user_not_in_room": "คุณต้องอยู่ในห้องถึงจะใช้คำสั่งนี้ได้ กรุณาเข้าห้องก่อน",
         # Gift / virtual-gift detection (Camfrog gift system; see docs/camfrog-re/08-feature-gift.md)
@@ -356,6 +365,7 @@ STR = {
         "g_settings_room": "ห้อง",
         "g_settings_join_uri": "เทมเพลต URI สำหรับเข้าร่วม",
         "g_settings_music_dirs": "โฟลเดอร์เพลง (คั่นด้วยจุลภาค)",
+        "g_settings_playlist_dir": "โฟลเดอร์เพลย์ลิสต์ (โหลด *.json อัตโนมัติ)",
         "g_settings_autoplay_sources": "แหล่งเล่นอัตโนมัติ (คั่นด้วยจุลภาค)",
         "g_settings_volume": "ระดับเสียงเริ่มต้น (0-100)",
         "g_settings_max_queue": "ความยาวคิวสูงสุด",

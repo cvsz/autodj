@@ -89,8 +89,13 @@ def test_failures_are_throttled_and_backed_off():
     e = make()
     e.player = FailingPlayer()
     e.queue.add_pool([T("a"), T("b"), T("c")])
-    delays = []
-    e.fail_delay = lambda n: delays.append(n) or 0.0
+    delays: list[int] = []
+
+    def fake_fail_delay(n):
+        delays.append(n)
+        return 0.0
+
+    e.fail_delay = fake_fail_delay
     th = threading.Thread(target=e._player_loop, daemon=True)
     th.start()
     deadline = time.monotonic() + 3.0
@@ -620,6 +625,9 @@ def test_remote_tracks_uses_module_when_no_exe(monkeypatch):
     from camfrog_autodj import library
 
     class FakeYDL:
+        opts: dict = {}
+        target: str = ""
+
         def __init__(self, opts):
             FakeYDL.opts = opts
 
@@ -634,7 +642,7 @@ def test_remote_tracks_uses_module_when_no_exe(monkeypatch):
             return SEARCH_JSON
 
     mod = types.ModuleType("yt_dlp")
-    mod.YoutubeDL = FakeYDL
+    mod.YoutubeDL = FakeYDL  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "yt_dlp", mod)
     monkeypatch.setattr(library, "find_ytdlp", lambda *a, **k: "")
     tracks = library.remote_tracks("some song", "amy")
@@ -720,7 +728,9 @@ def test_build_env_checker_lists_what_is_missing():
         "check_build_env",
         pathlib.Path(__file__).resolve().parent.parent / "tools" / "check_build_env.py",
     )
+    assert spec is not None
     mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
     spec.loader.exec_module(mod)
     assert mod.missing(lambda name: object()) == {}  # everything importable: nothing missing
     gone = mod.missing(lambda name: None if name == "yt_dlp" else object())
@@ -824,7 +834,7 @@ def test_tts_synth_works_with_default_voice(tmp_path, monkeypatch):
             pass
 
     fake_mod = types.ModuleType("pyttsx3")
-    fake_mod.init = lambda: FakeEngine()
+    fake_mod.init = lambda: FakeEngine()  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "pyttsx3", fake_mod)
 
     wav = tmp_path / "test.wav"

@@ -83,8 +83,9 @@ def _u32():
     if U is None:
         import ctypes
         from ctypes import wintypes as w
+        from typing import Any
 
-        u = ctypes.windll.user32
+        u: Any = ctypes.windll.user32  # type: ignore[attr-defined]  # Windows-only
         u.PostMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
         u.PostMessageW.restype = w.BOOL
         u.SendMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]

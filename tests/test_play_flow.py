@@ -61,7 +61,7 @@ def fake_remote(query, user="AutoDJ", playlist=False, search_limit=None, **kw):
 # ---------------------------------------------------------------- resolve ---
 def test_resolve_scheme_less_youtube_url(monkeypatch):
     e = make_engine()
-    captured = {}
+    captured: dict[str, str] = {}
     monkeypatch.setattr(
         e,
         "_remote",
@@ -73,7 +73,7 @@ def test_resolve_scheme_less_youtube_url(monkeypatch):
 
 def test_resolve_youtu_be_without_scheme(monkeypatch):
     e = make_engine()
-    captured = {}
+    captured: dict[str, str] = {}
     monkeypatch.setattr(
         e,
         "_remote",
@@ -176,7 +176,7 @@ def test_playlist_add_persists_and_dedupes(tmp_path):
     assert s.add([Track("https://youtu.be/b", "B", 20, "u2")]) == 1
     tracks = s.load()
     assert [t.source for t in tracks] == ["https://youtu.be/a", "https://youtu.be/b"]
-    assert tracks[0].requester == "u1" and getattr(tracks[0], "added", "")
+    assert tracks[0].requester == "u1" and tracks[0].added  # type: ignore[attr-defined]
     data = json.loads((tmp_path / "playlist.json").read_text("utf-8"))
     assert data["tracks"][1]["added_by"] == "u2"
 

@@ -25,7 +25,7 @@ from camfrog_autodj.playqueue import PlayQueue
 def test_concurrent_add_request_from_multiple_threads():
     """Multiple threads adding requests must not corrupt the queue."""
     q = PlayQueue(shuffle=False)
-    errors = []
+    errors: list[Exception] = []
 
     def add_many(prefix, count):
         for i in range(count):

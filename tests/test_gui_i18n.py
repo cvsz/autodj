@@ -68,16 +68,18 @@ def test_launcher_flow(monkeypatch):
     )
     calls = []
     state = {"up": False}
-    monkeypatch.setattr(
-        launcher,
-        "find_window",
-        lambda pat, t: calls.append(("find", pat)) or state["up"],
-    )
-    monkeypatch.setattr(
-        launcher,
-        "_start",
-        lambda exe: calls.append(("start", exe)) or state.update(up=True),
-    )
+
+    def find_window(pat, t):
+        calls.append(("find", pat))
+        return state["up"]
+
+    def _start(exe):
+        calls.append(("start", exe))
+        state.update(up=True)
+        return None
+
+    monkeypatch.setattr(launcher, "find_window", find_window)
+    monkeypatch.setattr(launcher, "_start", _start)
     monkeypatch.setattr(launcher, "_open_uri", lambda u: calls.append(("uri", u)))
     launcher.ensure_room(cfg)
     assert ("start", "C:/cam.exe") in calls and ("uri", "cam://join/My%20Room") in calls
@@ -132,10 +134,14 @@ def test_window_pick():
         Cand(2, "My Room - Camfrog", "B", 10),
         Cand(3, "x Camfrog", "C", 99),
     ]
-    assert pick(cs, self_pid=99).handle == 1
-    assert pick(cs, prefer="my room", self_pid=99).handle == 2
-    assert pick(cs, exclude_re="Video Chat$", self_pid=99).handle == 2
-    assert pick(cs, index=5, self_pid=99).handle == 2
+    picked = pick(cs, self_pid=99)
+    assert picked is not None and picked.handle == 1
+    picked = pick(cs, prefer="my room", self_pid=99)
+    assert picked is not None and picked.handle == 2
+    picked = pick(cs, exclude_re="Video Chat$", self_pid=99)
+    assert picked is not None and picked.handle == 2
+    picked = pick(cs, index=5, self_pid=99)
+    assert picked is not None and picked.handle == 2
     assert pick([], self_pid=1) is None
 
 
@@ -157,7 +163,9 @@ def test_discover_pick_and_config(tmp_path):
     room = score_window("My Room - Camfrog", [chat, nick, box], rx)
     main = score_window("Camfrog Video Chat", [Ctl("Edit", 0, "search", 0, 0, 200, 20)], rx)
     assert main is None
-    ups = to_updates(best_room([f for f in (room, main) if f]))
+    best = best_room([f for f in (room, main) if f])
+    assert best is not None
+    ups = to_updates(best)
     assert ups["view_type"] == "Document" and ups["view_index"] == 0
     assert ups["input_type"] == "Edit" and ups["input_index"] == 0
     p = tmp_path / "config.toml"
@@ -184,9 +192,11 @@ def test_window_pick_by_process():
         ),
         Cand(2, "My Room", "Qt", 6, "Camfrog Video Chat.exe"),
     ]
-    assert pick(cs, exe_re="(?i)camfrog").handle == 2
+    picked = pick(cs, exe_re="(?i)camfrog")
+    assert picked is not None and picked.handle == 2
     assert pick(cs, exe_re="(?i)zzz") is None
-    assert pick(cs).handle == 1
+    picked = pick(cs)
+    assert picked is not None and picked.handle == 1
 
 
 def test_webchat_lines():
@@ -226,6 +236,7 @@ def test_webchat_lines():
     assert len(lines) == 5  # the last message has no body yet: skipped
     rx = re.compile(Config().line_regex)
     m = parse_line("5:43 zdevz: !play", rx)
+    assert m is not None
     assert (m.user, m.text) == ("zdevz", "!play")
 
 
