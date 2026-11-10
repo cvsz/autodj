@@ -30,11 +30,11 @@ input_index = -1
 #   $INSTDIR/mpv/mpv.exe        (mpv player)
 #   $INSTDIR/mpv/yt-dlp.exe     (YouTube downloader for mpv + title lookups)
 # Example: mpv_path = "mpv/mpv.exe"  (relative to AutoDJ.exe install dir)
-# Example: ytdlp_path = "%APPDATA%\\Camfrog AutoDJ\\mpv\\yt-dlp.exe"
-mpv_path = "%APPDATA%\\Camfrog AutoDJ\\mpv\\mpv.exe"
-ytdlp_path = "%APPDATA%\\Camfrog AutoDJ\\mpv\\yt-dlp.exe"
+# Example: ytdlp_path = "mpv/yt-dlp.exe"
+mpv_path = "mpv/mpv.exe"
+ytdlp_path = "mpv/yt-dlp.exe"
 
-audio_device = ""              # e.g. "wasapi/{guid}" -> virtual cable input; list: mpv --audio-device=help
+audio_device = "auto"              # "auto" = system default; or wasapi/{GUID} for virtual cable (run: mpv --audio-device=help)
 volume = 70
 music_dirs = ["REPLACE_ME:/path/to/your/music"]   # local library: requestable by name, also autoplayed
 autoplay_sources = []          # extra YouTube playlist URLs / folders / files to autoplay
@@ -68,20 +68,23 @@ join_uri_template = "camfrog://room/{room}"          # URI your Camfrog build ac
 blocked_users = []             # nicks whose commands are ignored (admins cannot be blocked). Admins can also use !block / !unblock live
 poll_interval = 0.5            # seconds between chat reads; raise to 1.0 if AutoDJ uses too much CPU
 log_file = ""                  # e.g. "autodj.log": also write the log to a rotating file (1 MB x 3). Same as --log-file.
-                                # Relative paths are resolved to %APPDATA%/Camfrog AutoDJ/ so they are
-                                # writable even when AutoDJ is installed to Program Files.
+                                 # Relative paths are resolved to %APPDATA%/Camfrog AutoDJ/ so they are
+                                 # writable even when AutoDJ is installed to Program Files.
 playlist_file = "playlist.json"   # user-requested tracks (!play / GUI request / !load) are appended here
-                                  # (deduplicated) and join the autoplay pool (random); "" = disable persistence
+                                   # (deduplicated) and join the autoplay pool (random); "" = disable persistence
 search_limit = 1               # YouTube text-search results fetched per non-admin !play (1 = first match only; max 50)
 mpv_timeout = 30               # seconds to wait for one mpv track before treating it as hung (0 = never)
 
+# --- playlist directory (auto-load *.json playlists) ---------------------------------------------
+playlist_dir = "playlist"      # folder with *.json playlists; auto-loaded at startup
+
 # --- auto-reply (scheduled ads/messages to the room) ------------------------------------------
-auto_reply_enabled = false          # enable scheduled auto-reply messages to the room
+auto_reply_enabled = true           # enable scheduled auto-reply messages to the room
 auto_reply_interval = 300.0         # seconds between auto-reply messages (min 60s)
 auto_reply_file = "ads-list.json"   # JSON file with messages to rotate through
 
 # IM Auto-reply: automatic reply to private/instant messages
-im_auto_reply_enabled = false       # enable auto-reply to private/instant messages
+im_auto_reply_enabled = true       # enable auto-reply to private/instant messages
 im_auto_reply_message = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
 im_auto_reply_cooldown = 60.0       # seconds between auto-replies to the same user (avoid spam)
 
@@ -89,7 +92,7 @@ im_auto_reply_cooldown = 60.0       # seconds between auto-replies to the same u
 autoplay_idle_timeout = 30.0      # seconds before autoplay starts when no user requests
 
 # --- admin greeting ---
-admin_greeting_enabled = false      # enable admin greeting on first message
+admin_greeting_enabled = true      # enable admin greeting on first message
 admin_greeting_message = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"
 admin_greeting_cooldown = 3600.0    # seconds between greetings for same admin (1 hour)
 
@@ -103,35 +106,35 @@ im_require_room_presence = true     # only users seen in room chat can DM the bo
 message_style = { font_family = "Consolas", font_size = 14, font_color = "#FF0000", bold = false, italic = false, underline = false }
 
 # --- admin mic mute/unmute (config-gated) ---
-# admin_mute_mic = false             # enable !mute command
-# admin_unmute_mic = false           # enable !unmute command
+admin_mute_mic = true             # enable !mute command
+admin_unmute_mic = true           # enable !unmute command
 
 # --- block/unblock bot (config-gated) ---
-# admin_block_bot = false            # enable !blockbot command
-# admin_unblock_bot = false          # enable !unblockbot command
+admin_block_bot = true            # enable !blockbot command
+admin_unblock_bot = true          # enable !unblockbot command
 
 # --- kick/ban/unban user (config-gated) ---
-# admin_kick_user = false            # enable !kick command
-# admin_ban_user = false             # enable !ban command
-# admin_unban_user = false           # enable !unban command
+admin_kick_user = true            # enable !kick command
+admin_ban_user = true             # enable !ban command
+admin_unban_user = true           # enable !unban command
 
 # --- punish user/bot (config-gated) ---
-# admin_punish_user = false          # enable !punish command
-# admin_punish_bot = false           # enable !punishbot command
+admin_punish_user = true          # enable !punish command
+admin_punish_bot = true           # enable !punishbot command
 
 # --- delete message (config-gated) ---
-# admin_delete_message_enabled = false   # enable !delete <msg id> command
+admin_delete_message_enabled = true   # enable !delete <msg id> command
 
 # --- welcome message ---
-# welcome_message_enabled = false          # enable welcome message
-# welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"
+welcome_message_enabled = true          # enable welcome message
+welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"
 
 # --- Camfrog RE integrations (gift / avatar / status / status alert) ---
 # Gift / virtual-gift announcement (detect gift messages in room chat; see docs/camfrog-re/08-feature-gift.md)
-# gift_announce_enabled = true             # announce virtual-gift messages sent to the room
+gift_announce_enabled = true             # announce virtual-gift messages sent to the room
 # Avatar change announcement (detect avatar changes in room chat; see docs/camfrog-re/16-user-icon-avatar.md)
-# avatar_change_enabled = true             # announce avatar change messages sent to the room
+avatar_change_enabled = true             # announce avatar change messages sent to the room
 # Status indicator announcement (detect online/away/busy/invisible/admin/moderator/owner; see docs/camfrog-re/14-png-assets.md)
-# status_indicator_enabled = true          # announce user status changes in room chat
+status_indicator_enabled = true          # announce user status changes in room chat
 # Status alerts (detect upgrade/payment-required status text; see docs/camfrog-re/07-upgrade-logic.md, 09-payment.md)
-# status_alert_enabled = true              # alert when Camfrog shows upgrade/payment-required status
+status_alert_enabled = true              # alert when Camfrog shows upgrade/payment-required status

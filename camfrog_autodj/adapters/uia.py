@@ -167,6 +167,8 @@ class UiaAdapter(ChatAdapter):
         winmsg.show_noactivate(top)
 
         # Try multiple strategies in order of reliability for Chromium-based web editors
+        # _ensure_controls() guarantees self._input is not None here
+        assert self._input is not None, "_ensure_controls must be called before _send_bg"
         r = self._input.rectangle()
         pt = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
 
@@ -181,6 +183,7 @@ class UiaAdapter(ChatAdapter):
 
         # Strategy 2: UIA ValuePattern SetValue
         try:
+            assert self._input is not None
             vp = self._input.iface_value
             if self._input.iface.CurrentIsEnabled and not vp.CurrentIsReadOnly:
                 vp.SetValue(text)
@@ -219,6 +222,8 @@ class UiaAdapter(ChatAdapter):
             except (RuntimeError, AttributeError):
                 pass  # window may have closed; proceed with foreground send
             self.win.set_focus()  # keystrokes go to the foreground window, so bring Camfrog up first
+            # _ensure_controls() guarantees self._input is not None here
+            assert self._input is not None, "_ensure_controls must be called before _send_fg"
             if self._web:
                 self._input.click_input()  # the message box is a web editor: only a click focuses it
             else:

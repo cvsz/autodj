@@ -202,6 +202,13 @@ def _relocate_config(a, cfg):
             p,
             app_cfg_path,
         )
+        # Also copy associated data files (ads-list.json, playlist.json) if they exist
+        for data_file in ("ads-list.json", "playlist.json"):
+            src = p.parent / data_file
+            dst = app_cfg_dir / data_file
+            if src.exists() and not dst.exists():
+                shutil.copyfile(src, dst)
+                log.info("copied %s to %s", src, dst)
     p = app_cfg_path
     a.config = str(p)
     # Migrate the relocated config before loading

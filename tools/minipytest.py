@@ -100,14 +100,13 @@ class MonkeyPatch:
 
 _MISSING = object()
 
+# Create a typed pytest module stub
 pytest = types.ModuleType("pytest")
-pytest.skip, pytest.importorskip, pytest.raises, pytest.mark = (
-    _skip,
-    importorskip,
-    _Raises,
-    _Mark(),
-)
-pytest.fixture = lambda *a, **k: (lambda f: f) if not (a and callable(a[0])) else a[0]
+pytest.skip = _skip  # type: ignore[attr-defined]
+pytest.importorskip = importorskip  # type: ignore[attr-defined]
+pytest.raises = _Raises  # type: ignore[attr-defined]
+pytest.mark = _Mark()  # type: ignore[attr-defined]
+pytest.fixture = lambda *a, **k: (lambda f: f) if not (a and callable(a[0])) else a[0]  # type: ignore[attr-defined]
 sys.modules["pytest"] = pytest
 
 
@@ -138,8 +137,12 @@ def main(argv):
 def _load_module(f):
     """Import one test file as a module; return None on collection error."""
     spec = importlib.util.spec_from_file_location(f.stem, f)
+    if spec is None:
+        return None
     m = importlib.util.module_from_spec(spec)
     sys.modules[f.stem] = m
+    if spec.loader is None:
+        return None
     try:
         spec.loader.exec_module(m)
     except (ImportError, SyntaxError, TypeError, AttributeError, OSError):
@@ -167,7 +170,7 @@ def _run_tests_in_module(m, f, want_name):
 
 def _param_cases(fn):
     """The parameterised cases for *fn*: a list of kwarg dicts (default [{}])."""
-    cases = [{}]
+    cases: list[dict[str, object]] = [{}]
     if hasattr(fn, "_params"):
         names, vals = fn._params
         names = [n.strip() for n in names.split(",")]

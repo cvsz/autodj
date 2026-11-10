@@ -105,7 +105,10 @@ def install_clipboard(root: tk.Misc, lang=lambda: "en"):
             ("paste", "Paste", "วาง"),
             ("all", "Select all", "เลือกทั้งหมด"),
         ):
-            m.add_command(label=thai if th else en, command=lambda a=act: _do_clip(w, a))
+            m.add_command(
+                label=thai if th else en,
+                command=lambda a=act: _do_clip(w, a),  # type: ignore[misc]
+            )
         m.tk_popup(e.x_root, e.y_root)
         return "break"
 
@@ -351,13 +354,11 @@ class VolSlider(tk.Canvas):
             bd=0,
             cursor="hand2",
         )
-        self._h, self._v, self._cmd, self._chg, self.dragging = (
-            height,
-            50,
-            command,
-            on_change,
-            False,
-        )
+        self._h: int = height
+        self._v: float = 50.0
+        self._cmd = command
+        self._chg = on_change
+        self.dragging: bool = False
         self.bind("<Configure>", lambda _e: self._draw())
         self.bind("<ButtonPress-1>", self._move_start)
         self.bind("<B1-Motion>", self._move)
@@ -451,11 +452,13 @@ class App(tk.Tk):
         )
         self._bar_items: list = []
         self._bars: list[float] = []
-        self._bar_geo = (0, 1, 0, 1)
+        self._bar_geo: tuple[float, float, float, int] = (0.0, 1.0, 0.0, 0)
         self._vc = None
         self._tab = "queue"
         self._closing = False
         self._anim_err = False
+        self._settings_win: tk.Toplevel | None = None
+        self._folder_scan_deadline: str | None = None
         self._particles = make_particles(26, seed=1)
         self._confetti: list[
             tuple[float, dict, int]
@@ -483,9 +486,9 @@ class App(tk.Tk):
                 import ctypes
 
                 try:
-                    ctypes.windll.shcore.SetProcessDpiAwareness(1)
+                    ctypes.windll.shcore.SetProcessDpiAwareness(1)  # type: ignore[attr-defined]
                 except (AttributeError, OSError):
-                    ctypes.windll.user32.SetProcessDPIAware()
+                    ctypes.windll.user32.SetProcessDPIAware()  # type: ignore[attr-defined]
             except (AttributeError, OSError):
                 pass  # best-effort DPI awareness; falls back to default scaling
 
@@ -498,14 +501,14 @@ class App(tk.Tk):
         try:
             import ctypes
 
-            hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
+            hwnd = ctypes.windll.user32.GetParent(self.winfo_id())  # type: ignore[attr-defined]
             val = ctypes.c_int(1)
             for attr in (
                 20,
                 19,
             ):  # DWMWA_USE_IMMERSIVE_DARK_MODE (Win10 2004+/Win11, older builds use 19)
                 if (
-                    ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    ctypes.windll.dwmapi.DwmSetWindowAttribute(  # type: ignore[attr-defined]
                         hwnd, attr, ctypes.byref(val), ctypes.sizeof(val)
                     )
                     == 0
@@ -1010,9 +1013,10 @@ class App(tk.Tk):
     def open_settings(self):
         """Open the settings dialog as a popup (Toplevel) window."""
         # Bring existing settings window to front if already open
-        if getattr(self, "_settings_win", None) is not None and self._settings_win.winfo_exists():
-            self._settings_win.lift()
-            self._settings_win.focus_set()
+        win = self._settings_win
+        if win is not None and win.winfo_exists():
+            win.lift()
+            win.focus_set()
             return
 
         sp = tk.Toplevel(self)
@@ -1209,7 +1213,7 @@ class App(tk.Tk):
 
         # auto_reply_enabled toggle (placed at the current row, then row advances)
         self.s_auto_reply_enabled = self.e.cfg.auto_reply_enabled
-        cb_auto_reply = self._btn(
+        cb_auto_reply: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_auto_reply_enabled", cb_auto_reply),
@@ -1257,7 +1261,7 @@ class App(tk.Tk):
 
         # admin_greeting_enabled toggle
         self.s_admin_greeting_enabled = self.e.cfg.admin_greeting_enabled
-        cb_admin_greeting = self._btn(
+        cb_admin_greeting: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_greeting_enabled", cb_admin_greeting),
@@ -1298,7 +1302,7 @@ class App(tk.Tk):
 
         # gift_announce_enabled toggle
         self.s_gift_announce_enabled = self.e.cfg.gift_announce_enabled
-        cb_gift_announce = self._btn(
+        cb_gift_announce: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_gift_announce_enabled", cb_gift_announce),
@@ -1326,7 +1330,7 @@ class App(tk.Tk):
 
         # avatar_change_enabled toggle
         self.s_avatar_change_enabled = self.e.cfg.avatar_change_enabled
-        cb_avatar_change = self._btn(
+        cb_avatar_change: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_avatar_change_enabled", cb_avatar_change),
@@ -1354,7 +1358,7 @@ class App(tk.Tk):
 
         # status_indicator_enabled toggle
         self.s_status_indicator_enabled = self.e.cfg.status_indicator_enabled
-        cb_status_indicator = self._btn(
+        cb_status_indicator: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_status_indicator_enabled", cb_status_indicator),
@@ -1382,7 +1386,7 @@ class App(tk.Tk):
 
         # status_alert_enabled toggle
         self.s_status_alert_enabled = self.e.cfg.status_alert_enabled
-        cb_status_alert = self._btn(
+        cb_status_alert: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_status_alert_enabled", cb_status_alert),
@@ -1410,7 +1414,7 @@ class App(tk.Tk):
 
         # IM viewer toggle
         self.s_im_viewer_enabled = self.e.cfg.im_viewer_enabled
-        cb_im_viewer = self._btn(
+        cb_im_viewer: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_im_viewer_enabled", cb_im_viewer),
@@ -1438,7 +1442,7 @@ class App(tk.Tk):
 
         # IM auto-reply toggle
         self.s_im_auto_reply_enabled = self.e.cfg.im_auto_reply_enabled
-        cb_im_auto_reply = self._btn(
+        cb_im_auto_reply: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_im_auto_reply_enabled", cb_im_auto_reply),
@@ -1484,7 +1488,7 @@ class App(tk.Tk):
 
         # IM require room presence toggle
         self.s_im_require_room_presence = self.e.cfg.im_require_room_presence
-        cb_im_require = self._btn(
+        cb_im_require: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_im_require_room_presence", cb_im_require),
@@ -1539,7 +1543,7 @@ class App(tk.Tk):
 
         # message_style_bold (checkbox)
         self.s_msg_bold = self.e.cfg.message_style.bold
-        cb_msg_bold = self._btn(
+        cb_msg_bold: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_msg_bold", cb_msg_bold),
@@ -1568,7 +1572,7 @@ class App(tk.Tk):
 
         # message_style_italic (checkbox)
         self.s_msg_italic = self.e.cfg.message_style.italic
-        cb_msg_italic = self._btn(
+        cb_msg_italic: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_msg_italic", cb_msg_italic),
@@ -1596,7 +1600,7 @@ class App(tk.Tk):
 
         # message_style_underline (checkbox)
         self.s_msg_underline = self.e.cfg.message_style.underline
-        cb_msg_underline = self._btn(
+        cb_msg_underline: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_msg_underline", cb_msg_underline),
@@ -1624,7 +1628,7 @@ class App(tk.Tk):
 
         # mute_enabled toggle
         self.s_mute_enabled = self.e.cfg.mute_enabled
-        cb_mute_enabled = self._btn(
+        cb_mute_enabled: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_mute_enabled", cb_mute_enabled),
@@ -1652,7 +1656,7 @@ class App(tk.Tk):
 
         # admin_mute_mic toggle
         self.s_admin_mute_mic = self.e.cfg.admin_mute_mic
-        cb_admin_mute_mic = self._btn(
+        cb_admin_mute_mic: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_mute_mic", cb_admin_mute_mic),
@@ -1680,7 +1684,7 @@ class App(tk.Tk):
 
         # admin_unmute_mic toggle
         self.s_admin_unmute_mic = self.e.cfg.admin_unmute_mic
-        cb_admin_unmute_mic = self._btn(
+        cb_admin_unmute_mic: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_unmute_mic", cb_admin_unmute_mic),
@@ -1708,7 +1712,7 @@ class App(tk.Tk):
 
         # admin_block_user toggle
         self.s_admin_block_user = self.e.cfg.admin_block_user
-        cb_admin_block_user = self._btn(
+        cb_admin_block_user: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_block_user", cb_admin_block_user),
@@ -1736,7 +1740,7 @@ class App(tk.Tk):
 
         # admin_unblock_user toggle
         self.s_admin_unblock_user = self.e.cfg.admin_unblock_user
-        cb_admin_unblock_user = self._btn(
+        cb_admin_unblock_user: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_unblock_user", cb_admin_unblock_user),
@@ -1764,7 +1768,7 @@ class App(tk.Tk):
 
         # admin_block_bot toggle
         self.s_admin_block_bot = self.e.cfg.admin_block_bot
-        cb_admin_block_bot = self._btn(
+        cb_admin_block_bot: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_block_bot", cb_admin_block_bot),
@@ -1792,7 +1796,7 @@ class App(tk.Tk):
 
         # admin_unblock_bot toggle
         self.s_admin_unblock_bot = self.e.cfg.admin_unblock_bot
-        cb_admin_unblock_bot = self._btn(
+        cb_admin_unblock_bot: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_unblock_bot", cb_admin_unblock_bot),
@@ -1820,7 +1824,7 @@ class App(tk.Tk):
 
         # admin_kick_user toggle
         self.s_admin_kick_user = self.e.cfg.admin_kick_user
-        cb_admin_kick_user = self._btn(
+        cb_admin_kick_user: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_kick_user", cb_admin_kick_user),
@@ -1848,7 +1852,7 @@ class App(tk.Tk):
 
         # admin_ban_user toggle
         self.s_admin_ban_user = self.e.cfg.admin_ban_user
-        cb_admin_ban_user = self._btn(
+        cb_admin_ban_user: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_ban_user", cb_admin_ban_user),
@@ -1876,7 +1880,7 @@ class App(tk.Tk):
 
         # admin_unban_user toggle
         self.s_admin_unban_user = self.e.cfg.admin_unban_user
-        cb_admin_unban_user = self._btn(
+        cb_admin_unban_user: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_unban_user", cb_admin_unban_user),
@@ -1904,7 +1908,7 @@ class App(tk.Tk):
 
         # admin_punish_user toggle
         self.s_admin_punish_user = self.e.cfg.admin_punish_user
-        cb_admin_punish_user = self._btn(
+        cb_admin_punish_user: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_punish_user", cb_admin_punish_user),
@@ -1932,7 +1936,7 @@ class App(tk.Tk):
 
         # admin_punish_bot toggle
         self.s_admin_punish_bot = self.e.cfg.admin_punish_bot
-        cb_admin_punish_bot = self._btn(
+        cb_admin_punish_bot: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_punish_bot", cb_admin_punish_bot),
@@ -1962,7 +1966,7 @@ class App(tk.Tk):
         self.s_admin_greeting_enabled = (
             self.e.cfg.admin_greeting_enabled
         )  # reuse existing admin greeting enabled toggle
-        cb_admin_greeting_enabled = self._btn(
+        cb_admin_greeting_enabled: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_admin_greeting_enabled", cb_admin_greeting_enabled),
@@ -1999,7 +2003,7 @@ class App(tk.Tk):
 
         # admin_delete_message_enabled toggle
         self.s_admin_delete_message_enabled = self.e.cfg.admin_delete_message_enabled
-        cb_admin_delete_message_enabled = self._btn(
+        cb_admin_delete_message_enabled: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool(
@@ -2044,7 +2048,7 @@ class App(tk.Tk):
 
         # auto_discover toggle
         self.s_auto_discover = self.e.cfg.auto_discover
-        cb_auto_discover = self._btn(
+        cb_auto_discover: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_auto_discover", cb_auto_discover),
@@ -2067,7 +2071,7 @@ class App(tk.Tk):
 
         # auto_launch toggle
         self.s_auto_launch = self.e.cfg.auto_launch
-        cb_auto_launch = self._btn(
+        cb_auto_launch: PillButton = self._btn(
             sp_inner,
             "",
             lambda: self._toggle_bool("s_auto_launch", cb_auto_launch),
@@ -2171,8 +2175,9 @@ class App(tk.Tk):
 
     def _settings_close(self):
         """Close the settings popup."""
-        if hasattr(self, "_settings_win") and self._settings_win.winfo_exists():
-            self._settings_win.destroy()
+        win = self._settings_win
+        if win is not None and win.winfo_exists():
+            win.destroy()
             self._settings_win = None
 
     # ---- animated scenery ---------------------------------------------------
@@ -3170,7 +3175,7 @@ class App(tk.Tk):
         """Poll new IM / private messages from the engine and append them to the IM tab."""
         im_seq, im_entries = self.e.im_snapshot()
         im_new = min(im_seq - self._im_seen, len(im_entries))
-        if im_new > 0 and self.cfg.im_viewer_enabled:
+        if im_new > 0 and self.e.cfg.im_viewer_enabled:
             self.im_chat.configure(state="normal")
             for who, text in im_entries[-im_new:]:
                 self.im_chat.insert("end", who + ": ", ("who",))

@@ -96,8 +96,8 @@ class Config:
     line_regex: str = (
         r"^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$"
     )
-    mpv_path: str = "mpv"
-    audio_device: str = ""
+    mpv_path: str = "mpv/mpv.exe"
+    audio_device: str = "auto"
     volume: int = 70
     music_dirs: list[str] = field(default_factory=list)
     autoplay_sources: list[str] = field(default_factory=list)
@@ -129,9 +129,7 @@ class Config:
     blocked_users: list[str] = field(
         default_factory=list
     )  # nicks whose commands are ignored (admins cannot be blocked)
-    ytdlp_path: str = (
-        ""  # "" = auto: yt-dlp(.exe) next to mpv or on PATH, else the bundled Python module
-    )
+    ytdlp_path: str = "mpv/yt-dlp.exe"  # "" = auto: yt-dlp(.exe) next to mpv or on PATH, else the bundled Python module
     poll_interval: float = 0.5  # seconds between chat reads (raise it if AutoDJ uses too much CPU)
     log_file: str = ""  # also write the log to this file (rotating, 1 MB x 3)
     playlist_file: str = (
@@ -139,13 +137,13 @@ class Config:
     )
     # (deduplicated) and join the autoplay pool (random); "" = disable persistence
     playlist_dir: str = (
-        ""  # directory of *.json playlist files auto-loaded at startup; "" = disabled
+        "playlist"  # directory of *.json playlist files auto-loaded at startup; "" = disabled
     )
     search_limit: int = (
         1  # YouTube text-search results fetched per non-admin !play (1 = first match only)
     )
     mpv_timeout: float = (
-        0.0  # seconds to wait for one mpv track before treating it as hung (0 = no timeout)
+        30.0  # seconds to wait for one mpv track before treating it as hung (0 = no timeout)
     )
     # Audio Engineering
     audio_fade: bool = True  # enable audio volume fade-in and fade-out
@@ -166,11 +164,11 @@ class Config:
     user_request_limit: int = 5  # max song requests allowed per user within rate_limit_window
     rate_limit_window: float = 300.0  # rolling time window for per-user request limit (seconds)
     # Auto-reply: scheduled messages sent to the room from ads-list.json
-    auto_reply_enabled: bool = False  # enable scheduled auto-reply messages
+    auto_reply_enabled: bool = True  # enable scheduled auto-reply messages
     auto_reply_interval: float = 300.0  # seconds between auto-reply messages (5 minutes)
     auto_reply_file: str = "ads-list.json"  # JSON file with messages to rotate through
     # IM Auto-reply: automatic reply to private/instant messages
-    im_auto_reply_enabled: bool = False  # enable auto-reply to private/instant messages
+    im_auto_reply_enabled: bool = True  # enable auto-reply to private/instant messages
     im_auto_reply_message: str = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."  # message to send as auto-reply
     im_auto_reply_cooldown: float = (
         60.0  # seconds between auto-replies to the same user (avoid spam)
@@ -182,24 +180,24 @@ class Config:
     # Mic mute state
     mute_enabled: bool = False  # mic muted state
     # Admin mute mic - admin can mute mic
-    admin_mute_mic: bool = False  # admin can mute mic
-    admin_unmute_mic: bool = False  # admin can unmute mic
+    admin_mute_mic: bool = True  # admin can mute mic
+    admin_unmute_mic: bool = True  # admin can unmute mic
     # Admin block user - admin can block user
     admin_block_user: bool = False  # admin can block user
     admin_unblock_user: bool = False  # admin can unblock user
     # Admin block bot - admin can block bot
-    admin_block_bot: bool = False  # admin can block bot
-    admin_unblock_bot: bool = False  # admin can unblock bot
+    admin_block_bot: bool = True  # admin can block bot
+    admin_unblock_bot: bool = True  # admin can unblock bot
     # Admin kick user - admin can kick user
-    admin_kick_user: bool = False  # admin can kick user
+    admin_kick_user: bool = True  # admin can kick user
     # Admin ban user - admin can ban user
-    admin_ban_user: bool = False  # admin can ban user
-    admin_unban_user: bool = False  # admin can unban user
+    admin_ban_user: bool = True  # admin can ban user
+    admin_unban_user: bool = True  # admin can unban user
     # Admin punish user - admin can punish user
-    admin_punish_user: bool = False  # admin can punish user
-    admin_punish_bot: bool = False  # admin can punish bot
+    admin_punish_user: bool = True  # admin can punish user
+    admin_punish_bot: bool = True  # admin can punish bot
     # Admin greeting: greet admin when they send first message in session
-    admin_greeting_enabled: bool = False  # enable admin greeting
+    admin_greeting_enabled: bool = True  # enable admin greeting
     admin_greeting_message: str = (
         "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"  # greeting message, {admin} will be replaced
     )
@@ -215,12 +213,12 @@ class Config:
     # IM viewer: show private/instant messages in a dedicated GUI tab (see docs/camfrog-re/)
     im_viewer_enabled: bool = True  # show the IM / private message viewer tab in the GUI
     # Welcome message - welcome message config
-    welcome_message_enabled: bool = False  # enable welcome message
+    welcome_message_enabled: bool = True  # enable welcome message
     welcome_message_message: str = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"  # welcome message
     # Admin delete message - admin delete message feature
-    admin_delete_message_enabled: bool = False  # enable admin delete message feature
+    admin_delete_message_enabled: bool = True  # enable admin delete message feature
     # Font/style customization for GUI preview only (Camfrog does not support rich text in sent messages)
-    message_style: MessageStyle = field(default_factory=MessageStyle)
+    message_style: MessageStyle = field(default_factory=lambda: MessageStyle(font_color="#FF0000"))
 
     @classmethod
     def load(cls, path: str | None) -> Config:

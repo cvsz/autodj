@@ -24,7 +24,7 @@ import pytest
 from camfrog_autodj.library import MEDIA, LocalIndex, scan_folder
 
 
-def _media(root: str, name: str, content: b"fake audio") -> str:
+def _media(root: str, name: str, content: bytes = b"fake audio") -> str:
     p = os.path.join(root, name)
     with open(p, "wb") as f:
         f.write(content)

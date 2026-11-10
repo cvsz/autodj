@@ -30,7 +30,7 @@ def _tk_module():
         "Misc",
     ):
         setattr(m, n, getattr(fake_tk, n))
-    m.TclError, m.font, m.ttk, m.filedialog = (
+    m.TclError, m.font, m.ttk, m.filedialog = (  # type: ignore[attr-defined]
         fake_tk.TclError,
         fake_tk.font,
         fake_tk.ttk,

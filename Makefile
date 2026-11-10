@@ -157,12 +157,15 @@ fix-playlists:  ## Validate and fix playlist/*.json (removes invalid entries wit
 	$(PY) tools/validate_playlists.py --fix
 
 ## ---- full validation -----------------------------------------------------------
-full-validation: lint typecheck validate-playlists test changelog-check config-check  ## Run source validation (does not build or test the Windows installer)
+full-validation: lint typecheck validate-playlists test changelog-check config-check validate-installer  ## Run source validation (does not build or test the Windows installer)
 	@echo ""
 	@echo "================================================"
 	@echo "  SOURCE VALIDATION PASSED for v$(VERSION)"
 	@echo "  Build, signing, installer, and Windows runtime are separate gates."
 	@echo "================================================"
+
+validate-installer:  ## Validate installer.nsi structure and required files
+	@$(PY) tools/validate_installer.py
 
 lint-src:  ## Lint source + tools with ruff (excludes test files with pre-existing issues)
 	@if $(PY) -c "import ruff" 2>/dev/null || command -v ruff >/dev/null 2>&1; then \
@@ -217,11 +220,11 @@ build-all:  ## Full pipeline: build AutoDJ.exe -> connect Windows 11 -> make nsi
 ifeq ($(OS),Windows_NT)
 	@echo "=== Step 1/3: Building AutoDJ.exe (PyInstaller) ==="
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
-	@if not exist dist\AutoDJ.exe (echo "ERROR: dist\AutoDJ.exe not found after build." && exit 1)
+	@powershell.exe -NoProfile -Command "if (-not (Test-Path 'dist\\AutoDJ.exe')) { Write-Error 'ERROR: dist\\AutoDJ.exe not found after build.'; exit 1 }"
 	@echo ""
 	@echo "=== Step 2/3: Verifying Windows 11 environment ==="
 	@powershell.exe -NoProfile -Command "[System.Environment]::OSVersion.Version.Major -ge 10 -and [System.Environment]::OSVersion.Version.Build -ge 22000" || (echo "ERROR: Windows 11 (Build 22000+) required." && exit 1)
-	@powershell.exe -NoProfile -Command "Get-Command makensis -ErrorAction SilentlyContinue" || (echo "ERROR: NSIS (makensis) not found in PATH. Install NSIS 3.08+." && exit 1)
+	@powershell.exe -NoProfile -Command "if (Get-Command makensis -ErrorAction SilentlyContinue) { exit 0 } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { exit 0 } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { exit 0 } else { echo 'ERROR: NSIS (makensis) not found in PATH or C:\Program Files (x86)\NSIS\. Install NSIS 3.08+.'; exit 1 }" || (echo "ERROR: NSIS (makensis) not found. Install NSIS 3.08+." && exit 1)
 	@echo "  OK: Windows 11 detected"
 	@echo "  OK: NSIS (makensis) found"
 	@echo ""

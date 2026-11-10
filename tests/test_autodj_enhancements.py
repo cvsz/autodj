@@ -269,10 +269,14 @@ def test_add_request_position_zero_moves_to_front():
     q = PlayQueue(shuffle=False)
     q.add_pool([T("a"), T("b"), T("c")])
     q.add_request(T("new", "you"), position=0)
-    assert q.pop().title == "new"
-    assert q.pop().title == "a"
-    assert q.pop().title == "b"
-    assert q.pop().title == "c"
+    popped = q.pop()
+    assert popped is not None and popped.title == "new"
+    popped = q.pop()
+    assert popped is not None and popped.title == "a"
+    popped = q.pop()
+    assert popped is not None and popped.title == "b"
+    popped = q.pop()
+    assert popped is not None and popped.title == "c"
 
 
 def test_add_request_position_clamped():
@@ -280,8 +284,10 @@ def test_add_request_position_clamped():
     q = PlayQueue(shuffle=False)
     q.add_request(T("a"))
     q.add_request(T("b"), position=100)  # clamped to len=1
-    assert q.pop().title == "a"
-    assert q.pop().title == "b"
+    popped = q.pop()
+    assert popped is not None and popped.title == "a"
+    popped = q.pop()
+    assert popped is not None and popped.title == "b"
 
 
 def test_add_request_negative_position_clamped_to_zero():
@@ -289,8 +295,10 @@ def test_add_request_negative_position_clamped_to_zero():
     q = PlayQueue(shuffle=False)
     q.add_request(T("a"))
     q.add_request(T("b"), position=-5)
-    assert q.pop().title == "b"
-    assert q.pop().title == "a"
+    popped = q.pop()
+    assert popped is not None and popped.title == "b"
+    popped = q.pop()
+    assert popped is not None and popped.title == "a"
 
 
 # ============================================================================

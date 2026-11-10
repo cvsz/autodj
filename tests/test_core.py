@@ -20,18 +20,28 @@ def T(n, u="AutoDJ", d=60):
 def test_queue_requests_first_and_peek_stable():
     q = PlayQueue(shuffle=False)
     q.add_pool([T("a"), T("b")])
-    assert q.peek().title == "a" and q.peek().title == "a"
+    peeked = q.peek()
+    assert peeked is not None and peeked.title == "a"
+    peeked2 = q.peek()
+    assert peeked2 is not None and peeked2.title == "a"
     q.add_request(T("req", "bob"))
-    assert q.pop().title == "req"
-    assert q.pop().title == "a"
-    assert q.pop().title == "b"
-    assert q.pop().title == "a"  # pool loops
+    popped = q.pop()
+    assert popped is not None and popped.title == "req"
+    popped2 = q.pop()
+    assert popped2 is not None and popped2.title == "a"
+    popped3 = q.pop()
+    assert popped3 is not None and popped3.title == "b"
+    popped4 = q.pop()
+    assert popped4 is not None and popped4.title == "a"  # pool loops
 
 
 def test_queue_remove_count():
     q = PlayQueue()
     q.add_request(T("x", "Bob"))
-    assert q.count_by("bob") == 1 and q.remove(1).title == "x" and q.pop() is None
+    assert q.count_by("bob") == 1
+    removed = q.remove(1)
+    assert removed is not None and removed.title == "x"
+    assert q.pop() is None
 
 
 def test_diff_lines():
@@ -44,6 +54,7 @@ def test_diff_lines():
 def test_parse_line():
     rx = re.compile(Config().line_regex)
     m = parse_line("[12:30] mika_88: !play queen", rx)
+    assert m is not None
     assert (m.user, m.text) == ("mika_88", "!play queen")
     assert parse_line("*** joined the room", rx) is None
 
@@ -90,7 +101,7 @@ def make():
         player=FakePlayer(),
         index=LocalIndex([]),
     )
-    e.resolve = lambda arg, user, admin: [
+    e.resolve = lambda arg, user, admin: [  # type: ignore[method-assign]
         Track("https://youtu.be/" + arg.replace(" ", "_"), arg, 120, user)
     ]
     return e

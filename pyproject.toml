@@ -29,6 +29,8 @@ testpaths = ["tests"]
 # ignored so the release typecheck gate validates AutoDJ's own code
 # instead of failing on unstubbed dependencies.
 ignore_missing_imports = true
+# Enable checking of untyped function bodies to catch type issues early
+check_untyped_defs = true
 
 [tool.ruff]
 # Ruff configuration for AutoDJ source code.
