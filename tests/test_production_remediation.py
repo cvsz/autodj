@@ -31,13 +31,14 @@ from camfrog_autodj.adapters.base import ChatMessage
 from camfrog_autodj.config import Config, ConfigError
 from camfrog_autodj.discover import Ctl, Found, best_room, choose_view
 from camfrog_autodj.engine import Engine
+from camfrog_autodj.exceptions import UserError
 from camfrog_autodj.library import (
     LocalIndex,
     _extract_exe,
     parse_ytdlp_info,
     remote_tracks,
 )
-from camfrog_autodj.models import Track, UserError
+from camfrog_autodj.models import Track
 from camfrog_autodj.player import MpvPlayer, failure_reasons
 
 # ============================================================================

@@ -18,7 +18,7 @@ param(
   [string]$Pfx = $env:AUTODJ_PFX,
   [string]$Password = $env:AUTODJ_PFX_PASSWORD,
   [string]$Thumbprint = $env:AUTODJ_CERT_THUMBPRINT,
-  [string]$Subject = "CN=ZEAZDEV COMPANY LIMITED, O=ZEAZDEV COMPANY LIMITED, C=TH",
+  [string]$Subject = "CN=CamfrogAutoDJ, O=CamfrogAutoDJ, C=TH",
   [string]$Name = "AutoDJ"
 )
 $ErrorActionPreference = "Stop"

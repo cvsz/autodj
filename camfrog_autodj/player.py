@@ -250,7 +250,7 @@ class MpvPlayer:
             else:
                 import socket
 
-                with socket.socket(socket.AF_UNIX) as s:
+                with socket.socket(socket.AF_UNIX) as s:  # type: ignore[attr-defined]  # AF_UNIX only on non-Windows
                     s.connect(ipc)
                     s.sendall(data)
             return True
@@ -311,7 +311,7 @@ class MpvPlayer:
 
         start = time.monotonic()
         try:
-            with socket.socket(socket.AF_UNIX) as s:
+            with socket.socket(socket.AF_UNIX) as s:  # type: ignore[attr-defined]  # AF_UNIX only on non-Windows
                 s.settimeout(timeout)
                 s.connect(ipc)
                 s.sendall(data)
@@ -344,9 +344,34 @@ class MpvPlayer:
         return self._cmd("set_property", "volume", v)
 
     def play_file(self, path: str):
+        """Play a single file (e.g. TTS WAV) and set up IPC so volume control works during playback."""
+        # Set up IPC so set_volume() (ducking) works during TTS playback
+        n = next(_ids)
+        ipc, logf = self._ipc_log_paths(n)
         kw: dict = {}
         if _is_windows():
             kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
-        # Timeout so a corrupted or unplayable WAV cannot block the caller forever.
         kw["timeout"] = 30
-        subprocess.run(self._base() + ["--volume=100", "--", path], check=False, **kw)
+        cmd = self._base() + [
+            "--volume=100",
+            f"--input-ipc-server={ipc}",
+            f"--log-file={logf}",
+            "--",
+            path,
+        ]
+        with self._lock:
+            self.skipped = False
+            self._paused_since, self._paused_total = None, 0.0
+            self._ipc = ipc
+        try:
+            subprocess.run(cmd, check=False, **kw)
+        except subprocess.TimeoutExpired:
+            log.warning("play_file timed out")
+        finally:
+            with self._lock:
+                self.proc = None
+                self._ipc = None
+            try:
+                os.remove(logf)
+            except OSError:
+                pass

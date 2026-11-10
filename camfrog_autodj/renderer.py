@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from .config import MessageStyle
+from .textutil import clean_text
 
 
 @dataclass
@@ -55,12 +56,12 @@ class MessageRenderer:
         Returns:
             RenderedMessage with plain_text (for sending) and preview_tags (for GUI)
         """
-        clean_text = text.strip()
+        clean_text_value = clean_text(text)
         # For sending: always plain text - Camfrog does not support rich text
         # For preview: generate tkinter tag configuration
         preview_tags = self._make_preview_tags(style)
         return RenderedMessage(
-            plain_text=clean_text,
+            plain_text=clean_text_value,
             rich_text=None,  # Never rich text for sending
             preview_tags=preview_tags,
         )

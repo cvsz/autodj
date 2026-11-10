@@ -15,8 +15,9 @@ from camfrog_autodj import __version__
 from camfrog_autodj.adapters.base import ChatMessage
 from camfrog_autodj.commands import COMMANDS
 from camfrog_autodj.config import Config, ConfigError
+from camfrog_autodj.exceptions import UserError
 from camfrog_autodj.messages import STR
-from camfrog_autodj.models import Track, UserError
+from camfrog_autodj.models import Track
 from camfrog_autodj.playqueue import PlayQueue
 
 
@@ -261,6 +262,7 @@ def test_admin_can_run_admin_command():
     e = make()
     e.admins = {"boss"}
     e.player.play = lambda s, v, d=None: True
+    e.player.set_pause = lambda v: True  # mock IPC accept
     e.current = Track("s", "now", 90, "boss")  # a track must be "playing" for pause to act
     e.router.handle(ChatMessage("boss", "!pause"))
     out(e)  # consume any output
@@ -523,7 +525,7 @@ def test_remote_tracks_clear_error_when_nothing_available(monkeypatch):
     import builtins
 
     from camfrog_autodj import library
-    from camfrog_autodj.models import UserError
+    from camfrog_autodj.exceptions import UserError
 
     real_import = builtins.__import__
     monkeypatch.setattr(
@@ -743,6 +745,7 @@ def test_build_env_checker_lists_what_is_missing():
 def test_play_saves_to_playlist_json(tmp_path):
     """Chat requests (!play) are appended to playlist.json and deduplicated by source."""
     playlist_path = tmp_path / "playlist.json"
+    song_path = str(tmp_path / "song one.mp3")  # cross-platform absolute path
     e = make()
     e.playlist_file = str(playlist_path)
     from camfrog_autodj.library import local_track
@@ -753,7 +756,7 @@ def test_play_saves_to_playlist_json(tmp_path):
     # make() overrides resolve to return YouTube URLs; override back for local files
     e.resolve = lambda arg, user, admin: [local_track(arg, user) if os.path.isabs(arg) else []]
 
-    tracks = e.resolve("/m/song one.mp3", "amy", True)
+    tracks = e.resolve(song_path, "amy", True)
     e.queue.add_request(tracks[0])
     e.playlist.add(tracks)
 
@@ -763,7 +766,7 @@ def test_play_saves_to_playlist_json(tmp_path):
     assert [t["added_by"] for t in data["tracks"]] == ["amy"]
 
     # Duplicate request is refused
-    tracks2 = e.resolve("/m/song one.mp3", "amy", True)
+    tracks2 = e.resolve(song_path, "amy", True)
     e.queue.add_request(tracks2[0])
     e.playlist.add(tracks2)
     data2 = json.loads(playlist_path.read_text("utf-8"))

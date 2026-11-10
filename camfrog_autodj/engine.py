@@ -11,6 +11,7 @@ import textwrap
 import threading
 import time
 from collections import deque
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -18,6 +19,8 @@ from urllib.parse import parse_qs, urlparse
 from .adapters.base import ChatMessage
 from .commands import Router
 from .exceptions import (
+    ChatAdapterError,
+    UserError,
     YtdlpMissingError,
 )
 from .library import (
@@ -31,7 +34,7 @@ from .library import (
     scan_folder,
 )
 from .messages import tr
-from .models import Track, UserError
+from .models import Track
 from .player import MpvPlayer
 from .playlist import PlaylistStore, load_playlist
 from .playqueue import PlayQueue
@@ -89,7 +92,6 @@ class Engine:
         self.outbox: queue.Queue[str] = queue.Queue()
         self.chat_log: deque[tuple[str, str]] = deque(maxlen=300)
         self.chat_seq = 0
-        self.stop_evt = threading.Event()
         self.chat_done = threading.Event()
         self.wake = threading.Event()
         self.exec = ThreadPoolExecutor(
@@ -110,6 +112,7 @@ class Engine:
         self.im_log: deque[tuple[str, str]] = deque(maxlen=300)  # IM / private messages
         self.im_seq = 0  # IM message sequence counter for GUI polling
         self._active_room_users: set[str] = set()  # users currently in room (seen in chat)
+        self._participant_count: int = 0  # estimated participants (updated from chat)
         self._last_user_request_time: float = 0.0  # monotonic time of last user !play request
         self._autoplay_mode: bool = (
             False  # True when playing from autoplay pool due to idle timeout
@@ -136,6 +139,7 @@ class Engine:
         # ---- Health check state --------------------------------------------------
         self._last_health_check: float = 0.0
         self._health_check_interval: float = 30.0  # seconds between auto health checks
+        self._backoff_until: float = 0.0  # monotonic time when back-off expires
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -397,21 +401,19 @@ class Engine:
             self.stop_evt.wait(self.cfg.send_interval)  # flood control (wakes up at shutdown)
 
     # ---- controls -------------------------------------------------------
-    def skip(self):
+    def skip(self) -> None:
         self.player.stop()
 
-    def pause(self):
+    def pause(self) -> None:
         if self.current and not self.paused:
-            if (
-                self.player.set_pause(True) is False
-            ):  # mpv's control pipe is not ready (yet): state stays truthful
+            if not self.player.set_pause(True):
                 log.warning("pause failed: mpv did not accept the command")
                 return
             self.paused, self._paused_at = True, time.monotonic()
 
-    def resume(self):
+    def resume(self) -> None:
         if self.paused:
-            if self.player.set_pause(False) is False:
+            if not self.player.set_pause(False):
                 log.warning("resume failed: mpv did not accept the command")
                 return
             self._paused_total += time.monotonic() - (self._paused_at or time.monotonic())
@@ -457,11 +459,11 @@ class Engine:
             return False
         return self.player.seek(seconds)
 
-    def set_volume(self, v: int):
+    def set_volume(self, v: int) -> None:
         self.volume = max(0, min(100, int(v)))
         self.player.set_volume(self.volume)
 
-    def speak(self, text: str):
+    def speak(self, text: str) -> None:
         """Text-to-speech into the same output (the Camfrog mic); music is ducked meanwhile."""
         text = clean_text(text)
         if not text:
@@ -476,6 +478,7 @@ class Engine:
             with self._speak_lock:
                 try:
                     synth(text, wav, self.cfg)
+                    # Duck music volume via IPC (play_file sets up IPC before playback)
                     self.player.set_volume(self.cfg.tts_duck)
                     self.player.play_file(wav)
                 except Exception:
@@ -565,8 +568,19 @@ class Engine:
 
     def _resolve_local_file(self, arg: str, user: str, admin: bool) -> list[Track]:
         p = Path(arg)
+        # Resolve to absolute, normalized path to prevent traversal attacks
+        try:
+            p = p.resolve()
+        except (OSError, ValueError) as err:
+            raise UserError(self.t("load_failed", err="invalid path")) from err
+        # Non-admin: must be in the indexed music library
         if not admin and not self.index.contains(p):
             raise UserError(self.t("file_not_in_lib"))
+        # Admin: must still be within configured music_dirs (defense in depth)
+        if admin and self.cfg.music_dirs:
+            music_dirs = [Path(d).resolve() for d in self.cfg.music_dirs if Path(d).is_dir()]
+            if music_dirs and not any(p.is_relative_to(d) for d in music_dirs):
+                raise UserError(self.t("folders_admin"))
         if p.is_dir():
             if not admin:
                 raise UserError(self.t("folders_admin"))
@@ -579,9 +593,9 @@ class Engine:
         self,
         arg: str,
         user: str = "DJ",
-        on_success=None,
-        on_error=None,
-    ):
+        on_success: Callable[[list[Track]], None] | None = None,
+        on_error: Callable[[str], None] | None = None,
+    ) -> None:
         """Admin request (GUI): no limits, runs in the background.
 
         Args:
@@ -649,11 +663,11 @@ class Engine:
         self,
         src: str,
         announce: bool = True,
-        on_success=None,
-        on_error=None,
+        on_success: Callable[[list[Track]], None] | None = None,
+        on_error: Callable[[str], None] | None = None,
         limit: int = 0,
         max_dirs: int = 0,
-    ):
+    ) -> None:
         def job():
             try:
                 tracks = self.load_source(src, limit=limit, max_dirs=max_dirs)
@@ -829,11 +843,15 @@ class Engine:
         return self._autoplay_mode
 
     def _pop_next_track(self, is_request: bool) -> Track | None:
-        """Pop the next track based on request/autoplay mode."""
-        if is_request:
+        """Pop the next track based on request/autoplay mode.
+
+        Requests always take priority over the autoplay pool. When not in
+        request mode, pick from the autoplay pool (shuffled or sequential).
+        """
+        if is_request and self.queue.requests:
             return self.queue.pop()
-        elif self.queue.pool:
-            return self.queue.pop()  # will pick from pool since requests is empty
+        if not is_request and self.queue.pool:
+            return self.queue.pop()  # picks from pool since requests is empty
         return None
 
     def _player_loop(self):
@@ -845,6 +863,12 @@ class Engine:
                 log.info("Circuit breaker open; waiting before next playback attempt")
                 self.stop_evt.wait(10.0)
                 continue
+
+            # Check back-off: if we're in a back-off period, wait briefly and retry
+            if self._backoff_until > 0 and time.monotonic() < self._backoff_until:
+                self.stop_evt.wait(1.0)
+                continue
+            self._backoff_until = 0.0
 
             if not self._mpv_available():
                 if fails == 0:
@@ -898,12 +922,18 @@ class Engine:
             )
 
     def _track_failed(self, t: Track, fails: int) -> None:
-        """Mark *t* failed, announce per the back-off policy, then back off."""
+        """Mark *t* failed, announce per the back-off policy, then back off.
+
+        The back-off is non-blocking: we record the failure time and let the
+        player loop check it on the next iteration instead of blocking the
+        thread with stop_evt.wait().
+        """
         t.state = "FAILED"
         self._log_track(t, "FAILED")
         self.current = None
         self._announce_playback_failure(t, fails)
-        self.stop_evt.wait(self.fail_delay(fails))  # back off: never spin on a broken setup
+        # Record back-off time; the player loop checks _backoff_until before playing
+        self._backoff_until = time.monotonic() + self.fail_delay(fails)
 
     def _try_play(self, t: Track) -> bool:
         try:
@@ -970,11 +1000,14 @@ class Engine:
                     self._handle_im(msg)
                 else:
                     self._handle_room_message(msg)
+        except (OSError, RuntimeError, ChatAdapterError):
+            # Expected adapter-level failures at shutdown or COM wedges
+            if not self.stop_evt.is_set():
+                log.exception("chat loop ended with adapter error")
         except Exception:
-            if (
-                not self.stop_evt.is_set()
-            ):  # at shutdown the adapter/executor going away is expected
-                log.exception("chat loop ended")
+            # Unexpected: log but don't crash the bot
+            if not self.stop_evt.is_set():
+                log.exception("chat loop ended with unexpected error")
         finally:
             self.chat_done.set()
 
@@ -1000,7 +1033,7 @@ class Engine:
         self.log_chat(msg.user, msg.text)
 
         # Track active room users
-        self._active_room_users.add(msg.user.lower())
+        self._update_participant_count(msg.user)
         # Camfrog RE integrations: gift announcement + upgrade/payment status alert
         self._handle_re_events(msg)
 
@@ -1010,12 +1043,22 @@ class Engine:
         # Update last user request time for !play commands (tracked in router)
         self.exec.submit(self.router.handle, msg)
 
-    def _log_im_message(self, msg) -> None:
+    @property
+    def participant_count(self) -> int:
+        """Estimated number of participants in the room (from chat activity)."""
+        return self._participant_count
+
+    def _update_participant_count(self, user: str):
+        """Update participant tracking from chat activity."""
+        self._active_room_users.add(user.lower())
+        self._participant_count = len(self._active_room_users)
+
+    def _log_im_message(self, msg: ChatMessage) -> None:
         """Log an IM / private message for the IM viewer GUI (read-only)."""
         self.im_log.append((msg.user, msg.text))
         self.im_seq += 1
 
-    def _handle_admin_greeting(self, msg) -> None:
+    def _handle_admin_greeting(self, msg: ChatMessage) -> None:
         """Greet an admin on their first message of the session (if enabled)."""
         if not self.cfg.admin_greeting_enabled:
             return
@@ -1062,7 +1105,7 @@ class Engine:
     # Name color regex: style='color: #RRGGBB' or style="color: #RRGGBB" (Camfrog nickname color; see docs/camfrog-re/15-name-color.md)
     _NICK_COLOR_RE = re.compile(r"color:\s*#([0-9a-fA-F]{6})")
 
-    def _handle_re_events(self, msg) -> None:
+    def _handle_re_events(self, msg: ChatMessage) -> None:
         """Handle Camfrog reverse-engineering events from a room chat message.
 
         Detects virtual-gift messages (announce them), avatar changes (announce them),
@@ -1532,42 +1575,60 @@ class Engine:
     # ---- admin: mic mute / unmute ----------------------------------------
 
     def mute_mic(self, muted: bool):
-        """Mute or unmute the mic (Camfrog mic output)."""
+        """Mute or unmute the mic output via player volume.
+
+        Sets player volume to 0 when muted, restores previous volume when unmuted.
+        This affects AutoDJ's music output, not the Camfrog mic device directly.
+        """
         if muted:
-            self.player.set_volume(0)
+            self._mic_prev_volume = self.volume
+            self.set_volume(0)
+            self.mute_enabled = True
             log.info("Mic muted by admin")
         else:
-            self.player.set_volume(self.volume)
+            self.set_volume(getattr(self, "_mic_prev_volume", 70))
+            self.mute_enabled = False
             log.info("Mic unmuted by admin")
 
     # ---- admin: kick / ban / unban / punish ------------------------------
 
     def kick_user(self, nick: str):
-        """Kick a user from the room (Camfrog kick command)."""
+        """Kick a user from the room via Camfrog /kick command."""
+        self.say(f"/kick {nick}")
         log.info("Kicked user: %s", nick)
 
     def ban_user(self, nick: str):
-        """Ban a user from the room."""
+        """Ban a user from the room via Camfrog /ban command."""
+        self.say(f"/ban {nick}")
         log.info("Banned user: %s", nick)
 
     def unban_user(self, nick: str):
-        """Unban a user from the room."""
+        """Unban a user from the room via Camfrog /unban command."""
+        self.say(f"/unban {nick}")
         log.info("Unbanned user: %s", nick)
 
     def punish_user(self, nick: str):
-        """Punish a user (Camfrog punish command)."""
+        """Punish a user via Camfrog /punish command."""
+        self.say(f"/punish {nick}")
         log.info("Punished user: %s", nick)
 
     def punish_bot(self, nick: str):
-        """Punish a bot."""
+        """Punish a bot via Camfrog /punish command."""
+        self.say(f"/punish {nick}")
         log.info("Punished bot: %s", nick)
 
     # ---- admin: delete message -------------------------------------------
 
     def delete_message(self, msg_id: str) -> bool:
-        """Delete a message by its ID. Returns True if deleted."""
-        log.info("Deleting message id: %s", msg_id)
-        return False  # not supported by the UI adapter; operator should use Camfrog UI
+        """Delete a message by its ID via Camfrog /delete command.
+
+        Returns True if the delete command was sent, False if disabled.
+        """
+        if not getattr(self.cfg, "admin_delete_message_enabled", False):
+            return False
+        self.say(f"/delete {msg_id}")
+        log.info("Deleted message id: %s", msg_id)
+        return True
 
     # ---- admin: welcome message ------------------------------------------
 

@@ -108,7 +108,7 @@ def _unreadable(path: str) -> bool:
 
 
 def save_playlist(path: str, tracks: list[Track]) -> None:
-    """Write the whole playlist atomically (tmp file + replace)."""
+    """Write the whole playlist atomically (tmp file + replace, with .bak backup)."""
     entries = [
         {
             "source": t.source,
@@ -119,12 +119,15 @@ def save_playlist(path: str, tracks: list[Track]) -> None:
         }
         for t in tracks
     ]
-    tmp = path + ".tmp"
-    Path(tmp).write_text(
+    p = Path(path)
+    if p.exists():
+        shutil.copyfile(p, p.with_name(p.name + ".bak"))  # backup before overwrite
+    tmp = p.with_name(p.name + ".tmp")
+    tmp.write_text(
         json.dumps({"version": 1, "tracks": entries}, ensure_ascii=False, indent=1),
         "utf-8",
     )
-    Path(tmp).replace(path)
+    tmp.replace(p)
 
 
 class PlaylistStore:

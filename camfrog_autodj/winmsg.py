@@ -48,7 +48,7 @@ try:
     U.IsWindowEnabled.argtypes = [w.HWND]
     U.IsWindowEnabled.restype = w.BOOL
 except (ImportError, AttributeError, OSError):
-    U = None
+    U = None  # type: ignore[assignment]  # Windows-only: set to None when win32 API unavailable
 
 
 def _require_windows() -> None:

@@ -54,7 +54,7 @@ def run_checks(cfg, check_window: bool = True) -> list[Result]:
     _check_music_dirs(cfg, out)
     _check_admin_bot_nick_audio(cfg, out)
     _check_optional_python(out)
-    if os.name == "nt" and "uia" in (cfg.chat_reader, cfg.chat_sender):
+    if os.name == "nt" and (cfg.chat_reader == "uia" or cfg.chat_sender == "uia"):
         _check_windows_uia(cfg, out, check_window)
     return out
 
@@ -114,11 +114,30 @@ def _check_js_runtime(out: list[Result]) -> None:
         )
 
 
+def _count_media_files(folder: Path) -> int:
+    """Count media files in *folder* without following symlinks (avoids cycles and reparse hangs)."""
+    count = 0
+    try:
+        for entry in folder.iterdir():
+            try:
+                if entry.is_symlink():
+                    continue  # never follow symlinks
+                if entry.is_dir():
+                    count += _count_media_files(entry)
+                elif entry.is_file() and entry.suffix.lower() in MEDIA:
+                    count += 1
+            except (OSError, PermissionError):
+                continue
+    except (OSError, PermissionError):
+        pass
+    return count
+
+
 def _check_music_dirs(cfg, out: list[Result]) -> None:
     for d in cfg.music_dirs:
         p = Path(d)
         if p.is_dir():
-            n = sum(1 for f in p.rglob("*") if f.suffix.lower() in MEDIA and f.is_file())
+            n = _count_media_files(p)
             _add(out, "OK", f"music_dirs: {d}: {n} media file(s)")
         else:
             _add(out, "WARN", f"music_dirs: folder not found: {d}")
