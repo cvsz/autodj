@@ -51,7 +51,7 @@ set BUILD=%BUILD:]=%
 dist/
 ├── AutoDJ.exe           ← Built by build.ps1
 ├── app.ico              ← Copy from root
-├── config.example.toml  ← Copy from root
+├── config.toml          ← Production config (copy from root)
 ├── README.md            ← Copy from root
 ├── CHANGELOG.md         ← Copy from root
 ├── LICENSE.md           ← Copy from root (or LICENSE)
@@ -163,7 +163,7 @@ Shortcuts:
 .\build.ps1 -Clean
 
 # 2. Copy required files to dist/
-Copy-Item app.ico, config.example.toml, README.md, CHANGELOG.md, LICENSE.md, install.ps1, run_autodj.py -Destination dist\
+Copy-Item app.ico, config.toml, README.md, CHANGELOG.md, LICENSE.md, install.ps1, run_autodj.py -Destination dist\
 
 # 3. Create uninstall.ps1 in dist/ (or generate via install.ps1 -NoBuild)
 #    See "Uninstaller Template" section below
@@ -371,33 +371,74 @@ cd dist
 
 ## 🗂️ File Templates
 
-### config.example.toml (Committed to Repo)
+### config.toml (Production Config — Bundled with Installer)
 ```toml
 # CamfrogAutoDJ Configuration
-# Copy to config.toml and edit
+# Production config with sensible defaults - bundled with NSIS installer
+# Edit with: Start Menu > CamfrogAutoDJ > Edit Config
 
 [bot]
 bot_nick = "AutoDJ"
-admins = ["YourCamfrogNick"]
-room_name = ""
-auto_join = false
+admins = []  # Add your Camfrog nick here
+prefix = "!"
+lang = "th"
+
+[chat]
+chat_reader = "uia"
+chat_sender = "uia"
+window_title_re = ".*"
+process_re = "(?i)camfrog"
+auto_discover = true
+view_kind = "auto"
+send_mode = "auto"
+send_verify = true
+web_strict_body = true
 
 [paths]
-music_dirs = ["D:/Music"]
+mpv_path = "mpv/mpv.exe"
+ytdlp_path = "mpv/yt-dlp.exe"
+music_dirs = ["Music"]
 playlist_file = "playlist.json"
+playlist_dir = "playlist"
 
 [playback]
-default_volume = 0.5
-crossfade_seconds = 2
-audio_device = ""  # Set after VB-Cable install: run "mpv --audio-device=help"
+default_volume = 70
+mpv_timeout = 30.0
+audio_fade = true
+audio_fade_in_sec = 1.2
+audio_fade_out_sec = 1.5
 
 [youtube]
-prefer_opus = true
-max_duration_seconds = 3600
+allowed_hosts = ["youtube.com", "youtu.be", "music.youtube.com"]
+max_duration = 900
+youtube_cookies_file = ""
+youtube_cookies_browser = ""
 
-[camfrog]
-window_title_pattern = "Camfrog"
+[security]
+blocked_users = []
+im_require_room_presence = true
+cooldown = 3.0
+send_interval = 1.5
+max_requests_per_user = 3
+max_queue = 50
+voteskip_threshold = 3
+
+[features]
+auto_reply_enabled = true
+auto_reply_interval = 300.0
+auto_reply_file = "ads-list.json"
+im_auto_reply_enabled = true
+im_auto_reply_cooldown = 60.0
+admin_greeting_enabled = true
+autoplay_idle_timeout = 30.0
+shuffle = true
+announce_next = true
 ```
+
+### config.example.toml (Template — Manual Setups)
+Committed to repo as reference for manual installations. Copy to `config.toml` and edit.
+
+---
 
 ### uninstall.ps1 Template (Place in dist/)
 ```powershell
@@ -561,7 +602,7 @@ Also update registry paths in Uninstall section.
 ```powershell
 # Full clean build + installer
 .\build.ps1 -Clean
-Copy-Item app.ico, config.example.toml, README.md, CHANGELOG.md, LICENSE.md, install.ps1, run_autodj.py -Destination dist\
+Copy-Item app.ico, config.toml, README.md, CHANGELOG.md, LICENSE.md, install.ps1, run_autodj.py -Destination dist\
 # Create uninstall.ps1 in dist/ (see template above)
 .\build_installer.bat
 
