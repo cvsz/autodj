@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import sys
 import threading
@@ -194,6 +195,7 @@ def test_play_hidden_console_on_windows(monkeypatch):
     assert captured_kw["creationflags"] == 0x08000000
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Tests POSIX-specific behavior (creationflags)")
 def test_play_no_creationflags_on_posix(monkeypatch):
     """On non-Windows, play() must not set creationflags."""
     captured_kw = {}
@@ -206,6 +208,9 @@ def test_play_no_creationflags_on_posix(monkeypatch):
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
     monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: False)
+    # Mock IPC to avoid Unix socket calls on Windows CI
+    monkeypatch.setattr("camfrog_autodj.player.MpvPlayer._cmd", lambda *a, **k: True)
+    monkeypatch.setattr("camfrog_autodj.player.MpvPlayer._fade_volume", lambda *a, **k: None)
 
     # Keep this test focused on POSIX flags; avoid platform-dependent yt-dlp path discovery.
     cfg = Config(mpv_path="mpv", ytdlp_path="yt-dlp", audio_device="")

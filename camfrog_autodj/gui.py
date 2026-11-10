@@ -1026,8 +1026,8 @@ class App(tk.Tk):
         # Optional: mark as tool window on Windows to not show in taskbar separately
         if os.name == "nt":
             try:
-                sp.wm_attributes("-toolwindow", True)
-            except tk.TclError:
+                sp.attributes("-toolwindow", True)
+            except (tk.TclError, AttributeError):
                 pass
 
         # Make it a decent size and center-ish
