@@ -174,7 +174,7 @@ send_interval = 1.5            # Seconds between chat messages
 max_msg_len = 180              # Max message length
 ```
 
-### Autoplay & Idle Behavior (New in 0.2.8)
+### Autoplay & Idle Behavior (New in 0.3.0)
 
 ```toml
 # Seconds of no user requests before switching to autoplay
@@ -189,7 +189,7 @@ search_limit = 1                   # YouTube search results per request
 mpv_timeout = 30
 ```
 
-### Admin Greeting (New in 0.2.8)
+### Admin Greeting (New in 0.3.0)
 
 ```toml
 # Greet admin on first message in session
@@ -198,7 +198,7 @@ admin_greeting_message = "Welcome back admin {admin}!"
 admin_greeting_cooldown = 3600.0   # Seconds between greetings per admin
 ```
 
-### IM Security (New in 0.2.8)
+### IM Security (New in 0.3.0)
 
 ```toml
 # Require user to be in room (seen in chat) to use IM commands
