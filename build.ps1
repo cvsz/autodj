@@ -46,6 +46,10 @@ foreach ($f in "run_autodj.py", "app.ico", "version_info.txt", "camfrog_autodj\_
 if (Select-String -Path "camfrog_autodj\__init__.py" -Pattern "from \.base" -Quiet) {
   throw "camfrog_autodj\__init__.py contains the adapters __init__ content (from .base ...); it must only hold __version__"
 }
+# Kill any existing AutoDJ.exe processes before starting (leftover from previous runs)
+Get-Process -Name $Name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 500
+# Final check - if still running, it's a different process we can't kill (e.g. another user)
 if (Get-Process -Name $Name -ErrorAction SilentlyContinue) { throw "$Name.exe is running: close it first (it cannot be rebuilt or signed while open)" }
 
 # ---------- 1. build --------------------------------------------------------------------------------

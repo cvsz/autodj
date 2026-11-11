@@ -128,7 +128,14 @@ def _handle_windows(a) -> bool:
     from .windows import list_all
 
     for c in list_all():
-        print(f"exe={c.exe!r} pid={c.pid} class={c.cls!r} title={c.title!r}")
+        # Handle Unicode characters in window titles (e.g., emojis) that may not be
+        # representable in the current console code page (e.g., cp874 for Thai).
+        exe = str(c.exe).encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
+        cls = str(c.cls).encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
+        title = (
+            str(c.title).encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
+        )
+        print(f"exe={exe!r} pid={c.pid} class={cls!r} title={title!r}")
     return True
 
 
