@@ -29,7 +29,7 @@ $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $EvidenceFile = "$OutputDir\validation-evidence-$Timestamp.json"
 $Results = @{
     timestamp    = (Get-Date).ToString("o")
-    windowsBuild = [PSVersionInfo]::WindowsVersionName
+    windowsBuild = ([System.Environment]::OSVersion.Version).ToString()
     results      = @{}
 }
 
