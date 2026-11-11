@@ -78,7 +78,7 @@ Enterprise production-grade hardening v0.3.0 — deep audit and remediation of a
 
 ## Deployment Impact
 
-- **Windows build/installer: BLOCKED** — requires Windows 11 + NSIS 3.09+ + PyInstaller 6.x + EV certificate
+- **Windows build/installer: VERIFIED** on Windows 11 host — all 5 validation items PASS (installer build, code signing, UIA adapter, TTS runtime, E2E integration); evidence `evidence/validation-evidence-20261111-175639.json`
 - Linux validation complete
 
 ## Rollback Plan

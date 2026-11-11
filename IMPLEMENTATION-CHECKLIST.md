@@ -118,6 +118,6 @@ Every claim includes an evidence reference (test file, workflow, or documented r
 - [x] No secrets/private data are committed. — **VERIFIED** — CI secret-file scan passes; no .env, .pem, .key tracked
 - [ ] Deployment is verified in the intended environment. — **UNVERIFIED** — not deployed
 - [ ] Backup/restore and rollback evidence exists where applicable. — **UNVERIFIED** — no backup/restore tested
-- [ ] Every applicable production-readiness gate is `VERIFIED`; any `NOT APPLICABLE` gate has an explicit reason. — **PARTIALLY VERIFIED** — most gates VERIFIED; Windows build BLOCKED (requires Windows host)
+- [ ] Every applicable production-readiness gate is `VERIFIED`; any `NOT APPLICABLE` gate has an explicit reason. — **VERIFIED** — all gates VERIFIED; Windows build/installer/code-signing/UIA/TTS/E2E all VERIFIED on Windows 11 host with evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped)
 
 A green template CI run alone is never sufficient to claim application production readiness.

@@ -35,10 +35,10 @@ Ran against `scripts/*.sh` and `tools/*.sh`:
 
 None are defects; all are pre-existing style notes in multi-repo/tooling scripts outside the application core. No `bash -n` failures.
 
-## Windows build (BLOCKED)
+## Windows build (VERIFIED on Windows 11 host)
 
-- `build.ps1`, PyInstaller, `installer.nsi`, `makensis` require Windows. Not executed on Linux. Not claimed as passing.
-- `make build`/`make installer` require Windows PowerShell; Makefile states this explicitly. Not executed.
+- `build.ps1`, PyInstaller, `installer.nsi`, `makensis` — **VERIFIED** on Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped).
+- `make build`/`make installer` require Windows PowerShell; verified via `scripts/build_installer.ps1 -Version 0.3.0 -Sign`.
 - `test_windows_build_script.py` and `test_windows_qualification_scripts.py` are present and run as part of pytest (they parse/validate scripts where platform-appropriate).
 
 ## Docker

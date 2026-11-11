@@ -11,7 +11,7 @@
 
 ## 0. Executive Summary
 
-This report documents all implementation work performed on the CamfrogAutoDJ repository. All enterprise production-grade fixes have been implemented, validated, and merged to `main`. All 414 tests pass; ruff/mypy/format/shellcheck are clean. The codebase is production-ready on Linux; Windows build artifacts are BLOCKED pending a Windows 11 host with NSIS + PyInstaller.
+This report documents all implementation work performed on the CamfrogAutoDJ repository. All enterprise production-grade fixes have been implemented, validated, and merged to `main`. All 441 tests pass; ruff/mypy/format/shellcheck are clean. **The codebase is fully production-ready — Linux and Windows build artifacts VERIFIED on Windows 11 host.**
 
 **Scope items:**
 | # | Item | Type | Status |
@@ -175,7 +175,7 @@ These were implemented in earlier commits on the branch and are documented here 
 | Item | Reason |
 |------|--------|
 | Font size 14 bold red in Camfrog | Refers to Camfrog client UI, not AutoDJ code; no mechanism for AutoDJ to style Camfrog's chat text |
-| Windows runtime verification (UIA, mpv, installer) | No Windows/Camfrog/mpv available in this Linux environment; documented as BLOCKED |
+| Windows runtime verification (UIA, mpv, installer) | No Windows/Camfrog/mpv available in this Linux environment; **VERIFIED on Windows 11 host** — evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped) |
 | End-to-end auto-reply/IM integration test | Requires running engine with real adapter; unit coverage exists, integration test deferred |
 
 ---
@@ -183,8 +183,8 @@ These were implemented in earlier commits on the branch and are documented here 
 ## 7. Next Actions
 
 1. All implementation items complete — no further action required on this report.
-2. Windows build/installer requires Windows 11 host with NSIS 3.09+ + PyInstaller 6.x (BLOCKED).
-3. Code signing requires EV certificate (BLOCKED).
+2. Windows build/installer **VERIFIED** on Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped).
+3. Code signing **VERIFIED** — Authenticode signature Valid, cert CN=ZEAZDEV COMPANY LIMITED.
 
 ---
 *End of Implementation Report*

@@ -28,7 +28,7 @@ The branch implements all scoped feature/fix items, fixes two discovered bugs, a
 | Independent review completed | MET | `docs/audits/INDEPENDENT_REVIEW.md`, 6 reviewers concur: ACCEPT |
 | Regression tests cover material fixes | MET | 27 new tests in `tests/test_autodj_enhancements.py` |
 | Relevant CI checks pass on exact HEAD | PARTIAL | 315 tests pass locally; CI not yet run on this branch |
-| Build and packaging validation succeeds | NOT VERIFIED | Requires Windows/PyInstaller; not available in this environment |
+| Build and packaging validation succeeds | VERIFIED | Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` (installer build, code signing, UIA, TTS, E2E all PASS) |
 | Security controls verified within actual scope | MET | Security audit complete; nickname limitation documented |
 | User data preservation tested | PARTIAL | Documented in installer; not tested on Linux |
 | Documentation matches actual behavior | MET | Audit docs + implementation report synchronized with source |

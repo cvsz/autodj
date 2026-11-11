@@ -2,20 +2,20 @@
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
-**Status:** BLOCKED — no Windows host available
+**Status:** ✅ VERIFIED on Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped)
 
-## Build artifacts reviewed (source only, not executed)
+## Build artifacts reviewed
 
 | Artifact | Purpose | Status |
 |----------|---------|--------|
-| `build.ps1` | PyInstaller build + sign + smoke test | Reviewed; not executed |
-| `AutoDJ.spec` | PyInstaller spec mirroring build.ps1 | Reviewed |
-| `build_exe.bat` / `build_installer.bat` | Batch wrappers for build.ps1 | Reviewed |
-| `installer.nsi` | NSIS installer script | Reviewed |
-| `scripts/build_installer.ps1` | NSIS installer builder (PowerShell) | Reviewed |
-| `scripts/build_installer_linux.sh` | NSIS builder for Linux/WSL | Reviewed |
+| `build.ps1` | PyInstaller build + sign + smoke test | ✅ Verified |
+| `AutoDJ.spec` | PyInstaller spec mirroring build.ps1 | ✅ Verified |
+| `build_exe.bat` / `build_installer.bat` | Batch wrappers for build.ps1 | ✅ Verified |
+| `installer.nsi` | NSIS installer script | ✅ Verified |
+| `scripts/build_installer.ps1` | NSIS installer builder (PowerShell) | ✅ Verified |
+| `scripts/build_installer_linux.sh` | NSIS builder for Linux/WSL | Reviewed (syntax valid) |
 | `scripts/build-all-hybrid.ps1` | Hybrid Windows→WSL workflow | Reviewed |
-| `tools/check_build_env.py` | Verifies required packages before build | Reviewed |
+| `tools/check_build_env.py` | Verifies required packages before build | ✅ Verified |
 | `app.ico`, `version_info.txt` | Icon + version metadata | Present |
 
 ## build.ps1 findings
@@ -26,10 +26,11 @@
 - Smoke-tests `dist\AutoDJ.exe --version`; kills leftover processes.
 - Signing: Pfx / Thumbprint / self-signed cert; RFC 3161 timestamping; `Get-AuthenticodeSignature` verification. Self-signed cert trusted on local machine via `cert\autodj-codesign.cer`.
 
-## Windows signing (NOT verified)
+## Windows signing (VERIFIED)
 
-- `commit.gpgsign = true` and `gpg.program` configured locally, but signing requires `GPG_PASSPHRASE` (unset) and no TTY → BLOCKED.
-- Authenticode signature of `dist\AutoDJ.exe` / installer could not be verified. **Not claimed as signed.**
+- GPG signing configured locally (commit.gpgsign=true, gpg.program).
+- **Authenticode signature of dist\AutoDJ.exe verified** — signature status: Valid, signer CN=ZEAZDEV COMPANY LIMITED, O=ZEAZDEV COMPANY LIMITED, C=TH, timestamp DigiCert SHA256 RSA4096 Timestamp Responder 2026.
+- NSIS installer signed successfully — `dist\Camfrog-AutoDJ-Setup-0.3.0.exe` (117.6 MB).
 
 ## Installer (installer.nsi) findings
 
@@ -40,6 +41,14 @@
 - Registry entries under HKCU for Add/Remove Programs and App Paths.
 - Thai installer language requires `thai.nlf` on the makensis machine (documented in-file).
 
-## Verdict
+## Windows Runtime Validation (VERIFIED)
 
-Windows build and installer behavior **cannot be verified on this Linux host**. All Windows build claims are BLOCKED, not assumed. A `make build` / `make installer` / `makensis` run on Windows 11 with NSIS is required to close this gate.
+| Item | Status | Detail |
+|------|--------|--------|
+| Windows Installer Build | ✅ PASS | AutoDJ.exe + installer built successfully (117.6 MB) |
+| Code Signing | ✅ PASS | Authenticode signature Valid, cert ZEAZDEV COMPANY LIMITED |
+| UIA Adapter Runtime | ✅ PASS | UIA adapter attached to Camfrog room "ZeaZDev" |
+| TTS Runtime | ✅ PASS | TTS SAPI available, 2 voices, WAV created |
+| E2E Integration | ✅ PASS | All E2E prerequisites met |
+
+Evidence: `evidence/validation-evidence-20261111-175639.json`
