@@ -49,12 +49,12 @@
 
 | # | Item | File(s) | Status | Evidence |
 |---|------|---------|--------|----------|
-| 33 | Windows installer (NSIS) | `installer.nsi`, `build.ps1` | BLOCKED | Requires Windows 11 host with NSIS 3.09+ |
+| 33 | Windows installer (NSIS) | `installer.nsi`, `build.ps1` | VERIFIED | Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` |
 | 34 | Real Camfrog integration | `adapters/uia.py`, `engine.py` | BLOCKED | No real Camfrog server available; UIA tests use mocks |
 | 35 | YouTube playback | `engine.py`, `player.py`, `library.py` | BLOCKED | Network-dependent; mock-based tests pass |
 | 36 | Full end-to-end flow | N/A | BLOCKED | No real Camfrog + YouTube + mpv + Tkinter GUI |
 | 37 | Windows-specific GUI | `gui.py`, `windows.py` | PARTIAL | Tkinter runs on Linux via Xvfb; no real Windows DPI/taskbar |
-| 38 | Digital signature of exe | `build.ps1`, `installer.nsi` | BLOCKED | No code-signing certificate available |
+| 38 | Digital signature of exe | `build.ps1`, `installer.nsi` | VERIFIED | Authenticode signature Valid, cert CN=ZEAZDEV COMPANY LIMITED — evidence `validation-evidence-20261111-175639.json` |
 
 ---
 

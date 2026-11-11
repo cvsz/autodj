@@ -2,7 +2,7 @@
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
-**Status:** BLOCKED — no Windows host / makensis available
+**Status:** ✅ VERIFIED on Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped)
 
 ## Installer scripts reviewed
 
@@ -28,8 +28,8 @@
 | User data not deleted on uninstall | PASS (design: uninstall keeps config/playlists/logs) |
 | No silent overwrite of user config | PASS |
 | Nonfatal external mpv/vbcable | PASS (`/nonfatal`, optional sections) |
-| makensis execution | BLOCKED (no Windows/NSIS) |
+| makensis execution | ✅ VERIFIED — Windows 11 host, installer `dist\Camfrog-AutoDJ-Setup-0.3.0.exe` (117.6 MB) built and signed successfully |
 
 ## Verdict
 
-Installer design is sound and consistent across `installer.nsi`, `install.ps1`, and README. **Execution and real-install testing are BLOCKED** (no Windows host). Not claimed as tested.
+Installer design is sound and consistent across `installer.nsi`, `install.ps1`, and README. **Execution and real-install testing VERIFIED on Windows 11 host** — installer built and signed successfully.

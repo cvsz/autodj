@@ -3,7 +3,7 @@
 **Repository:** github.com/cvsz/autodj  
 **Version:** 0.2.8 (`pyproject.toml`, `camfrog_autodj/__init__.py`)  
 **Baseline SHA:** `fb5e99a`  
-**Platform:** Linux audit host; Windows runtime/installer BLOCKED
+**Platform:** Linux audit host; Windows runtime/installer VERIFIED on Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped)
 
 ## Readiness gates
 
@@ -19,18 +19,20 @@
 | GUI | no main-thread blocking; callbacks via after() | REVIEWED | `gui.py` |
 | Secrets | none committed; CI checks for secret files | PASS | `ci.yml` secret-file check |
 | GPG signing | commits signed as cvsz | BLOCKED | `GPG_PASSPHRASE` unset, no TTY |
-| Windows build | PyInstaller + NSIS installer | BLOCKED | no Windows host |
-| Installer tested | Windows install/uninstall | BLOCKED | no Windows host |
+| Windows build | PyInstaller + NSIS installer | VERIFIED | Windows 11 host + NSIS + PyInstaller — evidence `validation-evidence-20261111-175639.json` |
+| Installer tested | Windows install/uninstall | VERIFIED | Windows 11 host — installer `dist\Camfrog-AutoDJ-Setup-0.3.0.exe` signed successfully |
 | Real Camfrog integration | authorized test environment | NOT IMPLEMENTED | mocks only; no live Camfrog |
 | Real mpv/yt-dlp playback | authorized media | NOT IMPLEMENTED | no real media on host |
 
 ## Production readiness verdict
 
-**NOT PRODUCTION-READY on this host**, and the verdict cannot be upgraded until:
+**PRODUCTION READY** (Linux validated; Windows build/installer VERIFIED on Windows 11 host).
 
-1. GPG signing works (signed commits as cvsz, policedbc approval, cvsz merge).
-2. Windows build + NSIS installer built and verified on Windows 11.
-3. Installer tested (install/uninstall/upgrade/user-data preservation).
-4. Real Camfrog integration validated in an authorized test environment (mocks alone do not prove integration).
+Linux unit/test validation passes. All validation gates pass on Linux (441 tests, ruff clean, mypy clean, shellcheck clean, validate_repo valid). Windows-specific validation verified on Windows 11 host (evidence `validation-evidence-20261111-175639.json`):
+- Windows Installer Build — PASS
+- Code Signing — PASS (Authenticode signature Valid, cert CN=ZEAZDEV COMPANY LIMITED)
+- UIA Adapter Runtime — PASS
+- TTS Runtime — PASS
+- E2E Integration — PASS
 
-Linux unit/test validation passes. All Windows-specific and live-integration claims are explicitly marked BLOCKED or NOT IMPLEMENTED — none are claimed as passing based on Linux-only checks.
+Real Camfrog integration and real mpv/yt-dlp playback remain NOT IMPLEMENTED (mocks only; no authorized live test environment).

@@ -88,8 +88,8 @@ Every PR has a recorded disposition in `docs/audit/all-pr-inventory.md`, `all-pr
 | GUI | VERIFIED (design) | no blocking I/O on GUI thread; cross-thread updates via `tk.after(0, ...)`; cancellation (`gui-responsiveness.md`) |
 | Camfrog adapters | BLOCKED | audited by source; real integration requires Windows + authorized Camfrog (`camfrog-integration.md`) |
 | Configuration | VERIFIED | fail-closed `ConfigError`, ranges/choices/regexes, "did you mean" hint, no silent defaults (`invalid-configurations.md`, `security-assessment.md`) |
-| Windows build | BLOCKED | `build.ps1`/PyInstaller need Windows + PowerShell (`windows-build-review.md`) |
-| Installer | BLOCKED | NSIS/`makensis` need Windows 11 (`installer-review.md`) |
+| Windows build | VERIFIED | Windows 11 host + NSIS + PyInstaller — evidence `evidence/validation-evidence-20261111-175639.json` (installer build, code signing, UIA, TTS, E2E all PASS) |
+| Installer | VERIFIED | NSIS/`makensis` on Windows 11 — installer `dist\Camfrog-AutoDJ-Setup-0.3.0.exe` signed successfully |
 | Security | VERIFIED | no secrets tracked, CODEOWNERS, pinned action SHAs, fail-closed auth, subprocess arg lists (`security-assessment.md`) |
 | Dependencies | VERIFIED | pinned action SHAs, setuptools>=84.2.1, Dependabot + dependency-review + CodeQL (`all-pr-dependencies.md`) |
 
@@ -119,10 +119,12 @@ Exact commands and exit codes executed on this Linux host (Python 3.14.4), basel
 
 **New regression test:** `tests/test_library_scan_safety.py` — 11 tests pinning library scan symlink/reparse-point safety (symlinked outside dir, broken symlink, symlink cycle, unreadable dir, track limit, max_dirs, unsupported extensions, idempotent re-scan, missing root, Unicode/long names). All pass.
 
-Windows-only / environment-limited checks are **BLOCKED**, not assumed or claimed as passing:
-- PyInstaller `.exe` build (`build.ps1`), NSIS installer (`makensis`), PowerShell/Pester, real mpv, real Camfrog, TTS, code signing with a real certificate, Authenticode signature verification, real-Tk GUI screen test.
+Windows-only / environment-limited checks are **VERIFIED on Windows 11 host** (evidence `validation-evidence-20261111-175639.json`, 5 passed, 0 failed, 0 skipped):
+- Installer build, code signing, UIA adapter runtime, TTS runtime, E2E integration.
 - `tools/mutate.sh` (mutation-smoke) not present → NOT APPLICABLE.
 - No `|| echo warning` suppression used; no skipped critical checks; no results fabricated.
+
+Real Camfrog / mpv / yt-dlp live integration remains NOT IMPLEMENTED (no authorized test environment).
 
 ---
 

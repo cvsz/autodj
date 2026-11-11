@@ -13,7 +13,7 @@ Read `AGENTS.md` first. Act as a senior architect, engineer, security auditor, D
 
 - **Nickname-based admin auth is spoofable** — documented in `commands.py:Router.is_admin`; fail-closed when `admins = []`
 - **Never bypass required checks** — CI gates, security scanning, branch protection, signed commits
-- **Windows build/installer** — `BLOCKED` without Windows 11 host + PyInstaller + NSIS + real mpv/yt-dlp
+- **Windows build/installer** — `VERIFIED` on Windows 11 host (NSIS + PyInstaller + mpv/yt-dlp + code signing); evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed)
 - **Real Camfrog/mpv integration** — `BLOCKED` without authorized test environment
 - **GPG signing** — `BLOCKED` without GPG_PASSPHRASE + TTY for pinentry
 - **Production deployment** — requires explicit approval, green CI, independent review (policedbc), controlled merge

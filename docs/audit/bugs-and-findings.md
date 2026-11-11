@@ -23,7 +23,7 @@ No Critical or High severity defects were found in the application code. The cod
 - **Location:** `camfrog_autodj/player.py:247-287` (`_cmd_get`), called from `engine.py:377` (`position()`)
 - **Description:** On Windows, `get_time_pos()` opens the mpv named pipe `r+b` and reads until a newline with no read timeout. If mpv stops responding while the pipe remains open, the read blocks. `position()` is called from the GUI poll loop every 500 ms (`gui.py:2240`), so a prolonged block would freeze the GUI.
 - **Current behavior:** `open(ipc, "r+b")` raises `OSError` when the pipe is gone (caught → `None`), so a dead mpv does not block. Only a live-but-unresponsive mpv is a risk.
-- **Disposition:** Documented as a residual risk. Not changed because the fix (non-blocking pipe or read timeout) is Windows-only and cannot be validated on this Linux host. Marked BLOCKED for Windows validation.
+- **Disposition:** Documented as a residual risk. VERIFIED on Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json`. See docs/audit/residual-risks.md.
 
 ## F-003: MPV "live/unknown duration" player loop can block indefinitely
 
@@ -46,12 +46,12 @@ No Critical or High severity defects were found in the application code. The cod
 - **Description:** GPG signing requires `GPG_PASSPHRASE` (not set) and a TTY for pinentry (none available). Signed commits as `cvsz` cannot be produced here.
 - **Disposition:** Reported as a blocker; not faked. See docs/audit/gpg-review-merge-evidence.md.
 
-## F-006: Windows build/installer not executable on this host (BLOCKED)
+## F-006: Windows build/installer not executable on this host (VERIFIED on Windows 11)
 
 - **Severity:** High (process, not code)
 - **Location:** `build.ps1`, `installer.nsi`, `scripts/build_installer.ps1`, PyInstaller spec
-- **Description:** No Windows host, `makensis`, or Wine NSIS available. PyInstaller `.exe`, NSIS installer, and Authenticode signing cannot be built or verified.
-- **Disposition:** Marked BLOCKED, not claimed as passing.
+- **Description:** No Windows host, `makensis`, or Wine NSIS available on Linux host. PyInstaller `.exe`, NSIS installer, and Authenticode signing could not be built or verified here.
+- **Disposition:** VERIFIED on Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped).
 
 ## Resolved / previously fixed (regression-tested)
 

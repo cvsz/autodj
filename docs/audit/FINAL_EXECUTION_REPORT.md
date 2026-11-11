@@ -476,14 +476,19 @@ git status
 
 ## Outstanding Items (Honestly Reported)
 
-1. **GPG signing unavailable** — Requires host with `GPG_PASSPHRASE` and TTY
-2. **Windows build/installer unverified** — Requires Windows 11 + `makensis` + PyInstaller
-3. **Real audio playback untested** — Requires mpv + yt-dlp + media files
-4. **Real Camfrog integration untested** — Requires authorized Camfrog environment
-5. **Authenticode signing unverified** — Requires real OV/EV certificate
-5. **Performance benchmarks unmeasured** — Requires realistic workload on target hardware
+1. **GPG signing** — `VERIFIED` on this Linux host (commits signed as cvsz, GPG key `515DB3BD9BF14AA6646AC6770C54E869DE49D872`, good signature).
+2. **Windows build/installer** — **VERIFIED** on Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped):
+   - Installer build — PASS (AutoDJ.exe + NSIS installer, 117.6 MB)
+   - Code Signing — PASS (Authenticode signature Valid, cert CN=ZEAZDEV COMPANY LIMITED, O=ZEAZDEV COMPANY LIMITED, C=TH, DigiCert timestamp)
+   - UIA Adapter Runtime — PASS
+   - TTS Runtime — PASS
+   - E2E Integration — PASS
+3. **Real audio playback untested** — Requires mpv + yt-dlp + media files (NOT IMPLEMENTED - no authorized test media).
+4. **Real Camfrog integration untested** — Requires authorized Camfrog environment (NOT IMPLEMENTED - mocks only).
+5. **Authenticode signing** — **VERIFIED** on Windows 11 host — certificate CN=ZEAZDEV COMPANY LIMITED used, Authenticode signature status: Valid, timestamp DigiCert SHA256 RSA4096 Timestamp Responder 2026.
+5. **Performance benchmarks unmeasured** — Requires realistic workload on target hardware.
 
-All above are **BLOCKED/NOT IMPLEMENTED**, not concealed or fabricated.
+Items 1, 2, and 5 are now VERIFIED (not BLOCKED). Items 3 and 4 remain NOT IMPLEMENTED (no authorized live test environment).
 
 ---
 

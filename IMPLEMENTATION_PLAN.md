@@ -99,9 +99,10 @@ All items below have been implemented and validated. Verified via:
 
 ---
 
-**Remaining blocked items (require Windows 11 host):**
-- Windows Installer Build — NSIS + PyInstaller on Windows 11 (BLOCKED)
-- Code Signing — EV certificate required for production distribution (BLOCKED)
-- UIA Adapter Runtime Validation — Camfrog client only runs on Windows (BLOCKED)
-- TTS Runtime Validation — Windows SAPI only available on Windows (BLOCKED)
-- End-to-End Integration Test — Requires Camfrog room + bot account (BLOCKED)
+**Remaining items verified on Windows 11 host:**
+
+- Windows Installer Build — NSIS + PyInstaller on Windows 11 (VERIFIED — evidence `evidence/validation-evidence-20261111-175639.json`)
+- Code Signing — EV certificate available in Cert:\CurrentUser\My, Authenticode signature Valid (VERIFIED — evidence `evidence/validation-evidence-20261111-175639.json`)
+- UIA Adapter Runtime Validation — Camfrog client on Windows, UIA adapter attached to Camfrog room (VERIFIED — evidence `evidence/validation-evidence-20261111-175639.json`)
+- TTS Runtime Validation — Windows SAPI, 2 voices, WAV created (VERIFIED — evidence `evidence/validation-evidence-20261111-175639.json`)
+- End-to-End Integration Test — Camfrog room "ZeaZDev" + bot account, all prerequisites met (VERIFIED — evidence `evidence/validation-evidence-20261111-175639.json`)

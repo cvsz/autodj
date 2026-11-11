@@ -34,7 +34,7 @@ No release was created or published during this assessment.
 | Authorization security | VERIFIED | 6 new authorization tests pass |
 | Unit/Integration tests | VERIFIED | 175 passed, 3 subtests passed |
 | Static analysis | VERIFIED | CodeQL passes; ruff and mypy enforced (no `|| true`) |
-| Build | UNVERIFIED | Windows build requires Windows runner with NSIS; not executable in this environment |
+| Build | VERIFIED | Windows 11 host — installer built and verified on Windows 11 (evidence `validation-evidence-20261111-175639.json`) |
 | CI | VERIFIED | 12/12 checks passing on PR #79 |
 | Independent review | VERIFIED | `policedbc` APPROVED PR #79 |
 | Merge | VERIFIED | `cvsz` merged PR #79; merge commit GPG signed |

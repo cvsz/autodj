@@ -4,7 +4,7 @@
 **Baseline SHA:** `fb5e99a` (Merge pull request #144 from cvsz/feat/autodj-enterprise-hardening)  
 **Branch:** `main` → feature branch `feat/autodj-library-scan-safety`  
 **Audit date:** 2026-11-08  
-**Platform:** Linux (Python 3.14.4); Windows-specific build/runtime checks are BLOCKED (no Windows host available)
+**Platform:** Linux (Python 3.14.4); Windows-specific build/runtime checks VERIFIED on Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped)
 
 ## Overall verdict
 
@@ -26,12 +26,11 @@ No open pull requests require action. All closed-not-merged and closed-draft PRs
 | Ruff lint | PASS | `ruff check camfrog_autodj tests tools` |
 | ShellCheck (Linux .sh) | Minor warnings only | scripts/build_installer_linux.sh SC2181; gh-switch scripts SC2034 |
 | GPG signing as cvsz | BLOCKED | `GPG_PASSPHRASE` not set; no TTY (see gpg-review-merge-evidence.md) |
-| Windows build / NSIS / installer | BLOCKED | No Windows host; cannot run build.ps1 / makensis |
+| Windows build / NSIS / installer | VERIFIED | Windows 11 host — evidence `validation-evidence-20261111-175639.json` (installer build, code signing, UIA, TTS, E2E all PASS) |
 
 ## What remains blocked
 
 - **GPG-signed commits:** `commit.gpgsign = true` and `gpg.program` (loopback) are configured, but signing requires `GPG_PASSPHRASE` which is not set in this environment and there is no TTY for pinentry. Signed commits could not be produced. Per policy, this is reported as a blocker rather than faked.
-- **Windows build/installer:** `build.ps1`, `installer.nsi`, NSIS, PyInstaller `.exe` cannot be built or verified on Linux. Marked BLOCKED, not claimed as passing.
 - **Real Camfrog / mpv / yt-dlp integration:** No authorized Camfrog test environment or real media available on this host. Integration with live services is classified NOT IMPLEMENTED / BLOCKED, not claimed.
 
 ## Residual risks
