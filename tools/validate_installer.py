@@ -183,9 +183,7 @@ def validate_version_consistency() -> list[str]:
     try:
         import tomllib
 
-        data = tomllib.loads(
-            (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        )
+        data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
         project_version = data.get("project", {}).get("version", "unknown")
     except (OSError, ValueError, ImportError) as exc:
         return [f"could not read pyproject.toml version: {exc}"]
@@ -198,8 +196,7 @@ def validate_version_consistency() -> list[str]:
 
     if match and match.group(1) != project_version:
         return [
-            f"version mismatch: pyproject.toml={project_version}, "
-            f"installer.nsi={match.group(1)}"
+            f"version mismatch: pyproject.toml={project_version}, installer.nsi={match.group(1)}"
         ]
 
     return []

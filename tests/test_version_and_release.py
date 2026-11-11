@@ -42,7 +42,7 @@ def test_version_consistency():
     assert '[string]$Version = ""' in build_installer_ps1
     assert "pyproject.toml" in build_installer_ps1
     assert "project']['version']" in build_installer_ps1
-    assert 'if (-not $Version)' in build_installer_ps1
+    assert "if (-not $Version)" in build_installer_ps1
     assert '$Version = "$pyVersion".Trim()' in build_installer_ps1
 
     build_installer_linux = (root / "scripts" / "build_installer_linux.sh").read_text(
