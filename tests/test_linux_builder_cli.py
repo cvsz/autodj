@@ -13,6 +13,8 @@ import stat
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "build_exe_linux.sh"
 
@@ -47,6 +49,10 @@ def test_wine_binary_can_be_overridden_for_tests():
     assert 'WINE_BIN="${WINE_BIN:-' in script
 
 
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="Linux/Wine builder integration test; run on Linux/WSL",
+)
 def test_missing_pyinstaller_fails_with_actionable_hint(tmp_path):
     windows_python = tmp_path / "python.exe"
     windows_python.write_bytes(b"not really python")

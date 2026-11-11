@@ -10,10 +10,14 @@
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 GEN = ROOT / "tools" / "generate_spec.py"
@@ -70,7 +74,15 @@ class TestGenerateSpec:
 class TestLinuxExeBuilder:
     def test_script_exists_and_parses(self):
         assert LINUX.exists(), f"missing {LINUX}"
-        subprocess.run(["bash", "-n", str(LINUX)], check=True)
+
+        if os.name == "nt":
+            pytest.skip("Linux shell syntax validation runs in Linux CI")
+
+        bash = shutil.which("bash")
+        if bash is None:
+            pytest.skip("Bash is unavailable on this runner")
+
+        subprocess.run([bash, "-n", str(LINUX)], check=True)
 
     def test_script_content_guards(self):
         script = LINUX.read_text(encoding="utf-8")
