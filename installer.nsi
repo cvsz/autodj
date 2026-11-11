@@ -113,7 +113,7 @@ Section "!MainProgram" SEC_MAIN
     File "dist\ads-list.json"
     ; Preserve an existing user configuration during upgrades.
     IfFileExists "$INSTDIR\config.toml" config_exists
-    File "dist\config.toml"
+    File "config.toml"
 config_exists:
     ; config.toml can be customized by install.ps1 on first run (interactive prompts)
     File "dist\run_autodj.py"
