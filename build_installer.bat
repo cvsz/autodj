@@ -19,11 +19,11 @@ if errorlevel 1 (
 echo Found NSIS: %~$PATH:makensis
 echo.
 
-REM Check for required files
+REM Check for required files (built artifacts are in dist/)
 echo Checking required files...
-set REQUIRED=AutoDJ.exe app.ico config.example.toml README.md CHANGELOG.md LICENSE.md install.ps1 uninstall.ps1 run_autodj.py
+set REQUIRED=dist\AutoDJ.exe dist\app.ico config.example.toml README.md CHANGELOG.md LICENSE install.ps1 run_autodj.py
 for %%f in (%REQUIRED%) do (
-    if not exist "%~dp0%%f" (
+    if not exist "%%f" (
         echo WARNING: Missing required file: %%f
     ) else (
         echo   [OK] %%f

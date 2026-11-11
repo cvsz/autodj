@@ -91,7 +91,8 @@ function Test-CodeSigning {
         return
     }
     try {
-        $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object {
+        # Cert: drive may not be available in all PowerShell hosts
+        $cert = Get-ChildItem -Path Cert:\CurrentUser\My -ErrorAction SilentlyContinue | Where-Object {
             $_.EnhancedKeyUsageList -contains "1.3.6.1.5.5.7.3.3" -and $_.HasPrivateKey
         } | Select-Object -First 1
         if (-not $cert) {
