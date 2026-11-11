@@ -55,6 +55,7 @@ config.toml.tmp
 
 # User data / runtime state (never commit)
 playlist.json
+playlist.json.bak
 playlist.json.tmp
 *.log
 *.pfx
