@@ -77,9 +77,25 @@ if (Test-Path config.example.toml) {
     if (Test-Path dist\config.toml) { (Get-Item dist\config.toml).IsReadOnly = $false }
     "copied config.example.toml -> dist\config.toml" | Write-Host
 }
+# A running DJ bot / Camfrog session started from dist\ (e.g. dist\mpv\mpv.exe) locks files, and the
+# mpv copy below then dies with "being used by another process" AFTER the exe was already rebuilt
+# (leaving an unsigned exe behind). Fail early with the culprits named. Not force-killed: stopping
+# mpv could cut off music in a live room.
+if (Test-Path "dist") {
+  $distRoot = (Resolve-Path "dist").Path
+  $locking = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
+    $_.Path -and $_.Path.StartsWith($distRoot, [StringComparison]::OrdinalIgnoreCase)
+  })
+  if ($locking.Count -gt 0) {
+    $names = ($locking | ForEach-Object { "$($_.Name) (PID $($_.Id))" }) -join ", "
+    throw "processes running from dist\ lock its files: $names. Stop them (the DJ bot / its mpv) and re-run."
+  }
+}
 # Copy mpv/ directory to dist/mpv/ so mpv.exe and yt-dlp.exe are available at runtime
 if (Test-Path mpv) {
-    Copy-Item mpv dist\mpv -Recurse -Force
+    # Copy the CONTENTS: `Copy-Item mpv dist\mpv -Recurse` nests to dist\mpv\mpv when dist\mpv already exists (any rebuild without -Clean).
+    if (-not (Test-Path "dist\mpv")) { New-Item -ItemType Directory -Path "dist\mpv" | Out-Null }
+    Copy-Item "mpv\*" "dist\mpv\" -Recurse -Force
     "copied mpv/ -> dist\mpv\" | Write-Host
 } else {
     # mpv/ not present (e.g. cloned repo, gitignored). Try to find mpv.exe on the system.
@@ -142,9 +158,11 @@ Start-Sleep -Milliseconds 1000
 # Wait for file to be truly unlocked (handles released by OS)
 $handleLocked = $true
 $attempts = 0
+# .NET resolves relative paths against the process directory, not PowerShell's Set-Location, so use a full path.
+$exeFull = (Resolve-Path $exe).Path
 while ($handleLocked -and $attempts -lt 10) {
     try {
-        $stream = [System.IO.File]::Open($exe, 'Open', 'ReadWrite', 'None')
+        $stream = [System.IO.File]::Open($exeFull, 'Open', 'ReadWrite', 'None')
         $stream.Close()
         $handleLocked = $false
     } catch {
@@ -202,7 +220,24 @@ if (-not $sig -or -not $sig.SignerCertificate) { throw "signing failed (is the f
 # ---------- 3. verify -------------------------------------------------------------------------------
 Step "result"
 $v = Get-AuthenticodeSignature $exe
-"file:      $((Resolve-Path $exe).Path)  ($([math]::Round((Get-Item $exe).Length / 1MB, 1)) MB)"
+if ($v.Status -eq "HashMismatch") {
+  # Set-AuthenticodeSignature is known to mis-hash PE files that carry appended data (PyInstaller's
+  # PKG archive lives after the last section), leaving a signature that never validates -- on any PC.
+  # signtool.exe (Windows SDK) handles the overlay correctly, so re-sign with it when it is available.
+  $signtool = (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source
+  if (-not $signtool) {
+    $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+                Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+  }
+  if ($signtool -and -not $Pfx -and $cert.HasPrivateKey) {
+    "HashMismatch after Set-AuthenticodeSignature: re-signing with signtool ($signtool)"
+    & $signtool sign /sha1 $cert.Thumbprint /fd SHA256 /tr "http://timestamp.digicert.com" /td SHA256 $exe
+    if ($LASTEXITCODE -eq 0) { $v = Get-AuthenticodeSignature $exe } else { Write-Warning "signtool re-sign failed (exit $LASTEXITCODE)" }
+  } else {
+    Write-Warning "HashMismatch: the signature on $exe is NOT valid. Install the Windows SDK (signtool.exe) and rebuild, or sign with signtool/az signtool (make trustsign) instead."
+  }
+}
+"file:$((Resolve-Path $exe).Path)  ($([math]::Round((Get-Item $exe).Length / 1MB, 1)) MB)"
 "signature: $($v.Status)  $($v.StatusMessage)"
 "signer:    $($v.SignerCertificate.Subject)"
 "timestamp: $($v.TimeStamperCertificate.Subject)"

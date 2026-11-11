@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate installer.nsi structure and required files."""
+"""Validate NSIS installer structure and staged build payload."""
 
 from __future__ import annotations
 
@@ -9,48 +9,40 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Files that must exist for the installer to build successfully
 REQUIRED_FILES = [
-    "dist/AutoDJ.exe",
     "app.ico",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
     "run_autodj.py",
     "config.example.toml",
-    "ads-list.json",
     "install.ps1",
     "install.bat",
+    "pyproject.toml",
 ]
 
-# Directories that must exist
 REQUIRED_DIRS = [
-    "dist/mpv",
     "mpv/_internal",
-    "mpv/VBCABLE_Driver_Pack45",
     "docs",
     "tools",
     "playlist",
 ]
 
-# Sections that must be present in installer.nsi
 REQUIRED_SECTIONS = [
     "SEC_MAIN",
     "SEC_MPV",
-    "SEC_VBCABLE",
     "SEC_PLAYLIST",
     "SEC_DOCS",
     "SEC_TOOLS",
     "SEC_SCRIPTS",
 ]
 
-# Critical macros/commands that must be present
 REQUIRED_COMMANDS = [
     'File "dist\\AutoDJ.exe"',
-    'File "app.ico"',
-    'File "ads-list.json"',
-    "File /oname=config.toml config.example.toml",
-    'File /r "playlist\\*.json"',
+    'File "dist\\app.ico"',
+    'File /nonfatal "dist\\ads-list.json"',
+    'File "dist\\config.toml"',
+    'File /r "dist\\playlist\\*.json"',
     "ExecWait",
     "mpv-register.bat",
     "WriteUninstaller",
@@ -60,127 +52,167 @@ REQUIRED_COMMANDS = [
     "Section Uninstall",
 ]
 
-# NSIS script validation patterns
-SECTION_PATTERN = re.compile(r'^\s*Section\s+(?:/o\s+)?".*?"\s+(\w+)', re.MULTILINE)
-FUNCTION_PATTERN = re.compile(r"^\s*Function\s+(\w+)", re.MULTILINE)
+REQUIRED_STAGED_FILES = [
+    "AutoDJ.exe",
+    "app.ico",
+    "config.toml",
+    "mpv/mpv.com",
+    "mpv/yt-dlp.exe",
+]
+
+SECTION_PATTERN = re.compile(
+    r'^\s*Section\s+(?:/o\s+)?(?:"[^"]+"\s+)?(\w+)',
+    re.MULTILINE,
+)
 
 
 def validate_required_files() -> list[str]:
-    """Check that all required source files exist."""
-    errors: list[str] = []
-    for rel in REQUIRED_FILES:
-        if not (ROOT / rel).exists():
-            errors.append(f"missing required file: {rel}")
-    return errors
+    return [
+        f"missing required source file: {rel}"
+        for rel in REQUIRED_FILES
+        if not (ROOT / rel).is_file()
+    ]
 
 
 def validate_required_dirs() -> list[str]:
-    """Check that all required directories exist."""
-    errors: list[str] = []
-    for rel in REQUIRED_DIRS:
-        if not (ROOT / rel).exists():
-            errors.append(f"missing required directory: {rel}")
+    return [
+        f"missing required source directory: {rel}"
+        for rel in REQUIRED_DIRS
+        if not (ROOT / rel).is_dir()
+    ]
+
+
+def validate_staged_payload() -> list[str]:
+    dist = ROOT / "dist"
+
+    # Source validation must work without a completed build.
+    if not (dist / "AutoDJ.exe").is_file():
+        return []
+
+    errors = [
+        f"missing staged installer file: dist/{rel}"
+        for rel in REQUIRED_STAGED_FILES
+        if not (dist / rel).is_file()
+    ]
+
+    playlist_dir = dist / "playlist"
+    if not playlist_dir.is_dir() or not any(playlist_dir.glob("*.json")):
+        errors.append("missing staged playlist JSON files: dist/playlist/*.json")
+
     return errors
 
 
-def _check_sections(content: str) -> list[str]:
-    errors: list[str] = []
+def _validate_installer_sections(content: str) -> list[str]:
     sections = SECTION_PATTERN.findall(content)
-    for req in REQUIRED_SECTIONS:
-        if req not in sections:
-            errors.append(f"missing required section: {req}")
-    return errors
+    return [
+        f"missing required section: {section}"
+        for section in REQUIRED_SECTIONS
+        if section not in sections
+    ]
 
 
-def _check_commands(content: str) -> list[str]:
+def _validate_installer_commands(content: str) -> list[str]:
+    return [
+        f"missing required command in installer.nsi: {command}"
+        for command in REQUIRED_COMMANDS
+        if command not in content
+    ]
+
+
+def _validate_installer_common(content: str) -> list[str]:
     errors: list[str] = []
-    for cmd in REQUIRED_COMMANDS:
-        if cmd not in content:
-            errors.append(f"missing required command in installer.nsi: {cmd}")
-    return errors
 
-
-def _check_common_patterns(content: str) -> list[str]:
-    errors: list[str] = []
     if "RequestExecutionLevel user" not in content:
         errors.append("missing RequestExecutionLevel user")
     if 'InstallDir "$APPDATA' not in content:
         errors.append("missing APPDATA install directory")
     if "mpv-register.bat" not in content:
-        errors.append("mpv-register.bat not executed in installer")
+        errors.append("mpv-register.bat not referenced by installer")
+
     return errors
 
 
-def _check_uninstaller(content: str) -> list[str]:
+def _validate_uninstaller(content: str) -> list[str]:
+    parts = content.split("Section Uninstall", 1)
+    if len(parts) < 2:
+        return ["missing uninstaller section"]
+
+    body = parts[1].split("SectionEnd", 1)[0]
     errors: list[str] = []
-    uninstall_section = content.split("Section Uninstall", 1)
-    if len(uninstall_section) > 1:
-        uninstall_content = uninstall_section[1].split("SectionEnd", 1)[0]
-        if 'Delete "$INSTDIR\\config.toml"' in uninstall_content:
-            errors.append("uninstaller deletes config.toml (must preserve user data)")
-        if 'Delete "$INSTDIR\\playlist.json"' in uninstall_content:
-            errors.append("uninstaller deletes playlist.json (must preserve user data)")
-        if "Keep config.toml, playlist.json, logs, playlists" not in uninstall_content:
-            errors.append("uninstaller missing comment about preserving user data")
+
+    if 'Delete "$INSTDIR\\config.toml"' in body:
+        errors.append("uninstaller deletes config.toml")
+    if 'Delete "$INSTDIR\\playlist.json"' in body:
+        errors.append("uninstaller deletes playlist.json")
+    if "Keep config.toml, playlist.json, logs, playlists" not in body:
+        errors.append("uninstaller missing user-data preservation comment")
+
+    return errors
+
+
+def _validate_vbcable_references(content: str) -> list[str]:
+    errors: list[str] = []
+
+    if "VBCABLE_Driver_Pack45" in content:
+        errors.append("obsolete VB-CABLE Driver Pack 45 reference")
+
+    if 'File "dist\\\\mpv\\\\vbcable\\\\' in content:
+        errors.append("installer references an unstaged bundled VB-CABLE payload")
+
     return errors
 
 
 def validate_installer_nsi() -> list[str]:
     """Validate installer.nsi structure and content."""
-    errors: list[str] = []
-    nsi_path = ROOT / "installer.nsi"
-    if not nsi_path.exists():
+    path = ROOT / "installer.nsi"
+    if not path.is_file():
         return ["installer.nsi not found"]
 
-    content = nsi_path.read_text(encoding="utf-8")
+    content = path.read_text(encoding="utf-8")
 
-    errors.extend(_check_sections(content))
-    errors.extend(_check_commands(content))
-    errors.extend(_check_common_patterns(content))
-    errors.extend(_check_uninstaller(content))
-
-    return errors
+    return (
+        _validate_installer_sections(content)
+        + _validate_installer_commands(content)
+        + _validate_installer_common(content)
+        + _validate_uninstaller(content)
+        + _validate_vbcable_references(content)
+    )
 
 
 def validate_version_consistency() -> list[str]:
-    """Check version consistency between installer.nsi and pyproject.toml."""
-    errors: list[str] = []
-
-    # Get version from pyproject.toml
-    import tomllib
-
     try:
-        pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-        pyproject_version = pyproject.get("project", {}).get("version", "unknown")
-    except Exception as e:
-        return [f"could not read pyproject.toml version: {e}"]
+        import tomllib
 
-    # Get version from installer.nsi
-    nsi_path = ROOT / "installer.nsi"
-    if nsi_path.exists():
-        content = nsi_path.read_text(encoding="utf-8")
-        # Look for APP_VERSION define
-        match = re.search(r'!define\s+/IfNDef\s+APP_VERSION\s+"([^"]+)"', content)
-        if match:
-            nsi_version = match.group(1)
-            if nsi_version != pyproject_version:
-                errors.append(
-                    f"version mismatch: pyproject.toml={pyproject_version}, installer.nsi={nsi_version}"
-                )
+        data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        project_version = data.get("project", {}).get("version", "unknown")
+    except (OSError, ValueError, ImportError) as exc:
+        return [f"could not read pyproject.toml version: {exc}"]
 
-    return errors
+    content = (ROOT / "installer.nsi").read_text(encoding="utf-8")
+    match = re.search(
+        r'!define\s+/IfNDef\s+APP_VERSION\s+"([^"]+)"',
+        content,
+    )
+
+    if match and match.group(1) != project_version:
+        return [
+            f"version mismatch: pyproject.toml={project_version}, installer.nsi={match.group(1)}"
+        ]
+
+    return []
 
 
 def main() -> int:
-    all_errors = (
+    errors = (
         validate_required_files()
         + validate_required_dirs()
+        + validate_staged_payload()
         + validate_installer_nsi()
         + validate_version_consistency()
     )
 
-    if all_errors:
-        for error in all_errors:
+    if errors:
+        for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
 

@@ -15,7 +15,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$OutputDir = "$PSScriptRoot\..\evidence",
+    [string]$OutputDir = "",
     [string]$CamfrogRoom = "",
     [switch]$SkipBuild,
     [switch]$SkipSign,
@@ -25,6 +25,20 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+# `make` and the relative config.toml used below must resolve from the repo root, whatever the caller's cwd.
+Set-Location (Split-Path $PSScriptRoot -Parent)
+# $PSScriptRoot is empty inside a param() default under Windows PowerShell 5.1, which made the
+# old default "$PSScriptRoot\..\evidence" resolve to "\..\evidence" (drive root). Default it here.
+if (-not $OutputDir) { $OutputDir = Join-Path (Get-Location).Path "evidence" }
+if ($PSVersionTable.PSVersion.Major -le 5) {
+    # Same PS 5.1 fix as build.ps1: PS7 module dirs on PSModulePath stop Microsoft.PowerShell.Security
+    # from loading, so Get-AuthenticodeSignature failed ("module could not be loaded").
+    $env:PSModulePath = ($env:PSModulePath -split ';' | Where-Object {
+        $_ -and $_ -notmatch 'PowerShell[\\/]7[\\/]Modules' -and
+        $_ -notmatch 'Documents[\\/]PowerShell[\\/]Modules' -and
+        $_ -notmatch 'Program Files[\\/]PowerShell[\\/]Modules'
+    }) -join ';'
+}
 $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $EvidenceFile = "$OutputDir\validation-evidence-$Timestamp.json"
 $Results = @{
@@ -45,6 +59,31 @@ function Write-Result($Test, $Status, $Detail, $Evidence = $null) {
 
 function Ensure-Dir($Path) {
     if (-not (Test-Path $Path)) { New-Item -ItemType Directory -Path $Path -Force | Out-Null }
+}
+
+# dist\AutoDJ.exe is a windowed (no-console) PyInstaller build: it writes nothing to a pipe or
+# redirect, so `& AutoDJ.exe --check 2>&1` always came back empty and every output-based test
+# failed. Run the same CLI through the console Python instead and capture its lines.
+function Invoke-AutoDJ {
+    param([string[]]$CliArgs)
+    if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+        throw "python not found on PATH (needed to capture the AutoDJ CLI output)"
+    }
+    # Windows PowerShell 5.1 turns native stderr into terminating errors under 'Stop'.
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { $out = & python -m camfrog_autodj @CliArgs 2>&1 | ForEach-Object { "$_" } }
+    finally { $ErrorActionPreference = $prev }
+    return @($out)
+}
+
+# --discover WRITES the detected window/control settings into the config it is given, so run it
+# against a scratch copy instead of silently rewriting the user's real config.toml.
+function New-ScratchConfig {
+    $src = if (Test-Path "config.toml") { "config.toml" } else { "config.example.toml" }
+    $dst = Join-Path $env:TEMP "autodj-validate-config.toml"
+    Copy-Item $src $dst -Force
+    return $dst
 }
 
 # ============================================
@@ -131,19 +170,20 @@ function Test-UiaAdapter {
             return
         }
         
-        $windows = & $exePath --windows 2>&1
+        $windows = Invoke-AutoDJ '--windows'
         $camfrogWindows = $windows | Where-Object { $_ -match "camfrog" -or $_ -match "Camfrog" }
         if (-not $camfrogWindows) {
-            Write-Result "uia_adapter" "WARN" "No Camfrog windows found (Camfrog client may not be running)"
             $evidence = @{
                 windowsOutput = $windows
                 camfrogWindows = $camfrogWindows
                 windowCount = 0
             }
+            # Evidence must be passed to Write-Result; it was built and then dropped before.
+            Write-Result "uia_adapter" "WARN" "No Camfrog windows found (Camfrog client may not be running)" $evidence
             return
         }
-        $discoverOutput = & $exePath --discover 2>&1
-        $checkOutput = & $exePath --check 2>&1
+        $discoverOutput = Invoke-AutoDJ '--discover', '-c', (New-ScratchConfig)
+        $checkOutput = Invoke-AutoDJ '--check'
         $evidence = @{
             camfrogWindows    = $camfrogWindows
             discoverOutput    = $discoverOutput
@@ -219,25 +259,28 @@ function Test-E2eIntegration {
         }
         
         if (-not $CamfrogRoom) {
-            Write-Result "e2e_integration" "SKIPPED" "CamfrogRoom parameter not provided; use -CamfrogRoom \"RoomName\""
+            Write-Result "e2e_integration" "SKIPPED" 'CamfrogRoom parameter not provided; use -CamfrogRoom "RoomName"'
             return
         }
-        $checkOutput = & $exePath --check 2>&1
-        $discoverOutput = & $exePath --discover -c config.toml 2>&1
+        $checkOutput = Invoke-AutoDJ '--check'
+        $discoverOutput = Invoke-AutoDJ '--discover', '-c', (New-ScratchConfig)
         $evidence = @{
             camfrogRoom  = $CamfrogRoom
             checkOutput  = $checkOutput
             discoverOutput = $discoverOutput
             testCases    = @()
         }
+        # --check prints "[ OK ] mpv: <path>" / "[WARN] ..." lines. Match the status tag, not just the
+        # word: "admins" also appears in the "[WARN] admins is empty" line and must not count as OK.
         $testCases = @(
-            @{ name = "mpv_available"; expected = "OK"; pattern = "mpv.*found" },
-            @{ name = "yt_dlp_available"; expected = "OK"; pattern = "yt-dlp" },
-            @{ name = "admins_configured"; expected = "OK"; pattern = "admins" },
-            @{ name = "bot_nick_configured"; expected = "OK"; pattern = "bot_nick" }
+            @{ name = "mpv_available";    pattern = '\[ OK \] mpv:' },
+            @{ name = "yt_dlp_available"; pattern = '\[ OK \] yt-dlp:' },
+            @{ name = "admins_configured"; pattern = '\[WARN\] admins is empty'; invert = $true },
+            @{ name = "room_window_found"; pattern = ('\[ OK \] Camfrog room window found.*' + [regex]::Escape($CamfrogRoom)) }
         )
         foreach ($tc in $testCases) {
-            $passed = $checkOutput -match $tc.pattern
+            $hit = [bool](@($checkOutput | Where-Object { $_ -match $tc.pattern }).Count)
+            $passed = if ($tc.invert) { -not $hit } else { $hit }
             $evidence.testCases += @{
                 name   = $tc.name
                 passed = $passed
@@ -248,7 +291,8 @@ function Test-E2eIntegration {
         if ($allPassed) {
             Write-Result "e2e_integration" "PASS" "All E2E prerequisites met" $evidence
         } else {
-            Write-Result "e2e_integration" "FAIL" "Some E2E prerequisites missing" $evidence
+            $missing = @($evidence.testCases | Where-Object { -not $_.passed } | ForEach-Object { "$($_.name) (looked for /$($_.detail)/ in --check output)" }) -join "; "
+            Write-Result "e2e_integration" "FAIL" "Missing E2E prerequisites: $missing" $evidence
         }
     } catch {
         Write-Result "e2e_integration" "FAIL" $_.Exception.Message
@@ -271,8 +315,10 @@ Write-Host ""
 Write-Host "Evidence saved to: $EvidenceFile"
 
 # Summary
-$failed = ($Results.results | Where-Object { $_.status -eq "FAIL" }).Count
-$passed = ($Results.results | Where-Object { $_.status -eq "PASS" }).Count
-$skipped = ($Results.results | Where-Object { $_.status -eq "SKIPPED" }).Count
+# Piping a hashtable passes it as ONE object, so the old filters always counted 0 (and the
+# script could never exit 1). Enumerate the values instead.
+$failed = @($Results.results.Values | Where-Object { $_.status -eq "FAIL" }).Count
+$passed = @($Results.results.Values | Where-Object { $_.status -eq "PASS" }).Count
+$skipped = @($Results.results.Values | Where-Object { $_.status -eq "SKIPPED" }).Count
 Write-Host "Summary: $passed passed, $failed failed, $skipped skipped"
 if ($failed -gt 0) { exit 1 }
