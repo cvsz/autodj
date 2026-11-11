@@ -112,7 +112,7 @@ if ($proc.ExitCode -ne 0) {
     exit 1
 }
 
-$installerPath = Join-Path $repoRoot "dist" $installerName
+$installerPath = Join-Path (Join-Path $repoRoot "dist") $installerName
 if (Test-Path $installerPath) {
     $sizeMB = [math]::Round((Get-Item $installerPath).Length / 1MB, 1)
     Write-Host "Installer built successfully!" -ForegroundColor Green
