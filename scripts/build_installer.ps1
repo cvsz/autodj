@@ -10,7 +10,7 @@
 #>
 
 param(
-    [string]$Version = "0.3.0",
+    [string]$Version = "",
     [string]$SrcDir = "dist",
     [string]$OutDir = "dist",
     [switch]$Sign
@@ -25,6 +25,19 @@ if ($PSVersionTable.PSVersion.Major -le 5) {
         $_ -notmatch 'Documents[\\/]PowerShell[\\/]Modules' -and
         $_ -notmatch 'Program Files[\\/]PowerShell[\\/]Modules'
     }) -join ';'
+}
+
+# Everything below uses repo-root-relative paths (installer.nsi, dist\...), so anchor there.
+Set-Location (Split-Path $PSScriptRoot -Parent)
+
+# Default the version from pyproject.toml (never a stale hard-coded literal).
+if (-not $Version) {
+    $pyVersion = & python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])"
+    $pyExit = $LASTEXITCODE
+    $Version = "$pyVersion".Trim()
+    if ($pyExit -ne 0 -or -not $Version) {
+        throw "Could not read the version from pyproject.toml; pass -Version explicitly."
+    }
 }
 
 Write-Host "=== CamfrogAutoDJ Installer Builder ===" -ForegroundColor Cyan
@@ -105,14 +118,18 @@ Write-Host "Building installer: $installerName"
 # $SrcDir; /DAPP_VERSION overrides the !define /IfNDef default as a backstop.
 $repoRoot = (Get-Location).Path
 $renderedNsi = (Resolve-Path $nsiPath).Path
-$proc = Start-Process $makensis -ArgumentList "-NOCD", "/DAPP_VERSION=$Version", "/DSRCDIR=.", "/DOUTDIR=.", $renderedNsi -WorkingDirectory $repoRoot -Wait -PassThru -NoNewWindow
-
-if ($proc.ExitCode -ne 0) {
-    Write-Error "NSIS build failed with exit code $($proc.ExitCode)"
+if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out-Null }
+# Call operator (not Start-Process -ArgumentList): Start-Process does not quote arguments,
+# so a rendered-script path containing spaces would be split. /DOUTDIR makes installer.nsi
+# write the installer into $OutDir (it used to land in the repo root, where `make` and
+# build-all-hybrid.ps1 -- which look in dist\ -- could not find it).
+& $makensis -NOCD "/DAPP_VERSION=$Version" "/DSRCDIR=." "/DOUTDIR=$OutDir" $renderedNsi
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "NSIS build failed with exit code $LASTEXITCODE"
     exit 1
 }
 
-$installerPath = Join-Path $repoRoot $installerName
+$installerPath = Join-Path (Resolve-Path $OutDir).Path $installerName
 if (Test-Path $installerPath) {
     $sizeMB = [math]::Round((Get-Item $installerPath).Length / 1MB, 1)
     Write-Host "Installer built successfully!" -ForegroundColor Green
@@ -122,7 +139,11 @@ if (Test-Path $installerPath) {
     # Sign if requested
     if ($Sign) {
         Write-Host "Signing installer..."
-        $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -like "*ZEAZDEV*" } | Select-Object -First 1
+        # Only a valid, unexpired code-signing cert with a private key; newest first.
+        $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object {
+            $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date) -and $_.Subject -like "*ZEAZDEV*" -and
+            ($_.EnhancedKeyUsageList | Where-Object { $_.ObjectId -eq "1.3.6.1.5.5.7.3.3" })
+        } | Sort-Object NotAfter -Descending | Select-Object -First 1
         if ($cert) {
             $sig = Set-AuthenticodeSignature -FilePath $installerPath -Certificate $cert -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com"
             if ($sig.SignerCertificate) {

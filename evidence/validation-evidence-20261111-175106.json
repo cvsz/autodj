@@ -1,0 +1,94 @@
+﻿{
+    "timestamp":  "2026-11-11T17:51:06.8442319+07:00",
+    "windowsBuild":  "10.0.26300.0",
+    "results":  {
+                    "tts_runtime":  {
+                                        "detail":  "TTS SAPI available, 2 voice(s), WAV created",
+                                        "status":  "PASS",
+                                        "evidence":  {
+                                                         "voices":  [
+                                                                        {
+                                                                            "culture":  "en-US",
+                                                                            "name":  "Microsoft David Desktop",
+                                                                            "age":  30,
+                                                                            "gender":  1
+                                                                        },
+                                                                        {
+                                                                            "culture":  "en-US",
+                                                                            "name":  "Microsoft Zira Desktop",
+                                                                            "age":  30,
+                                                                            "gender":  2
+                                                                        }
+                                                                    ],
+                                                         "testWavCreated":  true,
+                                                         "voiceCount":  2,
+                                                         "testWavPath":  "C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-tts-test.wav"
+                                                     },
+                                        "time":  "2026-11-11T17:52:21.0627921+07:00"
+                                    },
+                    "uia_adapter":  {
+                                        "detail":  "UIA adapter attached to Camfrog room",
+                                        "status":  "PASS",
+                                        "evidence":  {
+                                                         "discoverOutput":  [
+                                                                                "2026-11-11 17:52:12,890 INFO config: C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-validate-config.toml",
+                                                                                "2026-11-11 17:52:14,575 INFO auto-discover: scanning 4 window(s) of processes matching \u0027(?i)camfrog\u0027: [\u0027clara19 (�͹�Ź�)\u0027, \u0027��ª�����ͧʹ���\u0027, \u0027Camfrog Video Chat\u0027, \u0027ZeazBot (�͹�Ź�)\u0027]",
+                                                                                "2026-11-11 17:52:17,481 INFO candidate \u0027��ª�����ͧʹ���\u0027: chat=Document[0] input=Edit[0] (0 chat lines)",
+                                                                                "2026-11-11 17:52:17,935 WARNING auto-discover: NOT saving to C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-validate-config.toml, the result would not be valid TOML (Cannot overwrite a value (at line 167, column 23))",
+                                                                                "2026-11-11 17:52:17,935 INFO auto-discover: unchanged C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-validate-config.toml",
+                                                                                "{\u0027window_title_re\u0027: \u0027��ª�����ͧʹ���\u0027, \u0027view_type\u0027: \u0027Document\u0027, \u0027view_index\u0027: 0, \u0027input_type\u0027: \u0027Edit\u0027, \u0027input_index\u0027: 0}"
+                                                                            ],
+                                                         "camfrogWindows":  [
+                                                                                "exe=\u0027WinSCP.exe\u0027 pid=7140 class=\u0027TScpCommanderForm\u0027 title=\u0027camfrog-autodj � cvsz@192.168.1.85 � WinSCP\u0027",
+                                                                                "exe=\u0027WinSCP.exe\u0027 pid=7140 class=\u0027TEditorForm\u0027 title=\u0027/mnt/d/data/camfrog-autodj/config.toml � cvsz@192.168.1.85 � Editor � WinSCP\u0027",
+                                                                                "exe=\u0027Camfrog Video Chat.exe\u0027 pid=12900 class=\u0027#32770\u0027 title=\u0027clara19 (�͹�Ź�)\u0027",
+                                                                                "exe=\u0027Camfrog Video Chat.exe\u0027 pid=12900 class=\u0027#32770\u0027 title=\u0027��ª�����ͧʹ���\u0027",
+                                                                                "exe=\u0027Camfrog Video Chat.exe\u0027 pid=12900 class=\u0027#32770\u0027 title=\u0027Camfrog Video Chat\u0027",
+                                                                                "exe=\u0027explorer.exe\u0027 pid=4340 class=\u0027CabinetWClass\u0027 title=\u0027camfrog-autodj - File Explorer\u0027",
+                                                                                "exe=\u0027explorer.exe\u0027 pid=4340 class=\u0027CabinetWClass\u0027 title=\u0027camfrog-autodj - File Explorer\u0027",
+                                                                                "exe=\u0027Camfrog Video Chat.exe\u0027 pid=12900 class=\u0027#32770\u0027 title=\u0027ZeazBot (�͹�Ź�)\u0027"
+                                                                            ],
+                                                         "windowCount":  8,
+                                                         "checkOutput":  [
+                                                                             "2026-11-11 17:52:18,249 INFO config: D:\\data\\camfrog-autodj\\config.toml",
+                                                                             "2026-11-11 17:52:20,723 INFO 4 windows match \u0027.*\u0027; using \u0027clara19 (�͹�Ź�)\u0027 (pid 12900). Others: [\u0027��ª�����ͧʹ���\u0027, \u0027Camfrog Video Chat\u0027, \u0027ZeazBot (�͹�Ź�)\u0027]",
+                                                                             "[ OK ] mpv: D:\\data\\camfrog-autodj\\mpv\\mpv.exe",
+                                                                             "[ OK ] yt-dlp: D:\\data\\camfrog-autodj\\mpv\\yt-dlp.exe (version 2026.10.26)",
+                                                                             "[INFO] yt_dlp Python module is available for title lookups",
+                                                                             "[ OK ] music_dirs: /music: 0 media file(s)",
+                                                                             "[ OK ] admins: Seaza",
+                                                                             "[ OK ] Camfrog room window found: \u0027clara19 (�͹�Ź�)\u0027"
+                                                                         ]
+                                                     },
+                                        "time":  "2026-11-11T17:52:20.7926328+07:00"
+                                    },
+                    "installer_build":  {
+                                            "detail":  "AutoDJ.exe and installer built successfully",
+                                            "status":  "PASS",
+                                            "evidence":  {
+                                                             "exeVersion":  "0.3.0.0",
+                                                             "installerPath":  "D:\\data\\camfrog-autodj\\dist\\Camfrog-AutoDJ-Setup-0.3.0.exe",
+                                                             "exePath":  "D:\\data\\camfrog-autodj\\scripts\\..\\dist\\AutoDJ.exe",
+                                                             "installerSize":  123273488
+                                                         },
+                                            "time":  "2026-11-11T17:52:10.1507012+07:00"
+                                        },
+                    "code_signing":  {
+                                         "detail":  "Authenticode signature present (status: Valid)",
+                                         "status":  "PASS",
+                                         "evidence":  {
+                                                          "timestamp":  "CN=DigiCert SHA256 RSA4096 Timestamp Responder 2026 1, O=\"DigiCert, Inc.\", C=US",
+                                                          "signatureMessage":  "Signature verified.",
+                                                          "signatureStatus":  0,
+                                                          "signerSubject":  "CN=ZEAZDEV COMPANY LIMITED, O=ZEAZDEV COMPANY LIMITED, C=TH"
+                                                      },
+                                         "time":  "2026-11-11T17:52:10.5437038+07:00"
+                                     },
+                    "e2e_integration":  {
+                                            "detail":  "CamfrogRoom parameter not provided; use -CamfrogRoom \"RoomName\"",
+                                            "status":  "SKIPPED",
+                                            "evidence":  null,
+                                            "time":  "2026-11-11T17:52:21.0744750+07:00"
+                                        }
+                }
+}

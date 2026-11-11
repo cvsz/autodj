@@ -1,0 +1,6 @@
+2026-11-11 16:55:38,865 INFO config: D:\data\camfrog-autodj\config.toml
+2026-11-11 16:55:40,627 INFO auto-discover: scanning 2 window(s) of processes matching '(?i)camfrog': ['ZeaZDev, ��Ǣ��: ZeaZDev', 'Camfrog Video Chat']
+2026-11-11 16:55:41,681 INFO candidate 'ZeaZDev, ��Ǣ��: ZeaZDev': web chat view + message box (112 chat lines)
+2026-11-11 16:55:41,961 WARNING auto-discover: NOT saving to config.toml, the result would not be valid TOML (Cannot overwrite a value (at line 141, column 47))
+2026-11-11 16:55:41,961 INFO auto-discover: unchanged config.toml
+{'window_title_re': 'ZeaZDev,\\ ��Ǣ��:\\ ZeaZDev', 'view_kind': 'web'}

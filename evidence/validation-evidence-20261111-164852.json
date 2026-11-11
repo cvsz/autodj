@@ -1,0 +1,102 @@
+﻿{
+    "timestamp":  "2026-11-11T16:48:52.8922548+07:00",
+    "windowsBuild":  "10.0.26300.0",
+    "results":  {
+                    "tts_runtime":  {
+                                        "detail":  "TTS SAPI available, 2 voice(s), WAV created",
+                                        "status":  "PASS",
+                                        "evidence":  {
+                                                         "voices":  [
+                                                                        {
+                                                                            "culture":  "en-US",
+                                                                            "name":  "Microsoft David Desktop",
+                                                                            "age":  30,
+                                                                            "gender":  1
+                                                                        },
+                                                                        {
+                                                                            "culture":  "en-US",
+                                                                            "name":  "Microsoft Zira Desktop",
+                                                                            "age":  30,
+                                                                            "gender":  2
+                                                                        }
+                                                                    ],
+                                                         "testWavCreated":  true,
+                                                         "voiceCount":  2,
+                                                         "testWavPath":  "C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-tts-test.wav"
+                                                     },
+                                        "time":  "2026-11-11T16:50:04.1203447+07:00"
+                                    },
+                    "uia_adapter":  {
+                                        "detail":  "No Camfrog windows found (Camfrog client may not be running)",
+                                        "status":  "WARN",
+                                        "evidence":  {
+                                                         "camfrogWindows":  {
+
+                                                                            },
+                                                         "windowsOutput":  {
+
+                                                                           },
+                                                         "windowCount":  0
+                                                     },
+                                        "time":  "2026-11-11T16:50:03.6435866+07:00"
+                                    },
+                    "installer_build":  {
+                                            "detail":  "AutoDJ.exe and installer built successfully",
+                                            "status":  "PASS",
+                                            "evidence":  {
+                                                             "exeVersion":  "0.3.0.0",
+                                                             "installerPath":  "D:\\data\\camfrog-autodj\\dist\\Camfrog-AutoDJ-Setup-0.3.0.exe",
+                                                             "exePath":  "D:\\data\\camfrog-autodj\\scripts\\..\\dist\\AutoDJ.exe",
+                                                             "installerSize":  123273488
+                                                         },
+                                            "time":  "2026-11-11T16:50:02.6396514+07:00"
+                                        },
+                    "code_signing":  {
+                                         "detail":  "Authenticode signature present (status: Valid)",
+                                         "status":  "PASS",
+                                         "evidence":  {
+                                                          "timestamp":  "CN=DigiCert SHA256 RSA4096 Timestamp Responder 2026 1, O=\"DigiCert, Inc.\", C=US",
+                                                          "signatureMessage":  "Signature verified.",
+                                                          "signatureStatus":  0,
+                                                          "signerSubject":  "CN=ZEAZDEV COMPANY LIMITED, O=ZEAZDEV COMPANY LIMITED, C=TH"
+                                                      },
+                                         "time":  "2026-11-11T16:50:03.4830527+07:00"
+                                     },
+                    "e2e_integration":  {
+                                            "detail":  "Some E2E prerequisites missing",
+                                            "status":  "FAIL",
+                                            "evidence":  {
+                                                             "camfrogRoom":  "ZeaZDev",
+                                                             "discoverOutput":  {
+
+                                                                                },
+                                                             "testCases":  [
+                                                                               {
+                                                                                   "detail":  "mpv.*found",
+                                                                                   "name":  "mpv_available",
+                                                                                   "passed":  false
+                                                                               },
+                                                                               {
+                                                                                   "detail":  "yt-dlp",
+                                                                                   "name":  "yt_dlp_available",
+                                                                                   "passed":  false
+                                                                               },
+                                                                               {
+                                                                                   "detail":  "admins",
+                                                                                   "name":  "admins_configured",
+                                                                                   "passed":  false
+                                                                               },
+                                                                               {
+                                                                                   "detail":  "bot_nick",
+                                                                                   "name":  "bot_nick_configured",
+                                                                                   "passed":  false
+                                                                               }
+                                                                           ],
+                                                             "checkOutput":  {
+
+                                                                             }
+                                                         },
+                                            "time":  "2026-11-11T16:50:04.2056470+07:00"
+                                        }
+                }
+}

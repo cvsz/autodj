@@ -99,6 +99,11 @@ if [[ ! -e "$WINEPREFIX/dosdevices/z:" ]]; then
     exit 1
 fi
 
+# Everything below (tools/..., dist/, mpv/) is relative to the repo root, so anchor
+# there BEFORE the dependency check -- it used to run in the caller's cwd and failed
+# with "can't open file tools/check_build_env.py" unless invoked from the repo root.
+cd "$REPO_ROOT"
+
 # Same pre-build dependency check build.ps1 runs (fails before wasting a build).
 if ! "$WINE_BIN" "$WINE_PYTHON" tools/check_build_env.py; then
     echo "ERROR: the Windows Python is missing packages (see above): the exe would"
@@ -109,7 +114,6 @@ if ! "$WINE_BIN" "$WINE_PYTHON" tools/check_build_env.py; then
 fi
 
 # --- 4. build -------------------------------------------------------------------------
-cd "$REPO_ROOT"
 if [[ "$CLEAN" == "1" ]]; then
     echo "=== Cleaning build/, dist/ and AutoDJ.spec (--clean) ==="
     rm -rf build dist AutoDJ.spec
@@ -144,7 +148,8 @@ else
     echo "WARNING: mpv/ not found -- dist/mpv/ will be missing"
     echo "(the installer's 'mpv + yt-dlp' component needs dist/mpv/*)."
 fi
-for f in app.ico config.example.toml README.md CHANGELOG.md LICENSE install.ps1 run_autodj.py; do
+# Same list as build.ps1 -- including ads-list.json, which installer.nsi packages.
+for f in app.ico config.example.toml README.md CHANGELOG.md LICENSE install.ps1 run_autodj.py ads-list.json; do
     if [[ -f "$f" ]]; then
         cp "$f" dist/
         echo "copied $f -> dist/$f"
@@ -152,6 +157,14 @@ for f in app.ico config.example.toml README.md CHANGELOG.md LICENSE install.ps1 
         echo "WARNING: Installer source file not found: $f"
     fi
 done
+
+# build.ps1 also stages playlist/*.json; installer.nsi's "Playlist Directory" section
+# (File /r "dist\playlist\*.json") fails the NSIS build if dist/playlist is missing.
+if [[ -d playlist ]]; then
+    mkdir -p dist/playlist
+    cp playlist/*.json dist/playlist/ 2>/dev/null || echo "WARNING: playlist/ has no *.json files"
+    echo "copied playlist/*.json -> dist/playlist/"
+fi
 
 echo
 echo "NOTICE: dist/AutoDJ.exe is UNSIGNED (Authenticode signing requires Windows)."

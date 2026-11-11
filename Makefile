@@ -1,6 +1,8 @@
 # CamfrogAutoDJ -- dev convenience targets.
 # Cross-platform (Linux/macOS/Windows PowerShell/Git-Bash).
 # Windows 11 ready: validates OS build >= 22000, NSIS 3.09+, mpv, PyInstaller.
+# NOTE: recipes use POSIX sh syntax ([ -f ], mkdir -p, ...), so on Windows run
+# make from Git-Bash (bash must be on PATH); cmd.exe alone is not sufficient.
 
 ifeq ($(OS),Windows_NT)
 SHELL       := $(shell where bash 2>NUL || echo cmd.exe)
@@ -26,6 +28,9 @@ VERSION     := $(shell $(PY) -c "import tomllib,sys; print(tomllib.load(open('py
 DIST_ZIP    := dist/camfrog-autodj-$(VERSION).zip
 IS_WINDOWS  := $(filter Windows_NT,$(OS))
 
+# ruff may be installed only as a Python module (not on PATH): prefer `python -m ruff`.
+RUFF        := $(shell $(PY) -m ruff --version >/dev/null 2>&1 && echo "$(PY) -m ruff" || (command -v ruff >/dev/null 2>&1 && echo ruff))
+
 # Windows 11 minimum build number (22000 = Windows 11 21H2)
 WIN11_MIN_BUILD := 22000
 
@@ -34,12 +39,20 @@ WIN11_MIN_BUILD := 22000
 BUILD_LOG_DIR := logs
 BUILD_LOG_TS  := $(shell date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)
 
+# `sign` only exists on Windows; on Linux/Wine the release artifact is unsigned.
+ifeq ($(OS),Windows_NT)
+RELEASE_SIGN := sign
+else
+RELEASE_SIGN :=
+endif
+
 .DEFAULT_GOAL := help
 .PHONY: help install install-dev install-build install-auto venv \
         run run-gui run-console run-headless check discover windows say join-room \
         test test-v test-one coverage mutation-smoke \
-        lint lint-src fmt typecheck validate-playlists fix-playlists validate-template full-validation security-check config-check \
-        build build-clean sign build-all build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
+        lint lint-src fmt typecheck validate-playlists fix-playlists validate-template validate-installer full-validation security-check config-check \
+        build build-clean sign build-all build-all-force build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
+        validate-windows validate-windows-bat \
         clean clean-all distclean \
         config version bump-patch changelog-check pre-commit ci docs all \
         win11-check win11-validate mpv-check nsis-check pyinstaller-check logs
@@ -48,7 +61,7 @@ BUILD_LOG_TS  := $(shell date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)
 help:  ## Show this help
 	@echo "CamfrogAutoDJ -- make targets (Windows 11 + Linux/Wine)"
 	@echo ""
-	@$(PY) -c "import re; [print(f'  \033[36m{m.group(1):<24}\033[0m {m.group(2)}') for line in open('Makefile', encoding='utf-8') if (m := re.match(r'^([a-zA-Z0-9_.-]+):[^#]*##\s*(.*)', line))]"
+	@$(PY) -c "import re; [print(f'  \033[36m{m.group(1):<24}\033[0m {m.group(2)}') for line in open('$(firstword $(MAKEFILE_LIST))', encoding='utf-8') if (m := re.match(r'^([a-zA-Z0-9_.-]+):[^#]*##\s*(.*)', line))]"
 	@echo ""
 	@echo "Variables: PY=$(PY)  CONFIG=$(CONFIG)  VERSION=$(VERSION)"
 	@echo "build* works on both platforms: Windows 11 (PowerShell) and Linux/Wine."
@@ -56,19 +69,21 @@ help:  ## Show this help
 
 ## ---- Windows 11 prerequisite checks ---------------------------------------
 # SKIP_CHECKS=1 bypasses all prerequisite checks (for air-gapped / pre-validated machines)
-win11-check:  ## Verify Windows 11 (build 22000+) and NSIS/mpv/PyInstaller availability
+logs:  ## Create the build log directory
+	@mkdir -p "$(BUILD_LOG_DIR)"
+
+win11-check: logs  ## Verify Windows 11 (build 22000+) and NSIS/mpv/PyInstaller availability
 ifeq ($(OS),Windows_NT)
-	@mkdir -p "$(BUILD_LOG_DIR)" 2>/dev/null || true
 	@echo "=== Windows 11 Prerequisite Check ($(BUILD_LOG_TS)) ==="
 ifeq ($(SKIP_CHECKS),1)
 	@echo "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
 	@echo "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)"
 else
-	@powershell.exe -NoProfile -Command "$$v = (Get-Item 'C:\Windows\System32\ntoskrnl.exe').VersionInfo.ProductVersion; $$build = [int]($$v.Split('.')[2]); Write-Host 'OS Build: ' $$build; if ($$build -lt $(WIN11_MIN_BUILD)) { Write-Error 'ERROR: Windows 11 (build $(WIN11_MIN_BUILD)+) required, found build ' $$build; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: Not Windows 11 (build < 22000). Install Windows 11 or set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/win11-check.ps1 -MinBuild $(WIN11_MIN_BUILD) >>"$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: Windows 11 check failed (details in the log below). Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" && exit 1)
 	@echo "  OK: Windows 11 detected" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-	@powershell.exe -NoProfile -Command "if (Get-Command makensis -ErrorAction SilentlyContinue) { echo '  OK: NSIS (makensis) in PATH' } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files (x86)\NSIS\makensis.exe' } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files\NSIS\makensis.exe' } else { echo 'ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis) or set SKIP_CHECKS=1 to bypass.'; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found. Set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+	@powershell.exe -NoProfile -Command "if (Get-Command makensis -ErrorAction SilentlyContinue) { echo '  OK: NSIS (makensis) in PATH' } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files (x86)\NSIS\makensis.exe' } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files\NSIS\makensis.exe' } else { echo 'ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis) or set SKIP_CHECKS=1 to bypass.'; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found. Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" && exit 1)
 	@powershell.exe -NoProfile -Command "if (Get-Command mpv.exe -ErrorAction SilentlyContinue) { echo '  OK: mpv.exe in PATH' } elseif (Test-Path 'C:\Program Files\mpv\mpv.exe') { echo '  OK: mpv found at C:\Program Files\mpv\mpv.exe' } else { echo 'WARN: mpv.exe not found in PATH. Install: choco install mpv --version=2024.01.01 --yes' }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-	@$(PY) -c "import PyInstaller" 2>/dev/null && echo "  OK: PyInstaller installed" || echo "WARN: PyInstaller not installed. Run: $(PIP) install pyinstaller" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
+	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed"; else echo "WARN: PyInstaller not installed. Run: $(PIP) install pyinstaller" | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"; fi
 endif
 	@echo "Logs: $(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"
 else
@@ -76,21 +91,21 @@ else
 	@exit 1
 endif
 
-win11-validate:  ## Run full Windows validation evidence collector (installer, code signing, UIA, TTS, E2E)
+win11-validate:  ## Run full Windows validation evidence collector (installer, code signing, UIA, TTS, E2E); make win11-validate CAMFROG_ROOM=ZeaZDev [VALIDATE_ARGS=-SkipBuild]
 ifeq ($(OS),Windows_NT)
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/validate-windows.ps1
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/validate-windows.ps1 $(if $(CAMFROG_ROOM),-CamfrogRoom "$(CAMFROG_ROOM)") $(VALIDATE_ARGS)
 else
 	@echo "validate-windows requires Windows PowerShell"
 	@exit 1
 endif
 
-mpv-check:  ## Verify mpv is available for Windows builds
+mpv-check: logs  ## Verify mpv is available for Windows builds
 ifeq ($(OS),Windows_NT)
 ifeq ($(SKIP_CHECKS),1)
 	@echo "  SKIP: mpv check disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1
 	@echo "  SKIP: mpv check disabled (SKIP_CHECKS=1)"
 else
-	@powershell.exe -NoProfile -Command "if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\mpv\mpv.exe')) { Write-Error 'mpv.exe not found. Install: choco install mpv --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: mpv not found. Set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+	@powershell.exe -NoProfile -Command "if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\mpv\mpv.exe')) { Write-Error 'mpv.exe not found. Install: choco install mpv --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: mpv not found. Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" && exit 1)
 	@echo "  OK: mpv available" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1
 endif
 else
@@ -98,13 +113,13 @@ else
 	@exit 1
 endif
 
-nsis-check:  ## Verify NSIS (makensis) is available
+nsis-check: logs  ## Verify NSIS (makensis) is available
 ifeq ($(OS),Windows_NT)
 ifeq ($(SKIP_CHECKS),1)
 	@echo "  SKIP: NSIS check disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1
 	@echo "  SKIP: NSIS check disabled (SKIP_CHECKS=1)"
 else
-	@powershell.exe -NoProfile -Command "if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') -and -not (Test-Path 'C:\Program Files\NSIS\makensis.exe')) { Write-Error 'NSIS not found. Install: choco install nsis --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found. Set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+	@powershell.exe -NoProfile -Command "if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') -and -not (Test-Path 'C:\Program Files\NSIS\makensis.exe')) { Write-Error 'NSIS not found. Install: choco install nsis --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found. Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" && exit 1)
 	@echo "  OK: NSIS available" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1
 endif
 else
@@ -112,12 +127,12 @@ else
 	@exit 1
 endif
 
-pyinstaller-check:  ## Verify PyInstaller is available
+pyinstaller-check: logs  ## Verify PyInstaller is available
 ifeq ($(SKIP_CHECKS),1)
 	@echo "  SKIP: PyInstaller check disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1
 	@echo "  SKIP: PyInstaller check disabled (SKIP_CHECKS=1)"
 else
-	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed" >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1; else echo "ERROR: PyInstaller not installed. Run: $(PIP) install pyinstaller or set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1; fi
+	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed" >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1; else echo "ERROR: PyInstaller not installed. Run: $(PIP) install pyinstaller or set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log"; exit 1; fi
 endif
 
 ## ---- environment ------------------------------------------------------------
@@ -191,6 +206,7 @@ test-v:  ## Run tests with verbose/full tracebacks
 	else $(PY) tools/minipytest.py tests; fi
 
 test-one:  ## Run a single test file or node id: make test-one T=tests/test_hardening.py
+	@test -n "$(T)" || (echo "usage: make test-one T=tests/test_hardening.py"; exit 1)
 	@if $(PY) -c "import pytest" 2>/dev/null; then $(PY) -m pytest -vv "$(T)"; \
 	else $(PY) tools/minipytest.py "$(T)"; fi
 
@@ -211,15 +227,15 @@ mutation-smoke:  ## Re-run the mutation checks that back the hardening tests (se
 
 ## ---- code quality -------------------------------------------------------------
 lint:  ## Lint with ruff if installed, else a basic py_compile pass
-	@if $(PY) -c "import ruff" 2>/dev/null || command -v ruff >/dev/null 2>&1; then \
-		ruff check $(PROJECT) tests tools; \
+	@if [ -n "$(RUFF)" ]; then \
+		$(RUFF) check $(PROJECT) tests tools; \
 	else \
 		echo "ruff not installed -- falling back to py_compile (pip install ruff for real linting)"; \
-		$(PY) -c "import glob, py_compile; [py_compile.compile(f) for f in glob.glob('camfrog_autodj/**/*.py', recursive=True)]"; \
+		$(PY) -c "import glob, py_compile; [py_compile.compile(f, doraise=True) for f in glob.glob('$(PROJECT)/**/*.py', recursive=True)]"; \
 	fi
 
 fmt:  ## Format with ruff/black if installed (no-op if none installed)
-	@if command -v ruff >/dev/null 2>&1; then ruff format $(PROJECT) tests tools; \
+	@if [ -n "$(RUFF)" ]; then $(RUFF) format $(PROJECT) tests tools; \
 	elif command -v black >/dev/null 2>&1; then black $(PROJECT) tests tools; \
 	else echo "no formatter installed (pip install ruff or black)"; fi
 
@@ -246,15 +262,15 @@ validate-installer:  ## Validate installer.nsi structure and required files
 	@$(PY) tools/validate_installer.py
 
 lint-src:  ## Lint source + tools with ruff (excludes test files with pre-existing issues)
-	@if $(PY) -c "import ruff" 2>/dev/null || command -v ruff >/dev/null 2>&1; then \
-		ruff check $(PROJECT) tools || echo "NOTE: pre-existing ruff warnings (defensive patterns)"; \
+	@if [ -n "$(RUFF)" ]; then \
+		$(RUFF) check $(PROJECT) tools || echo "NOTE: pre-existing ruff warnings (defensive patterns)"; \
 	else \
 		echo "ruff not installed -- falling back to py_compile (pip install ruff for real linting)"; \
-		$(PY) -c "import glob, py_compile; [py_compile.compile(f) for f in glob.glob('camfrog_autodj/**/*.py', recursive=True)]"; \
+		$(PY) -c "import glob, py_compile; [py_compile.compile(f, doraise=True) for f in glob.glob('$(PROJECT)/**/*.py', recursive=True)]"; \
 	fi
 
-config-check:  ## Validate config.toml: parses TOML, checks required keys exist
-	@$(PY) -c "import tomllib,sys; p='$(CONFIG)'; data=tomllib.load(open(p,'rb')); required=['bot_nick','prefix','chat_reader','chat_sender','mpv_path']; missing=[k for k in required if k not in data]; sys.exit(1) if missing else print(f'OK: {p} is valid TOML with {len(data)} keys')"
+config-check:  ## Validate config.toml (falls back to config.example.toml if absent): parses TOML, checks required keys
+	@$(PY) -c "import os,sys,tomllib; p='$(CONFIG)'; p=p if os.path.exists(p) else 'config.example.toml'; data=tomllib.load(open(p,'rb')); required=['bot_nick','prefix','chat_reader','chat_sender','mpv_path']; missing=[k for k in required if k not in data]; print(f'ERROR: {p} is missing keys: {missing}') if missing else print(f'OK: {p} is valid TOML with {len(data)} keys'); sys.exit(1 if missing else 0)"
 
 validate-template:  ## Validate template structure and local Markdown links (scripts/validate_repo.py)
 	$(PY) scripts/validate_repo.py
@@ -324,15 +340,15 @@ ifeq ($(OS),Windows_NT)
 	$(MAKE) mpv-check SKIP_CHECKS=$(SKIP_CHECKS)
 	$(MAKE) nsis-check SKIP_CHECKS=$(SKIP_CHECKS)
 	$(MAKE) pyinstaller-check SKIP_CHECKS=$(SKIP_CHECKS)
-	@echo "=== Step 1/3: Building AutoDJ.exe (PyInstaller) ==="
+	@echo "=== Step 1/2: Building AutoDJ.exe (PyInstaller) ==="
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
 	@powershell.exe -NoProfile -Command "if (-not (Test-Path 'dist\\AutoDJ.exe')) { Write-Error 'ERROR: dist\\AutoDJ.exe not found after build.'; exit 1 }"
 	@echo ""
-	@echo "=== Step 3/3: Building NSIS Installer ==="
+	@echo "=== Step 2/2: Building NSIS Installer ==="
 	$(MAKE) nsiswindows11 SKIP_CHECKS=$(SKIP_CHECKS)
 	@echo ""
 	@echo "=== Build Complete ==="
-	@echo "Installer: dist\Camfrog-AutoDJ-Setup-$(VERSION).exe"
+	@echo "Installer: dist\\Camfrog-AutoDJ-Setup-$(VERSION).exe"
 else
 	@echo "=== Step 1/2: Checking Wine + building AutoDJ.exe (PyInstaller) ==="
 	bash scripts/build_exe_linux.sh $(VERSION)
@@ -378,22 +394,19 @@ else
 	@exit 1
 endif
 
-build-all-force:  ## Full pipeline: SKIP all prerequisite checks (for air-gapped / pre-validated Windows machines)
-ifeq ($(OS),Windows_NT)
+build-all-force:  ## Full pipeline: SKIP all prerequisite checks (for air-gapped / pre-validated machines)
 	$(MAKE) build-all SKIP_CHECKS=1
-else
-	$(MAKE) build-all SKIP_CHECKS=1
-endif
 
 trustsign:  ## Azure Trusted Signing: Sign EXE + Installer via Azure Key Vault (requires Azure setup)
 ifeq ($(OS),Windows_NT)
 	@echo "=== Azure Trusted Signing ==="
+	@if [ -z "$(AZURE_KEYVAULT_NAME)" ] || [ -z "$(AZURE_CERT_NAME)" ]; then echo "ERROR: set AZURE_KEYVAULT_NAME and AZURE_CERT_NAME"; exit 1; fi
 	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found. Run 'make build' first."; exit 1; fi
 	@echo "Signing AutoDJ.exe via Azure Key Vault: $(AZURE_KEYVAULT_NAME)/$(AZURE_CERT_NAME)"
-	az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist\AutoDJ.exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com
+	az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist/AutoDJ.exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com
 	@if [ -f dist/Camfrog-AutoDJ-Setup-$(VERSION).exe ]; then \
 		echo "Signing Installer via Azure Key Vault..." && \
-		az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist\Camfrog-AutoDJ-Setup-$(VERSION).exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com; \
+		az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist/Camfrog-AutoDJ-Setup-$(VERSION).exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com; \
 	fi
 	@echo "=== Azure Signing Complete ==="
 else
@@ -406,39 +419,40 @@ installer-clean:  ## Clean installer artifacts
 
 ## ---- housekeeping ---------------------------------------------------------------
 clean:  ## Remove Python caches and test artifacts
-	@$(PY) -c "import shutil, pathlib; [shutil.rmtree(p) for p in pathlib.Path('.').glob('**/__pycache__') if p.is_dir()]; [p.unlink() for p in pathlib.Path('.').glob('**/*.pyc')]; shutil.rmtree('.pytest_cache', ignore_errors=True); shutil.rmtree('htmlcov', ignore_errors=True); pathlib.Path('.coverage').unlink(missing_ok=True)"
+	@$(PY) -c "import shutil, pathlib; [shutil.rmtree(p, ignore_errors=True) for p in list(pathlib.Path('.').glob('**/__pycache__')) if p.is_dir()]; [p.unlink() for p in list(pathlib.Path('.').glob('**/*.pyc')) if p.exists()]; shutil.rmtree('.pytest_cache', ignore_errors=True); shutil.rmtree('htmlcov', ignore_errors=True); pathlib.Path('.coverage').unlink(missing_ok=True)"
 
 clean-all: clean  ## clean generated build/dist artifacts; preserve tracked PyInstaller spec files
 	@$(PY) -c "import shutil; shutil.rmtree('build', ignore_errors=True); shutil.rmtree('dist', ignore_errors=True)"
-	@rm -f dist/Camfrog-AutoDJ-Setup-*.exe dist/installer.nsi
 
 distclean: clean-all  ## clean-all + remove the virtualenv
 	@$(PY) -c "import shutil; shutil.rmtree('.venv', ignore_errors=True)"
 
 changelog-check:  ## Fail if CHANGELOG.md has no entry for the current version
-	@$(PY) -c "content = open('CHANGELOG.md', encoding='utf-8').read(); exit(0) if '## $(VERSION)' in content else (print('CHANGELOG.md has no entry for $(VERSION)'), exit(1))"
-	@echo "CHANGELOG.md has an entry for $(VERSION)"
+	@$(PY) -c "import re,sys; c=open('CHANGELOG.md',encoding='utf-8').read(); ok=re.search(r'^##\s+\[?v?'+re.escape('$(VERSION)')+r'(?![\w.])',c,re.M); print('CHANGELOG.md has an entry for $(VERSION)') if ok else (print('CHANGELOG.md has no entry for $(VERSION)'), sys.exit(1))"
 
-bump-patch:  ## Bump patch version in pyproject.toml and CHANGELOG.md
-	@$(PY) -c "import tomllib, toml; p='pyproject.toml'; d=tomllib.load(open(p,'rb')); cur=d['project']['version']; parts=cur.split('.'); parts[2]=str(int(parts[2])+1); new='.'.join(parts); d['project']['version']=new; toml.dump(d, open(p,'w')); print(f'Bumped {cur} -> {new}')"
+bump-patch:  ## Bump patch version in pyproject.toml (then add a CHANGELOG.md entry)
+	@$(PY) -c "import re,pathlib; p=pathlib.Path('pyproject.toml'); s=p.read_text(encoding='utf-8'); m=re.search(r'^(version\s*=\s*\")(\d+)\.(\d+)\.(\d+)(\")',s,re.M); assert m, 'version = \"x.y.z\" not found in pyproject.toml'; new=f'{m[2]}.{m[3]}.{int(m[4])+1}'; p.write_text(s[:m.start()]+m[1]+new+m[5]+s[m.end():],encoding='utf-8'); print(f'Bumped {m[2]}.{m[3]}.{m[4]} -> {new}')"
 	@echo "Remember to update CHANGELOG.md with the new version"
 
-security-check:  ## Run security checks (secret scan, dependency audit)
+security-check:  ## Run security checks (hardcoded-secret scan; fails if anything is found)
 	@echo "Running security checks..."
-	@$(PY) -c "import pathlib; print('Scanning for potential secrets...')" 2>/dev/null || true
-	@grep -rniE '(password|secret|api_key|token|private_key)\s*=\s*["'\'']' camfrog_autodj/ 2>/dev/null --include='*.py' | grep -v '^.*#' | grep -viE '(= ""|os\.environ|getenv|\.get\()' || echo "No hardcoded secrets found"
+	@echo "Scanning for potential secrets..."
+	@if grep -rniE '(password|secret|api_key|token|private_key)\s*=\s*["'\'']' $(PROJECT)/ --include='*.py' | grep -vE '^[^:]*:[0-9]+:\s*#' | grep -viE '(= ""|os\.environ|getenv|\.get\()'; then \
+		echo "ERROR: potential hardcoded secrets found (see above)"; exit 1; \
+	else \
+		echo "No hardcoded secrets found"; \
+	fi
 	@echo "Security check complete"
 
 docs:  ## List the docs that ship with the project
 	@$(PY) -c "import glob; [print(f) for f in glob.glob('*.md')]"
 
-pre-commit: lint test  ## Format (optional), lint, then test -- run before committing
-	@if command -v ruff >/dev/null 2>&1; then ruff format $(PROJECT) tests tools 2>/dev/null || true; fi
+pre-commit: fmt lint test  ## Format (optional), lint, then test -- run before committing
 	@echo "pre-commit checks passed"
 
 ci: install-dev test  ## What CI runs (see .github/workflows/tests.yml)
 
-release: full-validation build sign package  ## Full release pipeline: validate -> build -> sign -> package
+release: full-validation build $(RELEASE_SIGN) package  ## Full release pipeline: validate -> build -> sign (Windows only) -> package
 	@echo ""
 	@echo "================================================"
 	@echo "  RELEASE BUILD COMPLETE for v$(VERSION)"
