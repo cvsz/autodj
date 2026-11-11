@@ -107,7 +107,8 @@ $installerFiles = @(
     "CHANGELOG.md",
     "LICENSE",
     "install.ps1",
-    "run_autodj.py"
+    "run_autodj.py",
+    "ads-list.json"
 )
 foreach ($file in $installerFiles) {
     if (Test-Path $file) {
@@ -118,15 +119,38 @@ foreach ($file in $installerFiles) {
     }
 }
 
+# Copy playlist directory if exists
+if (Test-Path "playlist") {
+    if (-not (Test-Path "dist\playlist")) { New-Item -ItemType Directory -Path "dist\playlist" | Out-Null }
+    Copy-Item "playlist\*.json" "dist\playlist\" -Force
+    "copied playlist/*.json -> dist\playlist\" | Write-Host
+}
+
 Step "smoke test"
 & $exe --version
 if ($LASTEXITCODE -ne 0) { throw "the built exe does not start (see the error above)" }
 "tip: run  $exe --check  to verify mpv, yt-dlp, folders and the Camfrog window."
 # Give the OS time to release the file handle after the smoke test process exits
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 3
 # Ensure no lingering processes hold the file
 Get-Process -Name $Name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Milliseconds 500
+Start-Sleep -Milliseconds 1000
+# Wait for file to be truly unlocked (handles released by OS)
+$handleLocked = $true
+$attempts = 0
+while ($handleLocked -and $attempts -lt 10) {
+    try {
+        $stream = [System.IO.File]::Open($exe, 'Open', 'ReadWrite', 'None')
+        $stream.Close()
+        $handleLocked = $false
+    } catch {
+        $attempts++
+        Start-Sleep -Milliseconds 500
+    }
+}
+if ($handleLocked) {
+    Write-Warning "File $exe may still be locked after $attempts attempts"
+}
 
 # ---------- 2. certificate + sign -------------------------------------------------------------------
 if ($NoSign) { "`n(not signed: -NoSign)"; return }
