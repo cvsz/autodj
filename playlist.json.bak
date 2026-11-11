@@ -273,6 +273,34 @@
    "duration": null,
    "added_by": "AutoDJ",
    "added": "2026-11-11T16:20:22"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-75/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:21:37"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-75/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:21:37"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-102/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:22:27"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-102/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:22:27"
   }
  ]
 }
