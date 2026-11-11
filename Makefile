@@ -46,11 +46,12 @@ BUILD_LOG_TS  := $(shell date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)
 
 ## ---- help -----------------------------------------------------------------
 help:  ## Show this help
-	@echo "CamfrogAutoDJ -- make targets (Windows 11 ready)"
+	@echo "CamfrogAutoDJ -- make targets (Windows 11 + Linux/Wine)"
 	@echo ""
 	@$(PY) -c "import re; [print(f'  \033[36m{m.group(1):<24}\033[0m {m.group(2)}') for line in open('Makefile', encoding='utf-8') if (m := re.match(r'^([a-zA-Z0-9_.-]+):[^#]*##\s*(.*)', line))]"
 	@echo ""
 	@echo "Variables: PY=$(PY)  CONFIG=$(CONFIG)  VERSION=$(VERSION)"
+	@echo "build* works on both platforms: Windows 11 (PowerShell) and Linux/Wine."
 	@echo "Windows targets require: Windows 11 (build 22000+), NSIS 3.09+, mpv, PyInstaller"
 
 ## ---- Windows 11 prerequisite checks ---------------------------------------
@@ -240,23 +241,27 @@ else
 	bash scripts/build_installer_linux.sh $(VERSION) dist dist
 endif
 
-build:  ## Build AutoDJ.exe with PyInstaller (Windows PowerShell)
+build:  ## Build AutoDJ.exe with PyInstaller (Windows PowerShell or Linux/Wine)
 ifeq ($(OS),Windows_NT)
 	@echo "=== Building AutoDJ.exe (PyInstaller) ==="
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
 	@powershell.exe -NoProfile -Command "if (-not (Test-Path 'dist\\AutoDJ.exe')) { Write-Error 'ERROR: dist\\AutoDJ.exe not found after build.'; exit 1 }"
 	@echo "  OK: dist\\AutoDJ.exe built"
 else
-	@echo "build requires Windows (runs build.ps1). On Linux/WSL use 'make build-all-linux'."
-	@exit 1
+	@echo "=== Building AutoDJ.exe (PyInstaller via Wine) ==="
+	bash scripts/build_exe_linux.sh $(VERSION)
+	@test -f dist/AutoDJ.exe || (echo "ERROR: dist/AutoDJ.exe not found after build."; exit 1)
+	@echo "  OK: dist/AutoDJ.exe built"
 endif
 
 build-clean:  ## Clean build artifacts then rebuild
 ifeq ($(OS),Windows_NT)
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -Clean $(BUILD_ARGS)
 else
-	@echo "build-clean requires Windows (runs build.ps1 -Clean)."
-	@exit 1
+	@echo "=== Clean rebuild of AutoDJ.exe (PyInstaller via Wine) ==="
+	bash scripts/build_exe_linux.sh $(VERSION) --clean
+	@test -f dist/AutoDJ.exe || (echo "ERROR: dist/AutoDJ.exe not found after build."; exit 1)
+	@echo "  OK: dist/AutoDJ.exe built"
 endif
 
 sign:  ## Sign existing AutoDJ.exe (Windows)
@@ -268,7 +273,7 @@ else
 	@exit 1
 endif
 
-build-all:  ## Full pipeline: win11-check -> build AutoDJ.exe -> make nsiswindows11
+build-all:  ## Full pipeline: env check -> build AutoDJ.exe -> NSIS installer (Windows or Linux/Wine)
 ifeq ($(OS),Windows_NT)
 	$(MAKE) win11-check
 	$(MAKE) mpv-check
@@ -288,38 +293,25 @@ ifeq ($(OS),Windows_NT)
 	@echo "=== Build Complete ==="
 	@echo "Installer: dist\Camfrog-AutoDJ-Setup-$(VERSION).exe"
 else
-	@echo "build-all requires Windows 11 (runs build.ps1 + NSIS). On Linux/WSL use 'make build-all-linux'."
-	@exit 1
+	@echo "=== Step 1/2: Checking Wine + building AutoDJ.exe (PyInstaller) ==="
+	bash scripts/build_exe_linux.sh $(VERSION)
+	@test -f dist/AutoDJ.exe || (echo "ERROR: dist/AutoDJ.exe not found after build."; exit 1)
+	@echo ""
+	@echo "=== Step 2/2: Building NSIS Installer ==="
+	bash scripts/build_installer_linux.sh $(VERSION) dist dist
+	@test -f dist/Camfrog-AutoDJ-Setup-$(VERSION).exe || (echo "ERROR: Installer not created."; exit 1)
+	@echo ""
+	@echo "=== Build Complete (UNSIGNED Linux/Wine artifact) ==="
+	@echo "Installer: dist/Camfrog-AutoDJ-Setup-$(VERSION).exe"
+	@echo "NOTE: Authenticode signing requires Windows; this artifact is unsigned."
 endif
 
-build-all-linux:  ## Full pipeline on Linux via Wine: build EXE + NSIS installer (requires wine64 + NSIS in Wine)
+build-all-linux:  ## Alias for build-all on Linux/Wine (kept for compatibility)
 ifeq ($(OS),Windows_NT)
 	@echo "build-all-linux is for Linux/WSL only. Use 'make build-all' on Windows."
 	@exit 1
 else
-	@echo "=== Step 1/2: Verifying Wine + NSIS environment ==="
-	@if command -v wine64 >/dev/null 2>&1; then \
-		echo "Found Wine: $$(wine64 --version)"; \
-	else \
-		echo "ERROR: wine64 not found. Install: sudo apt install wine64"; \
-		exit 1; \
-	fi
-	@NSIS_PATH="$$HOME/.wine/drive_c/NSIS/makensis.exe"; \
-	if [ -f "$$NSIS_PATH" ]; then \
-		echo "  OK: NSIS found at $$NSIS_PATH"; \
-	else \
-		echo "ERROR: NSIS not found at $$NSIS_PATH"; \
-		echo "Install NSIS portable to ~/.wine/drive_c/NSIS/"; \
-		echo "  Download: https://nsis.sourceforge.io/"; \
-		echo "  Extract NSIS 3.08+ to ~/.wine/drive_c/NSIS/"; \
-		exit 1; \
-	fi
-	@echo ""
-	@echo "=== Step 2/2: Building NSIS Installer (via scripts/build_installer_linux.sh) ==="
-	bash scripts/build_installer_linux.sh $(VERSION) dist dist
-	@echo ""
-	@echo "=== Build Complete ==="
-	@echo "Installer: dist/Camfrog-AutoDJ-Setup-$(VERSION).exe"
+	$(MAKE) build-all
 endif
 
 build-all-hybrid:  ## Hybrid workflow: Windows (build + NSIS) -> WSL post-processing (run from PowerShell)

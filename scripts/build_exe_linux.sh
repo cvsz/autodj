@@ -27,13 +27,28 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WINEPREFIX="${WINEPREFIX:-$HOME/.wine}"
 GEN_PYTHON="${PYTHON:-python3}"
 
+# Optional arguments:  build_exe_linux.sh [VERSION] [--clean]
+#   VERSION  informational only (Makefile passes $(VERSION)); the exe's real
+#            version comes from version_info.txt / pyproject.toml.
+#   --clean  remove build/ and dist/ first (mirrors build.ps1 -Clean)
+CLEAN=0
+POSITIONAL=()
+for arg in "$@"; do
+    case "$arg" in
+        --clean) CLEAN=1 ;;
+        *) POSITIONAL+=("$arg") ;;
+    esac
+done
+VERSION="${POSITIONAL[0]:-}"
+
 echo "=========================================="
 echo "CamfrogAutoDJ - AutoDJ.exe builder (Linux/Wine)"
 echo "=========================================="
 echo
 
 # --- 1. Wine --------------------------------------------------------------------------
-WINE_BIN="$(command -v wine || command -v wine64 || true)"
+# WINE_BIN can be overridden (tests do this with a fake wine).
+WINE_BIN="${WINE_BIN:-$(command -v wine || command -v wine64 || true)}"
 if [[ -z "$WINE_BIN" ]]; then
     echo "ERROR: wine not found. AutoDJ.exe is a Windows binary; building it on"
     echo "Linux needs Wine. Install with:"
@@ -41,15 +56,6 @@ if [[ -z "$WINE_BIN" ]]; then
     exit 1
 fi
 echo "Found Wine: $("$WINE_BIN" --version 2>/dev/null | head -1)"
-
-# The Windows Python must see this project through a Wine drive (z: maps / by
-# default; without it PyInstaller cannot find the sources).
-if [[ ! -e "$WINEPREFIX/dosdevices/z:" ]]; then
-    echo "ERROR: Wine drive z: not found in $WINEPREFIX/dosdevices."
-    echo "The Windows Python reaches this project through z:; recreate the drive with:"
-    echo "  ln -s / \"$WINEPREFIX/dosdevices/z:\""
-    exit 1
-fi
 
 # --- 2. Windows Python inside the Wine prefix -----------------------------------------
 WINE_PYTHON="${WINE_PYTHON:-}"
@@ -78,22 +84,39 @@ echo "Found Windows Python: $WINE_PYTHON"
 
 # --- 3. PyInstaller + project deps in that interpreter --------------------------------
 if ! "$WINE_BIN" "$WINE_PYTHON" -m PyInstaller --version >/dev/null 2>&1; then
-    echo "ERROR: PyInstaller is not installed in the Windows Python ($WINE_PYTHON)."
-    echo "  wine $WINE_PYTHON -m pip install pyinstaller"
+    echo "ERROR: PyInstaller is not installed in the Windows Python (WINE_PYTHON=$WINE_PYTHON)."
+    echo "  Install it: wine $WINE_PYTHON -m pip install pyinstaller"
     exit 1
 fi
 echo "Found PyInstaller in the Windows Python"
 
+# The Windows Python must see this project through a Wine drive (z: maps / by
+# default; without it PyInstaller cannot find the sources).
+if [[ ! -e "$WINEPREFIX/dosdevices/z:" ]]; then
+    echo "ERROR: Wine drive z: not found in $WINEPREFIX/dosdevices."
+    echo "The Windows Python reaches this project through z:; recreate the drive with:"
+    echo "  ln -s / \"$WINEPREFIX/dosdevices/z:\""
+    exit 1
+fi
+
 # Same pre-build dependency check build.ps1 runs (fails before wasting a build).
 if ! "$WINE_BIN" "$WINE_PYTHON" tools/check_build_env.py; then
     echo "ERROR: the Windows Python is missing packages (see above): the exe would"
-    echo "start but fail at run time. Install the project deps into that interpreter:"
+    echo "start but fail at run time. Install the project deps into that interpreter"
+    echo "(WINE_PYTHON=$WINE_PYTHON):"
     echo "  wine $WINE_PYTHON -m pip install -e ."
     exit 1
 fi
 
 # --- 4. build -------------------------------------------------------------------------
 cd "$REPO_ROOT"
+if [[ "$CLEAN" == "1" ]]; then
+    echo "=== Cleaning build/ and dist/ (--clean; AutoDJ.spec is regenerated) ==="
+    rm -rf build dist
+fi
+if [[ -n "$VERSION" ]]; then
+    echo "Requested version: $VERSION (the exe's real version comes from version_info.txt / pyproject.toml)"
+fi
 echo
 echo "=== Generating AutoDJ.spec (shared PyInstaller flags) ==="
 "$GEN_PYTHON" tools/generate_spec.py --name AutoDJ
