@@ -42,7 +42,7 @@ BUILD_LOG_TS  := $(shell date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)
         build build-clean sign build-all build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
         clean clean-all distclean \
         config version bump-patch changelog-check pre-commit ci docs all \
-        win11-check mpv-check nsis-check pyinstaller-check logs
+        win11-check win11-validate mpv-check nsis-check pyinstaller-check logs
 
 ## ---- help -----------------------------------------------------------------
 help:  ## Show this help
@@ -73,6 +73,14 @@ endif
 	@echo "Logs: $(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"
 else
 	@echo "win11-check requires Windows 11"
+	@exit 1
+endif
+
+win11-validate:  ## Run full Windows validation evidence collector (installer, code signing, UIA, TTS, E2E)
+ifeq ($(OS),Windows_NT)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/validate-windows.ps1
+else
+	@echo "validate-windows requires Windows PowerShell"
 	@exit 1
 endif
 
@@ -260,6 +268,22 @@ ifeq ($(OS),Windows_NT)
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_installer.ps1 -Version $(VERSION)
 else
 	bash scripts/build_installer_linux.sh $(VERSION) dist dist
+endif
+
+validate-windows:  ## Run Windows validation evidence collector (PowerShell)
+ifeq ($(OS),Windows_NT)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/validate-windows.ps1
+else
+	@echo "validate-windows requires Windows PowerShell"
+	@exit 1
+endif
+
+validate-windows-bat:  ## Run Windows validation evidence collector (batch wrapper)
+ifeq ($(OS),Windows_NT)
+	cmd.exe /c scripts\validate-windows.bat
+else
+	@echo "validate-windows-bat requires Windows cmd.exe"
+	@exit 1
 endif
 
 build:  ## Build AutoDJ.exe with PyInstaller (Windows PowerShell or Linux/Wine)
