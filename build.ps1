@@ -9,6 +9,8 @@
  this machine (Root + TrustedPublisher; Windows shows one confirmation dialog). A self-signed cert is only trusted
  where its .cer is imported; for other people's PCs / no SmartScreen warning you need a real code-signing certificate.
  Inputs kept next to this file: app.ico, version_info.txt (company / product text), run_autodj.py, config.toml.
+ The PyInstaller options live in tools\generate_spec.py, which regenerates AutoDJ.spec before every
+ build (shared with the Linux/Wine builder scripts\build_exe_linux.sh).
  Before building it checks that every package the exe must contain is installed in the `python` it will use
  (tools\check_build_env.py), and after building it starts the exe once (--version) as a smoke test.
 #>
@@ -54,14 +56,15 @@ if ($LASTEXITCODE -ne 0) { throw "the Python used for the build is missing packa
 
 Step "build"
 if ($Clean) { Remove-Item -Recurse -Force build, dist, "$Name.spec" -ErrorAction SilentlyContinue }
-# yt_dlp loads its site extractors dynamically, hence --collect-all; pyttsx3 picks its speech driver at run time.
-# --noupx: UPX-packed exes trigger far more antivirus false positives and start slower.
-$pyi = @("--noconfirm", "--onefile", "--noupx", "--windowed", "--name", $Name, "--icon", "app.ico", "--version-file", "version_info.txt",
-         "--add-data", "app.ico;.", "--collect-submodules", "camfrog_autodj",
-         "--collect-submodules", "pywinauto", "--collect-submodules", "pyttsx3", "--collect-all", "yt_dlp",
-         "--hidden-import", "comtypes", "--hidden-import", "pyperclip", "--hidden-import", "mutagen",
-         "run_autodj.py")
-& python -m PyInstaller @pyi   # same interpreter that was just checked (a `pyinstaller` on PATH may belong to another Python)
+# PyInstaller flags live in ONE place: tools\generate_spec.py regenerates the
+# spec used here AND by the Linux/Wine builder (scripts\build_exe_linux.sh),
+# so Windows and Linux builds can never drift apart.  Deleting the spec (e.g.
+# -Clean) is fine: it is regenerated below on every run.
+# yt_dlp loads its site extractors dynamically, hence collect_all; pyttsx3 picks its
+# speech driver at run time; upx=False because UPX-packed exes trigger antivirus hits.
+& python tools\generate_spec.py --name $Name
+if ($LASTEXITCODE -ne 0) { throw "spec generation failed" }
+& python -m PyInstaller --noconfirm "$Name.spec"   # same interpreter that was just checked (a `pyinstaller` on PATH may belong to another Python)
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) { throw "PyInstaller failed" }
 # Use config.example.toml as template for dist/config.toml (relative paths for portability)
 if (Test-Path config.example.toml) {
