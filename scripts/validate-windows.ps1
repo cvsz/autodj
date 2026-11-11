@@ -178,7 +178,7 @@ function Test-TtsRuntime {
         }
         $testWav = "$env:TEMP\autodj-tts-test.wav"
         $synth.SetOutputToWaveFile($testWav)
-        $synth.Speak("ทดสอบระบบข้อความเป็นเสียง")
+        $synth.Speak("Testing TTS text to speech system")
         $synth.SetOutputToDefaultAudioDevice()
         $synth.Dispose()
         $wavExists = Test-Path $testWav
