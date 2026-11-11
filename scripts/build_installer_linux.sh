@@ -17,10 +17,9 @@ WINEPREFIX="${WINEPREFIX:-$HOME/.wine}"
 #   build_installer_linux.sh [VERSION] [SRCDIR] [OUTDIR]
 # VERSION defaults to pyproject.toml's project.version (never a hard-coded literal).
 POSITIONAL=()
-CLEAN=0
 for arg in "$@"; do
     case "$arg" in
-        --clean) CLEAN=1 ;;
+        --clean) ;;  # accepted for parity with build_exe_linux.sh; installer has no build cache
         *) POSITIONAL+=("$arg") ;;
     esac
 done
