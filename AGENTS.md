@@ -74,6 +74,8 @@ This repository is a **production-ready DJ automation platform**, not a template
 - **Auto-relocation** — if config not writable (e.g., Program Files), write to `%APPDATA%\CamfrogAutoDJ\`
 - **Nested dataclass** — `MessageStyle` for font/style (GUI preview only; Camfrog sends plain text)
 - **Validation order** — type → choices → ranges → regexes → semantic (`_validate`)
+- **Local environment** — copy `.env.example` to `.env` for local development; `.env` is gitignored (`.gitignore` lines 2-4) and never committed. The application reads `config.toml` for runtime settings; `.env` is only for shell/tooling variables consumed via `os.environ.get()`.
+
 
 ---
 
