@@ -25,7 +25,7 @@
 
 | โปรแกรม | วิธีติดตั้ง |
 |----------|-------------|
-| Python 3.11+ | ดาวน์โหลดจาก [python.org](https://python.org) หรือติดตั้งผ่าน winget: `winget install Python.Python.3.11` |
+| Python 3.12+ | ดาวน์โหลดจาก [python.org](https://python.org) หรือติดตั้งผ่าน winget: `winget install Python.Python.3.12` |
 | mpv | ดาวน์โหลดจาก [mpv.io](https://mpv.io) หรือติดตั้งผ่าน winget: `winget install mpv` |
 | yt-dlp | ดาวน์โหลดจาก [github.com/yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp/releases) หรือติดตั้งผ่าน winget: `winget install yt-dlp` |
 
