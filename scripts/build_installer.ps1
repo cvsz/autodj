@@ -84,22 +84,28 @@ foreach ($dir in $optionalDirs) {
     }
 }
 
-# Create installer.nsi with version substitution
-$nsiTemplate = Get-Content "installer.nsi" -Raw
-$nsiContent = $nsiTemplate -replace '!define APP_VERSION "0\.2\.3"', "!define APP_VERSION `"$Version`""
+# Render installer.nsi with the real version.  The shared renderer is also used
+# by scripts/build_installer_linux.sh so the substitution rule cannot drift.
 $nsiPath = Join-Path $SrcDir "installer.nsi"
-$nsiContent | Set-Content -Path $nsiPath -Encoding UTF8
+$renderer = Join-Path $PSScriptRoot "render_installer_nsi.py"
+& python $renderer --version $Version --input "installer.nsi" --output $nsiPath
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to render installer.nsi with version $Version (is python on PATH?)"
+    exit 1
+}
 
 Write-Host "Generated installer.nsi with version $Version"
 
 # Build installer
 $installerName = "Camfrog-AutoDJ-Setup-$Version.exe"
-$outPath = Join-Path (Get-Location) $installerName
 
 Write-Host "Building installer: $installerName"
-# Run makensis from repo root so installer.nsi paths work correctly
+# Run makensis from repo root so installer.nsi paths work correctly.
+# -NOCD keeps that working directory even though the rendered script lives in
+# $SrcDir; /DAPP_VERSION overrides the !define /IfNDef default as a backstop.
 $repoRoot = (Get-Location).Path
-$proc = Start-Process $makensis -ArgumentList "/DVERSION=$Version", "/DSRCDIR=.", "/DOUTDIR=.", "installer.nsi" -WorkingDirectory $repoRoot -Wait -PassThru -NoNewWindow
+$renderedNsi = (Resolve-Path $nsiPath).Path
+$proc = Start-Process $makensis -ArgumentList "-NOCD", "/DAPP_VERSION=$Version", "/DSRCDIR=.", "/DOUTDIR=.", $renderedNsi -WorkingDirectory $repoRoot -Wait -PassThru -NoNewWindow
 
 if ($proc.ExitCode -ne 0) {
     Write-Error "NSIS build failed with exit code $($proc.ExitCode)"

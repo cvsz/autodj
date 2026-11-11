@@ -103,8 +103,11 @@ jobs:
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 @signArgs
 
       - name: Build NSIS installer
+        shell: pwsh
         run: |
-          & "C:\\Program Files (x86)\\NSIS\\makensis.exe" /DVERSION=${{ github.ref_name }} installer.nsi
+          # Tags are vX.Y.Z; pyproject.toml and installer.nsi use X.Y.Z.
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          & "C:\\Program Files (x86)\\NSIS\\makensis.exe" "/DAPP_VERSION=$version" installer.nsi
 
       - name: Generate CycloneDX SBOM
         run: |

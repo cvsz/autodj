@@ -63,16 +63,16 @@ for f in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-# Create installer.nsi with version substitution
+# Create installer.nsi with version substitution (shared renderer)
 echo "Generating installer.nsi with version $VERSION..."
-sed "s/!define APP_VERSION \"0\.2\.3\"/!define APP_VERSION \"$VERSION\"/" ../installer.nsi > installer.nsi
+"${PYTHON:-python3}" ../scripts/render_installer_nsi.py --version "$VERSION" --input ../installer.nsi --output installer.nsi
 echo "Generated installer.nsi"
 
 # Build installer
 INSTALLER_NAME="Camfrog-AutoDJ-Setup-${VERSION}.exe"
 echo "Building installer: $INSTALLER_NAME..."
 
-if ! wine64 "$NSIS_PATH" /DVERSION="$VERSION" /DSRCDIR=. /DOUTDIR=. installer.nsi; then
+if ! wine64 "$NSIS_PATH" -NOCD /DAPP_VERSION="$VERSION" /DSRCDIR=. /DOUTDIR=. installer.nsi; then
     echo "ERROR: NSIS build failed"
     exit 1
 fi
