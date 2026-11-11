@@ -106,22 +106,22 @@ Section "!MainProgram" SEC_MAIN
     SectionIn RO
     SetOutPath "$INSTDIR"
     File "dist\AutoDJ.exe"
-    File "app.ico"
-    File "README.md"
-    File "CHANGELOG.md"
-    File "LICENSE"
-    File "ads-list.json"
+    File "dist\app.ico"
+    File "dist\README.md"
+    File "dist\CHANGELOG.md"
+    File "dist\LICENSE"
+    File "dist\ads-list.json"
     ; Preserve an existing user configuration during upgrades.
     IfFileExists "$INSTDIR\config.toml" config_exists
-    File "config.toml"
+    File "dist\config.toml"
 config_exists:
     ; config.toml can be customized by install.ps1 on first run (interactive prompts)
-    File "run_autodj.py"
+    File "dist\run_autodj.py"
 SectionEnd
 
 Section "Playlist Directory" SEC_PLAYLIST
     SetOutPath "$INSTDIR\playlist"
-    File /r "playlist\*.json"
+    File /r "dist\playlist\*.json"
 SectionEnd
 
 Section /o "mpv + yt-dlp" SEC_MPV
@@ -132,20 +132,20 @@ Section /o "mpv + yt-dlp" SEC_MPV
     File /nonfatal "dist\mpv\mpv-register.bat"
     File /nonfatal "dist\mpv\mpv-unregister.bat"
     SetOutPath "$INSTDIR\mpv\_internal"
-    File /r "mpv\_internal\*.*"
+    File /r "dist\mpv\_internal\*.*"
     ; Register mpv file associations and protocols (optional, requires admin)
     ; Run hidden so user doesn't see command window flash
     ExecWait '"$INSTDIR\mpv\mpv-register.bat"'
 SectionEnd
 
 Section /o "VBCable Virtual Audio Driver" SEC_VBCABLE
-    SetOutPath "$INSTDIR\mpv\VBCABLE_Driver_Pack45"
-    File "mpv\VBCABLE_Driver_Pack45\VBCABLE_Setup_x64.exe"
-    File "mpv\VBCABLE_Driver_Pack45\VBCABLE_ControlPanel.exe"
-    File "mpv\VBCABLE_Driver_Pack45\readme.txt"
-    File /r "mpv\VBCABLE_Driver_Pack45\*.inf"
-    File /r "mpv\VBCABLE_Driver_Pack45\*.cat"
-    File /r "mpv\VBCABLE_Driver_Pack45\*.sys"
+    SetOutPath "$INSTDIR\mpv\vbcable"
+    File "dist\mpv\vbcable\VBCABLE_Setup_x64.exe"
+    File "dist\mpv\vbcable\VBCABLE_ControlPanel.exe"
+    File "dist\mpv\vbcable\readme.txt"
+    File /r "dist\mpv\vbcable\*.inf"
+    File /r "dist\mpv\vbcable\*.cat"
+    File /r "dist\mpv\vbcable\*.sys"
 SectionEnd
 
 Section "Documentation" SEC_DOCS
