@@ -143,15 +143,7 @@ Section /o "mpv + yt-dlp" SEC_MPV
     ExecWait '"$INSTDIR\mpv\mpv-register.bat"'
 SectionEnd
 
-Section /o "VBCable Virtual Audio Driver" SEC_VBCABLE
-    SetOutPath "$INSTDIR\mpv\vbcable"
-    File "dist\mpv\vbcable\VBCABLE_Setup_x64.exe"
-    File "dist\mpv\vbcable\VBCABLE_ControlPanel.exe"
-    File "dist\mpv\vbcable\readme.txt"
-    File /r "dist\mpv\vbcable\*.inf"
-    File /r "dist\mpv\vbcable\*.cat"
-    File /r "dist\mpv\vbcable\*.sys"
-SectionEnd
+; VB-CABLE is not bundled. install.ps1 retains the existing Driver Pack 43 download/setup workflow.
 
 Section "Documentation" SEC_DOCS
     SetOutPath "$INSTDIR\docs"
@@ -187,7 +179,7 @@ FunctionEnd
 
 Function .onInstSuccess
     HideWindow
-    MessageBox MB_ICONINFORMATION|MB_OK "CamfrogAutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nIf you selected VBCable, its driver package is included under mpv\vbcable. Driver installation requires Administrator approval; run VBCABLE_Setup_x64.exe manually using Run as administrator."
+    MessageBox MB_ICONINFORMATION|MB_OK "CamfrogAutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nVB-CABLE is not bundled. Run install.ps1 to use the existing VB-CABLE setup workflow."
 FunctionEnd
 
 ; -----------------------------------------------------------------------------

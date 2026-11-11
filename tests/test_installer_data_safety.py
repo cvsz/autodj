@@ -5,8 +5,18 @@ def test_installer_preserves_existing_user_config_on_upgrade():
     root = Path(__file__).resolve().parent.parent
     script = (root / "installer.nsi").read_text(encoding="utf-8")
 
-    assert 'IfFileExists "$INSTDIR\\config.toml" config_exists' in script
-    assert 'File "config.toml"' in script
+    config_check = 'IfFileExists "$INSTDIR\\config.toml" config_exists'
+    config_template = 'File "dist\\config.toml"'
+
+    assert config_check in script
+    assert config_template in script
+
+    # Verify that the existence check precedes default config installation.
+    config_check_position = script.index(config_check)
+    template_position = script.index(config_template)
+    skip_label_position = script.index("config_exists:", template_position)
+
+    assert config_check_position < template_position < skip_label_position
 
 
 def test_uninstaller_removes_only_application_owned_files():
