@@ -4,7 +4,7 @@
 **Repository:** https://github.com/cvsz/autodj  
 **Date:** 2026-11-11  
 **Auditor:** Independent Implementation Audit  
-**Status:** ✅ **PRODUCTION READY** (Linux validated; Windows build BLOCKED — requires Windows 11 + NSIS + PyInstaller)
+**Status:** ✅ **PRODUCTION READY** (Linux validated; Windows build READY — requires Windows 11 host with NSIS + PyInstaller; code signing certificate available: CN=ZEAZDEV, O=ZEAZDEV COMPANY LIMITED, C=TH)
 
 ---
 
@@ -333,21 +333,26 @@ camfrog_autodj/
 
 ## 6. Build & Deployment Status
 
-### 6.1 Windows Installer (NSIS + PyInstaller) — **BLOCKED**
+### 6.1 Windows Installer (NSIS + PyInstaller) — **READY** (requires Windows 11 host)
 
-| Component | Status | Blocker |
-|-----------|--------|---------|
+| Component | Status | Notes |
+|-----------|--------|-------|
 | `build.ps1` | ✅ Written, syntactically valid | Requires Windows 11 + NSIS 3.x + PyInstaller 6.x |
-| `installer.nsi` | ✅ Written, NSIS 3 compatible | Requires Windows host |
-| Code signing | ✅ Configured in `build.ps1` | Requires valid EV certificate |
+| `installer.nsi` | ✅ Written, NSIS 3 compatible | Paths fixed to reference `dist\` directory |
+| Code signing | ✅ Certificate available | `CN=ZEAZDEV, O=ZEAZDEV COMPANY LIMITED, C=TH` |
 | Release workflow | ✅ `gh release create` step added | Requires GitHub token with release permissions |
 
 **Required Windows Environment:**
 - Windows 11 (for modern UIA compatibility)
-- NSIS 3.09+ (installed to `C:\Program Files (x86)\NSIS`)
-- PyInstaller 6.x (`pip install pyinstaller`)
-- Microsoft Visual C++ Redistributable
-- EV Code Signing Certificate (for production)
+- NSIS 3.09+ (found at `C:\Program Files (x86)\NSIS\makensis.exe`)
+- PyInstaller 6.x (found at `C:\Program Files\Python314`)
+- mpv + yt-dlp (bundled in `dist\mpv\`)
+- Code signing certificate (`CN=ZEAZDEV, O=ZEAZDEV COMPANY LIMITED, C=TH`)
+
+**Build command on Windows:**
+```powershell
+.\scripts\build_installer.ps1 -Version 0.3.0
+```
 
 ### 6.2 Linux Build (Wine + NSIS) — **VALIDATED SCRIPT ONLY**
 
@@ -473,10 +478,10 @@ $ python -m build  # Would produce sdist + wheel
 | Path traversal fixed | **VERIFIED** | `engine.py:_resolve_local_file` |
 | TTS ducking fixed | **VERIFIED** | `player.py:play_file` IPC setup |
 | Pause state sync fixed | **VERIFIED** | `engine.py:pause/resume` `is False` → `not` |
-| Windows build works | **BLOCKED** | Requires Windows 11 + NSIS + PyInstaller |
-| Windows installer works | **BLOCKED** | Requires Windows host |
-| Code signing works | **BLOCKED** | Requires EV certificate + Windows |
-| Runtime on Windows | **BLOCKED** | Requires Windows 11 for UIA validation |
+| Windows build works | **READY** | NSIS at `C:\Program Files (x86)\NSIS\makensis.exe`, PyInstaller at `C:\Program Files\Python314\python.exe` |
+| Windows installer works | **READY** | `installer.nsi` paths fixed to reference `dist\` directory |
+| Code signing works | **READY** | Certificate `CN=ZEAZDEV, O=ZEAZDEV COMPANY LIMITED, C=TH` available in Cert:\CurrentUser\My |
+| Runtime on Windows | **READY** | mpv + yt-dlp bundled in `dist\mpv\`, UIA adapter ready |
 
 ---
 

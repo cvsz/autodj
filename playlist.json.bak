@@ -5124,6 +5124,34 @@
    "duration": null,
    "added_by": "AutoDJ",
    "added": "2026-11-11T11:59:23"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-150/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T12:00:08"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-150/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T12:00:08"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-35/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T14:48:25"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-35/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T14:48:25"
   }
  ]
 }
