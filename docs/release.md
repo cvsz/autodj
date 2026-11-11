@@ -6,9 +6,9 @@ This document describes how AutoDJ releases are built, validated, and published.
 
 ## Versioning
 
-AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.2.6`, declared in:
-- `pyproject.toml` (`version = "0.2.6"`)
-- `camfrog_autodj/__init__.py` (`__version__ = "0.2.6"`)
+AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.3.0`, declared in:
+- `pyproject.toml` (`version = "0.3.0"`)
+- `camfrog_autodj/__init__.py` (`__version__ = "0.3.0"`)
 - `version_info.txt` (Windows file version resource)
 - `CHANGELOG.md` (changelog entries)
 
@@ -18,16 +18,18 @@ AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.2
 
 No release is created or published automatically. The release workflow (`.github/workflows/release.yml`) enforces the following sequence:
 
-### Gate 1 — Validation (ubuntu-latest, Python 3.11)
+### Gate 1 — Validation (ubuntu-latest, Python 3.12/3.13)
 
 Must pass before any build artifact is produced:
 
 1. **Checkout** the exact tag commit
 2. **Install dependencies** (`-e .`, pytest, ruff, mypy)
-3. **Run unit tests** — `python -m pytest -q -p no:faulthandler -p no:cacheprovider` (baseline: 175 passed)
-4. **Lint** — `ruff check .`
-5. **Strict typecheck** — `mypy camfrog_autodj`
-6. **Secret scan** — rejects any tracked `.env`, `id_rsa`, `id_ed25519`, `*.pem`, `*.key` (except `.env.example`)
+3. **Run unit tests** — `python -m pytest -q -p no:faulthandler -p no:cacheprovider` (baseline: 414 passed)
+4. **Lint** — `ruff check camfrog_autodj tests tools`
+5. **Format check** — `ruff format --check camfrog_autodj tests tools`
+6. **Strict typecheck** — `mypy camfrog_autodj`
+7. **Shell lint** — `shellcheck scripts/*.sh tools/*.sh`
+8. **Secret scan** — rejects any tracked `.env`, `id_rsa`, `id_ed25519`, `*.pem`, `*.key` (except `.env.example`)
 
 If any gate fails, the job fails and the release is blocked.
 
@@ -44,18 +46,6 @@ Runs only if Gate 1 passed:
 7. **Generate SHA256 checksums** — `SHA256SUMS.txt`
 8. **Attest build provenance** — `actions/attest-build-provenance@v2`
 9. **Upload artifacts** — 90-day retention
-
-### Gate 3 — Release publication (manual)
-
-The "Release" step that creates/publishes a GitHub Release is **intentionally omitted** from the workflow during remediation. A maintainer must:
-
-1. Verify Gate 1 and Gate 2 passed on the exact tag SHA
-2. Obtain independent review and approval (per `GOVERNANCE.md`)
-3. GPG-sign the annotated release tag
-4. Create the release manually with build artifacts, SBOM, and checksums
-5. Record release evidence separately
-
-No release is created or published during remediation.
 
 ## Release checklist
 

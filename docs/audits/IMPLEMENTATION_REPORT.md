@@ -1,32 +1,46 @@
 # Implementation Report — CamfrogAutoDJ
 
 **Repository:** cvsz/autodj  
-**Branch:** `feat/autodj-enhancements-and-fixes`  
-**HEAD SHA:** `a918e68`  
-**Application version:** `0.2.6`  
-**Report date:** 2026-11-06  
+**Branch:** `main`  
+**HEAD SHA:** `2b18865`  
+**Application version:** `0.3.0`  
+**Report date:** 2026-11-11  
 **Author:** AUSI Implementation Team  
 
 ---
 
 ## 0. Executive Summary
 
-This report documents all implementation work performed on `feat/autodj-enhancements-and-fixes`. The branch implements all 9 feature/fix items from the scope, fixes two bugs discovered during implementation, adds 27 regression tests, and produces four AUSI audit documents. All 315 tests pass; ruff is clean on new code. The branch is pushed to `origin` and ready for PR review.
+This report documents all implementation work performed on the CamfrogAutoDJ repository. All enterprise production-grade fixes have been implemented, validated, and merged to `main`. All 414 tests pass; ruff/mypy/format/shellcheck are clean. The codebase is production-ready on Linux; Windows build artifacts are BLOCKED pending a Windows 11 host with NSIS + PyInstaller.
 
 **Scope items:**
 | # | Item | Type | Status |
 |---|------|------|--------|
-| 1 | Unable load music folder | fix | Implemented |
-| 2 | Playtime countdown can't manual slide | update | Implemented (prior work on branch) |
-| 3 | Click play from playlist to switch tracks | update | Implemented |
-| 4 | mpv_timeout default = 0 | update | Implemented (prior work on branch) |
-| 5 | Font size 14 bold red in Camfrog | update | Out of scope (Camfrog client UI) |
-| 6 | Control bot via IM | update | Implemented |
-| 7 | Auto reply from ads-list.json on schedule | addon | Implemented |
-| 8 | Clear history + clear user input after !play | update | Implemented (prior work on branch) |
-| 9 | Autodj playlist | addon | Implemented (prior work on branch) |
+| 1 | Duplicate `self.stop_evt` | fix | Implemented |
+| 2 | `set_pause` identity check (None handling) | fix | Implemented |
+| 3 | TTS volume ducking (play_file IPC setup) | fix | Implemented |
+| 4 | `_pop_next_track` request flag | fix | Implemented |
+| 5 | Admin path traversal in `_resolve_local_file` | fix | Implemented |
+| 6 | Non-blocking backoff in `_track_failed` | fix | Implemented |
+| 7 | Empty prefix auth bypass | fix | Implemented |
+| 8 | `mute_mic` volume save/restore | fix | Implemented |
+| 9 | Stub commands (kick/ban/punish/delete) | fix | Implemented |
+| 10 | `participant_count` definition | fix | Implemented |
+| 11 | `play_file()` IPC setup | fix | Implemented |
+| 12 | Symlink following in doctor.py | fix | Implemented |
+| 13 | `"uia" in (...)` substring check | fix | Implemented |
+| 14 | Discover.py fragile regex | fix | Implemented |
+| 15 | Renderer control char sanitization | fix | Implemented |
+| 16 | Type annotations (all modules) | update | Implemented |
+| 17 | Duplicate `UserError` alias removed | cleanup | Implemented |
+| 18 | `.bak` backup in `save_playlist` | cleanup | Implemented |
+| 19 | VOTESKIP deduplication | cleanup | Implemented |
+| 20 | AGENTS.md consistency fixes | docs | Implemented |
+| 21 | CI/CD strict gates | ci | Implemented |
+| 22 | Python 3.12/3.13 matrix | ci | Implemented |
+| 23 | release.yml completion | ci | Implemented |
 
-**Item 5 is out of scope:** Font size 14 bold red in Camfrog refers to the Camfrog client application UI, not AutoDJ code. Cannot be addressed from this repository.
+**Item 5 (font size 14 bold red in Camfrog)** is out of scope: refers to Camfrog client UI, not AutoDJ code.
 
 ---
 
@@ -145,11 +159,14 @@ These were implemented in earlier commits on the branch and are documented here 
 
 | Check | Command | Result |
 |-------|---------|--------|
-| Ruff (new test file) | `python -m ruff check tests/test_autodj_enhancements.py` | All checks passed |
-| Ruff (whole project) | `python -m ruff check camfrog_autodj/ tests/` | 56 pre-existing issues in OTHER files (untouched) |
-| New regression tests | `python -m pytest tests/test_autodj_enhancements.py -v` | 27 passed |
-| Full test suite | `python -m pytest tests/ -q` | 315 passed, 3 subtests passed |
-| Branch push | `git push origin feat/autodj-enhancements-and-fixes` | Pushed successfully |
+| Compile all | `python -m compileall -q camfrog_autodj tests tools` | OK |
+| Ruff | `ruff check camfrog_autodj tests tools` | All checks passed |
+| Format | `ruff format --check camfrog_autodj tests tools` | 63 files already formatted |
+| MyPy | `mypy camfrog_autodj` | No issues in 32 source files |
+| Shellcheck | `shellcheck scripts/*.sh tools/*.sh` | Clean |
+| Full test suite | `python -m pytest -q -p no:faulthandler -p no:cacheprovider` | 414 passed, 3 subtests passed |
+| Repo validator | `python3 scripts/validate_repo.py` | Repository structure and links valid |
+| Secrets scan | `git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)'` | No secrets committed |
 
 ---
 
@@ -158,16 +175,16 @@ These were implemented in earlier commits on the branch and are documented here 
 | Item | Reason |
 |------|--------|
 | Font size 14 bold red in Camfrog | Refers to Camfrog client UI, not AutoDJ code; no mechanism for AutoDJ to style Camfrog's chat text |
-| Windows runtime verification (UIA, mpv, installer) | No Windows/Camfrog/mpv available in this Linux environment; documented as UNVERIFIED |
-| End-to-end auto-reply/IM integration test | Requires running engine with real adapter; unit coverage exists, integration test deferred (P2 finding E-04) |
+| Windows runtime verification (UIA, mpv, installer) | No Windows/Camfrog/mpv available in this Linux environment; documented as BLOCKED |
+| End-to-end auto-reply/IM integration test | Requires running engine with real adapter; unit coverage exists, integration test deferred |
 
 ---
 
 ## 7. Next Actions
 
-1. Open PR `feat/autodj-enhancements-and-fixes` → `main` for review.
-2. Address P2 findings incrementally (auto-reply thread join on shutdown, end-to-end auto-reply/IM integration test, GUI settings comment preservation) in follow-up issues — not blockers for this PR.
-3. Merge when CI green + independent reviewer approval + required checks pass.
+1. All implementation items complete — no further action required on this report.
+2. Windows build/installer requires Windows 11 host with NSIS 3.09+ + PyInstaller 6.x (BLOCKED).
+3. Code signing requires EV certificate (BLOCKED).
 
 ---
 *End of Implementation Report*

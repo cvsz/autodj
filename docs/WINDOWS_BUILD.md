@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the reproducible build process for AutoDJ v0.2.6 on Windows 11.
+This document describes the reproducible build process for AutoDJ v0.3.0 on Windows 11.
 
 ## Prerequisites
 
@@ -54,7 +54,7 @@ The script performs these steps:
 1. **Source Validation**
    - Creates isolated Git worktree at exact `ApprovedSha`
    - Verifies repository identity, branch, and working tree cleanliness
-   - Validates version metadata matches `0.2.6`
+   - Validates version metadata matches `0.3.0`
 
 2. **Prerequisite Checks**
    - Windows 11 (Build 22000+), x64
@@ -83,8 +83,8 @@ The script performs these steps:
    - Self-signed cert (default, trusted on build machine)
 
 7. **NSIS Installer Build** (unless `-SkipInstaller`)
-   - Runs `makensis /DAPP_VERSION=0.2.6 installer.nsi`
-   - Output: `Camfrog-AutoDJ-Setup-0.2.6.exe`
+   - Runs `makensis /DAPP_VERSION=0.3.0 installer.nsi`
+   - Output: `Camfrog-AutoDJ-Setup-0.3.0.exe`
 
 8. **Evidence Bundle Generation**
    - SHA-256 manifests for all artifacts
@@ -131,7 +131,7 @@ D:\temp\autodj-windows-build-<timestamp>\
 | Artifact | Description | Location |
 |----------|-------------|----------|
 | `AutoDJ.exe` | Signed/Unsigned executable | `worktree/dist/AutoDJ.exe` |
-| `Camfrog-AutoDJ-Setup-0.2.6.exe` | NSIS installer | Worktree root |
+| `Camfrog-AutoDJ-Setup-0.3.0.exe` | NSIS installer | Worktree root |
 | `build-result.json` | Machine-readable build result | `evidence/build-result.json` |
 | `SHA256SUMS` | Manifest of all evidence files | `evidence/SHA256SUMS` |
 | `SHA256SUMS.sha256` | Manifest self-hash | `evidence/SHA256SUMS.sha256` |

@@ -1327,11 +1327,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_gift_announce_enabled",
-            self._lbl(sp_inner, "g_settings_gift_announce_enabled"),
-            "g_settings_avatar_change_enabled",
-        )
 
         # avatar_change_enabled toggle
         self.s_avatar_change_enabled = self.e.cfg.avatar_change_enabled
@@ -1355,11 +1350,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_avatar_change_enabled",
-            self._lbl(sp_inner, "g_settings_avatar_change_enabled"),
-            "g_settings_status_indicator_enabled",
-        )
 
         # status_indicator_enabled toggle
         self.s_status_indicator_enabled = self.e.cfg.status_indicator_enabled
@@ -1383,11 +1373,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_status_indicator_enabled",
-            self._lbl(sp_inner, "g_settings_status_indicator_enabled"),
-            "g_settings_status_alert_enabled",
-        )
 
         # status_alert_enabled toggle
         self.s_status_alert_enabled = self.e.cfg.status_alert_enabled
@@ -1411,11 +1396,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_status_alert_enabled",
-            self._lbl(sp_inner, "g_settings_status_alert_enabled"),
-            "g_settings_im_viewer_enabled",
-        )
 
         # IM viewer toggle
         self.s_im_viewer_enabled = self.e.cfg.im_viewer_enabled
@@ -1467,11 +1447,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_im_auto_reply_enabled",
-            self._lbl(sp_inner, "g_settings_im_auto_reply_enabled"),
-            "g_settings_im_auto_reply_message",
-        )
 
         # IM auto-reply message
         self.s_im_auto_reply_message = self._entry(sp_inner)
@@ -1513,11 +1488,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_im_require_room_presence",
-            self._lbl(sp_inner, "g_settings_im_require_room_presence"),
-            "g_settings_message_style_font_family",
-        )
 
         # message_style_font_family
         self.s_msg_font_family = self._entry(sp_inner)
@@ -1568,12 +1538,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        # Add label for bold checkbox
-        _setting_row(
-            "g_settings_message_style_bold",
-            self._lbl(sp_inner, "g_settings_message_style_bold"),
-            "g_settings_message_style_italic",
-        )
 
         # message_style_italic (checkbox)
         self.s_msg_italic = self.e.cfg.message_style.italic
@@ -1597,11 +1561,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_message_style_italic",
-            self._lbl(sp_inner, "g_settings_message_style_italic"),
-            "g_settings_message_style_underline",
-        )
 
         # message_style_underline (checkbox)
         self.s_msg_underline = self.e.cfg.message_style.underline
@@ -1625,11 +1584,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_message_style_underline",
-            self._lbl(sp_inner, "g_settings_message_style_underline"),
-            "g_settings_tts_voice",
-        )
 
         # mute_enabled toggle
         self.s_mute_enabled = self.e.cfg.mute_enabled
@@ -1653,11 +1607,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_mute_enabled",
-            self._lbl(sp_inner, "g_settings_mute_enabled"),
-            "g_settings_admin_mute_mic",
-        )
 
         # admin_mute_mic toggle
         self.s_admin_mute_mic = self.e.cfg.admin_mute_mic
@@ -1681,11 +1630,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_mute_mic",
-            self._lbl(sp_inner, "g_settings_admin_mute_mic"),
-            "g_settings_admin_unmute_mic",
-        )
 
         # admin_unmute_mic toggle
         self.s_admin_unmute_mic = self.e.cfg.admin_unmute_mic
@@ -1709,11 +1653,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_unmute_mic",
-            self._lbl(sp_inner, "g_settings_admin_unmute_mic"),
-            "g_settings_admin_block_user",
-        )
 
         # admin_block_user toggle
         self.s_admin_block_user = self.e.cfg.admin_block_user
@@ -1737,11 +1676,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_block_user",
-            self._lbl(sp_inner, "g_settings_admin_block_user"),
-            "g_settings_admin_unblock_user",
-        )
 
         # admin_unblock_user toggle
         self.s_admin_unblock_user = self.e.cfg.admin_unblock_user
@@ -1765,11 +1699,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_unblock_user",
-            self._lbl(sp_inner, "g_settings_admin_unblock_user"),
-            "g_settings_admin_block_bot",
-        )
 
         # admin_block_bot toggle
         self.s_admin_block_bot = self.e.cfg.admin_block_bot
@@ -1793,11 +1722,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_block_bot",
-            self._lbl(sp_inner, "g_settings_admin_block_bot"),
-            "g_settings_admin_unblock_bot",
-        )
 
         # admin_unblock_bot toggle
         self.s_admin_unblock_bot = self.e.cfg.admin_unblock_bot
@@ -1821,11 +1745,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_unblock_bot",
-            self._lbl(sp_inner, "g_settings_admin_unblock_bot"),
-            "g_settings_admin_kick_user",
-        )
 
         # admin_kick_user toggle
         self.s_admin_kick_user = self.e.cfg.admin_kick_user
@@ -1849,11 +1768,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_kick_user",
-            self._lbl(sp_inner, "g_settings_admin_kick_user"),
-            "g_settings_admin_ban_user",
-        )
 
         # admin_ban_user toggle
         self.s_admin_ban_user = self.e.cfg.admin_ban_user
@@ -1877,11 +1791,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_ban_user",
-            self._lbl(sp_inner, "g_settings_admin_ban_user"),
-            "g_settings_admin_unban_user",
-        )
 
         # admin_unban_user toggle
         self.s_admin_unban_user = self.e.cfg.admin_unban_user
@@ -1933,11 +1842,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_punish_user",
-            self._lbl(sp_inner, "g_settings_admin_punish_user"),
-            "g_settings_admin_punish_bot",
-        )
 
         # admin_punish_bot toggle
         self.s_admin_punish_bot = self.e.cfg.admin_punish_bot
@@ -1961,28 +1865,21 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_punish_bot",
-            self._lbl(sp_inner, "g_settings_admin_punish_bot"),
-            "g_settings_welcome_message_enabled",
-        )
 
         # welcome_message_enabled toggle
-        self.s_admin_greeting_enabled = (
-            self.e.cfg.admin_greeting_enabled
-        )  # reuse existing admin greeting enabled toggle
-        cb_admin_greeting_enabled: PillButton = self._btn(
+        self.s_welcome_message_enabled = self.e.cfg.welcome_message_enabled
+        cb_welcome_message_enabled: PillButton = self._btn(
             sp_inner,
             "",
-            lambda: self._toggle_bool("s_admin_greeting_enabled", cb_admin_greeting_enabled),
+            lambda: self._toggle_bool("s_welcome_message_enabled", cb_welcome_message_enabled),
             "chip",
-            icon="✓" if self.e.cfg.admin_greeting_enabled else "",
+            icon="✓" if self.e.cfg.welcome_message_enabled else "",
             bg=SURFACE,
             height=34,
             minw=200,
         )
-        cb_admin_greeting_enabled.set_active(self.e.cfg.admin_greeting_enabled)
-        cb_admin_greeting_enabled.grid(
+        cb_welcome_message_enabled.set_active(self.e.cfg.welcome_message_enabled)
+        cb_welcome_message_enabled.grid(
             row=row,
             column=0,
             columnspan=2,
@@ -1991,15 +1888,10 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_welcome_message_enabled",
-            self._lbl(sp_inner, "g_settings_welcome_message_enabled"),
-            "g_settings_welcome_message_message",
-        )
 
         # welcome_message_message entry
         self.s_welcome_message_message = self._entry(sp_inner)
-        self.s_welcome_message_message.insert(0, self.e.cfg.admin_greeting_message)
+        self.s_welcome_message_message.insert(0, self.e.cfg.welcome_message_message)
         _setting_row(
             "g_settings_welcome_message_message",
             self.s_welcome_message_message,
@@ -2030,11 +1922,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_delete_message_enabled",
-            self._lbl(sp_inner, "g_settings_admin_delete_message_enabled"),
-            "g_settings_tts_voice",
-        )
 
         # tts_voice
         self.s_tts_voice = self._entry(sp_inner)
@@ -3052,9 +2939,7 @@ class App(tk.Tk):
             lines.append(f"admin_punish_bot = {str(cfg.admin_punish_bot).lower()}")
 
             # Welcome message
-            cfg.welcome_message_enabled = (
-                self.s_admin_greeting_enabled
-            )  # reuse admin_greeting_enabled toggle
+            cfg.welcome_message_enabled = self.s_welcome_message_enabled
             cfg.welcome_message_message = self.s_welcome_message_message.get().strip()
             lines.append(f"welcome_message_enabled = {str(cfg.welcome_message_enabled).lower()}")
             lines.append(f"welcome_message_message = {_toml_str(cfg.welcome_message_message)}")

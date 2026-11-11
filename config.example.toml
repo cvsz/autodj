@@ -24,6 +24,7 @@ view_index = 0
 input_type = "Edit"
 input_index = -1
 # log_path = "C:/path/to/chat.log"
+log_encoding = "utf-8"            # log file encoding
 # line_regex = '^(?P<user>[^:]{1,30}):\s(?P<text>.+)$'
 
 # mpv and yt-dlp are installed alongside AutoDJ by the NSIS installer:
@@ -33,8 +34,15 @@ input_index = -1
 # Example: ytdlp_path = "mpv/yt-dlp.exe"
 mpv_path = "mpv/mpv.exe"
 ytdlp_path = "mpv/yt-dlp.exe"
+youtube_cookies_file = ""          # path to Netscape cookies.txt for yt-dlp
+youtube_cookies_browser = ""       # browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
+youtube_ca_bundle = ""             # path to custom CA bundle PEM file for yt-dlp certificate verification
 
 audio_device = "auto"              # "auto" = system default; or wasapi/{GUID} for virtual cable (run: mpv --audio-device=help)
+audio_fade = true                  # enable audio volume fade-in and fade-out
+audio_fade_in_sec = 1.2            # fade-in duration in seconds
+audio_fade_out_sec = 1.5           # fade-out duration on skip/stop in seconds
+audio_normalize = false            # enable dynamic audio loudness normalization (dynaudnorm)
 volume = 70
 music_dirs = ["REPLACE_ME:/path/to/your/music"]   # local library: requestable by name, also autoplayed
 autoplay_sources = []          # extra YouTube playlist URLs / folders / files to autoplay
@@ -45,6 +53,10 @@ max_requests_per_user = 3
 max_queue = 50
 max_duration = 900             # seconds, non-admin requests
 voteskip_threshold = 3
+voteskip_dynamic = false           # dynamic voteskip threshold based on participant count
+voteskip_dynamic_pct = 30          # percentage of participants required to skip
+user_request_limit = 5             # max song requests allowed per user within rate_limit_window
+rate_limit_window = 300.0          # rolling time window for per-user request limit (seconds)
 cooldown = 3.0
 send_interval = 1.5            # seconds between chat lines (flood control)
 max_msg_len = 180
@@ -99,6 +111,9 @@ admin_greeting_cooldown = 3600.0    # seconds between greetings for same admin (
 # --- IM security: require user to be in room to use IM commands ---
 im_require_room_presence = true     # only users seen in room chat can DM the bot
 
+# --- IM viewer: show private/instant messages in a dedicated GUI tab ---
+im_viewer_enabled = true            # show the IM / private message viewer tab in the GUI
+
 # --- font/style customization for GUI preview only ---
 # Camfrog desktop client does NOT support rich text in outgoing messages.
 # This configuration is used ONLY for the FontEditor preview panel in the GUI.
@@ -108,6 +123,13 @@ message_style = { font_family = "Consolas", font_size = 14, font_color = "#FF000
 # --- admin mic mute/unmute (config-gated) ---
 admin_mute_mic = true             # enable !mute command
 admin_unmute_mic = true           # enable !unmute command
+
+# --- block/unblock user (config-gated) ---
+admin_block_user = false          # enable !block user command (admin can block a user)
+admin_unblock_user = false        # enable !unblock user command (admin can unblock a user)
+
+# --- mic mute state ---
+mute_enabled = false              # mic muted state
 
 # --- block/unblock bot (config-gated) ---
 admin_block_bot = true            # enable !blockbot command
