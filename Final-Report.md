@@ -18,7 +18,7 @@ A **deep-dive security audit** was performed across all 32 Python modules, confi
 
 | Metric | Result | Evidence |
 |--------|--------|----------|
-| **Test Suite** | 414 tests passed | `pytest -q` → 15.2s, 0 failures |
+| **Test Suite** | 441 tests passed | `pytest -q` → 19s, 0 failures |
 | **Static Analysis (ruff)** | Clean | 0 errors, 0 warnings |
 | **Type Checking (mypy)** | Clean | 32 source files, 0 issues (strict mode) |
 | **Shell Scripts (shellcheck)** | Clean | 6 scripts validated |
