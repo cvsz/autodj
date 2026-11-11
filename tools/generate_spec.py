@@ -91,5 +91,6 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Generated {out} (name={args.name}) from tools/generate_spec.py")
     return 0
 
+
 if __name__ == "__main__":
     raise SystemExit(main())

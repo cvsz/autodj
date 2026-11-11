@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -108,3 +109,36 @@ class TestBuildPs1UsesSharedSpec:
             "--noupx",
         ]:
             assert gone not in ps1, f"stale inline flag {gone} must live in the generator"
+
+
+INSTALLER_SH = ROOT / "scripts" / "build_installer_linux.sh"
+
+
+class TestLinuxInstallerBuilder:
+    """scripts/build_installer_linux.sh: native makensis first, correct file list,
+    compile from the repo root so the nsi's dist\\... paths resolve."""
+
+    def test_required_files_match_repo_and_installer(self):
+        script = INSTALLER_SH.read_text(encoding="utf-8")
+        assert '"LICENSE"' in script
+        assert "LICENSE.md" not in script  # repo ships LICENSE, not LICENSE.md
+        assert "uninstall.ps1" not in script  # NSIS generates the uninstaller
+
+    def test_makensis_detection_prefers_native_then_wine(self):
+        script = INSTALLER_SH.read_text(encoding="utf-8")
+        assert "command -v makensis" in script  # tier 1: native on PATH
+        assert "NSIS_PATH" in script  # tier 2: Windows makensis.exe in the prefix
+
+    def test_compiles_from_repo_root_with_nocd(self):
+        script = INSTALLER_SH.read_text(encoding="utf-8")
+        assert "-NOCD" in script
+        assert "REPO_ROOT" in script
+        # the old script cd'd into SRCDIR, breaking the nsi's dist\\ relative paths
+        assert re.search(r'cd "\$SRCDIR"', script) is None
+
+    def test_default_version_derives_from_pyproject(self):
+        script = INSTALLER_SH.read_text(encoding="utf-8")
+        assert "tomllib" in script  # default comes from pyproject, never a literal
+        assert "pyproject.toml" in script
+        for stale in ["${1:-0.3.0}", "${1:-0.2.3}"]:
+            assert stale not in script, f"hard-coded default version {stale}"

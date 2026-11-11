@@ -61,7 +61,7 @@ echo "Found Wine: $("$WINE_BIN" --version 2>/dev/null | head -1)"
 WINE_PYTHON="${WINE_PYTHON:-}"
 if [[ -z "$WINE_PYTHON" ]]; then
     for candidate in "$WINEPREFIX"/drive_c/Python*/python.exe \
-                     "$WINEPREFIX"/drive_c/"Program Files"/Python*/python.exe; do
+                     "$WINEPREFIX/drive_c/Program Files"/Python*/python.exe; do
         if [[ -f "$candidate" ]]; then
             WINE_PYTHON="$candidate"
             break
@@ -111,8 +111,8 @@ fi
 # --- 4. build -------------------------------------------------------------------------
 cd "$REPO_ROOT"
 if [[ "$CLEAN" == "1" ]]; then
-    echo "=== Cleaning build/ and dist/ (--clean; AutoDJ.spec is regenerated) ==="
-    rm -rf build dist
+    echo "=== Cleaning build/, dist/ and AutoDJ.spec (--clean) ==="
+    rm -rf build dist AutoDJ.spec
 fi
 if [[ -n "$VERSION" ]]; then
     echo "Requested version: $VERSION (the exe's real version comes from version_info.txt / pyproject.toml)"

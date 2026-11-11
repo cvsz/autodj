@@ -55,15 +55,21 @@ help:  ## Show this help
 	@echo "Windows targets require: Windows 11 (build 22000+), NSIS 3.09+, mpv, PyInstaller"
 
 ## ---- Windows 11 prerequisite checks ---------------------------------------
+# SKIP_CHECKS=1 bypasses all prerequisite checks (for air-gapped / pre-validated machines)
 win11-check:  ## Verify Windows 11 (build 22000+) and NSIS/mpv/PyInstaller availability
 ifeq ($(OS),Windows_NT)
 	@mkdir -p "$(BUILD_LOG_DIR)" 2>/dev/null || true
 	@echo "=== Windows 11 Prerequisite Check ($(BUILD_LOG_TS)) ==="
-	@powershell.exe -NoProfile -Command "$$v = (Get-Item 'C:\Windows\System32\ntoskrnl.exe').VersionInfo.ProductVersion; $$build = [int]($$v.Split('.')[2]); Write-Host 'OS Build: ' $$build; if ($$build -lt $(WIN11_MIN_BUILD)) { Write-Error 'ERROR: Windows 11 (build $(WIN11_MIN_BUILD)+) required, found build ' $$build; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: Not Windows 11." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+ifeq ($(SKIP_CHECKS),1)
+	@echo "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
+	@echo "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)"
+else
+	@powershell.exe -NoProfile -Command "$$v = (Get-Item 'C:\Windows\System32\ntoskrnl.exe').VersionInfo.ProductVersion; $$build = [int]($$v.Split('.')[2]); Write-Host 'OS Build: ' $$build; if ($$build -lt $(WIN11_MIN_BUILD)) { Write-Error 'ERROR: Windows 11 (build $(WIN11_MIN_BUILD)+) required, found build ' $$build; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: Not Windows 11 (build < 22000). Install Windows 11 or set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
 	@echo "  OK: Windows 11 detected" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-	@powershell.exe -NoProfile -Command "if (Get-Command makensis -ErrorAction SilentlyContinue) { echo '  OK: NSIS (makensis) in PATH' } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files (x86)\NSIS\makensis.exe' } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files\NSIS\makensis.exe' } else { echo 'ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis).'; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+	@powershell.exe -NoProfile -Command "if (Get-Command makensis -ErrorAction SilentlyContinue) { echo '  OK: NSIS (makensis) in PATH' } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files (x86)\NSIS\makensis.exe' } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files\NSIS\makensis.exe' } else { echo 'ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis) or set SKIP_CHECKS=1 to bypass.'; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found. Set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
 	@powershell.exe -NoProfile -Command "if (Get-Command mpv.exe -ErrorAction SilentlyContinue) { echo '  OK: mpv.exe in PATH' } elseif (Test-Path 'C:\Program Files\mpv\mpv.exe') { echo '  OK: mpv found at C:\Program Files\mpv\mpv.exe' } else { echo 'WARN: mpv.exe not found in PATH. Install: choco install mpv --version=2024.01.01 --yes' }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
 	@$(PY) -c "import PyInstaller" 2>/dev/null && echo "  OK: PyInstaller installed" || echo "WARN: PyInstaller not installed. Run: $(PIP) install pyinstaller" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
+endif
 	@echo "Logs: $(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"
 else
 	@echo "win11-check requires Windows 11"
@@ -72,8 +78,13 @@ endif
 
 mpv-check:  ## Verify mpv is available for Windows builds
 ifeq ($(OS),Windows_NT)
-	@powershell.exe -NoProfile -Command "if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\mpv\mpv.exe')) { Write-Error 'mpv.exe not found. Install: choco install mpv --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: mpv not found." >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+ifeq ($(SKIP_CHECKS),1)
+	@echo "  SKIP: mpv check disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1
+	@echo "  SKIP: mpv check disabled (SKIP_CHECKS=1)"
+else
+	@powershell.exe -NoProfile -Command "if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\mpv\mpv.exe')) { Write-Error 'mpv.exe not found. Install: choco install mpv --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: mpv not found. Set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
 	@echo "  OK: mpv available" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1
+endif
 else
 	@echo "mpv-check is Windows-only"
 	@exit 1
@@ -81,15 +92,25 @@ endif
 
 nsis-check:  ## Verify NSIS (makensis) is available
 ifeq ($(OS),Windows_NT)
-	@powershell.exe -NoProfile -Command "if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') -and -not (Test-Path 'C:\Program Files\NSIS\makensis.exe')) { Write-Error 'NSIS not found. Install: choco install nsis --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found." >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
+ifeq ($(SKIP_CHECKS),1)
+	@echo "  SKIP: NSIS check disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1
+	@echo "  SKIP: NSIS check disabled (SKIP_CHECKS=1)"
+else
+	@powershell.exe -NoProfile -Command "if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') -and -not (Test-Path 'C:\Program Files\NSIS\makensis.exe')) { Write-Error 'NSIS not found. Install: choco install nsis --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found. Set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
 	@echo "  OK: NSIS available" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1
+endif
 else
 	@echo "nsis-check is Windows-only"
 	@exit 1
 endif
 
 pyinstaller-check:  ## Verify PyInstaller is available
-	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed"; else echo "ERROR: PyInstaller not installed. Run: $(PIP) install pyinstaller" && exit 1; fi >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1
+ifeq ($(SKIP_CHECKS),1)
+	@echo "  SKIP: PyInstaller check disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1
+	@echo "  SKIP: PyInstaller check disabled (SKIP_CHECKS=1)"
+else
+	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed" >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1; else echo "ERROR: PyInstaller not installed. Run: $(PIP) install pyinstaller or set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1; fi
+endif
 
 ## ---- environment ------------------------------------------------------------
 venv:  ## Create a local .venv and show how to activate it
@@ -267,7 +288,7 @@ endif
 sign:  ## Sign existing AutoDJ.exe (Windows)
 ifeq ($(OS),Windows_NT)
 	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found. Run 'make build' first."; exit 1; fi
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -NoSign=false $(BUILD_ARGS)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
 else
 	@echo "sign requires Windows."
 	@exit 1
@@ -275,20 +296,16 @@ endif
 
 build-all:  ## Full pipeline: env check -> build AutoDJ.exe -> NSIS installer (Windows or Linux/Wine)
 ifeq ($(OS),Windows_NT)
-	$(MAKE) win11-check
-	$(MAKE) mpv-check
-	$(MAKE) nsis-check
-	$(MAKE) pyinstaller-check
+	$(MAKE) win11-check SKIP_CHECKS=$(SKIP_CHECKS)
+	$(MAKE) mpv-check SKIP_CHECKS=$(SKIP_CHECKS)
+	$(MAKE) nsis-check SKIP_CHECKS=$(SKIP_CHECKS)
+	$(MAKE) pyinstaller-check SKIP_CHECKS=$(SKIP_CHECKS)
 	@echo "=== Step 1/3: Building AutoDJ.exe (PyInstaller) ==="
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
 	@powershell.exe -NoProfile -Command "if (-not (Test-Path 'dist\\AutoDJ.exe')) { Write-Error 'ERROR: dist\\AutoDJ.exe not found after build.'; exit 1 }"
 	@echo ""
-	@echo "=== Step 2/3: Verifying Windows 11 environment ==="
-	@powershell.exe -NoProfile -Command "$$v = (Get-Item 'C:\Windows\System32\ntoskrnl.exe').VersionInfo.ProductVersion; $$build = [int]($$v.Split('.')[2]); if ($$build -lt $(WIN11_MIN_BUILD)) { Write-Error 'ERROR: Windows 11 (Build $(WIN11_MIN_BUILD)+) required, found build ' $$build; exit 1 }" || (echo "ERROR: Windows 11 (Build 22000+) required." && exit 1)
-	@echo "  OK: Windows 11 detected"
-	@echo ""
 	@echo "=== Step 3/3: Building NSIS Installer ==="
-	$(MAKE) nsiswindows11
+	$(MAKE) nsiswindows11 SKIP_CHECKS=$(SKIP_CHECKS)
 	@echo ""
 	@echo "=== Build Complete ==="
 	@echo "Installer: dist\Camfrog-AutoDJ-Setup-$(VERSION).exe"
@@ -335,6 +352,13 @@ ifeq ($(OS),Windows_NT)
 else
 	@echo "nsiswindows11 requires Windows 11 with NSIS installed"
 	@exit 1
+endif
+
+build-all-force:  ## Full pipeline: SKIP all prerequisite checks (for air-gapped / pre-validated Windows machines)
+ifeq ($(OS),Windows_NT)
+	$(MAKE) build-all SKIP_CHECKS=1
+else
+	$(MAKE) build-all SKIP_CHECKS=1
 endif
 
 trustsign:  ## Azure Trusted Signing: Sign EXE + Installer via Azure Key Vault (requires Azure setup)

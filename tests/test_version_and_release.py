@@ -44,7 +44,10 @@ def test_version_consistency():
     build_installer_linux = (root / "scripts" / "build_installer_linux.sh").read_text(
         encoding="utf-8"
     )
-    assert f'VERSION="${{1:-{version}}}"' in build_installer_linux
+    # version derives from pyproject.toml via tomllib (never hard-coded)
+    assert "tomllib" in build_installer_linux
+    assert "pyproject.toml" in build_installer_linux
+    assert "project']['version']" in build_installer_linux
 
     # release workflow targets
     release_yml = (root / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
