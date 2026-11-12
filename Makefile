@@ -62,14 +62,11 @@ ifeq ($(OS),Windows_NT)
 	@mkdir -p "$(BUILD_LOG_DIR)" 2>/dev/null || true
 	@echo "=== Windows 11 Prerequisite Check ($(BUILD_LOG_TS)) ==="
 ifeq ($(SKIP_CHECKS),1)
-	@echo "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
+	@echo "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)" | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"
 	@echo "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)"
 else
-	@powershell.exe -NoProfile -Command "$$v = (Get-Item 'C:\Windows\System32\ntoskrnl.exe').VersionInfo.ProductVersion; $$build = [int]($$v.Split('.')[2]); Write-Host 'OS Build: ' $$build; if ($$build -lt $(WIN11_MIN_BUILD)) { Write-Error 'ERROR: Windows 11 (build $(WIN11_MIN_BUILD)+) required, found build ' $$build; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: Not Windows 11 (build < 22000). Install Windows 11 or set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
-	@echo "  OK: Windows 11 detected" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-	@powershell.exe -NoProfile -Command "if (Get-Command makensis -ErrorAction SilentlyContinue) { echo '  OK: NSIS (makensis) in PATH' } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files (x86)\NSIS\makensis.exe' } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files\NSIS\makensis.exe' } else { echo 'ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis) or set SKIP_CHECKS=1 to bypass.'; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found. Set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
-	@powershell.exe -NoProfile -Command "if (Get-Command mpv.exe -ErrorAction SilentlyContinue) { echo '  OK: mpv.exe in PATH' } elseif (Test-Path 'C:\Program Files\mpv\mpv.exe') { echo '  OK: mpv found at C:\Program Files\mpv\mpv.exe' } else { echo 'WARN: mpv.exe not found in PATH. Install: choco install mpv --version=2024.01.01 --yes' }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-	@$(PY) -c "import PyInstaller" 2>/dev/null && echo "  OK: PyInstaller installed" || echo "WARN: PyInstaller not installed. Run: $(PIP) install pyinstaller" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
+	@$(PY) tools/win11_check.py 2>&1 | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"
+	@if [ $$? -ne 0 ]; then echo "ERROR: Prerequisite checks failed. See log." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1; exit 1; fi
 endif
 	@echo "Logs: $(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"
 else
