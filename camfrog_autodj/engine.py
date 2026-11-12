@@ -152,6 +152,12 @@ class Engine:
                 rate_limit_per_ip=cfg.webhook_rate_limit_per_ip,
             )
             self._webhook_server = WebhookServer(webhook_cfg, self)
+        # ---- Plugin system --------------------------------------------------------
+        self._plugin_manager: PluginManager | None = None
+        plugin_names = getattr(cfg, "plugins", [])
+        if plugin_names:
+            from .plugins import PluginManager
+            self._plugin_manager = PluginManager(self, plugin_names)
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -977,10 +983,16 @@ class Engine:
             else:
                 self.exec.submit(self._announce_if_playing, t)
             log.info("playing %s", t.source)
+            # Emit track_start event for plugins
+            if self._plugin_manager:
+                self._plugin_manager.emit("track_start", t)
             if not self._try_play(t):
                 fails += 1
                 self._track_failed(t, fails)
                 self._record_circuit_failure()
+                # Emit track_failed event for plugins
+                if self._plugin_manager:
+                    self._plugin_manager.emit("track_failed", {"track": t, "error": "playback failed"})
                 # Retry the same track if we haven't exceeded max retries (pool tracks only)
                 if fails < max_retries:
                     log.info("retrying track %r (attempt %d/%d)", t.source, fails + 1, max_retries)
@@ -994,6 +1006,9 @@ class Engine:
                 self._log_track(t, "COMPLETED")
                 self.history.appendleft(t)
                 recorded = True
+                # Emit track_end event for plugins
+                if self._plugin_manager:
+                    self._plugin_manager.emit("track_end", t)
             if self.queue.repeat != "one" or getattr(self.player, "skipped", False):
                 break
         self.current = None
@@ -1255,6 +1270,9 @@ class Engine:
                 "in config.toml; nothing will play until then.",
                 self.cfg.mpv_path,
             )
+        # Load plugins
+        if self._plugin_manager:
+            self._plugin_manager.load_plugins()
         # Start webhook server if enabled
         if self._webhook_server:
             import asyncio
@@ -1666,6 +1684,9 @@ class Engine:
         self.stop_evt.set()
         self.wake.set()
         self.player.stop()
+        # Unload plugins
+        if self._plugin_manager:
+            self._plugin_manager.unload_plugins()
         # Stop webhook server
         if self._webhook_server:
             import asyncio
