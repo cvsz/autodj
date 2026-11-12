@@ -30,7 +30,7 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Install dependencies
-        run: python -m pip install -e . "pytest==8.3.3" ruff mypy
+        run: python -m pip install -e .[webhook] "pytest==8.3.3" ruff mypy
 
       - name: Lint (ruff)
         run: |
