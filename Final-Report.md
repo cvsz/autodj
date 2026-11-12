@@ -401,6 +401,38 @@ $ python -m build  # Would produce sdist + wheel
 | **Approver** | policedbc (independent reviewer) |
 | **Merge executor** | cvsz (developer) |
 
+### PR #189 — Merged (Performance Hardening)
+
+| Field | Value |
+|-------|-------|
+| **PR** | https://github.com/cvsz/autodj/pull/189 |
+| **Title** | feat: performance hardening — queue version gating, mpv IPC position cache, GUI idle throttle, LocalIndex precomputed search |
+| **State** | MERGED |
+| **Head SHA** | `77ff7db8e7ab997ef051027d388371045da0b1f1` |
+| **Merge commit** | `bae999a4096e29aa6dc406246bbf9172ff043182` |
+| **Approver** | policedbc (independent reviewer) |
+| **Merge executor** | cvsz (developer) |
+
+### Workflow Execution Summary (PR #189)
+
+**Phase A — cvsz (Developer):**
+- Authenticated via `gh auth switch -u cvsz` (credential store `/home/cvsz/.git-credentials`)
+- GPG-signed commit `77ff7db` (key `515DB3BD9BF14AA6646AC6770C54E869DE49D872`)
+- Pushed branch `feat/autodj-config-mutagen-pyttsx3-music`
+- Opened PR #189 against `main`
+
+**Phase B — policedbc (Independent Reviewer):**
+- Switched to `gh auth switch -u policedbc`
+- Verified HEAD SHA `77ff7db` matches PR head; GPG signature "Good signature"
+- Ran local validation: 446 pytest passed, ruff clean, ruff format clean, mypy clean (32 files), compileall clean, shellcheck clean
+- Approved PR #189 (reviewDecision=APPROVED)
+
+**Phase C — cvsz (Developer):**
+- Switched back to `gh auth switch -u cvsz`
+- Pre-merge verification: approval ✓, no new commits after approval ✓, CI/local validation green ✓, mergeable ✓
+- Merged with `gh pr merge 189 --merge` → merge commit `bae999a`
+- Post-merge verification: PR state MERGED, commit present on `main` ✓
+
 ### Workflow Execution Summary
 
 **Phase A — cvsz (Developer):**
