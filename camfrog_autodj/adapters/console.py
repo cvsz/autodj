@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 import sys
 
 from .base import ChatAdapter, ChatMessage
+
+log = logging.getLogger(__name__)
 
 
 class ConsoleAdapter(ChatAdapter):
@@ -10,6 +13,10 @@ class ConsoleAdapter(ChatAdapter):
 
     def __init__(self, cfg):
         self.prefix = cfg.prefix
+
+    def test_connection(self) -> None:
+        """Console adapter always works."""
+        log.debug("Console adapter test_connection: OK")
 
     def messages(self):
         for line in sys.stdin:

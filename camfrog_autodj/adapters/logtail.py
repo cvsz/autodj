@@ -18,6 +18,19 @@ class LogTailAdapter(ChatAdapter):
         self.enc = cfg.log_encoding
         self.rx = re.compile(cfg.line_regex)
 
+    def test_connection(self) -> None:
+        """Test if the log file can be read.
+
+        Raises:
+            RuntimeError: If the log file cannot be opened.
+        """
+        if not self.path.exists():
+            raise RuntimeError(f"Log file does not exist: {self.path}")
+        # Try to open and read a small amount
+        with open(self.path, "r", encoding=self.enc, errors="replace") as f:
+            f.read(1024)
+        log.debug("LogTail adapter test_connection: OK")
+
     def messages(self):
         with open(self.path, "r", encoding=self.enc, errors="replace") as f:
             f.seek(0, 2)
