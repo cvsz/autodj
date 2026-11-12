@@ -9,6 +9,8 @@ from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Callable, ClassVar
 
+from .exceptions import ConfigError
+
 log = logging.getLogger("autodj")
 
 
@@ -59,10 +61,6 @@ class MessageStyle:
             italic=bool(data.get("italic", False)),
             underline=bool(data.get("underline", False)),
         )
-
-
-class ConfigError(Exception):
-    """config.toml is unreadable or has a bad value. The message is written for the person editing the file."""
 
 
 @dataclass
