@@ -96,6 +96,14 @@ function Test-CodeSigning {
             Write-Result "code_signing" "FAIL" "dist\AutoDJ.exe not found. Run build first."
             return
         }
+        # Ensure Certificate provider is available (PS5.1 compat) - same fix as build.ps1
+        if ($PSVersionTable.PSVersion.Major -le 5) {
+            $env:PSModulePath = ($env:PSModulePath -split ';' | Where-Object {
+                $_ -and $_ -notmatch 'PowerShell[\\/]7[\\/]Modules' -and
+                $_ -notmatch 'Documents[\\/]PowerShell[\\/]Modules' -and
+                $_ -notmatch 'Program Files[\\/]PowerShell[\\/]Modules'
+            }) -join ';'
+        }
         # Verify existing signature instead of re-signing (build.ps1 already signs)
         $verify = Get-AuthenticodeSignature $exePath
         $evidence = @{
