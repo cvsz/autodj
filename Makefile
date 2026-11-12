@@ -3,11 +3,17 @@
 # Windows 11 ready: validates OS build >= 22000, NSIS 3.09+, mpv, PyInstaller.
 
 ifeq ($(OS),Windows_NT)
-SHELL       := $(shell where bash 2>NUL || echo cmd.exe)
-ifeq ($(findstring cmd.exe,$(SHELL)),cmd.exe)
-.SHELLFLAGS := /c
+# On Windows, prefer Git Bash for Makefile recipes (supports Unix syntax).
+# Fall back to PowerShell if bash not available.
+# PowerShell scripts are called explicitly with 'powershell.exe'.
+# Check common Git Bash locations
+GIT_BASH := $(wildcard C:/Program\ Files/Git/bin/bash.exe C:/Program\ Files\ \(x86\)/Git/bin/bash.exe)
+ifeq ($(GIT_BASH),)
+SHELL       := powershell.exe
+.SHELLFLAGS := -NoProfile -Command
 else
-.SHELLFLAGS := -c
+SHELL       := $(GIT_BASH)
+.SHELLFLAGS := -eu -o pipefail -c
 endif
 else
 SHELL       := bash
@@ -22,6 +28,7 @@ endif
 PIP         := $(PY) -m pip
 PROJECT     := camfrog_autodj
 CONFIG      ?= config.toml
+# Cross-platform version detection (use Python to handle errors)
 VERSION     := $(shell $(PY) -c "import tomllib,sys; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])" 2>/dev/null || echo unknown)
 DIST_ZIP    := dist/camfrog-autodj-$(VERSION).zip
 IS_WINDOWS  := $(filter Windows_NT,$(OS))
@@ -32,7 +39,8 @@ WIN11_MIN_BUILD := 22000
 # ---- logging ----------------------------------------------------------------
 # Log directory for build-all validations and build steps (kept, not cleaned).
 BUILD_LOG_DIR := logs
-BUILD_LOG_TS  := $(shell date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)
+# Cross-platform timestamp: use Python (works everywhere)
+BUILD_LOG_TS  := $(shell $(PY) -c "from datetime import datetime; print(datetime.now().strftime('%Y%m%d-%H%M%S'))" 2>/dev/null || echo unknown)
 
 .DEFAULT_GOAL := help
 .PHONY: help install install-dev install-build install-auto venv \
@@ -59,19 +67,8 @@ help:  ## Show this help
 # SKIP_CHECKS=1 bypasses all prerequisite checks (for air-gapped / pre-validated machines)
 win11-check:  ## Verify Windows 11 (build 22000+) and NSIS/mpv/PyInstaller availability
 ifeq ($(OS),Windows_NT)
-	@mkdir -p "$(BUILD_LOG_DIR)" 2>/dev/null || true
-	@echo "=== Windows 11 Prerequisite Check ($(BUILD_LOG_TS)) ==="
-ifeq ($(SKIP_CHECKS),1)
-	@echo "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-	@echo "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)"
-else
-	@powershell.exe -NoProfile -Command "$$v = (Get-Item 'C:\Windows\System32\ntoskrnl.exe').VersionInfo.ProductVersion; $$build = [int]($$v.Split('.')[2]); Write-Host 'OS Build: ' $$build; if ($$build -lt $(WIN11_MIN_BUILD)) { Write-Error 'ERROR: Windows 11 (build $(WIN11_MIN_BUILD)+) required, found build ' $$build; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: Not Windows 11 (build < 22000). Install Windows 11 or set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
-	@echo "  OK: Windows 11 detected" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-	@powershell.exe -NoProfile -Command "if (Get-Command makensis -ErrorAction SilentlyContinue) { echo '  OK: NSIS (makensis) in PATH' } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files (x86)\NSIS\makensis.exe' } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files\NSIS\makensis.exe' } else { echo 'ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis) or set SKIP_CHECKS=1 to bypass.'; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found. Set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
-	@powershell.exe -NoProfile -Command "if (Get-Command mpv.exe -ErrorAction SilentlyContinue) { echo '  OK: mpv.exe in PATH' } elseif (Test-Path 'C:\Program Files\mpv\mpv.exe') { echo '  OK: mpv found at C:\Program Files\mpv\mpv.exe' } else { echo 'WARN: mpv.exe not found in PATH. Install: choco install mpv --version=2024.01.01 --yes' }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-	@$(PY) -c "import PyInstaller" 2>/dev/null && echo "  OK: PyInstaller installed" || echo "WARN: PyInstaller not installed. Run: $(PIP) install pyinstaller" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-endif
-	@echo "Logs: $(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"
+	@mkdir -p "$(BUILD_LOG_DIR)"
+	@BUILD_LOG_TS="$(BUILD_LOG_TS)" $(PY) tools/win11_check.py win11-check
 else
 	@echo "win11-check requires Windows 11"
 	@exit 1
@@ -87,13 +84,7 @@ endif
 
 mpv-check:  ## Verify mpv is available for Windows builds
 ifeq ($(OS),Windows_NT)
-ifeq ($(SKIP_CHECKS),1)
-	@echo "  SKIP: mpv check disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1
-	@echo "  SKIP: mpv check disabled (SKIP_CHECKS=1)"
-else
-	@powershell.exe -NoProfile -Command "if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\mpv\mpv.exe')) { Write-Error 'mpv.exe not found. Install: choco install mpv --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: mpv not found. Set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
-	@echo "  OK: mpv available" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1
-endif
+	@BUILD_LOG_TS="$(BUILD_LOG_TS)" $(PY) tools/win11_check.py mpv-check
 else
 	@echo "mpv-check is Windows-only"
 	@exit 1
@@ -101,30 +92,19 @@ endif
 
 nsis-check:  ## Verify NSIS (makensis) is available
 ifeq ($(OS),Windows_NT)
-ifeq ($(SKIP_CHECKS),1)
-	@echo "  SKIP: NSIS check disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1
-	@echo "  SKIP: NSIS check disabled (SKIP_CHECKS=1)"
-else
-	@powershell.exe -NoProfile -Command "if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') -and -not (Test-Path 'C:\Program Files\NSIS\makensis.exe')) { Write-Error 'NSIS not found. Install: choco install nsis --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found. Set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1)
-	@echo "  OK: NSIS available" >> "$(BUILD_LOG_DIR)/nsis-check-$(BUILD_LOG_TS).log" 2>&1
-endif
+	@BUILD_LOG_TS="$(BUILD_LOG_TS)" $(PY) tools/win11_check.py nsis-check
 else
 	@echo "nsis-check is Windows-only"
 	@exit 1
 endif
 
 pyinstaller-check:  ## Verify PyInstaller is available
-ifeq ($(SKIP_CHECKS),1)
-	@echo "  SKIP: PyInstaller check disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1
-	@echo "  SKIP: PyInstaller check disabled (SKIP_CHECKS=1)"
-else
-	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed" >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1; else echo "ERROR: PyInstaller not installed. Run: $(PIP) install pyinstaller or set SKIP_CHECKS=1 to bypass." >> "$(BUILD_LOG_DIR)/pyinstaller-check-$(BUILD_LOG_TS).log" 2>&1 && exit 1; fi
-endif
+	@BUILD_LOG_TS="$(BUILD_LOG_TS)" $(PY) tools/win11_check.py pyinstaller-check
 
 ## ---- environment ------------------------------------------------------------
 venv:  ## Create a local .venv and show how to activate it
 	$(PY) -m venv .venv
-	@echo "Activate with:  source .venv/bin/activate   (Windows: .venv\\Scripts\\activate)"
+	@echo "Activate with:  source .venv/bin/activate   (Windows: .venv\Scripts\activate)"
 
 install:  ## Install the project (runtime deps only)
 	$(PIP) install -e .
@@ -202,20 +182,13 @@ config:  ## Create config.toml from the example if it does not exist yet
 
 ## ---- testing ------------------------------------------------------------------
 test:  ## Run the full test suite (pytest if installed, else the offline mini runner)
-	@if $(PY) -c "import pytest" 2>/dev/null; then \
-		$(PY) -m pytest -q -p no:faulthandler -p no:cacheprovider; \
-	else \
-		echo "pytest not installed -- using tools/minipytest.py (offline stand-in; 'make install-dev' for real pytest)"; \
-		$(PY) tools/minipytest.py tests; \
-	fi
+	@$(PY) tools/test_runner.py test
 
 test-v:  ## Run tests with verbose/full tracebacks
-	@if $(PY) -c "import pytest" 2>/dev/null; then $(PY) -m pytest -vv; \
-	else $(PY) tools/minipytest.py tests; fi
+	@$(PY) tools/test_runner.py test-v
 
 test-one:  ## Run a single test file or node id: make test-one T=tests/test_hardening.py
-	@if $(PY) -c "import pytest" 2>/dev/null; then $(PY) -m pytest -vv "$(T)"; \
-	else $(PY) tools/minipytest.py "$(T)"; fi
+	@$(PY) tools/test_runner.py test-one $(T)
 
 coverage:  ## Run tests under coverage.py (requires: pip install coverage) and print the report
 	@if $(PY) -c "import coverage" 2>/dev/null; then \
@@ -229,34 +202,24 @@ coverage:  ## Run tests under coverage.py (requires: pip install coverage) and p
 	fi
 
 mutation-smoke:  ## Re-run the mutation checks that back the hardening tests (see tools/mutate.sh)
-	@test -x tools/mutate.sh || (echo "tools/mutate.sh not found -- see AUDIT.md for how it was used"; exit 1)
+	@$(PY) tools/make_helpers.py mutation-smoke
 	tools/mutate.sh
 
 ## ---- code quality -------------------------------------------------------------
 lint:  ## Lint with ruff if installed, else a basic py_compile pass
-	@if $(PY) -c "import ruff" 2>/dev/null || command -v ruff >/dev/null 2>&1; then \
-		ruff check $(PROJECT) tests tools; \
-	else \
-		echo "ruff not installed -- falling back to py_compile (pip install ruff for real linting)"; \
-		$(PY) -c "import glob, py_compile; [py_compile.compile(f) for f in glob.glob('camfrog_autodj/**/*.py', recursive=True)]"; \
-	fi
+	@$(PY) tools/make_helpers.py lint
 
 fmt:  ## Format with ruff/black if installed (no-op if none installed)
-	@if command -v ruff >/dev/null 2>&1; then ruff format $(PROJECT) tests tools; \
-	elif command -v black >/dev/null 2>&1; then black $(PROJECT) tests tools; \
-	else echo "no formatter installed (pip install ruff or black)"; fi
+	@$(PY) tools/make_helpers.py fmt
 
 fmt-check:  ## Check formatting without modifying files (ruff format --check)
-	@if command -v ruff >/dev/null 2>&1; then ruff format --check $(PROJECT) tests tools; \
-	else echo "ruff not installed -- skipping format check (pip install ruff)"; fi
+	@$(PY) tools/make_helpers.py fmt-check
 
 typecheck:  ## Type-check with mypy if installed
-	@if $(PY) -c "import mypy" 2>/dev/null; then $(PY) -m mypy $(PROJECT); \
-	else echo "mypy not installed (pip install mypy)"; fi
+	@$(PY) tools/make_helpers.py typecheck
 
 shellcheck:  ## Lint shell scripts with shellcheck (scripts/*.sh tools/*.sh)
-	@if command -v shellcheck >/dev/null 2>&1; then shellcheck scripts/*.sh tools/*.sh; \
-	else echo "shellcheck not installed -- skipping (apt install shellcheck)"; fi
+	@$(PY) tools/make_helpers.py shellcheck
 
 compileall:  ## Byte-compile all Python sources (catch syntax errors; AGENTS.md verification checklist)
 	$(PY) -m compileall -q camfrog_autodj tests tools
@@ -280,12 +243,7 @@ validate-installer:  ## Validate installer.nsi structure and required files
 	@$(PY) tools/validate_installer.py
 
 lint-src:  ## Lint source + tools with ruff (excludes test files with pre-existing issues)
-	@if $(PY) -c "import ruff" 2>/dev/null || command -v ruff >/dev/null 2>&1; then \
-		ruff check $(PROJECT) tools || echo "NOTE: pre-existing ruff warnings (defensive patterns)"; \
-	else \
-		echo "ruff not installed -- falling back to py_compile (pip install ruff for real linting)"; \
-		$(PY) -c "import glob, py_compile; [py_compile.compile(f) for f in glob.glob('camfrog_autodj/**/*.py', recursive=True)]"; \
-	fi
+	@$(PY) tools/make_helpers.py lint-src
 
 config-check:  ## Validate config.toml: parses TOML, checks required keys exist
 	@$(PY) -c "import tomllib,sys; p='$(CONFIG)'; data=tomllib.load(open(p,'rb')); required=['bot_nick','prefix','chat_reader','chat_sender','mpv_path']; missing=[k for k in required if k not in data]; sys.exit(1) if missing else print(f'OK: {p} is valid TOML with {len(data)} keys')"
@@ -460,7 +418,7 @@ bump-patch:  ## Bump patch version in pyproject.toml and CHANGELOG.md
 security-check:  ## Run security checks (secret scan, dependency audit)
 	@echo "Running security checks..."
 	@$(PY) -c "import pathlib; print('Scanning for potential secrets...')" 2>/dev/null || true
-	@grep -rniE '(password|secret|api_key|token|private_key)\s*=\s*["'\'']' camfrog_autodj/ 2>/dev/null --include='*.py' | grep -v '^.*#' | grep -viE '(= ""|os\.environ|getenv|\.get\()' || echo "No hardcoded secrets found"
+	@$(PY) -c "import re, glob; [print(f'{f}:{i}: {line.strip()}') for f in glob.glob('camfrog_autodj/**/*.py', recursive=True) for i, line in enumerate(open(f, encoding='utf-8'), 1) if re.search(r'(password|secret|api_key|token|private_key)\s*=\s*[\"'\'']', line) and not re.search(r'(= \"\"|os\.environ|getenv|\.get\()', line)]" 2>/dev/null || echo "No hardcoded secrets found"
 	@echo "Security check complete"
 
 security-audit:  ## Audit Python dependencies for known vulnerabilities (pip-audit; advisory, not part of `all`)
@@ -496,3 +454,6 @@ all: compileall lint lint-src typecheck test fmt-check shellcheck validate-playl
 
 validate-all: all  ## Alias for `all` -- runs every verification check (compileall, lint, lint-src, typecheck, test, fmt-check, shellcheck, validate-playlists, validate-installer, config-check, changelog-check, security-check, validate-template)
 	@echo "validate-all: complete (same checks as make all)"
+
+logs:  ## List build log files
+	@$(PY) -c "import glob, os; [print(f) for f in sorted(glob.glob('logs/*.log'))]" 2>/dev/null || echo "No logs directory"
