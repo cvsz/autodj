@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import difflib
+import logging
 import re
+import threading
 import tomllib
 from dataclasses import dataclass, field, fields
 from pathlib import Path
+from typing import Callable, ClassVar
+
+log = logging.getLogger("autodj")
 
 
 @dataclass
@@ -250,6 +255,66 @@ class Config:
             data["message_style"] = MessageStyle.from_toml_dict(data["message_style"])
         cfg = cls(**data)
         _validate(cfg, data, str(p) if p else "config")
+        return cfg
+
+    # ---- class-level reload callback registry ---------------------------------------------------
+    _reload_callbacks: ClassVar[list[Callable[["Config"], None]]] = []
+    _reload_callbacks_lock: ClassVar[threading.Lock] = threading.Lock()
+
+    @classmethod
+    def register_reload_callback(cls, callback: Callable[["Config"], None]) -> None:
+        """Register a callback to be invoked when any Config instance is reloaded.
+
+        The callback receives the new Config instance. Callbacks are invoked
+        in registration order. Exceptions in callbacks are logged but do not
+        stop other callbacks.
+
+        Note: This is a class-level registry, so callbacks fire for any
+        Config.reload() call. For instance-specific callbacks, use
+        ConfigWatcher directly.
+        """
+        with cls._reload_callbacks_lock:
+            cls._reload_callbacks.append(callback)
+
+    @classmethod
+    def unregister_reload_callback(cls, callback: Callable[["Config"], None]) -> bool:
+        """Remove a previously registered reload callback. Returns True if found."""
+        with cls._reload_callbacks_lock:
+            try:
+                cls._reload_callbacks.remove(callback)
+                return True
+            except ValueError:
+                return False
+
+    @classmethod
+    def _notify_reload_callbacks(cls, config: "Config") -> None:
+        """Internal: notify all registered reload callbacks."""
+        with cls._reload_callbacks_lock:
+            callbacks = list(cls._reload_callbacks)
+        for cb in callbacks:
+            try:
+                cb(config)
+            except Exception:
+                log.exception("Config reload callback failed")
+
+    @classmethod
+    def reload(cls, path: str | None) -> "Config":
+        """Reload configuration from file with full validation.
+
+        This is a convenience method that loads a new Config instance from
+        the given path and notifies all registered reload callbacks.
+
+        Args:
+            path: Path to config.toml (same as load())
+
+        Returns:
+            New Config instance
+
+        Raises:
+            ConfigError: If the config file is invalid
+        """
+        cfg = cls.load(path)
+        cls._notify_reload_callbacks(cfg)
         return cfg
 
 
