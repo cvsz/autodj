@@ -591,14 +591,16 @@ class Engine:
             p = p.resolve()
         except (OSError, ValueError) as err:
             raise UserError(self.t("load_failed", err="invalid path")) from err
-        # Non-admin: must be in the indexed music library
+        # ALL users (including admins) must be within configured music_dirs
+        # This prevents path traversal even when music_dirs is empty
+        if not self.cfg.music_dirs:
+            raise UserError(self.t("folders_admin"))
+        music_dirs = [Path(d).resolve() for d in self.cfg.music_dirs if Path(d).is_dir()]
+        if music_dirs and not any(p.is_relative_to(d) for d in music_dirs):
+            raise UserError(self.t("folders_admin"))
+        # Non-admin: must also be in the indexed music library
         if not admin and not self.index.contains(p):
             raise UserError(self.t("file_not_in_lib"))
-        # Admin: must still be within configured music_dirs (defense in depth)
-        if admin and self.cfg.music_dirs:
-            music_dirs = [Path(d).resolve() for d in self.cfg.music_dirs if Path(d).is_dir()]
-            if music_dirs and not any(p.is_relative_to(d) for d in music_dirs):
-                raise UserError(self.t("folders_admin"))
         if p.is_dir():
             if not admin:
                 raise UserError(self.t("folders_admin"))
