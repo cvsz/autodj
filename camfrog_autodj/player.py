@@ -375,8 +375,14 @@ class MpvPlayer:
     def set_volume(self, v: int) -> bool:
         return self._cmd("set_property", "volume", v)
 
-    def play_file(self, path: str):
-        """Play a single file (e.g. TTS WAV) and set up IPC so volume control works during playback."""
+    def play_file(self, path: str, duck_volume: int | None = None):
+        """Play a single file (e.g. TTS WAV) and set up IPC so volume control works during playback.
+
+        Args:
+            path: Path to the audio file to play.
+            duck_volume: Optional volume level (0-100) to set after IPC is established
+                but before playback starts. Used for TTS ducking.
+        """
         # Set up IPC so set_volume() (ducking) works during TTS playback
         n = next(_ids)
         ipc, logf = self._ipc_log_paths(n)
@@ -396,6 +402,9 @@ class MpvPlayer:
             self._paused_since, self._paused_total = None, 0.0
             self._ipc = ipc
             self._pos_cache = None
+        # Apply duck volume immediately after IPC is established, before playback starts
+        if duck_volume is not None:
+            self.set_volume(duck_volume)
         try:
             subprocess.run(cmd, check=False, **kw)
         except subprocess.TimeoutExpired:

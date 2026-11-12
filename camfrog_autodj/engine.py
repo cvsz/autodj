@@ -157,6 +157,7 @@ class Engine:
         plugin_names = getattr(cfg, "plugins", [])
         if plugin_names:
             from .plugins import PluginManager
+
             self._plugin_manager = PluginManager(self, plugin_names)
 
     # ---- text -----------------------------------------------------------
@@ -496,9 +497,8 @@ class Engine:
             with self._speak_lock:
                 try:
                     synth(text, wav, self.cfg)
-                    # Duck music volume via IPC (play_file sets up IPC before playback)
-                    self.player.set_volume(self.cfg.tts_duck)
-                    self.player.play_file(wav)
+                    # Duck music volume via IPC (play_file applies duck_volume after IPC is established)
+                    self.player.play_file(wav, duck_volume=self.cfg.tts_duck)
                 except Exception:
                     log.exception("tts failed")
                 finally:
@@ -992,7 +992,9 @@ class Engine:
                 self._record_circuit_failure()
                 # Emit track_failed event for plugins
                 if self._plugin_manager:
-                    self._plugin_manager.emit("track_failed", {"track": t, "error": "playback failed"})
+                    self._plugin_manager.emit(
+                        "track_failed", {"track": t, "error": "playback failed"}
+                    )
                 # Retry the same track if we haven't exceeded max retries (pool tracks only)
                 if fails < max_retries:
                     log.info("retrying track %r (attempt %d/%d)", t.source, fails + 1, max_retries)
@@ -1276,15 +1278,18 @@ class Engine:
         # Start webhook server if enabled
         if self._webhook_server:
             import asyncio
+
             webhook_server = self._webhook_server
+
             def run_webhook():
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 loop.run_until_complete(webhook_server.start())
+
             t = threading.Thread(target=run_webhook, daemon=True, name="autodj-webhook")
             self._threads.append(t)
             t.start()
-        
+
         for fn in (
             self._sender,
             self._player_loop,
@@ -1690,11 +1695,14 @@ class Engine:
         # Stop webhook server
         if self._webhook_server:
             import asyncio
+
             webhook_server = self._webhook_server
+
             def stop_webhook():
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 loop.run_until_complete(webhook_server.stop())
+
             stop_webhook()
         self.adapter.close()
         self.exec.shutdown(wait=False, cancel_futures=True)

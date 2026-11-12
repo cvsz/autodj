@@ -1,10 +1,9 @@
 """Test that pause/resume only update state when IPC confirms success."""
 
-import threading
 from unittest.mock import MagicMock
 
-from camfrog_autodj.config import Config
 from camfrog_autodj.adapters import NullAdapter
+from camfrog_autodj.config import Config
 from camfrog_autodj.engine import Engine
 
 
