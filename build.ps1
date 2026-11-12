@@ -135,14 +135,14 @@ Step "smoke test"
 if ($LASTEXITCODE -ne 0) { throw "the built exe does not start (see the error above)" }
 "tip: run  $exe --check  to verify mpv, yt-dlp, folders and the Camfrog window."
 # Give the OS time to release the file handle after the smoke test process exits
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 5
 # Ensure no lingering processes hold the file
 Get-Process -Name $Name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Milliseconds 1000
+Start-Sleep -Seconds 2
 # Wait for file to be truly unlocked (handles released by OS)
 $handleLocked = $true
 $attempts = 0
-while ($handleLocked -and $attempts -lt 10) {
+while ($handleLocked -and $attempts -lt 20) {
     try {
         $stream = [System.IO.File]::Open($exe, 'Open', 'ReadWrite', 'None')
         $stream.Close()
@@ -154,6 +154,8 @@ while ($handleLocked -and $attempts -lt 10) {
 }
 if ($handleLocked) {
     Write-Warning "File $exe may still be locked after $attempts attempts"
+    # Try one more time with a longer wait
+    Start-Sleep -Seconds 5
 }
 
 # ---------- 2. certificate + sign -------------------------------------------------------------------

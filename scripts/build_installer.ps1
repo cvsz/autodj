@@ -113,6 +113,16 @@ if ($proc.ExitCode -ne 0) {
 }
 
 $installerPath = Join-Path $repoRoot $installerName
+$outInstallerPath = Join-Path $OutDir $installerName
+
+# Copy installer to output directory if it was created in repo root
+if ((Test-Path $installerPath) -and (-not (Test-Path $outInstallerPath))) {
+    Copy-Item $installerPath $outInstallerPath -Force
+    $installerPath = $outInstallerPath
+} elseif (Test-Path $outInstallerPath) {
+    $installerPath = $outInstallerPath
+}
+
 if (Test-Path $installerPath) {
     $sizeMB = [math]::Round((Get-Item $installerPath).Length / 1MB, 1)
     Write-Host "Installer built successfully!" -ForegroundColor Green

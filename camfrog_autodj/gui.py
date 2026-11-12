@@ -1492,6 +1492,34 @@ class App(tk.Tk):
         )
         row += 1
 
+        # Allow play in room toggle
+        self.s_allow_play_in_room = self.e.cfg.allow_play_in_room
+        cb_allow_play: PillButton = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_allow_play_in_room", cb_allow_play),
+            "chip",
+            icon="✓" if self.e.cfg.allow_play_in_room else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_allow_play.set_active(self.e.cfg.allow_play_in_room)
+        cb_allow_play.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+        _setting_row(
+            "g_settings_allow_play_in_room",
+            self._lbl(sp_inner, "g_settings_allow_play_in_room"),
+            "g_settings_message_style_font_family",
+        )
+
         # message_style_font_family
         self.s_msg_font_family = self._entry(sp_inner)
         self.s_msg_font_family.insert(0, self.e.cfg.message_style.font_family)
@@ -2835,6 +2863,7 @@ class App(tk.Tk):
                 self.s_im_auto_reply_cooldown, "IM auto-reply cooldown"
             )
             cfg.im_require_room_presence = self.s_im_require_room_presence
+            cfg.allow_play_in_room = self.s_allow_play_in_room
 
             # Message style (font customization for GUI preview only)
             cfg.message_style.font_family = self.s_msg_font_family.get().strip()
@@ -2942,6 +2971,7 @@ class App(tk.Tk):
             lines.append(f"im_auto_reply_message = {_toml_str(cfg.im_auto_reply_message)}")
             lines.append(f"im_auto_reply_cooldown = {cfg.im_auto_reply_cooldown}")
             lines.append(f"im_require_room_presence = {str(cfg.im_require_room_presence).lower()}")
+            lines.append(f"allow_play_in_room = {str(cfg.allow_play_in_room).lower()}")
 
             # Gift / avatar / status / status alert (Camfrog RE integrations)
             cfg.gift_announce_enabled = self.s_gift_announce_enabled

@@ -73,6 +73,10 @@ class Router:
         self, e, fn, msg, name: str, arg: str, admin: bool, is_im: bool, need_admin: bool
     ) -> None:
         """Run *fn* after authorization checks; send replies on failure."""
+        # Play/Request commands only work via IM for non-admins unless allow_play_in_room is enabled
+        if self._is_play_command_blocked_in_room(msg, name, is_im, admin):
+            return
+
         # IM Security: require user to be in the room (seen in chat) to use IM commands
         if is_im and not admin and getattr(e.cfg, "im_require_room_presence", True):
             active_users = getattr(e, "_active_room_users", None)
@@ -117,10 +121,10 @@ class Router:
             )
 
     def _is_play_command_blocked_in_room(self, msg, name: str, is_im: bool, admin: bool) -> bool:
-        """Play/Request commands only work via IM for non-admins."""
+        """Play/Request commands only work via IM for non-admins, unless allow_play_in_room is enabled."""
         play_commands = ("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง")
         if name.lower() in play_commands and not is_im:
-            if not admin:
+            if not admin and not getattr(self.e.cfg, "allow_play_in_room", False):
                 self.e.say(f"{msg.user}: {self.e.t('im_only_command')}")
                 return True
         return False
