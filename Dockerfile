@@ -10,7 +10,7 @@
 # Run the audit:
 #   docker run --rm zpostgresql:latest
 
-FROM python:3.12-slim AS audit
+FROM python:3.15-slim AS audit
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
