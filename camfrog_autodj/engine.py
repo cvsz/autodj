@@ -132,6 +132,9 @@ class Engine:
         # ---- Circuit breaker state ------------------------------------------------
         self._circuit_breaker_failures: int = 0  # consecutive track failures
         self._circuit_breaker_open_until: float = 0.0  # monotonic time when breaker closes
+        self._circuit_breaker_lock: threading.Lock = (
+            threading.Lock()
+        )  # guards circuit breaker state
         self._send_failure_count: int = 0  # consecutive chat send failures
         self._send_failure_lock: threading.Lock = threading.Lock()  # guards send failure count
         # ---- Per-nick chat rate limiting -----------------------------------------
@@ -1299,6 +1302,7 @@ class Engine:
             self._chat_loop,
             self._auto_reply_loop,
             self._im_auto_reply_loop,
+            self._rate_limit_cleanup_loop,
         ):
             t = threading.Thread(target=fn, daemon=True, name=f"autodj-{fn.__name__}")
             self._threads.append(t)
@@ -1451,6 +1455,24 @@ class Engine:
                 except Exception:
                     log.exception("Failed to send IM auto-reply to %s", msg.user)
 
+    def _rate_limit_cleanup_loop(self):
+        """Periodically clean up expired rate limit entries in the Router.
+
+        Runs every 60 seconds to prevent memory growth from stale entries.
+        """
+        while not self.stop_evt.is_set():
+            if self.stop_evt.wait(60.0):
+                break
+            if self.stop_evt.is_set():
+                break
+            try:
+                import time
+
+                now = time.monotonic()
+                self.router.cleanup_expired_entries(now)
+            except Exception:
+                log.exception("Rate limit cleanup failed")
+
     def run(self):
         self.start()
         try:
@@ -1468,7 +1490,7 @@ class Engine:
 
     def _record_circuit_failure(self) -> None:
         """Record a playback failure and open the circuit breaker if threshold exceeded."""
-        with self._send_failure_lock:  # reuse lock for circuit breaker state
+        with self._circuit_breaker_lock:
             self._circuit_breaker_failures += 1
             if self._circuit_breaker_failures >= _CIRCUIT_BREAKER_FAILURE_THRESHOLD:
                 self._circuit_breaker_open_until = time.monotonic() + _CIRCUIT_BREAKER_RESET_TIMEOUT
@@ -1480,7 +1502,7 @@ class Engine:
 
     def _record_circuit_success(self) -> None:
         """Record a successful playback and reset the circuit breaker."""
-        with self._send_failure_lock:
+        with self._circuit_breaker_lock:
             if self._circuit_breaker_failures > 0:
                 log.info(
                     "Circuit breaker CLOSED after %d failures; playback recovered",
@@ -1491,7 +1513,7 @@ class Engine:
 
     def _is_circuit_open(self) -> bool:
         """Return True if the circuit breaker is open (playback paused due to failures)."""
-        with self._send_failure_lock:
+        with self._circuit_breaker_lock:
             if self._circuit_breaker_open_until <= 0.0:
                 return False
             if time.monotonic() >= self._circuit_breaker_open_until:
@@ -1569,8 +1591,8 @@ class Engine:
             checks["mpv"] = {"ok": False, "details": str(ex)}
             ok = False
 
-        # Circuit breaker state (read under lock for consistent snapshot)
-        with self._send_failure_lock:  # reuse lock for circuit breaker state
+        # Circuit breaker state (read under circuit breaker lock for consistent snapshot)
+        with self._circuit_breaker_lock:
             cb_open = self._is_circuit_open()
             cb_failures = self._circuit_breaker_failures
             cb_open_until = self._circuit_breaker_open_until
