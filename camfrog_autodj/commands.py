@@ -312,21 +312,8 @@ def _skip(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("voteskip", "vs", "โหวตข้าม")
 def _voteskip(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    if not e.current:
-        raise UserError(e.t("nothing_playing"))
-    e.votes.add(m.user.lower())
-    n = len(e.votes)
-    need = e.cfg.voteskip_threshold
-    if getattr(e.cfg, "voteskip_dynamic", False):
-        participants = getattr(e, "participant_count", 0)
-        if participants > 0:
-            pct = getattr(e.cfg, "voteskip_dynamic_pct", 30)
-            need = max(1, round((participants * pct) / 100.0))
-    if n >= need:
-        e.skip()
-        e.say(e.t("vote_passed", n=n, need=need))
-    else:
-        e.say(e.t("vote_progress", n=n, need=need))
+    passed, msg = e.voteskip(m.user)
+    e.say(msg)
 
 
 @command("remove", "rm", "ลบ")

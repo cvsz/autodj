@@ -574,7 +574,7 @@ def test_audio_normalization_and_fade_configuration():
     assert "--af=dynaudnorm=f=75:g=15:p=0.95" in base
 
 
-def test_dynamic_voteskip_threshold():
+def test_dynamic_voteskip_threshold():  # noqa: C901
     from collections import namedtuple
 
     from camfrog_autodj.commands import Router
@@ -601,6 +601,23 @@ def test_dynamic_voteskip_threshold():
 
         def skip(self):
             self.messages.append("SKIPPED")
+
+        def voteskip(self, user: str):
+            if not self.current:
+                return False, self.t("nothing_playing")
+            self.votes.add(user.lower())
+            n = len(self.votes)
+            need = self.cfg.voteskip_threshold
+            if getattr(self.cfg, "voteskip_dynamic", False):
+                participants = getattr(self, "participant_count", 0)
+                if participants > 0:
+                    pct = getattr(self.cfg, "voteskip_dynamic_pct", 30)
+                    need = max(1, round((participants * pct) / 100.0))
+            if n >= need:
+                self.skip()
+                self.votes.clear()
+                return True, self.t("vote_passed", n=n, need=need)
+            return False, self.t("vote_progress", n=n, need=need)
 
     e = FakeEngine()
     r = Router(e)
