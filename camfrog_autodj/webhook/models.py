@@ -9,7 +9,7 @@ from typing import List
 @dataclass
 class WebhookConfig:
     """Configuration for the webhook server."""
-    
+
     enabled: bool = False
     port: int = 8080
     secret: str = ""  # HMAC secret for signature verification

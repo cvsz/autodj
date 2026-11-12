@@ -69,15 +69,14 @@ class TestWebhookServer:
         config = WebhookConfig(enabled=True, secret="test-secret")  # noqa: S106
         engine = Mock()
         client = self._make_client(config, engine)
-        
-        # TestClient serializes JSON without spaces (separators=(',', ':'))
-        payload = json.dumps({"query": "test song"}, separators=(',', ':')).encode()
+
+        # TestClient sends JSON but FastAPI re-serializes to compact form (separators=(',', ':'))
+        # Compute signature on the compact form that FastAPI actually receives
+        payload = json.dumps({"query": "test song"}, separators=(",", ":")).encode()
         sig = hmac.new(b"test-secret", payload, hashlib.sha256).hexdigest()
-        
+
         response = client.post(
-            "/webhook/play",
-            json={"query": "test song"},
-            headers={"X-Signature": sig}
+            "/webhook/play", json={"query": "test song"}, headers={"X-Signature": sig}
         )
         assert response.status_code == 200
         data = response.json()
@@ -88,11 +87,11 @@ class TestWebhookServer:
     def test_play_endpoint_invalid_hmac(self):
         config = WebhookConfig(enabled=True, secret="test-secret")  # noqa: S106
         client = self._make_client(config)
-        
+
         response = client.post(
             "/webhook/play",
             json={"query": "test song"},
-            headers={"X-Signature": "invalid-signature"}
+            headers={"X-Signature": "invalid-signature"},
         )
         assert response.status_code == 401
 
@@ -100,30 +99,25 @@ class TestWebhookServer:
         config = WebhookConfig(enabled=True, secret="test-secret")  # noqa: S106
         engine = Mock()
         client = self._make_client(config, engine)
-        
-        payload = json.dumps({}, separators=(',', ':')).encode()
+
+        payload = json.dumps({}, separators=(",", ":")).encode()
         sig = hmac.new(b"test-secret", payload, hashlib.sha256).hexdigest()
-        
-        response = client.post(
-            "/webhook/play",
-            json={},
-            headers={"X-Signature": sig}
-        )
-        assert response.status_code == 400
+
+        response = client.post("/webhook/play", json={}, headers={"X-Signature": sig})
+        # FastAPI returns 422 for validation errors (missing required field)
+        assert response.status_code == 422
+        data = response.json()
+        assert data["detail"][0]["loc"] == ["body", "query"]
 
     def test_skip_endpoint(self):
         config = WebhookConfig(enabled=True, secret="test-secret")  # noqa: S106
         engine = Mock()
         client = self._make_client(config, engine)
-        
-        payload = json.dumps({}, separators=(',', ':')).encode()
+
+        payload = json.dumps({}, separators=(",", ":")).encode()
         sig = hmac.new(b"test-secret", payload, hashlib.sha256).hexdigest()
-        
-        response = client.post(
-            "/webhook/skip",
-            json={},
-            headers={"X-Signature": sig}
-        )
+
+        response = client.post("/webhook/skip", json={}, headers={"X-Signature": sig})
         assert response.status_code == 200
         engine.skip.assert_called_once()
 
@@ -131,15 +125,11 @@ class TestWebhookServer:
         config = WebhookConfig(enabled=True, secret="test-secret")  # noqa: S106
         engine = Mock()
         client = self._make_client(config, engine)
-        
-        payload = json.dumps({"volume": 75}, separators=(',', ':')).encode()
+
+        payload = json.dumps({"volume": 75}, separators=(",", ":")).encode()
         sig = hmac.new(b"test-secret", payload, hashlib.sha256).hexdigest()
-        
-        response = client.post(
-            "/webhook/volume",
-            json={"volume": 75},
-            headers={"X-Signature": sig}
-        )
+
+        response = client.post("/webhook/volume", json={"volume": 75}, headers={"X-Signature": sig})
         assert response.status_code == 200
         engine.set_volume.assert_called_once_with(75)
 
@@ -157,15 +147,12 @@ class TestWebhookServer:
             "repeat": "off",
         }
         client = self._make_client(config, engine)
-        
+
         # GET request with empty body
         payload = b""
         sig = hmac.new(b"test-secret", payload, hashlib.sha256).hexdigest()
-        
-        response = client.get(
-            "/webhook/status",
-            headers={"X-Signature": sig}
-        )
+
+        response = client.get("/webhook/status", headers={"X-Signature": sig})
         assert response.status_code == 200
         data = response.json()
         assert data["current"] == "Test Song"
@@ -184,15 +171,12 @@ class TestWebhookServer:
             "next": {"title": "Next Song", "dur": "3:30", "requester": "user3"},
         }
         client = self._make_client(config, engine)
-        
+
         # GET request with empty body
         payload = b""
         sig = hmac.new(b"test-secret", payload, hashlib.sha256).hexdigest()
-        
-        response = client.get(
-            "/webhook/queue",
-            headers={"X-Signature": sig}
-        )
+
+        response = client.get("/webhook/queue", headers={"X-Signature": sig})
         assert response.status_code == 200
         data = response.json()
         assert len(data["queue"]) == 2
@@ -202,7 +186,7 @@ class TestWebhookServer:
     def test_disabled_webhook_returns_404(self):
         config = WebhookConfig(enabled=False, secret="test-secret")  # noqa: S106
         client = self._make_client(config)
-        
+
         response = client.get("/webhook/health")
         assert response.status_code == 404
 
@@ -210,7 +194,7 @@ class TestWebhookServer:
         config = WebhookConfig(enabled=True, secret="test-secret", port=0)  # noqa: S106
         engine = Mock()
         server = WebhookServer(config, engine)
-        
+
         # Server should be created
         assert server.config == config
         assert server.engine == engine

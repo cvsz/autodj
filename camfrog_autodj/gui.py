@@ -466,6 +466,8 @@ class App(tk.Tk):
         ] = []  # (launch_time, piece, item) still animating
         self._last_track_id: int | None = None
         self._border_glow = 0.0  # 0..1 window-border-glow intensity, pulses with playback
+        self._line_width: int = 0  # cached line canvas width for gradient caching
+        self._stage_wh: tuple[int, int] = (0, 0)  # cached stage canvas width/height
         self._fonts()
         self._style()
         self._build()
@@ -2078,21 +2080,37 @@ class App(tk.Tk):
         w = self.line.winfo_width()
         if w < 10:
             return
-        self.line.delete("all")
-        n = 90
-        cols = gradient([PINK, VIOLET, CYAN, VIOLET, PINK], n)
-        seg = w / n
-        for i, c in enumerate(cols):
-            self.line.create_rectangle(i * seg, 0, (i + 1) * seg + 1, 3, fill=c, outline="")
-        self._shimmer = self.line.create_rectangle(-200, 0, -80, 3, fill="#ffffff", outline="")
+        # Cache the gradient segments - only recreate if width changed significantly
+        if not hasattr(self, "_line_width") or abs(w - self._line_width) > 2:
+            self._line_width = w
+            self.line.delete("all")
+            n = 90
+            cols = gradient([PINK, VIOLET, CYAN, VIOLET, PINK], n)
+            seg = w / n
+            self._line_segments = []
+            for i, c in enumerate(cols):
+                seg_id = self.line.create_rectangle(
+                    i * seg, 0, (i + 1) * seg + 1, 3, fill=c, outline=""
+                )
+                self._line_segments.append(seg_id)
+            self._shimmer = self.line.create_rectangle(-200, 0, -80, 3, fill="#ffffff", outline="")
 
     def _layout_stage(self, _e=None):
         c, px = self.stage, self.px
         w, h = c.winfo_width(), c.winfo_height()
         if w < 60 or h < 60:
             return
-        c.delete("all")
+        # Only rebuild if size changed significantly (avoid redundant recreation)
+        if (
+            hasattr(self, "_stage_wh")
+            and abs(w - self._stage_wh[0]) < 2
+            and abs(h - self._stage_wh[1]) < 2
+        ):
+            return
         self._stage_wh = (w, h)
+        c.delete("all")
+
+        # Initialize stars once (deterministic pseudo-random)
         if not hasattr(self, "_stars"):
             rnd, x = [], 1
             for _ in range(60):
@@ -2101,6 +2119,7 @@ class App(tk.Tk):
             self._stars = [
                 (rnd[i * 2 % 60], rnd[(i * 2 + 1) % 60], 0.4 + rnd[i % 60] * 1.3) for i in range(30)
             ]
+
         n = len(AURORA)
         strip = h / n * 1.8
         self._aurora_items = [
@@ -2131,6 +2150,7 @@ class App(tk.Tk):
             )
             for i, d in enumerate((px(44), px(28), px(14)))
         ]
+        # Static record base elements (don't animate)
         c.create_oval(cx - r, cy - r, cx + r, cy + r, fill="#07080f", outline="#2b3156", width=2)
         for f in (0.92, 0.82, 0.72, 0.62, 0.52):
             c.create_oval(cx - r * f, cy - r * f, cx + r * f, cy + r * f, outline="#171a2e")
@@ -2225,13 +2245,16 @@ class App(tk.Tk):
         t = time.monotonic()
         dt, self._t_prev = min(t - self._t_prev, 0.2), t
         st = self._state
-        self._animate_aurora(t)
-        self._animate_particles(t, st)
-        self._run_confetti(t)
+        # Always update border glow/level and playback indicators (lightweight)
         self._update_border_glow_and_level(t, st)
-        self._animate_bars(t)
-        self._animate_record(t, st, dt)
         self._update_playback_indicators(t, st)
+        # Skip heavy animations when idle
+        if st != "idle":
+            self._animate_aurora(t)
+            self._animate_particles(t, st)
+            self._run_confetti(t)
+            self._animate_bars(t)
+            self._animate_record(t, st, dt)
 
     def _animate_aurora(self, t: float) -> None:
         if not getattr(self, "_aurora_items", None):
@@ -2240,10 +2263,12 @@ class App(tk.Tk):
         w, h = getattr(self, "_stage_wh", (0, 0))
         n = len(self._aurora_items)
         strip = h / n * 1.8 if n else 0
+        # Batch coords updates
         for i, item in enumerate(self._aurora_items):
             off = aurora_offset(t, i, n) * h * 0.1
             y0 = i * h / n - off
             c.coords(item, 0, y0, w, y0 + strip)
+        # Stars: update stipple only (cheaper than coords)
         for i, (item, (_sx, _sy, _sr)) in enumerate(
             zip(self._star_items, self._stars, strict=False)
         ):
@@ -2254,13 +2279,16 @@ class App(tk.Tk):
             )
 
     def _animate_particles(self, t: float, st: str) -> None:
-        if not (self._vc and getattr(self, "_particle_items", None)):
+        # Skip particle animation when idle - no visual benefit
+        if st == "idle" or not (self._vc and getattr(self, "_particle_items", None)):
             return
         c = self.stage
         cx, cy, r, _lab = self._vc
+        # Reduce particle updates when paused
+        playing = st == "playing"
         for item, p in zip(self._particle_items, self._particles, strict=False):
             x, y, alpha = particle_pos(p, t, cx, cy, r + self.px(70))
-            s = p["size"] * (0.6 + 0.7 * alpha) * (1.0 if st == "playing" else 0.5)
+            s = p["size"] * (0.6 + 0.7 * alpha) * (1.0 if playing else 0.5)
             c.coords(item, x - s, y - s, x + s, y + s)
             c.itemconfigure(
                 item,
@@ -2268,16 +2296,22 @@ class App(tk.Tk):
             )
 
     def _update_border_glow_and_level(self, t: float, st: str) -> None:
-        glow_target = 0.75 + 0.25 * pulse(t, 1.5) if st == "playing" else 0.0
+        if st == "playing":
+            glow_target = 0.75 + 0.25 * pulse(t, 1.5)
+            target_level = 1.0
+        elif st == "paused":
+            glow_target = 0.0
+            target_level = 0.10
+        else:  # idle
+            glow_target = 0.0
+            target_level = 0.05 + 0.04 * pulse(t, 3.0)
         self._border_glow = ease(self._border_glow, glow_target, 0.12, 0.05)
         self._border.configure(bg=lerp_color(BG, PINK, 0.55 * self._border_glow))
-        target = (
-            1.0 if st == "playing" else (0.10 if st == "paused" else 0.05 + 0.04 * pulse(t, 3.0))
-        )
-        self._level = ease(self._level, target, 0.15, 0.08)
+        self._level = ease(self._level, target_level, 0.15, 0.08)
 
     def _animate_bars(self, t: float) -> None:
-        if not self._bar_items:
+        # Skip equalizer bars when idle - no visual benefit
+        if not self._bar_items or self._state == "idle":
             return
         c = self.stage
         tgt = bar_heights(t, len(self._bar_items), self._level)
@@ -2297,36 +2331,46 @@ class App(tk.Tk):
             return
         c = self.stage
         cx, cy, _r, lab = self._vc
-        self._spin = ease(self._spin, 1.0 if st == "playing" else 0.0, 0.08, 0.04)
-        self._angle = (self._angle + self._spin * dt * 200.0) % 360.0  # 33⅓ rpm = 200 deg/s
-        c.itemconfigure(self._sheen[0], start=self._angle)
-        c.itemconfigure(self._sheen[1], start=(self._angle + 180) % 360)
-        a = math.radians(self._angle)
-        c.coords(
-            self._needle,
-            cx,
-            cy,
-            cx + lab * 0.8 * math.cos(a),
-            cy - lab * 0.8 * math.sin(a),
-        )
-        for i, ring in enumerate(self._glow):
-            c.itemconfigure(
-                ring,
-                fill=lerp_color(
-                    "#0d1021",
-                    PINK,
-                    (0.04 + 0.03 * i) + 0.10 * self._level * pulse(t, 1.8) * (i + 1) / 3,
-                ),
+        # Spin down when not playing
+        target_spin = 1.0 if st == "playing" else 0.0
+        self._spin = ease(self._spin, target_spin, 0.08, 0.04)
+        if self._spin > 0.01:  # Only update angle/needle if actually spinning
+            self._angle = (self._angle + self._spin * dt * 200.0) % 360.0
+            c.itemconfigure(self._sheen[0], start=self._angle)
+            c.itemconfigure(self._sheen[1], start=(self._angle + 180) % 360)
+            a = math.radians(self._angle)
+            c.coords(
+                self._needle,
+                cx,
+                cy,
+                cx + lab * 0.8 * math.cos(a),
+                cy - lab * 0.8 * math.sin(a),
             )
+        # Glow rings: only animate when playing (level > 0.1)
+        if self._level > 0.1:
+            for i, ring in enumerate(self._glow):
+                c.itemconfigure(
+                    ring,
+                    fill=lerp_color(
+                        "#0d1021",
+                        PINK,
+                        (0.04 + 0.03 * i) + 0.10 * self._level * pulse(t, 1.8) * (i + 1) / 3,
+                    ),
+                )
 
     def _update_playback_indicators(self, t: float, st: str) -> None:
         if st == "playing" and self._cur_dur:
             self.bar.set(self.e.position() / self._cur_dur)
-        self.led.itemconfigure(
-            self._led_id,
-            fill=lerp_color("#4a1f2c", RED, pulse(t, 1.4)) if st == "playing" else "#3a3f5c",
-        )
-        if self._shimmer is not None and self.line.winfo_width() > 10:
+        # LED pulse only when playing
+        if st == "playing":
+            self.led.itemconfigure(
+                self._led_id,
+                fill=lerp_color("#4a1f2c", RED, pulse(t, 1.4)),
+            )
+        else:
+            self.led.itemconfigure(self._led_id, fill="#3a3f5c")
+        # Shimmer line animation only when playing
+        if st == "playing" and self._shimmer is not None and self.line.winfo_width() > 10:
             x = (t * 220) % (self.line.winfo_width() + 400) - 200
             self.line.coords(self._shimmer, x, 0, x + 110, 3)
 
