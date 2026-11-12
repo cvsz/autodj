@@ -38,10 +38,10 @@ BUILD_LOG_TS  := $(shell date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)
 .PHONY: help install install-dev install-build install-auto venv \
         run run-gui run-console run-headless check discover windows say join-room \
         test test-v test-one coverage mutation-smoke \
-        lint lint-src fmt typecheck validate-playlists fix-playlists validate-template full-validation security-check config-check \
+        lint lint-src fmt fmt-check typecheck compileall shellcheck validate-playlists fix-playlists validate-template full-validation security-check config-check validate-all \
         build build-clean sign build-all build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
         clean clean-all distclean \
-        config version bump-patch changelog-check pre-commit ci docs all \
+        config version bump-patch changelog-check pre-commit ci docs all validate-all \
         start-feature start-service start-function start-modular start-option start-all \
         win11-check win11-validate mpv-check nsis-check pyinstaller-check logs
 
@@ -169,7 +169,7 @@ say:  ## Send one test line into the room: make say TEXT="hello"
 
 join-room:  ## Launch Camfrog, join the room, and connect AutoDJ (Windows auto-launch; Linux waits for window)
 	@$(MAKE) config
-	@echo "=== Joining room per config.toml (room: $$(grep '^room =' $(CONFIG) 2>/dev/null | cut -d'=' -f2 | tr -d ' ' || echo 'not set')) ==="
+	@echo "=== Joining room per config.toml ==="
 	$(PY) -m $(PROJECT) -c $(CONFIG)
 
 ## ---- start everything -------------------------------------------------------
@@ -203,7 +203,7 @@ config:  ## Create config.toml from the example if it does not exist yet
 ## ---- testing ------------------------------------------------------------------
 test:  ## Run the full test suite (pytest if installed, else the offline mini runner)
 	@if $(PY) -c "import pytest" 2>/dev/null; then \
-		$(PY) -m pytest -q; \
+		$(PY) -m pytest -q -p no:faulthandler -p no:cacheprovider; \
 	else \
 		echo "pytest not installed -- using tools/minipytest.py (offline stand-in; 'make install-dev' for real pytest)"; \
 		$(PY) tools/minipytest.py tests; \
@@ -246,9 +246,20 @@ fmt:  ## Format with ruff/black if installed (no-op if none installed)
 	elif command -v black >/dev/null 2>&1; then black $(PROJECT) tests tools; \
 	else echo "no formatter installed (pip install ruff or black)"; fi
 
+fmt-check:  ## Check formatting without modifying files (ruff format --check)
+	@if command -v ruff >/dev/null 2>&1; then ruff format --check $(PROJECT) tests tools; \
+	else echo "ruff not installed -- skipping format check (pip install ruff)"; fi
+
 typecheck:  ## Type-check with mypy if installed
 	@if $(PY) -c "import mypy" 2>/dev/null; then $(PY) -m mypy $(PROJECT); \
 	else echo "mypy not installed (pip install mypy)"; fi
+
+shellcheck:  ## Lint shell scripts with shellcheck (scripts/*.sh tools/*.sh)
+	@if command -v shellcheck >/dev/null 2>&1; then shellcheck scripts/*.sh tools/*.sh; \
+	else echo "shellcheck not installed -- skipping (apt install shellcheck)"; fi
+
+compileall:  ## Byte-compile all Python sources (catch syntax errors; AGENTS.md verification checklist)
+	$(PY) -m compileall -q camfrog_autodj tests tools
 
 ## ---- playlist validation -------------------------------------------------------
 validate-playlists:  ## Validate all playlist/*.json source URLs (URLs, ytsearchN:, local paths)
@@ -351,7 +362,7 @@ ifeq ($(OS),Windows_NT)
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
 	@powershell.exe -NoProfile -Command "if (-not (Test-Path 'dist\\AutoDJ.exe')) { Write-Error 'ERROR: dist\\AutoDJ.exe not found after build.'; exit 1 }"
 	@echo ""
-	@echo "=== Step 3/3: Building NSIS Installer ==="
+	@echo "=== Step 2/3: Building NSIS Installer ==="
 	$(MAKE) nsiswindows11 SKIP_CHECKS=$(SKIP_CHECKS)
 	@echo ""
 	@echo "=== Build Complete ==="
@@ -424,8 +435,8 @@ else
 	@exit 1
 endif
 
-installer-clean:  ## Clean installer artifacts
-	@rm -f dist/Camfrog-AutoDJ-Setup-*.exe dist/installer.nsi
+installer-clean:  ## Clean installer artifacts (cross-platform)
+	@$(PY) -c "import glob, os; [os.remove(f) for f in glob.glob('dist/Camfrog-AutoDJ-Setup-*.exe')+(['dist/installer.nsi'] if os.path.exists('dist/installer.nsi') else [])]"
 
 ## ---- housekeeping ---------------------------------------------------------------
 clean:  ## Remove Python caches and test artifacts
@@ -433,7 +444,7 @@ clean:  ## Remove Python caches and test artifacts
 
 clean-all: clean  ## clean generated build/dist artifacts; preserve tracked PyInstaller spec files
 	@$(PY) -c "import shutil; shutil.rmtree('build', ignore_errors=True); shutil.rmtree('dist', ignore_errors=True)"
-	@rm -f dist/Camfrog-AutoDJ-Setup-*.exe dist/installer.nsi
+	@$(PY) -c "import glob, os; [os.remove(f) for f in glob.glob('dist/Camfrog-AutoDJ-Setup-*.exe')+(['dist/installer.nsi'] if os.path.exists('dist/installer.nsi') else [])]"
 
 distclean: clean-all  ## clean-all + remove the virtualenv
 	@$(PY) -c "import shutil; shutil.rmtree('.venv', ignore_errors=True)"
@@ -443,7 +454,7 @@ changelog-check:  ## Fail if CHANGELOG.md has no entry for the current version
 	@echo "CHANGELOG.md has an entry for $(VERSION)"
 
 bump-patch:  ## Bump patch version in pyproject.toml and CHANGELOG.md
-	@$(PY) -c "import tomllib, toml; p='pyproject.toml'; d=tomllib.load(open(p,'rb')); cur=d['project']['version']; parts=cur.split('.'); parts[2]=str(int(parts[2])+1); new='.'.join(parts); d['project']['version']=new; toml.dump(d, open(p,'w')); print(f'Bumped {cur} -> {new}')"
+	@$(PY) -c "import tomllib; p='pyproject.toml'; d=tomllib.load(open(p,'rb')); cur=d['project']['version']; parts=cur.split('.'); parts[2]=str(int(parts[2])+1); new='.'.join(parts); lines=open(p,encoding='utf-8').readlines(); open(p,'w',encoding='utf-8').writelines([('version = \"'+new+'\"\n') if ln.strip().startswith('version =') else ln for ln in lines]); print(f'Bumped {cur} -> {new}')"
 	@echo "Remember to update CHANGELOG.md with the new version"
 
 security-check:  ## Run security checks (secret scan, dependency audit)
@@ -469,4 +480,11 @@ release: full-validation build sign package  ## Full release pipeline: validate 
 	@ls -la dist/AutoDJ.exe dist/Camfrog-AutoDJ-Setup-*.exe dist/camfrog-autodj-*.zip 2>/dev/null || true
 	@echo "================================================"
 
-all: pre-commit  ## Run all pre-commit checks (same as make pre-commit)
+all: compileall lint lint-src typecheck test fmt-check shellcheck validate-playlists validate-installer config-check changelog-check security-check validate-template  ## Run all verification checks per AGENTS.md checklist
+	@echo ""
+	@echo "================================================"
+	@echo "  ALL VERIFICATION CHECKS PASSED for v$(VERSION)"
+	@echo "================================================"
+
+validate-all: all  ## Alias for `all` -- runs every verification check (compileall, lint, lint-src, typecheck, test, fmt-check, shellcheck, validate-playlists, validate-installer, config-check, changelog-check, security-check, validate-template)
+	@echo "validate-all: complete (same checks as make all)"
