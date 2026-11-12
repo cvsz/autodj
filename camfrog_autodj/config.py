@@ -9,6 +9,8 @@ from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Callable, ClassVar
 
+from .exceptions import ConfigError
+
 log = logging.getLogger("autodj")
 
 
@@ -59,10 +61,6 @@ class MessageStyle:
             italic=bool(data.get("italic", False)),
             underline=bool(data.get("underline", False)),
         )
-
-
-class ConfigError(Exception):
-    """config.toml is unreadable or has a bad value. The message is written for the person editing the file."""
 
 
 @dataclass
@@ -238,6 +236,14 @@ class Config:
     admin_delete_message_enabled: bool = True  # enable admin delete message feature
     # Font/style customization for GUI preview only (Camfrog does not support rich text in sent messages)
     message_style: MessageStyle = field(default_factory=lambda: MessageStyle(font_color="#FF0000"))
+    # Webhook/API integration
+    webhook_enabled: bool = False
+    webhook_port: int = 8080
+    webhook_secret: str = ""
+    webhook_host: str = "127.0.0.1"
+    webhook_rate_limit_per_ip: int = 60
+    # Plugin system
+    plugins: list[str] = field(default_factory=lambda: ["builtin.stats", "builtin.help"])
 
     @classmethod
     def load(cls, path: str | None) -> Config:
@@ -370,6 +376,8 @@ _RANGES = {
     "im_auto_reply_cooldown": (10.0, 3600.0),
     "autoplay_idle_timeout": (30.0, 86400.0),
     "admin_greeting_cooldown": (60.0, 86400.0),
+    "webhook_port": (1, 65535),
+    "webhook_rate_limit_per_ip": (1, 10000),
 }
 
 

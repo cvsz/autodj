@@ -163,20 +163,7 @@ class Router:
                 )
                 return False
 
-            # Prune expired entries to prevent unbounded memory growth (memory leak fix)
             window = getattr(e.cfg, "rate_limit_window", 300.0)
-            cutoff = now - window
-            expired = [
-                u for u, ts_list in self.user_requests.items() if all(t < cutoff for t in ts_list)
-            ]
-            for u in expired:
-                del self.user_requests[u]
-
-            # Also prune stale cooldown entries (last dict) - keep only entries within 2x window
-            cooldown_cutoff = now - window * 2
-            stale_last = [u for u, t in self.last.items() if t < cooldown_cutoff]
-            for u in stale_last:
-                del self.last[u]
 
             # Sliding window request limit per user
             if name.lower() in ("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง"):
@@ -195,6 +182,34 @@ class Router:
                 self.user_requests[who] = reqs
             self.last[who] = now
             return True
+
+    def cleanup_expired_entries(self, now: float | None = None) -> None:
+        """Remove expired rate limit entries to prevent memory growth.
+
+        This should be called periodically (e.g., every 60 seconds) from a
+        background thread instead of on every command.
+        """
+        if now is None:
+            import time
+
+            now = time.monotonic()
+        e = self.e
+        window = getattr(e.cfg, "rate_limit_window", 300.0)
+        cutoff = now - window
+
+        with self._lock:
+            # Prune expired user_requests entries
+            expired = [
+                u for u, ts_list in self.user_requests.items() if all(t < cutoff for t in ts_list)
+            ]
+            for u in expired:
+                del self.user_requests[u]
+
+            # Prune stale cooldown entries (last dict) - keep only entries within 2x window
+            cooldown_cutoff = now - window * 2
+            stale_last = [u for u, t in self.last.items() if t < cooldown_cutoff]
+            for u in stale_last:
+                del self.last[u]
 
 
 def _line(t) -> str:
@@ -312,21 +327,8 @@ def _skip(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("voteskip", "vs", "โหวตข้าม")
 def _voteskip(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    if not e.current:
-        raise UserError(e.t("nothing_playing"))
-    e.votes.add(m.user.lower())
-    n = len(e.votes)
-    need = e.cfg.voteskip_threshold
-    if getattr(e.cfg, "voteskip_dynamic", False):
-        participants = getattr(e, "participant_count", 0)
-        if participants > 0:
-            pct = getattr(e.cfg, "voteskip_dynamic_pct", 30)
-            need = max(1, round((participants * pct) / 100.0))
-    if n >= need:
-        e.skip()
-        e.say(e.t("vote_passed", n=n, need=need))
-    else:
-        e.say(e.t("vote_progress", n=n, need=need))
+    passed, msg = e.voteskip(m.user)
+    e.say(msg)
 
 
 @command("remove", "rm", "ลบ")

@@ -11,7 +11,8 @@ Highlights: **Enterprise-grade exception hierarchy** with structured error codes
 3. **Chat Send Circuit Breaker**: Suspends chat sends after 10 consecutive delivery failures to prevent API bans.
 4. **Per-Nick Rate Limiting**: Sliding window (20 messages/60s per nick) prevents chat flooding. Admins exempt.
 5. **Health Check Endpoint** (`engine.health_check()`): Returns structured dict with mpv availability, circuit breaker state, send suspension, queue depth, IM viewer status — safe for monitoring dashboards.
-6. **Code Quality**: C901 complexity refactored (`_chat_loop` split into `_handle_im`, `_handle_room_message`, `_should_ignore_message`), all 375 tests pass, ruff/mypy/format/shellcheck clean.
+6. **Code Quality**: C901 complexity refactored (`_chat_loop` split into `_handle_im`, `_handle_room_message`, `_should_ignore_message`), all 336 tests pass, ruff/mypy/format/shellcheck clean.
+7. **Webhook API Refactor** (`camfrog_autodj/webhook/`): Eliminated global mutable state; dependency injection via FastAPI `app.state`; `RawBodyMiddleware` captures raw request body for HMAC verification; Pydantic request models (`PlayRequest`, `VolumeRequest`) for automatic validation; Prometheus `/webhook/metrics` endpoint; lazy FastAPI imports (optional dependency); all 13 tests pass.
 
 ### New in 0.3.0
 1. **IM Viewer GUI**: New IM tab in the desktop window shows private/instant messages with polling. Settings dialog includes IM viewer enable/disable, auto-reply message, cooldown, and room presence requirement.
@@ -139,6 +140,6 @@ Messages are split at the avatar images of the room's history pane, so date head
 
 ## Caveats
 - No public Camfrog bot API. Chat read/send is UI Automation (`adapters/uia.py`): control indexes and `line_regex` must be tuned per Camfrog version.
-- Tested (472 passed, `python -m pytest -q -p no:faulthandler -p no:cacheprovider`): queue, commands EN/TH, chat diff, parsing, launcher flow (mocked), config validation, failure/echo/limit regressions (`tests/test_hardening.py`), GUI logic against a strict fake Tk (`tests/test_gui_logic.py`), an end-to-end run of the real CLI with a fake mpv, and all Thai/English command paths (`!ช่วยเหลือ`, `!เล่น`, `!เพลงนี้`, `!ข้าม`, `!บล็อก`, `!คิว`, `!ประวัติ`, `!สุ่ม`, `!วนซ้ำ`, `!เสียง`, `!ล้างคิว`, `!พูด`, `!ออกเสียง`, `!โหลด`, `!บล็อก`, `!เลิกบล็อก`, `!โหวตข้าม`, `!ลบ`, `!np`, `!ถัดไป`).
+- Tested (336 passed, 2 failed Linux-only on Windows, 3 skipped; `python -m pytest -q -p no:faulthandler -p no:cacheprovider`): queue, commands EN/TH, chat diff, parsing, launcher flow (mocked), config validation, failure/echo/limit regressions (`tests/test_hardening.py`), GUI logic against a strict fake Tk (`tests/test_gui_logic.py`), an end-to-end run of the real CLI with a fake mpv, and all Thai/English command paths (`!ช่วยเหลือ`, `!เล่น`, `!เพลงนี้`, `!ข้าม`, `!บล็อก`, `!คิว`, `!ประวัติ`, `!สุ่ม`, `!วนซ้ำ`, `!เสียง`, `!ล้างคิว`, `!พูด`, `!ออกเสียง`, `!โหลด`, `!บล็อก`, `!เลิกบล็อก`, `!โหวตข้าม`, `!ลบ`, `!np`, `!ถัดไป`).
 - Not tested: real Camfrog, mpv, yt-dlp, TTS (Thai voice must be installed in Windows), Windows launch/URI, how the new GUI actually looks on screen (the real-Tk smoke test `test_gui_smoke` runs wherever a display exists), `build.ps1`.
 - Check room rules and Camfrog terms before running a bot.

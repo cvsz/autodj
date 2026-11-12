@@ -40,6 +40,7 @@ from .playlist import PlaylistStore, load_playlist
 from .playqueue import PlayQueue
 from .renderer import RenderedMessage, get_renderer
 from .textutil import clean_text, norm
+from .webhook import WebhookConfig, WebhookServer
 
 log = logging.getLogger("autodj")
 
@@ -131,15 +132,36 @@ class Engine:
         # ---- Circuit breaker state ------------------------------------------------
         self._circuit_breaker_failures: int = 0  # consecutive track failures
         self._circuit_breaker_open_until: float = 0.0  # monotonic time when breaker closes
+        self._circuit_breaker_lock: threading.Lock = (
+            threading.Lock()
+        )  # guards circuit breaker state
         self._send_failure_count: int = 0  # consecutive chat send failures
         self._send_failure_lock: threading.Lock = threading.Lock()  # guards send failure count
         # ---- Per-nick chat rate limiting -----------------------------------------
-        self._chat_rate_window: dict[str, list[float]] = {}  # nick -> list of message times
+        self._chat_rate_window: dict[str, deque[float]] = {}  # nick -> deque of message times
         self._chat_rate_lock: threading.Lock = threading.Lock()  # guards rate window dict
         # ---- Health check state --------------------------------------------------
         self._last_health_check: float = 0.0
         self._health_check_interval: float = 30.0  # seconds between auto health checks
         self._backoff_until: float = 0.0  # monotonic time when back-off expires
+        # ---- Webhook server -------------------------------------------------------
+        self._webhook_server: WebhookServer | None = None
+        if getattr(cfg, "webhook_enabled", False):
+            webhook_cfg = WebhookConfig(
+                enabled=cfg.webhook_enabled,
+                port=cfg.webhook_port,
+                secret=cfg.webhook_secret,
+                host=cfg.webhook_host,
+                rate_limit_per_ip=cfg.webhook_rate_limit_per_ip,
+            )
+            self._webhook_server = WebhookServer(webhook_cfg, self)
+        # ---- Plugin system --------------------------------------------------------
+        self._plugin_manager: PluginManager | None = None
+        plugin_names = getattr(cfg, "plugins", [])
+        if plugin_names:
+            from .plugins import PluginManager
+
+            self._plugin_manager = PluginManager(self, plugin_names)
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -478,9 +500,8 @@ class Engine:
             with self._speak_lock:
                 try:
                     synth(text, wav, self.cfg)
-                    # Duck music volume via IPC (play_file sets up IPC before playback)
-                    self.player.set_volume(self.cfg.tts_duck)
-                    self.player.play_file(wav)
+                    # Duck music volume via IPC (play_file applies duck_volume after IPC is established)
+                    self.player.play_file(wav, duck_volume=self.cfg.tts_duck)
                 except Exception:
                     log.exception("tts failed")
                 finally:
@@ -573,14 +594,16 @@ class Engine:
             p = p.resolve()
         except (OSError, ValueError) as err:
             raise UserError(self.t("load_failed", err="invalid path")) from err
-        # Non-admin: must be in the indexed music library
+        # ALL users (including admins) must be within configured music_dirs
+        # This prevents path traversal even when music_dirs is empty
+        if not self.cfg.music_dirs:
+            raise UserError(self.t("folders_admin"))
+        music_dirs = [Path(d).resolve() for d in self.cfg.music_dirs if Path(d).is_dir()]
+        if music_dirs and not any(p.is_relative_to(d) for d in music_dirs):
+            raise UserError(self.t("folders_admin"))
+        # Non-admin: must also be in the indexed music library
         if not admin and not self.index.contains(p):
             raise UserError(self.t("file_not_in_lib"))
-        # Admin: must still be within configured music_dirs (defense in depth)
-        if admin and self.cfg.music_dirs:
-            music_dirs = [Path(d).resolve() for d in self.cfg.music_dirs if Path(d).is_dir()]
-            if music_dirs and not any(p.is_relative_to(d) for d in music_dirs):
-                raise UserError(self.t("folders_admin"))
         if p.is_dir():
             if not admin:
                 raise UserError(self.t("folders_admin"))
@@ -850,8 +873,8 @@ class Engine:
         """
         if is_request and self.queue.requests:
             return self.queue.pop()
-        if not is_request and self.queue.pool:
-            return self.queue.pop()  # picks from pool since requests is empty
+        if not is_request:
+            return self.queue.pop_pool()
         return None
 
     def _player_loop(self):
@@ -965,10 +988,18 @@ class Engine:
             else:
                 self.exec.submit(self._announce_if_playing, t)
             log.info("playing %s", t.source)
+            # Emit track_start event for plugins
+            if self._plugin_manager:
+                self._plugin_manager.emit("track_start", t)
             if not self._try_play(t):
                 fails += 1
                 self._track_failed(t, fails)
                 self._record_circuit_failure()
+                # Emit track_failed event for plugins
+                if self._plugin_manager:
+                    self._plugin_manager.emit(
+                        "track_failed", {"track": t, "error": "playback failed"}
+                    )
                 # Retry the same track if we haven't exceeded max retries (pool tracks only)
                 if fails < max_retries:
                     log.info("retrying track %r (attempt %d/%d)", t.source, fails + 1, max_retries)
@@ -982,6 +1013,9 @@ class Engine:
                 self._log_track(t, "COMPLETED")
                 self.history.appendleft(t)
                 recorded = True
+                # Emit track_end event for plugins
+                if self._plugin_manager:
+                    self._plugin_manager.emit("track_end", t)
             if self.queue.repeat != "one" or getattr(self.player, "skipped", False):
                 break
         self.current = None
@@ -1243,6 +1277,24 @@ class Engine:
                 "in config.toml; nothing will play until then.",
                 self.cfg.mpv_path,
             )
+        # Load plugins
+        if self._plugin_manager:
+            self._plugin_manager.load_plugins()
+        # Start webhook server if enabled
+        if self._webhook_server:
+            import asyncio
+
+            webhook_server = self._webhook_server
+
+            def run_webhook():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(webhook_server.start())
+
+            t = threading.Thread(target=run_webhook, daemon=True, name="autodj-webhook")
+            self._threads.append(t)
+            t.start()
+
         for fn in (
             self._sender,
             self._player_loop,
@@ -1250,6 +1302,7 @@ class Engine:
             self._chat_loop,
             self._auto_reply_loop,
             self._im_auto_reply_loop,
+            self._rate_limit_cleanup_loop,
         ):
             t = threading.Thread(target=fn, daemon=True, name=f"autodj-{fn.__name__}")
             self._threads.append(t)
@@ -1402,6 +1455,24 @@ class Engine:
                 except Exception:
                     log.exception("Failed to send IM auto-reply to %s", msg.user)
 
+    def _rate_limit_cleanup_loop(self):
+        """Periodically clean up expired rate limit entries in the Router.
+
+        Runs every 60 seconds to prevent memory growth from stale entries.
+        """
+        while not self.stop_evt.is_set():
+            if self.stop_evt.wait(60.0):
+                break
+            if self.stop_evt.is_set():
+                break
+            try:
+                import time
+
+                now = time.monotonic()
+                self.router.cleanup_expired_entries(now)
+            except Exception:
+                log.exception("Rate limit cleanup failed")
+
     def run(self):
         self.start()
         try:
@@ -1419,7 +1490,7 @@ class Engine:
 
     def _record_circuit_failure(self) -> None:
         """Record a playback failure and open the circuit breaker if threshold exceeded."""
-        with self._send_failure_lock:  # reuse lock for circuit breaker state
+        with self._circuit_breaker_lock:
             self._circuit_breaker_failures += 1
             if self._circuit_breaker_failures >= _CIRCUIT_BREAKER_FAILURE_THRESHOLD:
                 self._circuit_breaker_open_until = time.monotonic() + _CIRCUIT_BREAKER_RESET_TIMEOUT
@@ -1431,7 +1502,7 @@ class Engine:
 
     def _record_circuit_success(self) -> None:
         """Record a successful playback and reset the circuit breaker."""
-        with self._send_failure_lock:
+        with self._circuit_breaker_lock:
             if self._circuit_breaker_failures > 0:
                 log.info(
                     "Circuit breaker CLOSED after %d failures; playback recovered",
@@ -1442,7 +1513,7 @@ class Engine:
 
     def _is_circuit_open(self) -> bool:
         """Return True if the circuit breaker is open (playback paused due to failures)."""
-        with self._send_failure_lock:
+        with self._circuit_breaker_lock:
             if self._circuit_breaker_open_until <= 0.0:
                 return False
             if time.monotonic() >= self._circuit_breaker_open_until:
@@ -1483,13 +1554,15 @@ class Engine:
 
         Uses a sliding window: at most _CHAT_RATE_LIMIT_MAX messages per
         _CHAT_RATE_LIMIT_WINDOW seconds per nick.
+        Optimized with deque for O(1) popleft operations.
         """
         now = time.monotonic()
         with self._chat_rate_lock:
-            window = self._chat_rate_window.setdefault(nick, [])
-            # Prune expired entries
+            window = self._chat_rate_window.setdefault(nick, deque())
+            # Prune expired entries efficiently with popleft
             cutoff = now - _CHAT_RATE_LIMIT_WINDOW
-            window[:] = [t for t in window if t > cutoff]
+            while window and window[0] <= cutoff:
+                window.popleft()
             if len(window) >= _CHAT_RATE_LIMIT_MAX:
                 log.warning("Chat rate limit exceeded for nick=%s", nick)
                 return False
@@ -1520,8 +1593,8 @@ class Engine:
             checks["mpv"] = {"ok": False, "details": str(ex)}
             ok = False
 
-        # Circuit breaker state (read under lock for consistent snapshot)
-        with self._send_failure_lock:  # reuse lock for circuit breaker state
+        # Circuit breaker state (read under circuit breaker lock for consistent snapshot)
+        with self._circuit_breaker_lock:
             cb_open = self._is_circuit_open()
             cb_failures = self._circuit_breaker_failures
             cb_open_until = self._circuit_breaker_open_until
@@ -1642,6 +1715,21 @@ class Engine:
         self.stop_evt.set()
         self.wake.set()
         self.player.stop()
+        # Unload plugins
+        if self._plugin_manager:
+            self._plugin_manager.unload_plugins()
+        # Stop webhook server
+        if self._webhook_server:
+            import asyncio
+
+            webhook_server = self._webhook_server
+
+            def stop_webhook():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(webhook_server.stop())
+
+            stop_webhook()
         self.adapter.close()
         self.exec.shutdown(wait=False, cancel_futures=True)
         # Join daemon threads with a timeout so shutdown does not hang forever.
