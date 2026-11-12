@@ -16,6 +16,10 @@ _ids = itertools.count()
 log = logging.getLogger("autodj")
 POLL = 0.5  # seconds between hang checks while a track with a known length plays
 _WHY = ("error", "fail", "not found", "unable", "[ytdl_hook]", "cannot", "no such")
+# Position cache TTL: the GUI polls position() every POLL seconds; caching the
+# mpv-reported position for one poll cycle avoids opening a new IPC connection
+# on every poll while keeping the progress bar imperceptibly current.
+_POS_CACHE_TTL = 0.5
 
 
 def _is_windows() -> bool:
@@ -43,6 +47,7 @@ class MpvPlayer:
             None  # monotonic time of the current pause (hang timer excludes pauses)
         )
         self._paused_total = 0.0
+        self._pos_cache: tuple[float, float] | None = None  # (position, monotonic time)
 
     def available(self) -> bool:
         return bool(resolve_executable(self.cfg.mpv_path))
@@ -143,6 +148,7 @@ class MpvPlayer:
             self.skipped = False
             self._paused_since, self._paused_total = None, 0.0
             self._ipc = ipc
+            self._pos_cache = None
             self.proc = p = subprocess.Popen(cmd, **kw)
         if fade_in:
             threading.Thread(
@@ -233,6 +239,7 @@ class MpvPlayer:
                 pass  # fade-out is best-effort; termination proceeds regardless
         with self._lock:
             p = self.proc
+            self._pos_cache = None
             if p and p.poll() is None:
                 self.skipped = True
                 p.terminate()
@@ -328,14 +335,39 @@ class MpvPlayer:
         except (OSError, TimeoutError):
             return None
 
+    def _invalidate_pos_cache(self) -> None:
+        """Drop the cached mpv position so the next get_time_pos() re-queries IPC."""
+        with self._lock:
+            self._pos_cache = None
+
     def get_time_pos(self) -> float | None:
-        """Get the current playback position in seconds from mpv via IPC. Returns None if unavailable."""
-        return self._cmd_get("get_property", "time-pos")
+        """Get the current playback position in seconds from mpv via IPC.
+
+        The last reported position is cached for _POS_CACHE_TTL seconds so the
+        GUI's frequent position polls (every 500 ms) do not open a new IPC
+        connection (named pipe on Windows, Unix socket on Linux) on every poll.
+        Returns None if unavailable.
+        """
+        now = time.monotonic()
+        cached: tuple[float, float] | None = None
+        with self._lock:
+            cached = self._pos_cache
+        if cached is not None:
+            cpos, ts = cached
+            if now - ts <= _POS_CACHE_TTL:
+                return cpos
+        pos: float | None = self._cmd_get("get_property", "time-pos")
+        if pos is not None:
+            with self._lock:
+                self._pos_cache = (pos, time.monotonic())
+        return pos
 
     def seek(self, seconds: float) -> bool:
         """Seek to an absolute position (seconds) in the current track via mpv IPC.
         Returns True if the seek command was sent successfully."""
-        return self._cmd("seek", seconds, "absolute")
+        ok = self._cmd("seek", seconds, "absolute")
+        self._invalidate_pos_cache()
+        return ok
 
     def set_pause(self, v: bool) -> bool:
         return self._cmd("set_property", "pause", v)
@@ -363,6 +395,7 @@ class MpvPlayer:
             self.skipped = False
             self._paused_since, self._paused_total = None, 0.0
             self._ipc = ipc
+            self._pos_cache = None
         try:
             subprocess.run(cmd, check=False, **kw)
         except subprocess.TimeoutExpired:

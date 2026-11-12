@@ -18,7 +18,7 @@ A **deep-dive security audit** was performed across all 32 Python modules, confi
 
 | Metric | Result | Evidence |
 |--------|--------|----------|
-| **Test Suite** | 441 tests passed | `pytest -q` → 19s, 0 failures |
+| **Test Suite** | 446 tests passed (2026-11-12) | `pytest -q` → 21s, 0 failures |
 | **Static Analysis (ruff)** | Clean | 0 errors, 0 warnings |
 | **Type Checking (mypy)** | Clean | 32 source files, 0 issues (strict mode) |
 | **Shell Scripts (shellcheck)** | Clean | 6 scripts validated |
@@ -552,6 +552,46 @@ See `IMPLEMENTATION_PLAN.md` for the full itemized checklist with all items mark
 
 ---
 
+## 12. Hardening Round — 2026-11-12 (Independent Implementation)
+
+### 12.1 Scope
+
+Full independent re-validation plus performance optimization of hot paths, fill-in of missing validation capability, and repository hygiene. All changes validated on Linux (Windows host items remain per §10.1).
+
+### 12.2 Changes
+
+| Change | Type | Files |
+|--------|------|-------|
+| PlayQueue monotonic `version` + `changed_since()`; GUI queue listbox rebuild gated on actual change | Performance | `camfrog_autodj/playqueue.py`, `camfrog_autodj/gui.py` |
+| mpv IPC position cache (0.5 s TTL), invalidated on `seek()`/`stop()`/track start | Performance | `camfrog_autodj/player.py` |
+| GUI idle tick throttled to 250 ms (like iconic state) when idle | Performance | `camfrog_autodj/gui.py` |
+| `LocalIndex` precomputed lowercase search strings (once per scan, not per `find()`) | Performance | `camfrog_autodj/library.py` |
+| `make security-audit` target (pip-audit, advisory) — closes gap where help text claimed "dependency audit" but no audit ran | Validation gap | `Makefile` |
+| `docker-resource-audit.sh` ops script; fixed SC1128 (shebang on first line) | Ops/hygiene | `docker-resource-audit.sh` |
+| Regression tests: queue version semantics, `LocalIndex` substring semantics, mpv position cache | Tests | `tests/test_core.py`, `tests/test_player_cache.py` |
+
+### 12.3 Validation Evidence (all VERIFIED 2026-11-12)
+
+| Gate | Result | Evidence |
+|------|--------|----------|
+| `pytest -q -p no:faulthandler -p no:cacheprovider` | ✅ 446 passed, 3 subtests, 0 failures | 20.8 s |
+| `ruff check camfrog_autodj tests tools` | ✅ All checks passed | — |
+| `ruff format --check camfrog_autodj tests tools` | ✅ 69 files already formatted | — |
+| `mypy camfrog_autodj` | ✅ Success: no issues in 32 source files | — |
+| `python -m compileall -q camfrog_autodj tests tools` | ✅ Clean | — |
+| `shellcheck *.sh scripts/*.sh tools/*.sh` | ✅ Clean (incl. new `docker-resource-audit.sh`) | — |
+| `make validate-all` | ✅ ALL VERIFICATION CHECKS PASSED for v0.3.0 | 274 tracks / 34 playlists valid, 0 invalid |
+| `make security-check` (secret scan) | ✅ No hardcoded secrets found | — |
+| `pip-audit --skip-editable` (dependency audit) | ✅ 0 vulnerabilities in project dependencies | Findings in shared dev environment (mitmproxy, protobuf, soupsieve, brotli, capstone, h2, hpack, oauthlib, pypdf) are NOT project imports/dependencies; AutoDJ declares only `yt-dlp`, `mutagen`, `pyttsx3`, `pywinauto`, `pyperclip` |
+| TODO/FIXME/XXX/HACK scan (`*.py`) | ✅ 0 matches | grep scan |
+
+### 12.4 Residual Risk
+
+- pip-audit findings in the shared development environment remain (advisory, out of project scope); remediation belongs to the environment owner, tracked via `make security-audit` on each audit round.
+- Windows-host blocked items unchanged (§10.1).
+
+---
+
 ## Appendix A: Validation Commands Reference
 
 ```bash
@@ -560,7 +600,8 @@ python -m pytest -q -p no:faulthandler -p no:cacheprovider
 ruff check camfrog_autodj tests tools
 ruff format --check camfrog_autodj tests tools
 mypy camfrog_autodj
-shellcheck scripts/*.sh tools/*.sh
+shellcheck *.sh scripts/*.sh tools/*.sh
+make security-audit  # dependency audit (pip-audit, advisory)
 python3 scripts/validate_repo.py
 git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' | grep -v '^\.env\.example$'  # Must return empty
 
@@ -568,7 +609,7 @@ git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' | grep -v '^\.env\.exam
 make lint            # ruff check
 make fmt             # ruff format --check
 make typecheck       # mypy
-make test            # pytest (414 tests)
+make test            # pytest (446 tests)
 make coverage        # coverage.py report (82%)
 make validate-template  # scripts/validate_repo.py
 make config-check    # config.toml valid TOML
@@ -587,7 +628,7 @@ make clean-all       # clean build artifacts
 camfrog-autodj/
 ├── .github/                  # CI/CD workflows, issue/PR templates
 ├── camfrog_autodj/           # 32 Python modules
-├── tests/                    # Test files (414 tests)
+├── tests/                    # Test files (446 tests)
 ├── tools/                    # Validation, qualification tools
 ├── scripts/                  # Build, deployment, GitHub admin scripts
 ├── docs/                     # Architecture, audit, protocols, qualification

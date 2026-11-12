@@ -443,6 +443,7 @@ class App(tk.Tk):
         self._seen = 0  # show whatever is already in the log
         self._im_seen = 0  # show whatever is already in the IM log
         self._q_cache = self._h_cache = self._im_cache = None
+        self._q_version = -1  # last PlayQueue version seen when the queue listbox was rebuilt
         self._state = "idle"  # idle | playing | paused (drives the animations)
         self._level, self._spin, self._angle, self._t_prev = (
             0.05,
@@ -2212,7 +2213,13 @@ class App(tk.Tk):
                 log.exception("GUI animation frame failed")
         finally:
             if not self._closing:
-                self._anim = self.after(250 if self.state() == "iconic" else FPS_MS, self._tick)
+                # When idle (and not minimised) there is nothing meaningful to
+                # animate, so throttle the tick to match the iconic slowdown
+                # and cut constant redraws / wake-ups.
+                self._anim = self.after(
+                    250 if (self.state() == "iconic" or self._state == "idle") else FPS_MS,
+                    self._tick,
+                )
 
     def _frame(self):
         t = time.monotonic()
@@ -3115,12 +3122,18 @@ class App(tk.Tk):
             self.v_volpct.configure(text=f"{int(s['volume'])}%")
         self.c_shuffle.set_active(s["shuffle"])
         self.c_repeat.set_active(s["repeat"] == "one")
-        items = [f"{i}. {q.title}  [{q.dur}]  ({q.requester})" for i, q in enumerate(s["queue"], 1)]
-        self._q_tracks = list(s["queue"])
-        if items != self._q_cache:
-            self._q_cache = items
-            self.lb.delete(0, "end")
-            self.lb.insert("end", *items)
+        # Only rebuild the queue listbox (string formatting + Tk calls) when the
+        # queue actually changed; avoids O(queue_size) work on every 500 ms poll.
+        if self.e.queue.changed_since(self._q_version):
+            items = [
+                f"{i}. {q.title}  [{q.dur}]  ({q.requester})" for i, q in enumerate(s["queue"], 1)
+            ]
+            self._q_tracks = list(s["queue"])
+            self._q_version = self.e.queue.version
+            if items != self._q_cache:
+                self._q_cache = items
+                self.lb.delete(0, "end")
+                self.lb.insert("end", *items)
         hist = [
             f"{i}. {q.title}  [{q.dur}]  ({q.requester})"
             for i, q in enumerate(s.get("history", []), 1)

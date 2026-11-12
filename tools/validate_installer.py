@@ -172,6 +172,14 @@ def validate_version_consistency() -> list[str]:
 
 
 def main() -> int:
+    # Cross-platform: installer.nsi validation is a Windows NSIS build gate.
+    # Skip gracefully on non-Windows hosts so `make all` / `make validate-all`
+    # work everywhere (Windows primary, Linux headless). On Windows, run the
+    # full fail-closed validation below.
+    if sys.platform != "win32":
+        print("skipped: installer validation is a Windows build gate (non-Windows host)")
+        return 0
+
     all_errors = (
         validate_required_files()
         + validate_required_dirs()

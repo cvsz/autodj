@@ -189,3 +189,58 @@ def test_remove_own_only_and_say_local():
     assert out(e) == ["hello room"]
     e.router.handle(ChatMessage("amy", "!nonsense"))
     assert out(e) == []
+
+
+def test_local_index_find_preserves_substring_semantics_with_precomputed_hay():
+    """find() must keep exact substring matching ("love" matches "Lovely") while
+    avoiding rebuilding the lowercase search string on every call."""
+    from pathlib import Path
+
+    from camfrog_autodj.library import LocalIndex
+
+    index = LocalIndex(["/music"])
+    index.tracks = [
+        Track("/music/Amazing Grace.mp3", "Amazing Grace", 120, "u"),
+        Track("/music/Lovely Day.mp3", "Lovely Day", 200, "u"),
+        Track("/music/Love Song.mp3", "Love Song", 180, "u"),
+    ]
+    index._hay = [f"{t.title} {Path(t.source).name}".lower() for t in index.tracks]
+
+    hit = index.find("love", "amy")
+    assert hit is not None and hit.title == "Lovely Day"  # substring, first in order
+
+    hit = index.find("amazing grace", "amy")
+    assert hit is not None and hit.title == "Amazing Grace"  # multi-word, all must match
+
+    assert index.find("nonexistent", "amy") is None
+    assert index.find("", "amy") is None
+
+
+def test_playqueue_version_bumps_on_every_mutation():
+    """The queue exposes a monotonic version so GUI polls can skip rebuilds when unchanged."""
+    from camfrog_autodj.playqueue import PlayQueue
+
+    q = PlayQueue(shuffle=False)
+    v0 = q.version
+    assert not q.changed_since(v0)  # fresh queue: no change since its own version
+
+    q.add_request(Track("s1", "one", 60, "amy"))
+    v1 = q.version
+    assert q.changed_since(v0) and v1 > v0
+
+    q.add_pool([Track("p1", "pool", 60, "sys"), Track("p1", "pool", 60, "sys")])
+    v2 = q.version
+    assert v2 > v1 and not q.changed_since(v2)
+
+    q.set_shuffle(True)
+    assert q.changed_since(v2)
+
+    q.remove(1)
+    v3 = q.version
+    assert q.changed_since(v2) and not q.changed_since(v3)
+
+    q.remove_track(Track("nonexistent", "x", 0, "u"))  # no-op must NOT bump
+    assert q.version == v3 and not q.changed_since(v3)
+
+    q.clear()
+    assert q.changed_since(v3)

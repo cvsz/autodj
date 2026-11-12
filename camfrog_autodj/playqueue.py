@@ -17,7 +17,21 @@ class PlayQueue:
         self._i = 0
         self._next_auto: Track | None = None
         self._last: str | None = None
+        self._version = 0  # bumped on every mutation; consumers can skip refresh when unchanged
         self.lock = threading.RLock()
+
+    @property
+    def version(self) -> int:
+        """Monotonic counter bumped on every queue mutation.
+
+        Callers (e.g. the GUI poller) can compare against a previously seen
+        value to decide whether a full refresh is necessary.
+        """
+        return self._version
+
+    def changed_since(self, version: int) -> bool:
+        """Return True if the queue has been mutated since *version*."""
+        return self._version != version
 
     def add_request(self, t: Track, position: int | None = None) -> int:
         with self.lock:
@@ -27,6 +41,7 @@ class PlayQueue:
                 self.requests.insert(pos, t)
             else:
                 self.requests.append(t)
+            self._version += 1
             return len(self.requests)
 
     def add_pool(self, tracks: list[Track]):
@@ -37,11 +52,13 @@ class PlayQueue:
                 if t.source not in have:
                     have.add(t.source)
                     self.pool.append(t)
+            self._version += 1
 
     def set_shuffle(self, on: bool):
         with self.lock:
             self.shuffle = on
             self._next_auto = None
+            self._version += 1
 
     def _pick_auto(self) -> Track | None:
         if not self.pool:
@@ -59,6 +76,7 @@ class PlayQueue:
                 return self.requests[0]
             if self._next_auto is None:
                 self._next_auto = self._pick_auto()
+                self._version += 1
             return self._next_auto
 
     def pop(self) -> Track | None:
@@ -71,6 +89,7 @@ class PlayQueue:
             else:
                 self._next_auto = None
             self._last = t.source
+            self._version += 1
             return t
 
     def get(self, n: int) -> Track | None:
@@ -79,7 +98,9 @@ class PlayQueue:
 
     def remove(self, n: int) -> Track | None:
         with self.lock:
-            return self.requests.pop(n - 1) if 1 <= n <= len(self.requests) else None
+            t = self.requests.pop(n - 1) if 1 <= n <= len(self.requests) else None
+            self._version += 1
+            return t
 
     def remove_track(self, track: Track) -> bool:
         """Remove exactly this queued request (by identity), however the queue shifted since it was looked up."""
@@ -87,6 +108,7 @@ class PlayQueue:
             for i, t in enumerate(self.requests):
                 if t is track:
                     del self.requests[i]
+                    self._version += 1
                     return True
             return False
 
@@ -94,6 +116,7 @@ class PlayQueue:
         with self.lock:
             n = len(self.requests)
             self.requests.clear()
+            self._version += 1
             return n
 
     def count_by(self, user: str) -> int:

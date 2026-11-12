@@ -46,6 +46,8 @@ audio_fade = true                  # enable audio volume fade-in and fade-out
 audio_fade_in_sec = 1.2            # fade-in duration in seconds
 audio_fade_out_sec = 1.5           # fade-out duration on skip/stop in seconds
 audio_normalize = false            # enable dynamic audio loudness normalization (dynaudnorm)
+# --- local music library (mutagen reads title/artist/duration; falls back to filename
+# if mutagen is not installed) and TTS (pyttsx3 / Windows SAPI) ---------------------
 volume = 70
 music_dirs = ["REPLACE_ME:/path/to/your/music"]   # local library: requestable by name, also autoplayed
 autoplay_sources = []          # extra YouTube playlist URLs / folders / files to autoplay
