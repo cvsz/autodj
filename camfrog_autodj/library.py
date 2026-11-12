@@ -63,13 +63,14 @@ def scan_folder(
     return _scan_folder_recursive(folder, requester, limit, max_dirs)
 
 
-def _scan_folder_recursive(
+def _scan_folder_recursive(  # noqa: C901
     folder: str, requester: str, limit: int, remaining_dirs: int
 ) -> list[Track]:
     """Internal recursive implementation with global directory budget."""
     root = Path(folder)
     try:
-        entries = list(root.iterdir())
+        # Use os.scandir for better performance: DirEntry has cached stat info
+        entries = list(os.scandir(root))
     except (OSError, PermissionError):
         log.warning("cannot read folder %r: permission denied", folder)
         return []
@@ -85,12 +86,15 @@ def _scan_folder_recursive(
                     continue  # global directory budget exhausted
                 remaining_dirs -= 1
                 need = limit - len(tracks) if limit else 0
-                sub = _scan_folder_recursive(str(entry), requester, limit, remaining_dirs)
+                sub = _scan_folder_recursive(entry.path, requester, limit, remaining_dirs)
                 tracks.extend(sub[:need] if need else sub)
                 if limit and len(tracks) >= limit:
                     break
-            elif entry.is_file() and entry.suffix.lower() in MEDIA:
-                tracks.append(local_track(entry, requester))
+            elif entry.is_file():
+                # DirEntry doesn't have .suffix; use Path for suffix check
+                entry_path = Path(entry.path)
+                if entry_path.suffix.lower() in MEDIA:
+                    tracks.append(local_track(entry_path, requester))
         except (OSError, PermissionError):
             continue
     tracks.sort(key=lambda t: t.source)
