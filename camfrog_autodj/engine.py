@@ -40,6 +40,7 @@ from .playlist import PlaylistStore, load_playlist
 from .playqueue import PlayQueue
 from .renderer import RenderedMessage, get_renderer
 from .textutil import clean_text, norm
+from .webhook import WebhookConfig, WebhookServer
 
 log = logging.getLogger("autodj")
 
@@ -140,6 +141,17 @@ class Engine:
         self._last_health_check: float = 0.0
         self._health_check_interval: float = 30.0  # seconds between auto health checks
         self._backoff_until: float = 0.0  # monotonic time when back-off expires
+        # ---- Webhook server -------------------------------------------------------
+        self._webhook_server: WebhookServer | None = None
+        if getattr(cfg, "webhook_enabled", False):
+            webhook_cfg = WebhookConfig(
+                enabled=cfg.webhook_enabled,
+                port=cfg.webhook_port,
+                secret=cfg.webhook_secret,
+                host=cfg.webhook_host,
+                rate_limit_per_ip=cfg.webhook_rate_limit_per_ip,
+            )
+            self._webhook_server = WebhookServer(webhook_cfg, self)
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -1243,6 +1255,18 @@ class Engine:
                 "in config.toml; nothing will play until then.",
                 self.cfg.mpv_path,
             )
+        # Start webhook server if enabled
+        if self._webhook_server:
+            import asyncio
+            webhook_server = self._webhook_server
+            def run_webhook():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(webhook_server.start())
+            t = threading.Thread(target=run_webhook, daemon=True, name="autodj-webhook")
+            self._threads.append(t)
+            t.start()
+        
         for fn in (
             self._sender,
             self._player_loop,
@@ -1642,6 +1666,15 @@ class Engine:
         self.stop_evt.set()
         self.wake.set()
         self.player.stop()
+        # Stop webhook server
+        if self._webhook_server:
+            import asyncio
+            webhook_server = self._webhook_server
+            def stop_webhook():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(webhook_server.stop())
+            stop_webhook()
         self.adapter.close()
         self.exec.shutdown(wait=False, cancel_futures=True)
         # Join daemon threads with a timeout so shutdown does not hang forever.

@@ -238,6 +238,12 @@ class Config:
     admin_delete_message_enabled: bool = True  # enable admin delete message feature
     # Font/style customization for GUI preview only (Camfrog does not support rich text in sent messages)
     message_style: MessageStyle = field(default_factory=lambda: MessageStyle(font_color="#FF0000"))
+    # Webhook/API integration
+    webhook_enabled: bool = False
+    webhook_port: int = 8080
+    webhook_secret: str = ""
+    webhook_host: str = "127.0.0.1"
+    webhook_rate_limit_per_ip: int = 60
 
     @classmethod
     def load(cls, path: str | None) -> Config:
@@ -370,6 +376,8 @@ _RANGES = {
     "im_auto_reply_cooldown": (10.0, 3600.0),
     "autoplay_idle_timeout": (30.0, 86400.0),
     "admin_greeting_cooldown": (60.0, 86400.0),
+    "webhook_port": (1, 65535),
+    "webhook_rate_limit_per_ip": (1, 10000),
 }
 
 
