@@ -12,6 +12,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest"]
 build = ["pyinstaller"]
+hotreload = ["watchdog>=3.0"]
 [project.scripts]
 camfrog-autodj = "camfrog_autodj.__main__:main"
 [build-system]
