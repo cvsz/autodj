@@ -48,8 +48,8 @@ class MessageStyle:
         """Create from TOML dict with defaults."""
         return cls(
             font_family=data.get("font_family", "Consolas"),
-            font_size=int(data.get("font_size", 12)),
-            font_color=data.get("font_color", "#FFFFFF"),
+            font_size=int(data.get("font_size", 14)),
+            font_color=data.get("font_color", "#000000"),
             bold=bool(data.get("bold", False)),
             italic=bool(data.get("italic", False)),
             underline=bool(data.get("underline", False)),
