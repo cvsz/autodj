@@ -10,6 +10,7 @@ from . import __version__
 from .adapters import NullAdapter, build_adapter
 from .config import Config, ConfigError
 from .engine import Engine
+from .logging_json import add_json_file_handler, configure_json_logging
 from .migrate import migrate_config
 from .textutil import clean_text
 
@@ -54,6 +55,11 @@ def _parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="also write the log to PATH (rotating); or set log_file in config",
     )
+    ap.add_argument(
+        "--log-json",
+        action="store_true",
+        help="output logs in JSON format (structured logging)",
+    )
     ap.add_argument("-v", "--verbose", action="store_true")
     return ap
 
@@ -72,7 +78,14 @@ def _add_log_file(path: str, level: int):
 def main():
     a = _parser().parse_args()
     level = logging.DEBUG if a.verbose else logging.INFO
-    logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(message)s")
+
+    # Configure logging: JSON or plain text
+    if a.log_json:
+        # JSON logging will be configured after config is loaded
+        logging.basicConfig(level=level, handlers=[])  # No default handler
+    else:
+        logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(message)s")
+
     try:
         _run(a, level)
     except ConfigError as ex:
@@ -81,6 +94,33 @@ def main():
     except RuntimeError as ex:  # e.g. the Camfrog room window is not open
         log.error("%s", ex)
         sys.exit(1)
+
+
+def _configure_logging(a, cfg, level):
+    """Configure logging (JSON or text) based on CLI flags and config."""
+    if a.log_json or getattr(cfg, "log_json", False):
+        # Remove any existing handlers
+        root_logger = logging.getLogger()
+        for h in root_logger.handlers[:]:
+            root_logger.removeHandler(h)
+        # Add JSON console handler
+        configure_json_logging(cfg, level=level)
+        # Also add JSON file handler if log_file is set
+        if a.log_file or cfg.log_file:
+            log_path = a.log_file or cfg.log_file
+            if log_path and not os.path.isabs(log_path):
+                app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
+                log_path = os.path.join(app_data, "CamfrogAutoDJ", log_path)
+            try:
+                add_json_file_handler(cfg, log_path, level=level)
+            except (OSError, PermissionError):
+                log.warning(
+                    "cannot open log file %s; continuing without file logging",
+                    log_path,
+                )
+    else:
+        # Standard text logging (handlers already set up by basicConfig)
+        _setup_log_file(a, cfg, level)
 
 
 def _run(a, level):
@@ -98,7 +138,9 @@ def _run(a, level):
         )
     _migrate_config(a.config)
     cfg = Config.load(a.config)
-    _setup_log_file(a, cfg, level)
+
+    _configure_logging(a, cfg, level)
+
     cfg = _relocate_config(a, cfg)
     if a.lang:
         cfg.lang = a.lang

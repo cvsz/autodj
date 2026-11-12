@@ -137,6 +137,20 @@ class Config:
     ytdlp_path: str = "mpv/yt-dlp.exe"  # "" = auto: yt-dlp(.exe) next to mpv or on PATH, else the bundled Python module
     poll_interval: float = 0.5  # seconds between chat reads (raise it if AutoDJ uses too much CPU)
     log_file: str = ""  # also write the log to this file (rotating, 1 MB x 3)
+    log_json: bool = False  # enable JSON structured logging output
+    log_json_fields: list[str] = field(
+        default_factory=lambda: [
+            "request_id",
+            "delivery_id",
+            "user",
+            "track_id",
+            "generation",
+            "attempt_id",
+            "category",
+            "stage",
+            "state",
+        ]
+    )  # extra fields to include in JSON logs
     playlist_file: str = (
         "playlist.json"  # user-requested tracks (!play / GUI request / !load) are appended here
     )
