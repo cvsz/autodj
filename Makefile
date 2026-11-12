@@ -38,7 +38,7 @@ BUILD_LOG_TS  := $(shell date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)
 .PHONY: help install install-dev install-build install-auto venv \
         run run-gui run-console run-headless check discover windows say join-room \
         test test-v test-one coverage mutation-smoke \
-        lint lint-src fmt fmt-check typecheck compileall shellcheck validate-playlists fix-playlists validate-template full-validation security-check config-check validate-all \
+        lint lint-src fmt fmt-check typecheck compileall shellcheck validate-playlists fix-playlists validate-template full-validation security-check security-audit config-check validate-all \
         build build-clean sign build-all build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
         clean clean-all distclean \
         config version bump-patch changelog-check pre-commit ci docs all validate-all \
@@ -462,6 +462,14 @@ security-check:  ## Run security checks (secret scan, dependency audit)
 	@$(PY) -c "import pathlib; print('Scanning for potential secrets...')" 2>/dev/null || true
 	@grep -rniE '(password|secret|api_key|token|private_key)\s*=\s*["'\'']' camfrog_autodj/ 2>/dev/null --include='*.py' | grep -v '^.*#' | grep -viE '(= ""|os\.environ|getenv|\.get\()' || echo "No hardcoded secrets found"
 	@echo "Security check complete"
+
+security-audit:  ## Audit Python dependencies for known vulnerabilities (pip-audit; advisory, not part of `all`)
+	@if command -v pip-audit >/dev/null 2>&1; then \
+		echo "Running dependency audit (pip-audit)..."; \
+		(pip-audit --skip-editable || echo "NOTE: pip-audit reported findings above -- advisory only; verify they belong to this project's declared dependencies (pyproject.toml) before acting."); \
+	else \
+		echo "pip-audit not installed; skipping dependency audit (pip install pip-audit)"; \
+	fi
 
 docs:  ## List the docs that ship with the project
 	@$(PY) -c "import glob; [print(f) for f in glob.glob('*.md')]"

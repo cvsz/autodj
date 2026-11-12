@@ -306,15 +306,20 @@ class LocalIndex:
     def __init__(self, dirs):
         self.dirs = [Path(d).resolve() for d in dirs]
         self.tracks: list[Track] = []
+        self._hay: list[str] = []  # precomputed lowercase search strings, parallel to self.tracks
 
     def scan(self):
         self.tracks = [t for d in self.dirs if d.is_dir() for t in scan_folder(d)]
+        self._hay = [f"{t.title} {Path(t.source).name}".lower() for t in self.tracks]
 
     def find(self, query: str, requester: str) -> Track | None:
         words = query.lower().split()
-        for t in self.tracks:
-            hay = f"{t.title} {Path(t.source).name}".lower()
-            if words and all(w in hay for w in words):
+        if not words:
+            return None
+        hay = self._hay
+        for i, t in enumerate(self.tracks):
+            h = hay[i] if i < len(hay) else f"{t.title} {Path(t.source).name}".lower()
+            if all(w in h for w in words):
                 return Track(t.source, t.title, t.duration, requester)
         return None
 
