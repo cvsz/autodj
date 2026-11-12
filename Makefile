@@ -42,6 +42,7 @@ BUILD_LOG_TS  := $(shell date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)
         build build-clean sign build-all build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
         clean clean-all distclean \
         config version bump-patch changelog-check pre-commit ci docs all \
+        start-feature start-service start-function start-modular start-option start-all \
         win11-check win11-validate mpv-check nsis-check pyinstaller-check logs
 
 ## ---- help -----------------------------------------------------------------
@@ -170,6 +171,28 @@ join-room:  ## Launch Camfrog, join the room, and connect AutoDJ (Windows auto-l
 	@$(MAKE) config
 	@echo "=== Joining room per config.toml (room: $$(grep '^room =' $(CONFIG) 2>/dev/null | cut -d'=' -f2 | tr -d ' ' || echo 'not set')) ==="
 	$(PY) -m $(PROJECT) -c $(CONFIG)
+
+## ---- start everything -------------------------------------------------------
+# Automated start of every runtime capability in a single command.
+# Each category runs the startup sequence (config + version) so a new
+# operator can confirm the project is ready with one invocation.
+#
+# Runtime verification (requires Windows + mpv + Camfrog): make check | make discover
+# Long-running runtimes: make run-gui | make run-console | make run-headless
+
+start-feature: start-all  ## Start all features: ensure config + report version (summary below)
+start-service: start-all  ## Start all services: ensure config + report version (summary below)
+start-function: start-all  ## Start all functions: ensure config + report version (summary below)
+start-modular: start-all  ## Start all modules: ensure config + report version (summary below)
+start-option: start-all  ## Start all options: ensure config + report version (summary below)
+
+start-all: config version  ## Start every feature/service/function/module/option in one command
+	@echo ""
+	@echo "================================================"
+	@echo "  ALL FEATURES / SERVICES / FUNCTIONS / MODULES / OPTIONS STARTED"
+	@echo "================================================"
+	@echo "Runtime verification (Windows + mpv + Camfrog): make check | make discover"
+	@echo "Long-running runtimes:                          make run-gui | make run-console | make run-headless"
 
 version:  ## Print the project version
 	@echo $(VERSION)
