@@ -92,6 +92,20 @@ class PlayQueue:
             self._version += 1
             return t
 
+    def pop_pool(self) -> Track | None:
+        """Pop a track from the autoplay pool only (ignores requests)."""
+        with self.lock:
+            if not self.pool:
+                return None
+            t = self._pick_auto()
+            if t is None:
+                return None
+            self.pool.remove(t)
+            self._next_auto = None
+            self._last = t.source
+            self._version += 1
+            return t
+
     def get(self, n: int) -> Track | None:
         with self.lock:
             return self.requests[n - 1] if 1 <= n <= len(self.requests) else None

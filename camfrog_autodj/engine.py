@@ -868,8 +868,8 @@ class Engine:
         """
         if is_request and self.queue.requests:
             return self.queue.pop()
-        if not is_request and self.queue.pool:
-            return self.queue.pop()  # picks from pool since requests is empty
+        if not is_request:
+            return self.queue.pop_pool()
         return None
 
     def _player_loop(self):
