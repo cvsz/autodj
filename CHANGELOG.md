@@ -2,25 +2,6 @@
 
 ## Unreleased
 
-- **Performance: PlayQueue change-version gating** — `PlayQueue` now exposes a monotonic `version` counter (bumped on every mutation) and `changed_since(version)`; the GUI queue poller only rebuilds the queue listbox when the queue actually changed, eliminating O(queue_size) listbox work on every 500 ms poll. (`camfrog_autodj/playqueue.py`, `camfrog_autodj/gui.py`)
-- **Performance: mpv IPC position cache** — `MpvPlayer.get_time_pos()` caches the mpv-reported position for one poll cycle (0.5 s TTL) so the GUI's frequent progress polls no longer open a new IPC connection (named pipe on Windows / Unix socket on Linux) on every poll; the cache is invalidated on `seek()`, `stop()`, and new track start. (`camfrog_autodj/player.py`)
-- **Performance: GUI idle tick throttling** — when idle (and not minimised), the GUI animation tick throttles to 250 ms like the iconic state, cutting constant redraws and wake-ups. (`camfrog_autodj/gui.py`)
-- **Performance: LocalIndex precomputed search index** — `LocalIndex.scan()` precomputes lowercase search strings once per scan instead of rebuilding them on every `find()` call; substring-match semantics unchanged and pinned by test. (`camfrog_autodj/library.py`, `tests/test_core.py`, `tests/test_player_cache.py`)
-- **Security: dependency audit make target** — added `make security-audit` (pip-audit based, advisory, not part of `make all` since environment-wide findings outside the project's declared dependencies must not fail the repository pipeline); `security-check` keeps the secret scan. Audit evidence: 0 known vulnerabilities in AutoDJ's declared dependencies (`yt-dlp`, `mutagen`, `pyttsx3`, `pywinauto`, `pyperclip`); findings in the shared dev environment belong to unrelated packages (mitmproxy, protobuf, soupsieve, etc.). (`Makefile`)
-- **Ops: Docker/WSL2 resource audit script** — added read-only `docker-resource-audit.sh` diagnostics (writes `logs/docker-resource-audit-*.log`); fixed leading-blank-line shebang so `shellcheck` passes clean (SC1128). (`docker-resource-audit.sh`)
-- **Security: added `CODEOWNERS`** — security-sensitive paths (GitHub Actions workflows, installer scripts, `SECURITY.md`, config files) now require independent review by `@policedbc`; default ownership for everything else is `@cvsz`. (`CODEOWNERS`)
-- **Test: library scan symlink / reparse-point safety regression tests** — added `tests/test_library_scan_safety.py` (11 tests) pinning that `scan_folder`/`LocalIndex` never follow symlinks, skip broken symlinks and cycles, skip unreadable directories, enforce `limit`/`max_dirs`, and ignore unsupported extensions. (`docs/audit/library-scan-review.md`, `docs/audit/bugs-and-findings.md`)
-- **Docs: full PR inventory + audit reports** — all 142 pull requests enumerated, dispositioned, and recorded in `docs/audit/all-pr-*.md`; architecture, security, playback, GUI, playlist, library-scan, Windows build, installer, dependency, penetration-test, performance, GPG/merge-evidence, production-readiness, and residual-risk reports added under `docs/audit/`. (`docs/audit/`)
-- **Fix: Player IPC read timeout** — `_cmd_get` in `player.py` now enforces a 2-second timeout on Windows named pipes and Unix sockets to prevent indefinite hangs if mpv doesn't respond. Extracted platform-specific read logic into `_ipc_read_windows` and `_ipc_read_unix` helpers to reduce C901 complexity.
-- **Fix: Cooperative playback cancellation** — `MpvPlayer` now accepts an optional `stop_evt` (threading.Event) passed from `Engine`. The `_wait_for_mpv_end` method checks this event during polling, allowing clean shutdown during long-running tracks or live streams.
-- **Fix: Live stream hang detection** — `_wait_for_mpv_end` now uses a fixed POLL interval (0.5s) for all tracks, including live streams (limit=None), while only enforcing the "hung" timeout for tracks with known duration. This prevents the player thread from blocking indefinitely.
-- **Fix: Circuit breaker thread safety** — All circuit breaker state (`_circuit_breaker_failures`, `_circuit_breaker_open_until`) is now protected by `_send_failure_lock` in `_record_circuit_failure`, `_record_circuit_success`, and `_is_circuit_open`. The health check also reads these values under the same lock for consistent snapshots.
-- **Fix: IM auto-reply thread safety** — `_im_reply_cooldowns` dict is now protected by `_chat_lock` in both `_handle_im_message` (chat loop) and `_im_auto_reply_loop` (cleanup loop). The redundant IM auto-reply loop was replaced with a periodic cleanup task (every 60s) that removes stale cooldown entries.
-- **Fix: Command cooldown memory leak** — `Router._within_limits` now prunes stale entries from the `last` dict (cooldown tracking) using a 2x window cutoff, preventing unbounded growth when users stop sending commands.
-- **Fix: Library scan directory budget** — `scan_folder` now uses a global `remaining_dirs` counter passed recursively, enforcing the `max_dirs` limit across the entire scan tree instead of per-directory-level. Added internal `_scan_folder_recursive` helper.
-- **Fix: Playlist source validation** — `_is_valid_source` in `playlist.py` now rejects paths containing `..` (directory traversal) and requires either a path separator or file extension for local paths, improving defense-in-depth.
-- **Docs: README/CHANGELOG config-default consistency** — corrected README statements that did not match `config.example.toml` / code defaults: IM auto-reply cooldown is `60s` (not `30s`), autoplay idle timeout is `30 seconds` (not `30 minutes`), scheduled auto-reply interval is `300 seconds / 5 minutes` (not `60 seconds`). (`README.md`, `CHANGELOG.md`)
-
 ## 0.3.0
 2026-11-09
 
@@ -51,6 +32,39 @@
 - **C901 complexity**: `_chat_loop` refactored from 11 branches to 3 (split into 3 helper methods)
 - **Import sorting**: `library.py` imports organized per ruff I001
 - **Type hints**: All exception classes properly typed for mypy compatibility
+
+### Performance
+- **PlayQueue change-version gating** — `PlayQueue` now exposes a monotonic `version` counter (bumped on every mutation) and `changed_since(version)`; the GUI queue poller only rebuilds the queue listbox when the queue actually changed, eliminating O(queue_size) listbox work on every 500 ms poll. (`camfrog_autodj/playqueue.py`, `camfrog_autodj/gui.py`)
+- **mpv IPC position cache** — `MpvPlayer.get_time_pos()` caches the mpv-reported position for one poll cycle (0.5 s TTL) so the GUI's frequent progress polls no longer open a new IPC connection (named pipe on Windows / Unix socket on Linux) on every poll; the cache is invalidated on `seek()`, `stop()`, and new track start. (`camfrog_autodj/player.py`)
+- **GUI idle tick throttling** — when idle (and not minimised), the GUI animation tick throttles to 250 ms like the iconic state, cutting constant redraws and wake-ups. (`camfrog_autodj/gui.py`)
+- **LocalIndex precomputed search index** — `LocalIndex.scan()` precomputes lowercase search strings once per scan instead of rebuilding them on every `find()` call; substring-match semantics unchanged and pinned by test. (`camfrog_autodj/library.py`, `tests/test_core.py`, `tests/test_player_cache.py`)
+
+### Security
+- **Dependency audit make target** — added `make security-audit` (pip-audit based, advisory, not part of `make all` since environment-wide findings outside the project's declared dependencies must not fail the repository pipeline); `security-check` keeps the secret scan. Audit evidence: 0 known vulnerabilities in AutoDJ's declared dependencies (`yt-dlp`, `mutagen`, `pyttsx3`, `pywinauto`, `pyperclip`); findings in the shared dev environment belong to unrelated packages (mitmproxy, protobuf, soupsieve, etc.). (`Makefile`)
+- **Added `CODEOWNERS`** — security-sensitive paths (GitHub Actions workflows, installer scripts, `SECURITY.md`, config files) now require independent review by `@policedbc`; default ownership for everything else is `@cvsz`. (`CODEOWNERS`)
+
+### Ops
+- **Docker/WSL2 resource audit script** — added read-only `docker-resource-audit.sh` diagnostics (writes `logs/docker-resource-audit-*.log`); fixed leading-blank-line shebang so `shellcheck` passes clean (SC1128). (`docker-resource-audit.sh`)
+
+### Test
+- **Library scan symlink / reparse-point safety regression tests** — added `tests/test_library_scan_safety.py` (11 tests) pinning that `scan_folder`/`LocalIndex` never follow symlinks, skip broken symlinks and cycles, skip unreadable directories, enforce `limit`/`max_dirs`, and ignore unsupported extensions. (`docs/audit/library-scan-review.md`, `docs/audit/bugs-and-findings.md`)
+
+### Docs
+- **Full PR inventory + audit reports** — all 142 pull requests enumerated, dispositioned, and recorded in `docs/audit/all-pr-*.md`; architecture, security, playback, GUI, playlist, library-scan, Windows build, installer, dependency, penetration-test, performance, GPG/merge-evidence, production-readiness, and residual-risk reports added under `docs/audit/`. (`docs/audit/`)
+
+### Fixed (Additional)
+- **Player IPC read timeout** — `_cmd_get` in `player.py` now enforces a 2-second timeout on Windows named pipes and Unix sockets to prevent indefinite hangs if mpv doesn't respond. Extracted platform-specific read logic into `_ipc_read_windows` and `_ipc_read_unix` helpers to reduce C901 complexity.
+- **Cooperative playback cancellation** — `MpvPlayer` now accepts an optional `stop_evt` (threading.Event) passed from `Engine`. The `_wait_for_mpv_end` method checks this event during polling, allowing clean shutdown during long-running tracks or live streams.
+- **Live stream hang detection** — `_wait_for_mpv_end` now uses a fixed POLL interval (0.5s) for all tracks, including live streams (limit=None), while only enforcing the "hung" timeout for tracks with known duration. This prevents the player thread from blocking indefinitely.
+- **Circuit breaker thread safety** — All circuit breaker state (`_circuit_breaker_failures`, `_circuit_breaker_open_until`) is now protected by `_send_failure_lock` in `_record_circuit_failure`, `_record_circuit_success`, and `_is_circuit_open`. The health check also reads these values under the same lock for consistent snapshots.
+- **IM auto-reply thread safety** — `_im_reply_cooldowns` dict is now protected by `_chat_lock` in both `_handle_im_message` (chat loop) and `_im_auto_reply_loop` (cleanup loop). The redundant IM auto-reply loop was replaced with a periodic cleanup task (every 60s) that removes stale cooldown entries.
+- **Command cooldown memory leak** — `Router._within_limits` now prunes stale entries from the `last` dict (cooldown tracking) using a 2x window cutoff, preventing unbounded growth when users stop sending commands.
+- **Library scan directory budget** — `scan_folder` now uses a global `remaining_dirs` counter passed recursively, enforcing the `max_dirs` limit across the entire scan tree instead of per-directory-level. Added internal `_scan_folder_recursive` helper.
+- **Playlist source validation** — `_is_valid_source` in `playlist.py` now rejects paths containing `..` (directory traversal) and requires either a path separator or file extension for local paths, improving defense-in-depth.
+- **README/CHANGELOG config-default consistency** — corrected README statements that did not match `config.example.toml` / code defaults: IM auto-reply cooldown is `60s` (not `30s`), autoplay idle timeout is `30 seconds` (not `30 minutes`), scheduled auto-reply interval is `300 seconds / 5 minutes` (not `60 seconds`). (`README.md`, `CHANGELOG.md`)
+- **Configuration Hot Reload** — added `ConfigWatcher` using watchdog's PollingObserver for cross-platform file watching with debounced reload (default 500ms), full validation before applying changes (rejects invalid config, keeps previous), and callback registry for hot reload notifications. Optional `watchdog` dependency via `hotreload` extra. CLI integration ready. (`camfrog_autodj/config_watcher.py`, `camfrog_autodj/config.py`, `tests/test_config_hot_reload.py`)
+- **JSON Structured Logging** — added `JsonFormatter` for structured JSON log output with configurable extra fields (`request_id`, `user`, `track_id`, `generation`, etc.), ISO 8601 and epoch timestamp formats, exception/stack trace serialization, non-serializable field handling, field filtering via `log_json_fields` config. CLI flag `--log-json` and config settings `log_json`/`log_json_fields`. File handler support with rotation. (`camfrog_autodj/logging_json.py`, `camfrog_autodj/__main__.py`, `camfrog_autodj/config.py`, `tests/test_json_logging.py`)
+- **Graceful Degradation / Fallback Chat Adapters** — automatic fallback chain `uia` -> `logtail` -> `console` -> `null` on connection failure. `test_connection()` on all adapters (UIA, LogTail, Console). `AdapterStatus` tracking for health checks (active adapter, fallback count, errors, last fallback time). `build_adapter_with_fallback()` with configurable behavior. (`camfrog_autodj/adapters/__init__.py`, `camfrog_autodj/adapters/uia.py`, `camfrog_autodj/adapters/logtail.py`, `camfrog_autodj/adapters/console.py`)
 
 ## 0.2.8
 2026-11-09
