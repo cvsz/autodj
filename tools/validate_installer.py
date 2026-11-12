@@ -27,7 +27,7 @@ REQUIRED_FILES = [
 REQUIRED_DIRS = [
     "dist/mpv",
     "mpv/_internal",
-    "mpv/VBCABLE_Driver_Pack45",
+    "mpv/vbcable",
     "docs",
     "tools",
     "playlist",
@@ -47,10 +47,10 @@ REQUIRED_SECTIONS = [
 # Critical macros/commands that must be present
 REQUIRED_COMMANDS = [
     'File "dist\\AutoDJ.exe"',
-    'File "app.ico"',
-    'File "ads-list.json"',
-    "File /oname=config.toml config.example.toml",
-    'File /r "playlist\\*.json"',
+    'File "dist\\app.ico"',
+    'File "dist\\ads-list.json"',
+    'File "config.toml"',
+    'File /r "dist\\playlist\\*.json"',
     "ExecWait",
     "mpv-register.bat",
     "WriteUninstaller",

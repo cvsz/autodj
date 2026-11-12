@@ -182,7 +182,7 @@ FunctionEnd
 
 Function .onInstSuccess
     HideWindow
-    MessageBox MB_ICONINFORMATION|MB_OK "CamfrogAutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nIf you selected VBCable, its driver package is included under mpv\VBCABLE_Driver_Pack45. Driver installation requires Administrator approval; run VBCABLE_Setup_x64.exe manually using Run as administrator."
+    MessageBox MB_ICONINFORMATION|MB_OK "CamfrogAutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nIf you selected VBCable, its driver package is included under mpv\vbcable. Driver installation requires Administrator approval; run VBCABLE_Setup_x64.exe manually using Run as administrator."
 FunctionEnd
 
 ; -----------------------------------------------------------------------------
