@@ -13,6 +13,7 @@
 - **Fix: Command cooldown memory leak** — `Router._within_limits` now prunes stale entries from the `last` dict (cooldown tracking) using a 2x window cutoff, preventing unbounded growth when users stop sending commands.
 - **Fix: Library scan directory budget** — `scan_folder` now uses a global `remaining_dirs` counter passed recursively, enforcing the `max_dirs` limit across the entire scan tree instead of per-directory-level. Added internal `_scan_folder_recursive` helper.
 - **Fix: Playlist source validation** — `_is_valid_source` in `playlist.py` now rejects paths containing `..` (directory traversal) and requires either a path separator or file extension for local paths, improving defense-in-depth.
+- **Fix: MessageStyle TOML defaults** — `MessageStyle.from_toml_dict()` now uses the same defaults as the `MessageStyle` dataclass (`font_size=14`, `font_color="#000000"`) so loading `message_style` from config.toml without those fields no longer produces different GUI preview values than `MessageStyle()`. (`camfrog_autodj/config.py`, `tests/test_targeted_coverage.py`)
 
 ## 0.3.0
 2026-11-09
