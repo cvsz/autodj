@@ -192,6 +192,8 @@ class Config:
     )
     # IM Security: require user to be in the room (seen in chat) to use IM commands
     im_require_room_presence: bool = True  # only users currently in room can DM the bot
+    # Allow play/request commands in the room (not just via IM). Default false for backward compatibility.
+    allow_play_in_room: bool = False  # when true, !play works in room chat for all users
     # Autoplay: switch to autoplay pool after idle timeout with no user requests
     autoplay_idle_timeout: float = 30.0  # seconds before autoplay starts when no user requests
     # Mic mute state

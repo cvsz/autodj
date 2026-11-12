@@ -1,8 +1,8 @@
-bot_nick = "AutoDJ"            # nick the bot uses in the room (its own lines are ignored)
+bot_nick = "zdevz"            # nick the bot uses in the room (its own lines are ignored)
 # admins = []                  # case-insensitive list of admin nicks (no default; configure operator nicks only)
 # WARNING: Nickname-based authorization is spoofable. Prefer immutable authenticated
 # account identifiers where the chat protocol supports them.
-admins = []
+admins = ["Seaza"]
 prefix = "!"                   # command prefix
 lang = "th"                    # "en" | "th": bot replies + GUI (switchable live in the GUI)
 
@@ -25,7 +25,7 @@ view_type = "Document"         # (filled in by auto_discover; or tools/inspect_u
 view_index = 0
 input_type = "Edit"
 input_index = -1
-# log_path = "C:/path/to/chat.log"
+# log_path = "logs/chat.log"
 log_path = ""                   # also write the log to this file (rotating, 1 MB x 3)
 log_encoding = "utf-8"            # log file encoding
 line_regex = '^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$'
@@ -48,8 +48,8 @@ audio_fade_out_sec = 1.5           # fade-out duration on skip/stop in seconds
 audio_normalize = false            # enable dynamic audio loudness normalization (dynaudnorm)
 # --- local music library (mutagen reads title/artist/duration; falls back to filename
 # if mutagen is not installed) and TTS (pyttsx3 / Windows SAPI) ---------------------
-volume = 70
-music_dirs = ["REPLACE_ME:/path/to/your/music"]   # local library: requestable by name, also autoplayed
+volume = 100
+music_dirs = ["music/"]   # local library: requestable by name, also autoplayed
 autoplay_sources = []          # extra YouTube playlist URLs / folders / files to autoplay
 shuffle = true
 
@@ -64,11 +64,11 @@ user_request_limit = 5             # max song requests allowed per user within r
 rate_limit_window = 300.0          # rolling time window for per-user request limit (seconds)
 cooldown = 3.0
 send_interval = 1.5            # seconds between chat lines (flood control)
-max_msg_len = 180
+max_msg_len = 200
 announce_next = true
 # msg_now / msg_next: leave unset to use the built-in text for `lang`; set to override (fields: {title} {duration} {requester})
-msg_now = ""                    # override built-in now-playing text
-msg_next = ""                   # override built-in up-next text
+msg_now = "{requester} : ขอเพลง {title} {duration}"                    # override built-in now-playing text
+msg_next = "เพลงต่อไป อีก {duration} เพลง {title} ขอโดย {requester} "                   # override built-in up-next text
 
 tts_voice = ""                 # substring of an installed voice name (Thai voice for Thai text)
 tts_rate = 170
@@ -85,7 +85,7 @@ launch_timeout = 60               # seconds to wait for Camfrog to appear after 
 # --- added in 0.2.0 ---------------------------------------------------------------------------------
 blocked_users = []             # nicks whose commands are ignored (admins cannot be blocked). Admins can also use !block / !unblock live
 poll_interval = 0.5            # seconds between chat reads; raise to 1.0 if AutoDJ uses too much CPU
-log_file = ""                  # e.g. "autodj.log": also write the log to a rotating file (1 MB x 3). Same as --log-file.
+log_file = "logs/autodj.log"                  # e.g. "autodj.log": also write the log to a rotating file (1 MB x 3). Same as --log-file.
                                  # Relative paths are resolved to %APPDATA%/CamfrogAutoDJ/ so they are
                                  # writable even when AutoDJ is installed to Program Files.
 playlist_file = "playlist.json"   # user-requested tracks (!play / GUI request / !load) are appended here
@@ -94,7 +94,7 @@ search_limit = 1               # YouTube text-search results fetched per non-adm
 mpv_timeout = 30               # seconds to wait for one mpv track before treating it as hung (0 = never)
 
 # --- playlist directory (auto-load *.json playlists) ---------------------------------------------
-playlist_dir = "playlist"      # folder with *.json playlists; auto-loaded at startup
+playlist_dir = "playlist/"      # folder with *.json playlists; auto-loaded at startup
 
 # --- auto-reply (scheduled ads/messages to the room) ------------------------------------------
 auto_reply_enabled = true           # enable scheduled auto-reply messages to the room
@@ -116,6 +116,8 @@ admin_greeting_cooldown = 3600.0    # seconds between greetings for same admin (
 
 # --- IM security: require user to be in room to use IM commands ---
 im_require_room_presence = true     # only users seen in room chat can DM the bot
+# Allow play/request commands in the room (not just via IM). Default false for backward compatibility.
+allow_play_in_room = false          # when true, !play works in room chat for all users
 
 # --- IM viewer: show private/instant messages in a dedicated GUI tab ---
 im_viewer_enabled = true            # show the IM / private message viewer tab in the GUI
@@ -124,7 +126,7 @@ im_viewer_enabled = true            # show the IM / private message viewer tab i
 # Camfrog desktop client does NOT support rich text in outgoing messages.
 # This configuration is used ONLY for the FontEditor preview panel in the GUI.
 # Sent messages are always plain text via UIA.
-message_style = { font_family = "Consolas", font_size = 14, font_color = "#FF0000", bold = false, italic = false, underline = false }
+message_style = { font_family = "Tahoma", font_size = 14, font_color = "#FF0000", bold = true, italic = false, underline = false }
 
 # --- admin mic mute/unmute (config-gated) ---
 admin_mute_mic = true             # enable !mute command
@@ -155,7 +157,7 @@ admin_delete_message_enabled = true   # enable !delete <msg id> command
 
 # --- welcome message ---
 welcome_message_enabled = true          # enable welcome message
-welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"
+welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ camfrog://room/{room}!"
 
 # --- Camfrog RE integrations (gift / avatar / status / status alert) ---
 # Gift / virtual-gift announcement (detect gift messages in room chat; see docs/camfrog-re/08-feature-gift.md)
