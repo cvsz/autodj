@@ -95,6 +95,20 @@ class UiaAdapter(ChatAdapter):
         self._input = None
         log.info("chat: text control %s[%d]", self.cfg.view_type, self.cfg.view_index)
 
+    def test_connection(self) -> None:
+        """Test if the adapter can connect to the Camfrog window.
+
+        Raises:
+            RuntimeError: If the window or chat controls cannot be found.
+        """
+        self._resolve()
+        # Verify we can read at least one line
+        lines = self._lines()
+        if lines:
+            log.debug("UIA adapter test_connection: OK (%d lines)", len(lines))
+        else:
+            log.debug("UIA adapter test_connection: OK (no lines yet)")
+
     def _lines(self) -> list[str]:
         with self.com_lock:
             if self._view is None:
