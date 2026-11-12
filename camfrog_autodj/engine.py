@@ -138,7 +138,7 @@ class Engine:
         self._send_failure_count: int = 0  # consecutive chat send failures
         self._send_failure_lock: threading.Lock = threading.Lock()  # guards send failure count
         # ---- Per-nick chat rate limiting -----------------------------------------
-        self._chat_rate_window: dict[str, list[float]] = {}  # nick -> list of message times
+        self._chat_rate_window: dict[str, deque[float]] = {}  # nick -> deque of message times
         self._chat_rate_lock: threading.Lock = threading.Lock()  # guards rate window dict
         # ---- Health check state --------------------------------------------------
         self._last_health_check: float = 0.0
@@ -1554,13 +1554,15 @@ class Engine:
 
         Uses a sliding window: at most _CHAT_RATE_LIMIT_MAX messages per
         _CHAT_RATE_LIMIT_WINDOW seconds per nick.
+        Optimized with deque for O(1) popleft operations.
         """
         now = time.monotonic()
         with self._chat_rate_lock:
-            window = self._chat_rate_window.setdefault(nick, [])
-            # Prune expired entries
+            window = self._chat_rate_window.setdefault(nick, deque())
+            # Prune expired entries efficiently with popleft
             cutoff = now - _CHAT_RATE_LIMIT_WINDOW
-            window[:] = [t for t in window if t > cutoff]
+            while window and window[0] <= cutoff:
+                window.popleft()
             if len(window) >= _CHAT_RATE_LIMIT_MAX:
                 log.warning("Chat rate limit exceeded for nick=%s", nick)
                 return False

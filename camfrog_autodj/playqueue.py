@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import random
 import threading
+from collections import deque
 
 from .models import Track
 
 
 class PlayQueue:
-    """Requests first, then the autoplay pool (looping). peek() is stable until pop()."""
+    """Requests first, then the autoplay pool (looping). peek() is stable until pop().
+
+    Uses collections.deque for O(1) pops from the front of the requests queue.
+    """
 
     def __init__(self, shuffle: bool = True):
-        self.requests: list[Track] = []
+        self.requests: deque[Track] = deque()
         self.pool: list[Track] = []
         self.shuffle = shuffle
         self.repeat = "off"  # off | one
@@ -38,7 +42,11 @@ class PlayQueue:
             if position is not None:
                 # Clamp position to valid range and insert at the front of the requests list
                 pos = max(0, min(position, len(self.requests)))
-                self.requests.insert(pos, t)
+                # Convert to list temporarily for insert, then back to deque
+                # This is rare (only for position != 0), so overhead is minimal
+                req_list = list(self.requests)
+                req_list.insert(pos, t)
+                self.requests = deque(req_list)
             else:
                 self.requests.append(t)
             self._version += 1
@@ -85,7 +93,7 @@ class PlayQueue:
             if t is None:
                 return None
             if self.requests:
-                self.requests.pop(0)
+                self.requests.popleft()  # O(1) with deque
             else:
                 self._next_auto = None
             self._last = t.source
@@ -108,20 +116,29 @@ class PlayQueue:
 
     def get(self, n: int) -> Track | None:
         with self.lock:
-            return self.requests[n - 1] if 1 <= n <= len(self.requests) else None
+            # deque supports indexing but it's O(n); convert to list for random access
+            req_list = list(self.requests)
+            return req_list[n - 1] if 1 <= n <= len(req_list) else None
 
     def remove(self, n: int) -> Track | None:
         with self.lock:
-            t = self.requests.pop(n - 1) if 1 <= n <= len(self.requests) else None
-            self._version += 1
-            return t
+            req_list = list(self.requests)
+            if 1 <= n <= len(req_list):
+                t = req_list.pop(n - 1)
+                self.requests = deque(req_list)
+                self._version += 1
+                return t
+            return None
 
     def remove_track(self, track: Track) -> bool:
         """Remove exactly this queued request (by identity), however the queue shifted since it was looked up."""
         with self.lock:
             for i, t in enumerate(self.requests):
                 if t is track:
-                    del self.requests[i]
+                    # Convert to list, remove, convert back
+                    req_list = list(self.requests)
+                    del req_list[i]
+                    self.requests = deque(req_list)
                     self._version += 1
                     return True
             return False
