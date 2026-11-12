@@ -13,6 +13,7 @@
 - **Fix: Command cooldown memory leak** — `Router._within_limits` now prunes stale entries from the `last` dict (cooldown tracking) using a 2x window cutoff, preventing unbounded growth when users stop sending commands.
 - **Fix: Library scan directory budget** — `scan_folder` now uses a global `remaining_dirs` counter passed recursively, enforcing the `max_dirs` limit across the entire scan tree instead of per-directory-level. Added internal `_scan_folder_recursive` helper.
 - **Fix: Playlist source validation** — `_is_valid_source` in `playlist.py` now rejects paths containing `..` (directory traversal) and requires either a path separator or file extension for local paths, improving defense-in-depth.
+- **Docs: README/CHANGELOG config-default consistency** — corrected README statements that did not match `config.example.toml` / code defaults: IM auto-reply cooldown is `60s` (not `30s`), autoplay idle timeout is `30 seconds` (not `30 minutes`), scheduled auto-reply interval is `300 seconds / 5 minutes` (not `60 seconds`). (`README.md`, `CHANGELOG.md`)
 
 ## 0.3.0
 2026-11-09

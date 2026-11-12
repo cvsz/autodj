@@ -15,7 +15,7 @@ Highlights: **Enterprise-grade exception hierarchy** with structured error codes
 
 ### New in 0.3.0
 1. **IM Viewer GUI**: New IM tab in the desktop window shows private/instant messages with polling. Settings dialog includes IM viewer enable/disable, auto-reply message, cooldown, and room presence requirement.
-2. **IM Auto-Reply**: Configurable auto-reply to private messages with per-user cooldown (default 30s). Uses `[IM]` prefix in sent replies.
+2. **IM Auto-Reply**: Configurable auto-reply to private messages with per-user cooldown (default 60s, min 10s). Uses `[IM]` prefix in sent replies.
 3. **Camfrog Gift Detection**: Detect virtual-gift messages in room chat (`GIFT_RECEIVED`, `room_gift_message`, `camfrog://gift`, etc.) and announce them. Config-gated: `gift_announce_enabled`. (see `docs/camfrog-re/08-feature-gift.md`)
 4. **Camfrog Avatar Change Detection**: Detect avatar change messages in room chat (`updateAvatarMessage`) and announce them. Config-gated: `avatar_change_enabled`. (see `docs/camfrog-re/16-user-icon-avatar.md`)
 5. **Camfrog Status Indicators**: Detect user status changes in room chat (online/away/busy/invisible/admin/moderator/owner) and announce them. Config-gated: `status_indicator_enabled`. (see `docs/camfrog-re/14-png-assets.md`)
@@ -27,9 +27,9 @@ Highlights: **Enterprise-grade exception hierarchy** with structured error codes
 2. **Admin Greeting**: Greet admin on first message in session with configurable message and cooldown (default 1 hour).
 3. **Delete History**: Admin command `!deletehistory <all|N>` to clear history or remove oldest N entries.
 4. **IM-Only Play Commands**: `!play`, `!request`, `!req`, `!p`, `!เล่น`, `!ขอเพลง`, `!เล่นเพลง` now only work via private message (IM). Room users must DM the bot. Admins can still use in room.
-5. **Autoplay Idle Timeout**: After 30 minutes (configurable) with no user requests, bot switches to autoplay pool. New `!play` immediately exits autoplay mode.
+5. **Autoplay Idle Timeout**: After 30 seconds (configurable) with no user requests, bot switches to autoplay pool. New `!play` immediately exits autoplay mode.
 6. **New Thai Aliases**: `!ขอเพลง` (request song), `!เล่นเพลง` (play song).
-7. **Auto-Reply**: Every 60 seconds from `ads-list.json` (configurable).
+7. **Auto-Reply**: Every 300 seconds (5 minutes) from `ads-list.json` (configurable `auto_reply_interval`, min 60s).
 8. **REA Reverse Engineering**: Documented Camfrog font logic (GDI imports, chat/IM font settings, HTML rendering for display only).
 9. **Mic Mute/Unmute**: Admin commands `!mute` / `!unmute` to mute/unmute the mic (config-gated: `admin_mute_mic`, `admin_unmute_mic`).
 10. **Block/Unblock Bot**: Admin commands `!blockbot` / `!unblockbot` to block/unblock bots (config-gated: `admin_block_bot`, `admin_unblock_bot`).
