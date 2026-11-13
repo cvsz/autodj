@@ -96,6 +96,8 @@ test_output.txt
 # Test artifacts (local dev, not source)
 test-install/
 test-install2/
+test-install3/
+test-install4/
 test_silent.nsi
 
 # Build wrapper scripts (local dev, not source)
