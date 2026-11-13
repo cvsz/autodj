@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+- **welcome_message_cooldown**: Added missing default value (3600s) and validation range (60-86400s) to Config class; fixed bug in `_handle_welcome_message` using wrong cooldown (`admin_greeting_cooldown` → `welcome_message_cooldown`); added `{room}` placeholder replacement in welcome messages
+- **IM auto-reply**: Changed to use `self.say()` instead of `self.adapter.send()` for proper message queueing and delivery tracking
+- **Engine shutdown**: Added proper shutdown calls for TTS worker (`shutdown_tts`) and library caches (`shutdown_library_caches`) to prevent resource leaks
+- **Code formatting**: Applied ruff formatting to all source files (camfrog_autodj, tests, tools) for consistent style
+
 ## 0.3.0
 2026-11-09
 
