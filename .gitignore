@@ -103,3 +103,26 @@ docs/camfrog-re/
 *.pcap
 *.dmp
 *_pw_infected.zip
+
+# Test artifacts and evidence (local qualification runs)
+WINDOWS_11_VALIDATION_REPORT.md
+WINDOWS_11_PERMISSION_VALIDATION_FIXES.md
+check-*.txt
+config_bad_mpv.toml
+create_shortcuts.ps1
+evidence/
+test*-fresh/
+test*-existing/
+test*-upgrade/
+test*-playlist/
+test*-logs/
+test*-media/
+test*-unknown-files/
+test*-uninstall/
+test-install-manual/
+version-err.txt
+version-out.txt
+tools/windows-qualification/check-*.txt
+tools/windows-qualification/version-*.txt
+tools/windows-qualification/test*/
+test*-upgrade-full/
