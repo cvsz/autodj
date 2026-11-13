@@ -66,7 +66,11 @@ class ConfigValidationError(ConfigError):
     """A config value failed validation (type, range, regex, or semantic)."""
 
     def __init__(
-        self, message: str, *, field: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        field: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         merged_context: dict[str, Any] = context.copy() if context else {}
         if field:
@@ -100,7 +104,11 @@ class ChatSendError(ChatError):
     """A message could not be delivered to the Camfrog room."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="chat.send_failed", details=details, context=context)
 
@@ -109,7 +117,11 @@ class ChatReadError(ChatError):
     """The chat reader (UIA / logtail / console) failed to read messages."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="chat.read_failed", details=details, context=context)
 
@@ -118,7 +130,11 @@ class ChatAdapterError(ChatError):
     """The chat adapter is misconfigured or unavailable."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="chat.adapter_error", details=details, context=context)
 
@@ -144,7 +160,11 @@ class PlayerNotAvailableError(PlayerError):
     """mpv is not installed or not on PATH."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="player.not_available", details=details, context=context)
 
@@ -153,7 +173,11 @@ class PlayerHungError(PlayerError):
     """mpv did not exit within the grace period."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="player.hung", details=details, context=context)
 
@@ -162,7 +186,11 @@ class PlayerCrashError(PlayerError):
     """mpv exited with a non-zero code."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="player.crashed", details=details, context=context)
 
@@ -188,7 +216,11 @@ class YtdlpMissingError(LibraryError):
     """yt-dlp executable or Python module is not available."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="library.yt_dlp_missing", details=details, context=context)
 
@@ -197,7 +229,11 @@ class LibraryScanError(LibraryError):
     """A music folder could not be scanned."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="library.scan_failed", details=details, context=context)
 
@@ -223,7 +259,11 @@ class QueueFullError(QueueError):
     """The request queue has reached its configured maximum length."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="queue.full", details=details, context=context)
 
@@ -232,7 +272,11 @@ class RequestRateLimitError(QueueError):
     """A user exceeded their per-window request limit."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="queue.rate_limited", details=details, context=context)
 
@@ -258,7 +302,11 @@ class TTSUnavailableError(TTSError):
     """pyttsx3 is not installed or the SAPI backend is unavailable."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="tts.unavailable", details=details, context=context)
 
@@ -284,7 +332,11 @@ class UnauthorizedError(SecurityError):
     """A user attempted an action they are not authorized for."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="security.unauthorized", details=details, context=context)
 
@@ -293,7 +345,11 @@ class BlockedUserError(SecurityError):
     """A blocked user attempted to issue a command."""
 
     def __init__(
-        self, message: str, *, details: str | None = None, context: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        details: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message, code="security.blocked_user", details=details, context=context)
 

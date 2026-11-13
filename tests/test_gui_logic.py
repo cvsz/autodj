@@ -1,5 +1,6 @@
 """Runs the GUI's logic against the strict fake Tk (see fake_tk.py): construction, language switch, polling,
-animation frames, button clicks. Catches wrong option names and runtime mistakes without needing a display."""
+animation frames, button clicks. Catches wrong option names and runtime mistakes without needing a display.
+"""
 
 import sys
 import time

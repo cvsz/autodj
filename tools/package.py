@@ -1,5 +1,6 @@
 """Zip the source tree for distribution. Used by `make package` (a multi-line heredoc inside a Makefile
-recipe does not work reliably across `make` implementations/shells, so this lives in its own script instead)."""
+recipe does not work reliably across `make` implementations/shells, so this lives in its own script instead).
+"""
 
 from __future__ import annotations
 

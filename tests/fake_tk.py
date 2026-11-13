@@ -1,6 +1,7 @@
 """A strict stand-in for tkinter, so the GUI's logic can be exercised on machines without a display.
 It rejects options that real Tk widgets / canvas items do not accept (the usual way a hand-written GUI breaks at
-start-up) and records what was drawn. It does NOT render anything: the real-Tk smoke test covers that."""
+start-up) and records what was drawn. It does NOT render anything: the real-Tk smoke test covers that.
+"""
 
 import itertools
 import types

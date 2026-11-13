@@ -1,5 +1,6 @@
 """`AutoDJ.exe --check`: say in plain words what is and is not set up, before anything is started.
-Pure checks over a Config (and the machine): each returns (level, text) with level OK | INFO | WARN | FAIL."""
+Pure checks over a Config (and the machine): each returns (level, text) with level OK | INFO | WARN | FAIL.
+"""
 
 from __future__ import annotations
 
@@ -182,7 +183,11 @@ def _check_optional_python(out: list[Result]) -> None:
             "mutagen is not installed: titles/durations of local files come from file names only",
         )
     if not _have("pyttsx3"):
-        _add(out, "WARN", "pyttsx3 is not installed: the speak / TTS feature will not work")
+        _add(
+            out,
+            "WARN",
+            "pyttsx3 is not installed: the speak / TTS feature will not work",
+        )
 
 
 def _check_windows_uia(cfg, out: list[Result], check_window: bool) -> None:

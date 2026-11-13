@@ -1,7 +1,8 @@
 """Tiny pytest stand-in: supports test_*.py functions, monkeypatch, tmp_path, pytest.raises,
 pytest.importorskip, pytest.skip, pytest.mark.parametrize (basic). Used by `make test` / tools/mutate.sh
 ONLY when the real pytest is not installed (dev extra not installed yet). Prefer `pip install -e .[dev]`
-and real pytest for anything beyond a quick check -- this exists so `make test` always works out of the box."""
+and real pytest for anything beyond a quick check -- this exists so `make test` always works out of the box.
+"""
 
 import importlib
 import importlib.util

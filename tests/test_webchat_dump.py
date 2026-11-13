@@ -80,7 +80,16 @@ def test_date_header_between_messages():
 
 
 def test_time_like_body_is_not_a_new_message():
-    items = [A, link("bob"), t("5:00"), t("10:30"), A, link("zdevz"), t("5:01"), t("!np")]
+    items = [
+        A,
+        link("bob"),
+        t("5:00"),
+        t("10:30"),
+        A,
+        link("zdevz"),
+        t("5:01"),
+        t("!np"),
+    ]
     assert parsed(items) == [("bob", "10:30"), ("zdevz", "!np")]
 
 
@@ -98,5 +107,12 @@ def test_emoticon_and_link_continue_body():
         t("!np"),
     ]
     assert parsed(items)[0] == ("bob", "!play https://youtu.be/x")
-    items = [A, link("bob"), t("5:00"), t("!play"), link("https://youtu.be/x"), t("rest")]
+    items = [
+        A,
+        link("bob"),
+        t("5:00"),
+        t("!play"),
+        link("https://youtu.be/x"),
+        t("rest"),
+    ]
     assert parsed(items) == [("bob", "!play https://youtu.be/x rest")]

@@ -49,5 +49,6 @@ class LogTailAdapter(ChatAdapter):
     def send(self, text):
         # LogTail adapter is read-only: it cannot send chat messages.
         log.warning(
-            "Cannot send chat: logtail adapter is read-only. Message dropped: %r", text[:80]
+            "Cannot send chat: logtail adapter is read-only. Message dropped: %r",
+            text[:80],
         )

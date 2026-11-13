@@ -158,6 +158,7 @@ admin_delete_message_enabled = true   # enable !delete <msg id> command
 # --- welcome message ---
 welcome_message_enabled = true          # enable welcome message
 welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ camfrog://room/{room}!"
+welcome_message_cooldown = 3600.0       # seconds between welcome messages for same user (1 hour)
 
 # --- Camfrog RE integrations (gift / avatar / status / status alert) ---
 # Gift / virtual-gift announcement (detect gift messages in room chat; see docs/camfrog-re/08-feature-gift.md)

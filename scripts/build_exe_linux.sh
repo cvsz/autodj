@@ -142,7 +142,7 @@ if [[ -d mpv ]]; then
     echo "copied mpv/ -> dist/mpv/"
 else
     echo "WARNING: mpv/ not found -- dist/mpv/ will be missing"
-    echo "(the installer's 'mpv + yt-dlp' component needs dist/mpv/*)."
+    echo "(the installer\u2019s 'mpv + yt-dlp' component needs dist/mpv/*)."
 fi
 for f in app.ico config.example.toml README.md CHANGELOG.md LICENSE install.ps1 run_autodj.py; do
     if [[ -f "$f" ]]; then

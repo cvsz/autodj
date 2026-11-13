@@ -123,7 +123,8 @@ class MpvPlayer:
 
         mpv_timeout is a *grace* period on top of the track's length, never a cap on the length itself
         (it used to be a flat cap, which cut every song longer than the timeout). It only applies when the
-        duration is known; time spent paused does not count. Unknown duration (live) = no limit."""
+        duration is known; time spent paused does not count. Unknown duration (live) = no limit.
+        """
         n = next(_ids)
         ipc, logf = self._ipc_log_paths(n)
         fade_in = (
@@ -206,9 +207,11 @@ class MpvPlayer:
                     "mpv exited with code %s for %s%s",
                     rc,
                     source,
-                    "".join("\n    " + ln for ln in why)
-                    if why
-                    else " (no error line in mpv's log)",
+                    (
+                        "".join("\n    " + ln for ln in why)
+                        if why
+                        else " (no error line in mpv's log)"
+                    ),
                 )
         except OSError:
             log.warning(

@@ -156,7 +156,10 @@ class ConfigWatcher:
         try:
             new_config = Config.load(str(self.config_path))
         except ConfigError as ex:
-            log.error("ConfigWatcher: config validation failed, keeping previous config: %s", ex)
+            log.error(
+                "ConfigWatcher: config validation failed, keeping previous config: %s",
+                ex,
+            )
             # Notify callbacks of validation failure with old config (if any)
             self._notify_callbacks_failed(str(ex))
             return
