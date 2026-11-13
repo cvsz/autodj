@@ -157,7 +157,7 @@ admin_delete_message_enabled = true   # enable !delete <msg id> command
 
 # --- welcome message ---
 welcome_message_enabled = true          # enable welcome message
-welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ camfrog://room/{room}!"
+welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"  # welcome message
 welcome_message_cooldown = 3600.0       # seconds between welcome messages for same user (1 hour)
 
 # --- Camfrog RE integrations (gift / avatar / status / status alert) ---
@@ -169,3 +169,27 @@ avatar_change_enabled = true             # announce avatar change messages sent 
 status_indicator_enabled = true          # announce user status changes in room chat
 # Status alerts (detect upgrade/payment-required status text; see docs/camfrog-re/07-upgrade-logic.md, 09-payment.md)
 status_alert_enabled = true              # alert when Camfrog shows upgrade/payment-required status
+
+# --- Webhook/API integration ---
+webhook_enabled = false                  # enable webhook server
+webhook_port = 8080                      # webhook server port
+webhook_secret = ""                      # HMAC secret for request verification (empty = no verification)
+webhook_host = "127.0.0.1"               # webhook server bind address
+webhook_rate_limit_per_ip = 60           # requests per minute per IP
+
+# --- JSON structured logging ---
+log_json = false                         # enable JSON structured logging output
+log_json_fields = [                      # extra fields to include in JSON logs
+    "request_id",
+    "delivery_id",
+    "user",
+    "track_id",
+    "generation",
+    "attempt_id",
+    "category",
+    "stage",
+    "state",
+]
+
+# --- Plugin system ---
+plugins = ["builtin.stats", "builtin.help"]  # list of plugins to load (builtin.stats, builtin.help, or full module paths)
