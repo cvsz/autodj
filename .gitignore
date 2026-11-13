@@ -22,7 +22,7 @@ dist/
 *.spec
 .coverage
 htmlcov/
-
+.git-credentials
 # Tool caches
 .cache/
 .eslintcache
@@ -47,6 +47,9 @@ logs/
 # Local runtime data
 .tmp/
 tmp/
+
+# Git credential stores (never commit)
+.config/
 
 # Your local settings (copy config.example.toml to config.toml)
 config.toml

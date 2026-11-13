@@ -431,6 +431,7 @@ class Engine:
             if not self.player.set_pause(True):
                 log.warning("pause failed: mpv did not accept the command")
                 return
+            # Only update pause state if mpv actually accepted the command
             self.paused, self._paused_at = True, time.monotonic()
 
     def resume(self) -> None:
@@ -601,12 +602,12 @@ class Engine:
         music_dirs = [Path(d).resolve() for d in self.cfg.music_dirs if Path(d).is_dir()]
         if music_dirs and not any(p.is_relative_to(d) for d in music_dirs):
             raise UserError(self.t("folders_admin"))
+        # Admin bypass of music_dirs confinement removed — admins still must respect music_dirs
         # Non-admin: must also be in the indexed music library
         if not admin and not self.index.contains(p):
             raise UserError(self.t("file_not_in_lib"))
         if p.is_dir():
-            if not admin:
-                raise UserError(self.t("folders_admin"))
+            # Admins may scan any directory in music_dirs; non-admins are rejected above
             return scan_folder(p, limit=500, requester=user)
         if p.is_file() and p.suffix.lower() in MEDIA:
             return [local_track(p, user)]
@@ -877,7 +878,7 @@ class Engine:
         """
         if is_request and self.queue.requests:
             return self.queue.pop()
-        if not is_request:
+        if not is_request and self.queue.pool:
             return self.queue.pop_pool()
         return None
 

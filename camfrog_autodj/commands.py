@@ -52,8 +52,9 @@ class Router:
     def handle(self, msg):
         e = self.e
         p = e.cfg.prefix
+        # Fail-closed: empty prefix means no commands are recognized;
+        # also protects against console auth bypass where every line has no prefix.
         if not p.strip():
-            # Fail-closed: empty prefix means no commands are recognized
             return
         text = msg.text.strip()
         is_im = getattr(msg, "is_im", False)
@@ -166,6 +167,10 @@ class Router:
         Returns False when the command must be dropped (a reply is sent for rate limits).
         Thread-safe: all reads/writes to self.last and self.user_requests are guarded
         by self._lock to prevent TOCTOU races under concurrent command handling.
+
+        Rate limit window check: cooldown and sliding-window request limits are checked here.
+        The actual expired-entry cleanup is performed periodically by
+        `cleanup_expired_entries()` to avoid O(N) work on every command.
         """
         e = self.e
         who = (
@@ -183,6 +188,8 @@ class Router:
                 )
                 return False
 
+            # Sliding window request limit per user - entries are kept fresh
+            # by the periodic cleanup task; we just check the current window.
             window = getattr(e.cfg, "rate_limit_window", 300.0)
 
             # Sliding window request limit per user
