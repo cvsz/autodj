@@ -246,13 +246,15 @@ def _add_queue_endpoints(app: "FastAPI"):
             "paused": snap.get("paused", False),
             "volume": snap.get("volume", 0),
             "queue_length": len(snap.get("queue", [])),
-            "next": {
-                "title": next_track.get("title"),
-                "duration": next_track.get("dur"),
-                "requester": next_track.get("requester"),
-            }
-            if next_track
-            else None,
+            "next": (
+                {
+                    "title": next_track.get("title"),
+                    "duration": next_track.get("dur"),
+                    "requester": next_track.get("requester"),
+                }
+                if next_track
+                else None
+            ),
             "shuffle": snap.get("shuffle", False),
             "repeat": snap.get("repeat", "off"),
         }

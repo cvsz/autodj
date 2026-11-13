@@ -824,7 +824,11 @@ class Engine:
                             if t.source not in queued_sources and t.source not in played_sources:
                                 self.queue.add_request(t)
                                 queued_sources.add(t.source)
-                    log.info("playlist dir: loaded %d track(s) from %s", len(dir_tracks), pl_file)
+                    log.info(
+                        "playlist dir: loaded %d track(s) from %s",
+                        len(dir_tracks),
+                        pl_file,
+                    )
                 except Exception:
                     log.exception("failed to load playlist dir file: %s", pl_file)
         except Exception:
@@ -1002,7 +1006,12 @@ class Engine:
                     )
                 # Retry the same track if we haven't exceeded max retries (pool tracks only)
                 if fails < max_retries:
-                    log.info("retrying track %r (attempt %d/%d)", t.source, fails + 1, max_retries)
+                    log.info(
+                        "retrying track %r (attempt %d/%d)",
+                        t.source,
+                        fails + 1,
+                        max_retries,
+                    )
                     continue
                 # Max retries exceeded (or zero retries for requests), give up and move to next track
                 return fails
@@ -1123,9 +1132,18 @@ class Engine:
         "recent_gifter",
         "gift_store",
     )
-    _STATUS_KEYWORDS = ("upgrade required", "payment required", "payment gateway capabilities")
+    _STATUS_KEYWORDS = (
+        "upgrade required",
+        "payment required",
+        "payment gateway capabilities",
+    )
     # Avatar change keywords (Camfrog avatar system; see docs/camfrog-re/16-user-icon-avatar.md)
-    _AVATAR_KEYWORDS = ("updateavatarmessage", "avatar_changed", "avatarchange", "changavatar")
+    _AVATAR_KEYWORDS = (
+        "updateavatarmessage",
+        "avatar_changed",
+        "avatarchange",
+        "changavatar",
+    )
     # Status indicator keywords -> message key (Camfrog status PNGs; see docs/camfrog-re/14-png-assets.md)
     _STATUS_INDICATOR_KEYWORDS: dict[str, str] = {
         "online": "status_online",
@@ -1255,18 +1273,27 @@ class Engine:
     def _handle_welcome_message(self, msg):
         """Send welcome message to a user on their first message in a session.
 
-        Only for non-IM messages. Rate-limited per user using admin_greeting_cooldown
+        Only for non-IM messages. Rate-limited per user using welcome_message_cooldown
         to avoid spam. Thread-safe per-user cooldown tracking.
         """
         if not self.cfg.welcome_message_enabled or msg.is_im:
             return
         now = time.monotonic()
         key = f"welcome:{msg.user.lower()}"
-        last_welcome = self._welcome_cooldowns.get(key, 0.0)
-        if now - last_welcome >= self.cfg.admin_greeting_cooldown:
-            welcome_text = self.cfg.welcome_message_message
+        cooldown = getattr(self.cfg, "welcome_message_cooldown", 3600.0)
+        should_send = False
+        welcome_text = ""
+        with self._chat_lock:
+            last_welcome = self._welcome_cooldowns.get(key, 0.0)
+            if now - last_welcome >= cooldown:
+                welcome_text = self.cfg.welcome_message_message
+                # Replace {room} placeholder if present
+                if "{room}" in welcome_text:
+                    welcome_text = welcome_text.replace("{room}", self.cfg.room)
+                should_send = True
+                self._welcome_cooldowns[key] = now
+        if should_send:
             self.say(welcome_text)
-            self._welcome_cooldowns[key] = now
             log.info("Sent welcome message to %s", msg.user)
 
     def start(self):
@@ -1449,7 +1476,7 @@ class Engine:
             reply_text = self.cfg.im_auto_reply_message
             if reply_text:
                 try:
-                    self.adapter.send(f"[IM] {reply_text}")
+                    self.say(f"[IM] {reply_text}")
                     self._im_reply_cooldowns[user] = time.monotonic()
                     log.info("Sent IM auto-reply to %s", msg.user)
                 except Exception:
@@ -1732,6 +1759,14 @@ class Engine:
             stop_webhook()
         self.adapter.close()
         self.exec.shutdown(wait=False, cancel_futures=True)
+        # Shutdown TTS worker
+        from .tts import shutdown_tts
+
+        shutdown_tts()
+        # Shutdown library caches
+        from .library import shutdown_library_caches
+
+        shutdown_library_caches()
         # Join daemon threads with a timeout so shutdown does not hang forever.
         for t in self._threads:
             if t.is_alive():

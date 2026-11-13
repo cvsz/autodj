@@ -1,6 +1,7 @@
 """Auto-discover the Camfrog room window and its chat controls, and write them to config.toml.
 Replaces the manual tools/inspect_ui.py step: finds window_title_re, view_type/view_index and
-input_type/input_index. The selection logic is pure (testable); only scan_window touches Windows."""
+input_type/input_index. The selection logic is pure (testable); only scan_window touches Windows.
+"""
 
 from __future__ import annotations
 
@@ -183,9 +184,11 @@ def discover(cfg) -> dict | None:
             log.info(
                 "candidate %r: %s (%d chat lines)",
                 c.title,
-                "web chat view + message box"
-                if f.web
-                else f"chat={f.view.ctype}[{f.view.index}] input={f.input.ctype}[{f.input.index}]",
+                (
+                    "web chat view + message box"
+                    if f.web
+                    else f"chat={f.view.ctype}[{f.view.index}] input={f.input.ctype}[{f.input.index}]"
+                ),
                 f.matched,
             )
             found.append(f)

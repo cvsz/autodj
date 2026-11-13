@@ -155,7 +155,8 @@ def post_text(
     delay: float = 0.004,
 ) -> bool:
     """Click the editor at screen_pt and type `text` (+ Enter) with posted messages. No focus change.
-    Returns True if every message was queued (this does NOT prove the page accepted it)."""
+    Returns True if every message was queued (this does NOT prove the page accepted it).
+    """
     _require_windows()
     import ctypes
     from ctypes import wintypes as w

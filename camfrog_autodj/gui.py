@@ -1,7 +1,8 @@
 """Tk desktop window for the engine: a dark "studio" look with a spinning record, an animated equaliser,
 glowing progress/volume bars and a tabbed queue / history / chat panel.
 Polls Engine.snapshot() twice a second (data) and animates at ~30 fps (looks only); all actions call engine methods.
-The equaliser is decorative: it moves while a track plays and settles when paused; it does not analyse the audio."""
+The equaliser is decorative: it moves while a track plays and settles when paused; it does not analyse the audio.
+"""
 
 from __future__ import annotations
 
@@ -86,7 +87,8 @@ def _do_clip(w, act: str):
 
 def install_clipboard(root: tk.Misc, lang=lambda: "en"):
     """Ctrl+C/V/X/A on any keyboard layout, right-click menu (Cut/Copy/Paste/Select all) on every entry
-    and text box, and click-to-focus on the read-only chat log so it can be selected and copied."""
+    and text box, and click-to-focus on the read-only chat log so it can be selected and copied.
+    """
 
     def on_key(e):
         act = clip_action(e.keycode, e.keysym, bool(e.state & 0x1), os.name == "nt")
@@ -130,7 +132,8 @@ def install_clipboard(root: tk.Misc, lang=lambda: "en"):
 
 class PillButton(tk.Canvas):
     """Rounded button drawn on a canvas. Behaves like a Button for the pieces the app uses:
-    configure(text=..., command=...), cget("text"), plus set_active() for tabs/toggle chips and set_icon()."""
+    configure(text=..., command=...), cget("text"), plus set_active() for tabs/toggle chips and set_icon().
+    """
 
     STYLES = {  # kind: (fill, hover fill, outline, text colour, active fill, active outline, active text)  # noqa: RUF012
         "primary": (PINK, "#ff62b0", "", "#ffffff", ON_AIR, "", "#ffffff"),
@@ -1255,7 +1258,9 @@ class App(tk.Tk):
         self.s_auto_reply_file = self._entry(sp_inner)
         self.s_auto_reply_file.insert(0, self.e.cfg.auto_reply_file)
         _setting_row(
-            "g_settings_auto_reply_file", self.s_auto_reply_file, "g_settings_autoplay_idle_timeout"
+            "g_settings_auto_reply_file",
+            self.s_auto_reply_file,
+            "g_settings_autoplay_idle_timeout",
         )
 
         # autoplay_idle_timeout
@@ -2265,7 +2270,7 @@ class App(tk.Tk):
                 # animate, so throttle the tick to match the iconic slowdown
                 # and cut constant redraws / wake-ups.
                 self._anim = self.after(
-                    250 if (self.state() == "iconic" or self._state == "idle") else FPS_MS,
+                    (250 if (self.state() == "iconic" or self._state == "idle") else FPS_MS),
                     self._tick,
                 )
 
@@ -2320,7 +2325,7 @@ class App(tk.Tk):
             c.coords(item, x - s, y - s, x + s, y + s)
             c.itemconfigure(
                 item,
-                stipple="gray75" if alpha > 0.75 else ("gray50" if alpha > 0.45 else "gray25"),
+                stipple=("gray75" if alpha > 0.75 else ("gray50" if alpha > 0.45 else "gray25")),
             )
 
     def _update_border_glow_and_level(self, t: float, st: str) -> None:
@@ -2442,12 +2447,18 @@ class App(tk.Tk):
         passed, msg = self.e.voteskip("operator")
         self.v_voteskip.configure(
             text=self.e.t(
-                "g_voteskip_progress", n=len(self.e.votes), need=self.e.cfg.voteskip_threshold
+                "g_voteskip_progress",
+                n=len(self.e.votes),
+                need=self.e.cfg.voteskip_threshold,
             )
         )
         if passed:
             self._set_hint(
-                self.e.t("vote_passed", n=len(self.e.votes), need=self.e.cfg.voteskip_threshold)
+                self.e.t(
+                    "vote_passed",
+                    n=len(self.e.votes),
+                    need=self.e.cfg.voteskip_threshold,
+                )
             )
         else:
             self._set_hint(msg)
@@ -2483,7 +2494,7 @@ class App(tk.Tk):
             self.stage.coords(item, x - s, y - s, x + s, y + s)
             self.stage.itemconfigure(
                 item,
-                stipple="gray75" if alpha > 0.7 else ("gray50" if alpha > 0.35 else "gray25"),
+                stipple=("gray75" if alpha > 0.7 else ("gray50" if alpha > 0.35 else "gray25")),
             )
             keep.append((launch, piece, item))
         self._confetti = keep
@@ -3179,7 +3190,7 @@ class App(tk.Tk):
             # round() keeps the countdown smooth: no more skipping from 0:00 to 0:01.
             elapsed = max(0.0, s["position"])
             self.v_time.configure(
-                text=f"{mmss(elapsed)} / {t.dur}" if t.duration else f"{mmss(elapsed)} / --:--"
+                text=(f"{mmss(elapsed)} / {t.dur}" if t.duration else f"{mmss(elapsed)} / --:--")
             )
         else:
             self.v_title.configure(text=self.e.t("g_nothing"))
@@ -3189,7 +3200,7 @@ class App(tk.Tk):
         self._sync_pause()
         n = s["next"]
         self.v_next.configure(
-            text=f"{self.e.t('g_up_next')}: {n.title} [{n.dur}] ({n.requester})" if n else ""
+            text=(f"{self.e.t('g_up_next')}: {n.title} [{n.dur}] ({n.requester})" if n else "")
         )
         if not self.vol.dragging:
             self.vol.set(s["volume"])

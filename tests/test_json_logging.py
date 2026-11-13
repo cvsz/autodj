@@ -10,7 +10,11 @@ import sys
 import pytest
 
 from camfrog_autodj.config import Config
-from camfrog_autodj.logging_json import JsonFormatter, add_json_file_handler, configure_json_logging
+from camfrog_autodj.logging_json import (
+    JsonFormatter,
+    add_json_file_handler,
+    configure_json_logging,
+)
 
 
 class TestJsonFormatter:

@@ -165,8 +165,18 @@ class TestWebhookServer:
         engine = Mock()
         engine.snapshot.return_value = {
             "queue": [
-                {"title": "Song 1", "dur": "3:00", "requester": "user1", "source": "url1"},
-                {"title": "Song 2", "dur": "4:00", "requester": "user2", "source": "url2"},
+                {
+                    "title": "Song 1",
+                    "dur": "3:00",
+                    "requester": "user1",
+                    "source": "url1",
+                },
+                {
+                    "title": "Song 2",
+                    "dur": "4:00",
+                    "requester": "user2",
+                    "source": "url2",
+                },
             ],
             "next": {"title": "Next Song", "dur": "3:30", "requester": "user3"},
         }

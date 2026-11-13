@@ -15,7 +15,8 @@ _VK_ACTIONS = {
 
 def clip_action(keycode: int, keysym: str, shift: bool = False, windows: bool = True):
     """Action for a Ctrl(+Shift)+key press, only when Tk's own binding will NOT fire (non-Latin layout);
-    otherwise None so we never double-paste. Ctrl+Insert = copy, Shift+Insert = paste."""
+    otherwise None so we never double-paste. Ctrl+Insert = copy, Shift+Insert = paste.
+    """
     if not windows:
         return None
     if keycode == 45:

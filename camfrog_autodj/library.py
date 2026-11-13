@@ -89,7 +89,12 @@ class MetadataCache:
         return None
 
     def set(
-        self, path: Path, mtime: float, title: str, artist: str | None, duration: float | None
+        self,
+        path: Path,
+        mtime: float,
+        title: str,
+        artist: str | None,
+        duration: float | None,
     ) -> None:
         """Store metadata for a file."""
         key = str(path.resolve())
@@ -215,6 +220,19 @@ def _get_scan_state(music_dirs: list[str]) -> ScanState:
         return _scan_state
 
 
+def shutdown_library_caches() -> None:
+    """Shut down global library caches, saving state before exit."""
+    global _metadata_cache, _scan_state
+    with _metadata_cache_lock:
+        if _metadata_cache is not None:
+            _metadata_cache.save()
+            _metadata_cache = None
+    with _scan_state_lock:
+        if _scan_state is not None:
+            _scan_state.save()
+            _scan_state = None
+
+
 def is_url(s: str) -> bool:
     return s.lower().startswith(("http://", "https://"))
 
@@ -271,7 +289,11 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
 
 
 def scan_folder(
-    folder, requester: str = "AutoDJ", limit: int = 0, max_dirs: int = 0, incremental: bool = True
+    folder,
+    requester: str = "AutoDJ",
+    limit: int = 0,
+    max_dirs: int = 0,
+    incremental: bool = True,
 ) -> list[Track]:
     """Recursively scan *folder* for media files, skipping unreadable directories.
 
@@ -371,7 +393,11 @@ def _scan_dir_entries(
 
 
 def _scan_folder_recursive(  # noqa: C901
-    folder: str, requester: str, limit: int, remaining_dirs: int, incremental: bool = True
+    folder: str,
+    requester: str,
+    limit: int,
+    remaining_dirs: int,
+    incremental: bool = True,
 ) -> list[Track]:
     """Internal recursive implementation with global directory budget.
 

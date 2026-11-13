@@ -63,7 +63,8 @@ class UiaAdapter(ChatAdapter):
     def _attach(self):
         """(Re)build the window wrapper. A COM failure can wedge the cached wrapper permanently
         (every UIA call keeps failing with 'An event was unable to invoke any of the subscribers' until
-        the bot is restarted); dropping it and re-attaching builds fresh COM connections instead."""
+        the bot is restarted); dropping it and re-attaching builds fresh COM connections instead.
+        """
         from pywinauto import Desktop
 
         self.win = Desktop(backend="uia").window(handle=self.handle)
@@ -271,7 +272,8 @@ class UiaAdapter(ChatAdapter):
 
     def _do_send(self, text):
         """send_mode: background (posted messages, no focus change) | foreground (focus + paste) |
-        auto (background, then check the line appeared in the room; if not, foreground)."""
+        auto (background, then check the line appeared in the room; if not, foreground).
+        """
         mode = self.cfg.send_mode
         try:
             self._ensure_controls()

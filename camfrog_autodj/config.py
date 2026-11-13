@@ -234,6 +234,9 @@ class Config:
     # Welcome message - welcome message config
     welcome_message_enabled: bool = True  # enable welcome message
     welcome_message_message: str = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"  # welcome message
+    welcome_message_cooldown: float = (
+        3600.0  # seconds between welcome messages for same user (1 hour)
+    )
     # Admin delete message - admin delete message feature
     admin_delete_message_enabled: bool = True  # enable admin delete message feature
     # Font/style customization for GUI preview only (Camfrog does not support rich text in sent messages)
@@ -378,6 +381,7 @@ _RANGES = {
     "im_auto_reply_cooldown": (10.0, 3600.0),
     "autoplay_idle_timeout": (30.0, 86400.0),
     "admin_greeting_cooldown": (60.0, 86400.0),
+    "welcome_message_cooldown": (60.0, 86400.0),
     "webhook_port": (1, 65535),
     "webhook_rate_limit_per_ip": (1, 10000),
 }

@@ -11,7 +11,10 @@ from __future__ import annotations
 import os
 import stat
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "build_exe_linux.sh"
@@ -48,6 +51,8 @@ def test_wine_binary_can_be_overridden_for_tests():
 
 
 def test_missing_pyinstaller_fails_with_actionable_hint(tmp_path):
+    if sys.platform == "win32":
+        pytest.skip("Linux build script test requires bash, skipped on Windows")
     windows_python = tmp_path / "python.exe"
     windows_python.write_bytes(b"not really python")
 

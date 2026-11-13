@@ -1,7 +1,8 @@
 """List Camfrog windows, or dump one window's control tree for view_/input_ settings.
   python tools/inspect_ui.py --list                 show every visible window matching the pattern
   python tools/inspect_ui.py ".*Camfrog.*" [N]      dump the Nth match (default 0)
-Open a room window first. Use a tighter pattern (e.g. the room name) if several match."""
+Open a room window first. Use a tighter pattern (e.g. the room name) if several match.
+"""
 
 import sys
 

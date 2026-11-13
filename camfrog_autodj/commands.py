@@ -70,7 +70,15 @@ class Router:
         self._dispatch_command(e, fn, msg, name, arg, admin, is_im, need_admin)
 
     def _dispatch_command(
-        self, e, fn, msg, name: str, arg: str, admin: bool, is_im: bool, need_admin: bool
+        self,
+        e,
+        fn,
+        msg,
+        name: str,
+        arg: str,
+        admin: bool,
+        is_im: bool,
+        need_admin: bool,
     ) -> None:
         """Run *fn* after authorization checks; send replies on failure."""
         # Play/Request commands only work via IM for non-admins unless allow_play_in_room is enabled
@@ -108,7 +116,11 @@ class Router:
     def _log_command(self, msg, name: str, arg: str, admin: bool, is_im: bool, prefix: str):
         if is_im:
             log.info(
-                "im command %s (%s) from %s%s", name, arg, msg.user, ", admin" if admin else ""
+                "im command %s (%s) from %s%s",
+                name,
+                arg,
+                msg.user,
+                ", admin" if admin else "",
             )
         else:
             log.info(
@@ -130,7 +142,11 @@ class Router:
         return False
 
     def _log_blocked(self, msg, is_im: bool):
-        log.info("blocked: ignoring %s's command from %s", msg.user, "IM" if is_im else "room")
+        log.info(
+            "blocked: ignoring %s's command from %s",
+            msg.user,
+            "IM" if is_im else "room",
+        )
 
     def _parse_command(self, text: str, p: str, is_im: bool) -> tuple[str, str] | None:
         """Return (name, arg) when *text* is a command, else None."""
@@ -170,7 +186,15 @@ class Router:
             window = getattr(e.cfg, "rate_limit_window", 300.0)
 
             # Sliding window request limit per user
-            if name.lower() in ("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง"):
+            if name.lower() in (
+                "play",
+                "request",
+                "req",
+                "p",
+                "เล่น",
+                "ขอเพลง",
+                "เล่นเพลง",
+            ):
                 limit = getattr(e.cfg, "user_request_limit", 5)
                 reqs = [t for t in self.user_requests.get(who, []) if now - t < window]
                 if len(reqs) >= limit:
@@ -255,7 +279,15 @@ def _play(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if e.playlist:  # promised by the playlist docs / config: chat requests are saved too (feeds !last and the pool)
         e.playlist.add(tracks)
     if len(tracks) == 1:
-        e.say(e.t("queued_one", pos=pos, title=tracks[0].title, dur=tracks[0].dur, user=m.user))
+        e.say(
+            e.t(
+                "queued_one",
+                pos=pos,
+                title=tracks[0].title,
+                dur=tracks[0].dur,
+                user=m.user,
+            )
+        )
     else:
         e.say(e.t("queued_many", n=len(tracks), user=m.user))
 

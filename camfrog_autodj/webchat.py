@@ -5,7 +5,8 @@ history = a Pane titled 'camfrog://wb-log-room-data.inside/' whose children are 
 a Hyperlink with an empty name). The avatar is the reliable message boundary, so:
   - date headers / system lines that sit between a body and the next avatar are not glued onto that body
   - a body that merely looks like a time ("10:30") cannot start a new message
-and the message box = a Pane titled 'camfrog://wb-edit-data.inside/' (a web editor, not an Edit control)."""
+and the message box = a Pane titled 'camfrog://wb-edit-data.inside/' (a web editor, not an Edit control).
+"""
 
 from __future__ import annotations
 
@@ -19,7 +20,8 @@ TIME_RX = re.compile(r"^\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?$")
 
 def tokens_to_lines(tokens: list[str]) -> list[str]:
     """Flat texts -> 'H:MM nick: body' lines. A time token marks a message: the token before it is the
-    nick, everything up to the next message's nick is the body. Partial/cut-off messages are skipped."""
+    nick, everything up to the next message's nick is the body. Partial/cut-off messages are skipped.
+    """
     toks = [t.replace("\xa0", " ").strip() for t in tokens]
     idx = [i for i, t in enumerate(toks) if i > 0 and TIME_RX.match(t)]
     out = []
@@ -36,7 +38,8 @@ def items_to_lines(items: list[tuple[str, str]], strict: bool = True) -> list[st
     """items = (kind, name) with kind in avatar | emo | text | link, in document order.
     Messages are split at avatars; a group is [nick, time, body...]. With strict=True a second plain text
     directly after the first body segment (no emoticon/link between) is a date header or system line and is
-    dropped. Groups before the first avatar are partial (cut off by the tail window) and are skipped."""
+    dropped. Groups before the first avatar are partial (cut off by the tail window) and are skipped.
+    """
     groups: list[list[tuple[str, str]]] = []
     seen_avatar = False
     for kind, name in items:

@@ -281,7 +281,11 @@ class TestPlaylistUncoveredLines:
                             "duration": 100,
                         },
                         {"source": "not-a-url", "title": "Invalid", "duration": 100},
-                        {"source": "/local/file.mp3", "title": "Local", "duration": 100},
+                        {
+                            "source": "/local/file.mp3",
+                            "title": "Local",
+                            "duration": 100,
+                        },
                     ],
                 }
             )

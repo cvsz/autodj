@@ -170,7 +170,8 @@ class PlaylistStore:
 
     def add(self, tracks) -> int:
         """Append tracks to playlist.json (dedup by source). Returns how many were new.
-        Disabled / nothing to add / write failure are all no-ops (never breaks the request)."""
+        Disabled / nothing to add / write failure are all no-ops (never breaks the request).
+        """
         if not self.path or not tracks:
             return 0
         with self.lock:
