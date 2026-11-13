@@ -7,7 +7,7 @@ import logging
 from collections import Counter
 from pathlib import Path
 
-from .base import Plugin
+from ..base import Plugin
 
 log = logging.getLogger("autodj.plugins.stats")
 
@@ -49,6 +49,7 @@ class StatsPlugin(Plugin):
             log.exception("Failed to save stats")
 
     def on_load(self, interface) -> None:
+        super().on_load(interface)
         log.info("Stats plugin loaded")
 
     def on_unload(self) -> None:
@@ -72,7 +73,7 @@ class StatsPlugin(Plugin):
                 f"Top users: {', '.join(f'{u} ({c})' for u, c in top_users) or 'none'} | "
                 f"Total plays: {self.total_plays}"
             )
-            self._interface.say(msg)
+            self.interface.say(msg)
             return True
         return False
 
@@ -89,25 +90,24 @@ class HelpPlugin(Plugin):
         self._plugin_manager = None
 
     def on_load(self, interface) -> None:
-        # Store reference to plugin manager via interface
-        self._interface = interface
+        super().on_load(interface)
         log.info("Help plugin loaded")
 
     def on_command(self, command: str, user: str, args: str, is_admin: bool) -> bool:
         if command.lower() in ("help", "plugins", "ช่วยเหลือ"):
             # Get plugin list from engine
             plugins = []
-            if hasattr(self._interface, "_engine") and hasattr(
-                self._interface._engine, "plugin_manager"
+            if hasattr(self.interface, "_engine") and hasattr(
+                self.interface._engine, "plugin_manager"
             ):
-                plugins = self._interface._engine.plugin_manager.list_plugins()
+                plugins = self.interface._engine.plugin_manager.list_plugins()
 
             if plugins:
                 plugin_list = ", ".join(f"{p['name']} v{p['version']}" for p in plugins)
                 msg = f"📦 Loaded plugins: {plugin_list}"
             else:
                 msg = "📦 No plugins loaded"
-            self._interface.say(msg)
+            self.interface.say(msg)
             return True
         return False
 

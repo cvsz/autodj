@@ -93,6 +93,11 @@ test_regex*.bat
 # One-off test command output (do not commit)
 test_output.txt
 
+# Test artifacts (local dev, not source)
+test-install/
+test-install2/
+test_silent.nsi
+
 # Build wrapper scripts (local dev, not source)
 scripts/build_installer_wrapper.ps1
 scripts/build-all-hybrid.ps1

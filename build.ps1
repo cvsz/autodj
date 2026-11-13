@@ -79,7 +79,8 @@ if (Test-Path config.example.toml) {
 }
 # Copy mpv/ directory to dist/mpv/ so mpv.exe and yt-dlp.exe are available at runtime
 if (Test-Path mpv) {
-    Copy-Item mpv dist\mpv -Recurse -Force
+    if (-not (Test-Path "dist\mpv")) { New-Item -ItemType Directory -Path "dist\mpv" | Out-Null }
+    Copy-Item mpv\* dist\mpv -Recurse -Force
     "copied mpv/ -> dist\mpv\" | Write-Host
 } else {
     # mpv/ not present (e.g. cloned repo, gitignored). Try to find mpv.exe on the system.

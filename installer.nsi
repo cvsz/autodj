@@ -124,7 +124,7 @@ Section "Playlist Directory" SEC_PLAYLIST
     File /r "dist\playlist\*.json"
 SectionEnd
 
-Section /o "mpv + yt-dlp" SEC_MPV
+Section "mpv + yt-dlp" SEC_MPV
     SetOutPath "$INSTDIR\mpv"
     File "dist\mpv\mpv.exe"
     File "dist\mpv\mpv.com"
@@ -135,7 +135,11 @@ Section /o "mpv + yt-dlp" SEC_MPV
     File /r "dist\mpv\_internal\*.*"
     ; Register mpv file associations and protocols (optional, requires admin)
     ; Run hidden so user doesn't see command window flash
+    ; Pass /S in silent mode to avoid pause in batch file
+    IfSilent 0 +2
     ExecWait '"$INSTDIR\mpv\mpv-register.bat"'
+    Goto +1
+    ExecWait '"$INSTDIR\mpv\mpv-register.bat" /S'
 SectionEnd
 
 Section /o "VBCable Virtual Audio Driver" SEC_VBCABLE
@@ -182,6 +186,7 @@ FunctionEnd
 
 Function .onInstSuccess
     HideWindow
+    IfSilent +2
     MessageBox MB_ICONINFORMATION|MB_OK "CamfrogAutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nIf you selected VBCable, its driver package is included under mpv\vbcable. Driver installation requires Administrator approval; run VBCABLE_Setup_x64.exe manually using Run as administrator."
 FunctionEnd
 

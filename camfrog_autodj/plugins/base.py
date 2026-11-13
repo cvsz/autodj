@@ -94,6 +94,17 @@ class Plugin(ABC):
     def __init__(self):
         self._interface: PluginInterface | None = None
 
+    @property
+    def interface(self) -> PluginInterface:
+        """Get the plugin interface (set after on_load is called).
+
+        Raises:
+            RuntimeError: If on_load has not been called yet.
+        """
+        if self._interface is None:
+            raise RuntimeError(f"Plugin {self.name!r}: on_load() not called yet")
+        return self._interface
+
     @abstractmethod
     def on_load(self, interface: PluginInterface) -> None:
         """Called when plugin is loaded.
@@ -101,7 +112,7 @@ class Plugin(ABC):
         Args:
             interface: Safe interface for interacting with the engine.
         """
-        pass
+        self._interface = interface
 
     def on_unload(self) -> None:  # noqa: B027
         """Called when plugin is unloaded. Override if needed."""
