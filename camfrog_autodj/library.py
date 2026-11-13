@@ -15,6 +15,36 @@ from .exceptions import YtdlpMissingError
 from .models import Track
 from .paths import resolve_executable
 
+
+class _DirBudget:
+    """Thread-safe directory budget counter for parallel folder scanning.
+
+    Ensures the global max_dirs limit is respected across all concurrent
+    recursive scans by using an atomic counter with a lock.
+    """
+
+    __slots__ = ("_lock", "_remaining")
+
+    def __init__(self, max_dirs: int):
+        self._lock = threading.Lock()
+        self._remaining = max_dirs if max_dirs > 0 else -1  # -1 = unlimited
+
+    def consume(self, n: int = 1) -> bool:
+        """Try to consume *n* directory slots. Returns True if granted."""
+        with self._lock:
+            if self._remaining < 0:
+                return True  # unlimited
+            if self._remaining >= n:
+                self._remaining -= n
+                return True
+            return False
+
+    @property
+    def remaining(self) -> int:
+        with self._lock:
+            return self._remaining
+
+
 log = logging.getLogger("autodj")
 
 AUDIO = {".mp3", ".m4a", ".wav", ".flac", ".ogg", ".opus", ".aac"}
@@ -303,7 +333,8 @@ def scan_folder(
     entire scan (0 = no cap) so a very deep/wide folder tree cannot scan forever.
     *incremental*: if True, only re-scan files whose mtime has changed.
     """
-    return _scan_folder_recursive(folder, requester, limit, max_dirs, incremental)
+    budget = _DirBudget(max_dirs)
+    return _scan_folder_recursive(folder, requester, limit, budget, incremental)
 
 
 def _process_file_entry(
@@ -396,15 +427,14 @@ def _scan_folder_recursive(  # noqa: C901
     folder: str,
     requester: str,
     limit: int,
-    remaining_dirs: int,
+    budget: _DirBudget,
     incremental: bool = True,
 ) -> list[Track]:
     """Internal recursive implementation with global directory budget.
 
     Uses ThreadPoolExecutor for parallel subdirectory scanning when
     there are multiple subdirectories to process. The budget is consumed
-    sequentially to match the original semantics: each subdirectory entered
-    decrements the budget, and recursive calls receive the updated budget.
+    atomically across all concurrent scans via _DirBudget.
     """
     root = Path(folder)
     scan_state = _get_scan_state([str(root)]) if incremental else None
@@ -426,7 +456,7 @@ def _scan_folder_recursive(  # noqa: C901
         except OSError:
             pass
 
-    # First pass: collect files and subdirectories (consume budget sequentially)
+    # First pass: collect files and subdirectories (consume budget atomically)
     for entry in entries:
         if limit and len(tracks) >= limit:
             break
@@ -434,9 +464,8 @@ def _scan_folder_recursive(  # noqa: C901
             if entry.is_symlink():
                 continue
             if entry.is_dir():
-                if remaining_dirs <= 0:
+                if not budget.consume(1):
                     continue  # global directory budget exhausted
-                remaining_dirs -= 1
                 subdirs.append(entry.path)
             elif entry.is_file():
                 entry_path = Path(entry.path)
@@ -468,8 +497,9 @@ def _scan_folder_recursive(  # noqa: C901
             continue
 
     # Parallel scan subdirectories if there are multiple and we have budget
-    # Pass the SAME remaining_dirs to all - they will consume sequentially within their own scope
-    if subdirs and remaining_dirs >= 0:
+    # All recursive calls share the same budget object for atomic consumption.
+    # We scan all collected subdirs because we already consumed budget for them.
+    if subdirs:
         # Limit parallelism to avoid overwhelming the filesystem
         max_workers = min(4, len(subdirs))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -477,14 +507,14 @@ def _scan_folder_recursive(  # noqa: C901
             for subdir in subdirs:
                 if limit and len(tracks) >= limit:
                     break
-                # Each subdir gets the current remaining_dirs (sequential budget semantics)
+                # Pass the SAME budget object to all - atomic consumption ensures global limit
                 futures[
                     executor.submit(
                         _scan_folder_recursive,
                         subdir,
                         requester,
                         limit,
-                        remaining_dirs,
+                        budget,
                         incremental,
                     )
                 ] = subdir
