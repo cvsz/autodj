@@ -113,7 +113,6 @@ __all__ = [
     # Models
     "Track",
     "UserError",
-    "YtdlpMissingError",
     "fmt_time",
     # Play queue
     "PlayQueue",

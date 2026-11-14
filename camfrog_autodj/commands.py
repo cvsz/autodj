@@ -135,7 +135,7 @@ class Router:
 
     def _is_play_command_blocked_in_room(self, msg, name: str, is_im: bool, admin: bool) -> bool:
         """Play/Request commands only work via IM for non-admins, unless allow_play_in_room is enabled."""
-        play_commands = ("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง")
+        play_commands = ("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง", "เปิดเพลง")
         if name.lower() in play_commands and not is_im:
             if not admin and not getattr(self.e.cfg, "allow_play_in_room", False):
                 self.e.say(f"{msg.user}: {self.e.t('im_only_command')}")
@@ -201,6 +201,7 @@ class Router:
                 "เล่น",
                 "ขอเพลง",
                 "เล่นเพลง",
+                "เปิดเพลง",
             ):
                 limit = getattr(e.cfg, "user_request_limit", 5)
                 reqs = [t for t in self.user_requests.get(who, []) if now - t < window]
@@ -257,22 +258,22 @@ def _help(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     e.say(e.t("help_base", p=p) + (e.t("help_admin", p=p) if admin else ""))
 
 
-@command("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง")
+@command("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง", "เปิดเพลง")
 def _play(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     c, p = e.cfg, e.cfg.prefix
     if not a:
         raise UserError(e.t("usage_play", p=p))
     if not admin:
-        _assert_queue_capacity(e, m.user)
+        _assert_queue_capacity(e, m.user)  # Fast pre-check before expensive resolve()
     tracks = e.resolve(a, m.user, admin)
     if not tracks:
         raise UserError(e.t("nothing_found"))
     if not admin:
         tracks = _validate_non_admin_track(e, c, tracks)
     pos = 0
-    with e.queue.lock:  # the lookup above can take seconds: re-check now, atomically with the add
+    with e.queue.lock:  # The lookup above can take seconds: re-check now, atomically with the add
         if not admin:
-            _assert_queue_capacity(e, m.user)
+            _assert_queue_capacity(e, m.user)  # Re-check under lock to prevent TOCTOU race
             _assert_not_already_queued(e, tracks[0])
         for t in tracks:
             pos = e.queue.add_request(t, position=0)  # insert at front: play next immediately
@@ -506,6 +507,8 @@ def _history(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("block", "บล็อก", admin=True)
 def _block(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_block_user", False):
+        raise UserError(e.t("admin_only"))
     nick = a.strip()
     if not nick:
         raise UserError(e.t("block_usage", p=e.cfg.prefix))
@@ -517,6 +520,8 @@ def _block(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("unblock", "เลิกบล็อก", admin=True)
 def _unblock(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_unblock_user", False):
+        raise UserError(e.t("admin_only"))
     nick = a.strip()
     if not nick:
         raise UserError(e.t("unblock_usage", p=e.cfg.prefix))
@@ -548,17 +553,23 @@ def _unmute(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("blockbot", "บล็อกบอท", admin=True)
 def _blockbot(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_block_bot", False):
+        raise UserError(e.t("admin_only"))
     nick = a.strip()
     if not nick:
         raise UserError(e.t("block_bot_usage", p=e.cfg.prefix))
-    if nick.lower() in e.admins:
+    if nick.lower() == e.cfg.bot_nick.lower():
         raise UserError(e.t("cannot_block_bot_admin"))
+    if nick.lower() in e.admins:
+        raise UserError(e.t("cannot_block_admin"))
     e.blocked.add(nick.lower())
     e.say(e.t("bot_blocked", nick=nick))
 
 
 @command("unblockbot", "เลิกบล็อกบอท", admin=True)
 def _unblockbot(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_unblock_bot", False):
+        raise UserError(e.t("admin_only"))
     nick = a.strip()
     if not nick:
         raise UserError(e.t("unblock_bot_usage", p=e.cfg.prefix))
@@ -571,6 +582,8 @@ def _unblockbot(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("kick", "เตะ", admin=True)
 def _kick_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_kick_user", False):
+        raise UserError(e.t("admin_only"))
     nick = a.strip()
     if not nick:
         raise UserError(e.t("kick_user_usage", p=e.cfg.prefix))
@@ -582,6 +595,8 @@ def _kick_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("ban", "แบน", admin=True)
 def _ban_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_ban_user", False):
+        raise UserError(e.t("admin_only"))
     nick = a.strip()
     if not nick:
         raise UserError(e.t("ban_user_usage", p=e.cfg.prefix))
@@ -593,6 +608,8 @@ def _ban_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("unban", "เลิกแบน", admin=True)
 def _unban_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_unban_user", False):
+        raise UserError(e.t("admin_only"))
     nick = a.strip()
     if not nick:
         raise UserError(e.t("unban_user_usage", p=e.cfg.prefix))
@@ -605,6 +622,8 @@ def _unban_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("punish", "ลงโทษ", admin=True)
 def _punish_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_punish_user", False):
+        raise UserError(e.t("admin_only"))
     nick = a.strip()
     if not nick:
         raise UserError(e.t("punish_user_usage", p=e.cfg.prefix))
@@ -616,9 +635,13 @@ def _punish_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("punishbot", "ลงโทษบอท", admin=True)
 def _punish_bot(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    if not getattr(e.cfg, "admin_punish_bot", False):
+        raise UserError(e.t("admin_only"))
     nick = a.strip()
     if not nick:
         raise UserError(e.t("punish_bot_usage", p=e.cfg.prefix))
+    if nick.lower() == e.cfg.bot_nick.lower():
+        raise UserError(e.t("cannot_block_bot_admin"))
     e.punish_bot(nick)
     e.say(e.t("punished_bot", nick=nick))
 

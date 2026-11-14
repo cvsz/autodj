@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import re
-import shutil  # noqa: F401  re-exported for test monkeypatching of library.shutil
 import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -777,7 +776,6 @@ class LocalIndex:
         ]
         self._hay = [f"{t.title} {Path(t.source).name}".lower() for t in self.tracks]
         # Save metadata cache and scan state after scan
-        global _metadata_cache, _scan_state
         if _metadata_cache:
             _metadata_cache.save()
         if _scan_state:

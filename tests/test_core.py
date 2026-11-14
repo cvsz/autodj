@@ -96,7 +96,21 @@ class FakePlayer:
 
 def make():
     e = Engine(
-        Config(admins=["Boss"], cooldown=0, voteskip_threshold=2),
+        Config(
+            admins=["Boss"],
+            cooldown=0,
+            voteskip_threshold=2,
+            admin_block_user=True,
+            admin_unblock_user=True,
+            admin_block_bot=True,
+            admin_unblock_bot=True,
+            admin_kick_user=True,
+            admin_ban_user=True,
+            admin_unban_user=True,
+            admin_punish_user=True,
+            admin_punish_bot=True,
+            admin_delete_message_enabled=True,
+        ),
         FakeAdapter(),
         player=FakePlayer(),
         index=LocalIndex([]),
@@ -244,3 +258,72 @@ def test_playqueue_version_bumps_on_every_mutation():
 
     q.clear()
     assert q.changed_since(v3)
+
+
+def test_engine_chat_and_im_snapshot_versions():
+    """Engine chat_snapshot and im_snapshot return version counters for efficient GUI polling."""
+    from camfrog_autodj.adapters import NullAdapter
+    from camfrog_autodj.config import Config
+    from camfrog_autodj.engine import Engine
+
+    class FakePlayer:
+        skipped = False
+
+        def stop(self):
+            pass
+
+        def set_pause(self, v):
+            return True
+
+        def set_volume(self, v):
+            pass
+
+        def get_time_pos(self):
+            return None
+
+        def available(self):
+            return True
+
+    cfg = Config(admins=["Boss"], cooldown=0)
+    adapter = NullAdapter()
+    eng = Engine(cfg, adapter, player=FakePlayer())
+
+    # Initial snapshots
+    seq1, ver1, logs1 = eng.chat_snapshot()
+    im_seq1, im_ver1, im_logs1 = eng.im_snapshot()
+    assert seq1 == 0
+    assert ver1 == 0
+    assert im_seq1 == 0
+    assert im_ver1 == 0
+
+    # Log a chat message
+    eng.log_chat("user1", "hello")
+    seq2, ver2, logs2 = eng.chat_snapshot()
+    assert seq2 == 1
+    assert ver2 == 1
+    assert len(logs2) == 1
+
+    # Log another chat message
+    eng.log_chat("user2", "world")
+    seq3, ver3, logs3 = eng.chat_snapshot()
+    assert seq3 == 2
+    assert ver3 == 2
+
+    # IM log
+    from camfrog_autodj.adapters.base import ChatMessage
+
+    eng._log_im_message(ChatMessage("user1", "private msg", is_im=True))
+    im_seq2, im_ver2, im_logs2 = eng.im_snapshot()
+    assert im_seq2 == 1
+    assert im_ver2 == 1
+    assert len(im_logs2) == 1
+
+    # Version should only change when log actually changes
+    # Calling snapshot without changes should return same version
+    seq4, ver4, _ = eng.chat_snapshot()
+    assert seq4 == 2
+    assert ver4 == 2  # version unchanged
+
+    im_seq3, im_ver3, _ = eng.im_snapshot()
+    assert im_seq3 == 1
+    assert im_ver3 == 1  # version unchanged

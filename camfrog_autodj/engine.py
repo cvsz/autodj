@@ -93,6 +93,9 @@ class Engine:
         self.outbox: queue.Queue[str] = queue.Queue()
         self.chat_log: deque[tuple[str, str]] = deque(maxlen=300)
         self.chat_seq = 0
+        self._chat_version = (
+            0  # bumped on every chat_log mutation; GUI can skip refresh when unchanged
+        )
         self.chat_done = threading.Event()
         self.wake = threading.Event()
         self.exec = ThreadPoolExecutor(
@@ -105,13 +108,16 @@ class Engine:
         )  # n = consecutive failures so far
         self._sent: deque[tuple[float, str]] = deque(maxlen=64)
         self._sent_lock = threading.Lock()
-        self._chat_lock = threading.Lock()  # guards chat_log + chat_seq (GUI polls them)
+        self._chat_lock = (
+            threading.Lock()
+        )  # guards chat_log + chat_seq + im_log + im_seq (GUI polls them)
         self._im_reply_cooldowns: dict[str, float] = {}  # user -> last IM reply time
         self._admin_greeting_cooldowns: dict[str, float] = {}  # admin -> last greeting time
         self._welcome_cooldowns: dict[str, float] = {}  # user -> last welcome message time
         self._name_colors: dict[str, str] = {}  # user -> nickname color hex (GUI preview only)
         self.im_log: deque[tuple[str, str]] = deque(maxlen=300)  # IM / private messages
         self.im_seq = 0  # IM message sequence counter for GUI polling
+        self._im_version = 0  # bumped on every im_log mutation; GUI can skip refresh when unchanged
         self._active_room_users: set[str] = set()  # users currently in room (seen in chat)
         self._participant_count: int = 0  # estimated participants (updated from chat)
         self._last_user_request_time: float = 0.0  # monotonic time of last user !play request
@@ -153,6 +159,7 @@ class Engine:
                 secret=cfg.webhook_secret,
                 host=cfg.webhook_host,
                 rate_limit_per_ip=cfg.webhook_rate_limit_per_ip,
+                cors_origins=getattr(cfg, "webhook_cors_origins", ["*"]),
             )
             self._webhook_server = WebhookServer(webhook_cfg, self)
         # ---- Plugin system --------------------------------------------------------
@@ -243,34 +250,77 @@ class Engine:
         # Update auto-reply settings
         if new_cfg.auto_reply_enabled != old_cfg.auto_reply_enabled:
             if new_cfg.auto_reply_enabled:
-                # Restart auto-reply loop
-                self.wake.set()
+                # Start auto-reply loop if it wasn't running
+                self._start_auto_reply_loop()
+            # If disabled, the loop will exit on its next iteration
         # Update IM auto-reply settings
         if new_cfg.im_auto_reply_enabled != old_cfg.im_auto_reply_enabled:
-            pass  # IM auto-reply is handled in chat loop
+            if new_cfg.im_auto_reply_enabled:
+                # Start IM auto-reply cleanup loop if it wasn't running
+                self._start_im_auto_reply_loop()
+            # If disabled, the loop will exit on its next iteration
         # Update other dynamic settings
         self.volume = new_cfg.volume
         log.info("Config reload applied successfully")
+
+    def _start_auto_reply_loop(self) -> None:
+        """Start the auto-reply loop if not already running."""
+        if not self.cfg.auto_reply_enabled:
+            return
+        # Check if the loop is already running by looking for it in _threads
+        for t in self._threads:
+            if t.name == "autodj-_auto_reply_loop" and t.is_alive():
+                return  # Already running
+        t = threading.Thread(
+            target=self._auto_reply_loop, daemon=True, name="autodj-_auto_reply_loop"
+        )
+        self._threads.append(t)
+        t.start()
+        log.info("Auto-reply loop started via config reload")
+
+    def _start_im_auto_reply_loop(self) -> None:
+        """Start the IM auto-reply cleanup loop if not already running."""
+        if not self.cfg.im_auto_reply_enabled:
+            return
+        # Check if the loop is already running
+        for t in self._threads:
+            if t.name == "autodj-_im_auto_reply_loop" and t.is_alive():
+                return  # Already running
+        t = threading.Thread(
+            target=self._im_auto_reply_loop, daemon=True, name="autodj-_im_auto_reply_loop"
+        )
+        self._threads.append(t)
+        t.start()
+        log.info("IM auto-reply cleanup loop started via config reload")
 
     # ---- chat out -------------------------------------------------------
     def log_chat(self, who: str, text: str):
         with self._chat_lock:
             self.chat_log.append((who, text))
             self.chat_seq += 1
+            self._chat_version += 1
         # Also to the logger (so --log-file / console keeps a trail of every line the bot sent and every
         # line it acted on, even with the GUI closed -- the in-memory chat_log above is lost on restart
         # and was never enough on its own to reconstruct what happened after the fact).
         log.info("chat %s %s: %s", ">>" if who == self.cfg.bot_nick else "<<", who, text)
 
-    def chat_snapshot(self) -> tuple[int, list[tuple[str, str]]]:
-        """Thread-safe snapshot of (chat_seq, chat_log) for the GUI poller."""
-        with self._chat_lock:
-            return self.chat_seq, list(self.chat_log)
+    def chat_snapshot(self) -> tuple[int, int, list[tuple[str, str]]]:
+        """Thread-safe snapshot of (chat_seq, chat_version, chat_log) for the GUI poller.
 
-    def im_snapshot(self) -> tuple[int, list[tuple[str, str]]]:
-        """Thread-safe snapshot of (im_seq, im_log) for the IM viewer GUI poller."""
+        Returns:
+            (chat_seq, chat_version, chat_log_copy)
+        """
         with self._chat_lock:
-            return self.im_seq, list(self.im_log)
+            return self.chat_seq, self._chat_version, list(self.chat_log)
+
+    def im_snapshot(self) -> tuple[int, int, list[tuple[str, str]]]:
+        """Thread-safe snapshot of (im_seq, im_version, im_log) for the IM viewer GUI poller.
+
+        Returns:
+            (im_seq, im_version, im_log_copy)
+        """
+        with self._chat_lock:
+            return self.im_seq, self._im_version, list(self.im_log)
 
     def say(self, text: str) -> bool:
         """Queue a message for sending to the chat room.
@@ -476,6 +526,7 @@ class Engine:
             if not self.player.set_pause(False):
                 log.warning("resume failed: mpv did not accept the command")
                 return
+            # Only update pause state if mpv actually accepted the command
             self._paused_total += time.monotonic() - (self._paused_at or time.monotonic())
             self.paused, self._paused_at = False, None
 
@@ -532,18 +583,24 @@ class Engine:
         def job():
             import tempfile
 
-            from .tts import synth
+            from .tts import TTS_TIMEOUT, synth
 
             wav = os.path.join(tempfile.gettempdir(), f"autodj-tts-{time.time_ns()}.wav")
             with self._speak_lock:
                 try:
                     synth(text, wav, self.cfg)
-                    # Duck music volume via IPC (play_file applies duck_volume after IPC is established)
-                    self.player.play_file(wav, duck_volume=self.cfg.tts_duck)
+                    # Duck music volume via IPC, then restore after TTS completes.
+                    # play_file handles the restore atomically while IPC is still available.
+                    # Use timeout = TTS_TIMEOUT + 30s buffer for playback
+                    self.player.play_file(
+                        wav,
+                        duck_volume=self.cfg.tts_duck,
+                        restore_volume=self.volume,
+                        timeout=TTS_TIMEOUT + 30.0,
+                    )
                 except Exception:
                     log.exception("tts failed")
                 finally:
-                    self.player.set_volume(self.volume)
                     Path(wav).unlink(missing_ok=True)
 
         self.exec.submit(job)
@@ -782,6 +839,12 @@ class Engine:
     def _preload_search_tracks(self):
         """Asynchronously resolve upcoming search-backed tracks in the queue."""
         try:
+            # Quick check: only proceed if there are search tracks to resolve
+            with self.queue.lock:
+                has_search = any(SEARCH_PREFIX.match(t.source) for t in self.queue.requests)
+            if not has_search:
+                return
+
             with self.queue.lock:
                 candidates = [t for t in self.queue.requests if SEARCH_PREFIX.match(t.source)][:3]
             for cand in candidates:
@@ -797,6 +860,13 @@ class Engine:
         except Exception:
             log.debug("preload search tracks encountered an issue", exc_info=True)
 
+    def _maybe_preload_search_tracks(self):
+        """Submit _preload_search_tracks only if there are search tracks in the queue."""
+        with self.queue.lock:
+            has_search = any(SEARCH_PREFIX.match(t.source) for t in self.queue.requests)
+        if has_search:
+            self.exec.submit(self._preload_search_tracks)
+
     def _load_all(self):
         self._load_library()
         self._load_autoplay_sources()
@@ -808,8 +878,8 @@ class Engine:
             len(self.queue.requests),
         )
         self.wake.set()
-        # Trigger background lookahead resolution for search tracks
-        self.exec.submit(self._preload_search_tracks)
+        # Trigger background lookahead resolution for search tracks (only if needed)
+        self._maybe_preload_search_tracks()
 
     def _load_library(self):
         try:
@@ -966,8 +1036,8 @@ class Engine:
                 self._record_circuit_failure()
                 continue
 
-            # After popping and resolving current, trigger preload for next in queue
-            self.exec.submit(self._preload_search_tracks)
+            # After popping and resolving current, trigger preload for next in queue (only if needed)
+            self._maybe_preload_search_tracks()
             fails = self._play_one_track(t, fails, is_request=is_request)
 
     def _mpv_available(self) -> bool:
@@ -1102,6 +1172,8 @@ class Engine:
         self._log_im_message(msg)
         if self.cfg.im_auto_reply_enabled:
             self._handle_im_message(msg)
+        # Process IM commands through the router (like room messages)
+        self.exec.submit(self.router.handle, msg)
 
     def _handle_room_message(self, msg: ChatMessage) -> None:
         """Handle a room message (non-IM)."""
@@ -1138,6 +1210,7 @@ class Engine:
         """Log an IM / private message for the IM viewer GUI (read-only)."""
         self.im_log.append((msg.user, msg.text))
         self.im_seq += 1
+        self._im_version += 1
 
     def _handle_admin_greeting(self, msg: ChatMessage) -> None:
         """Greet an admin on their first message of the session (if enabled)."""
@@ -1698,10 +1771,11 @@ class Engine:
 
         # IM log state
         try:
-            im_seq, im_entries = self.im_snapshot()
+            im_seq, im_version, im_entries = self.im_snapshot()
             checks["im_viewer"] = {
                 "ok": True,
                 "seq": im_seq,
+                "version": im_version,
                 "entries": len(im_entries),
             }
         except Exception as ex:  # noqa: BLE001

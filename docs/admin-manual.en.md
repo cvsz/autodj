@@ -99,37 +99,57 @@ prefix = "!"
 
 ```toml
 # Camfrog room window detection
-window_title_re = ".*"          # Room window title regex
-process_re = "(?i)camfrog"      # Process name filter
-auto_discover = true            # Auto-detect room window at startup
+window_title_re = ".*"              # Room window title regex
+process_re = "(?i)camfrog"          # Process name filter
+window_exclude_re = ""              # Drop matching titles when several windows match
+window_index = 0                    # Pick the Nth remaining match
+auto_discover = true                # Auto-detect room window at startup
 
 # Chat adapter: "uia" (Windows UI Automation) | "logtail" | "console"
 chat_reader = "uia"
 chat_sender = "uia"
 
 # UIA-specific (auto-filled by --discover)
-view_kind = "auto"
-view_type = "Document"
+view_kind = "auto"                  # auto | web | text
+send_mode = "auto"                  # background | foreground | auto
+send_verify = true                  # auto: check the line really appeared in the room
+web_strict_body = true              # web view: drop plain text right after message body
+web_view_title = "wb-log-room-data" # substring of the chat-history pane title
+web_input_title = "wb-edit-data"    # substring of the message-box pane title
+view_type = "Document"              # (filled in by auto_discover)
 view_index = 0
 input_type = "Edit"
 input_index = -1
 line_regex = '^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$'
+log_path = ""                       # also write the log to this file (rotating, 1 MB x 3)
+log_encoding = "utf-8"              # log file encoding
 ```
 
 ### Audio Settings
 
 ```toml
 # mpv player path (required)
-mpv_path = "mpv"                    # or full path: "C:/mpv/mpv.exe"
+mpv_path = "mpv/mpv.exe"            # or full path: "C:/mpv/mpv.exe"
 
 # yt-dlp path (auto-detected if empty)
-ytdlp_path = ""                     # or "C:/mpv/yt-dlp.exe"
+ytdlp_path = "mpv/yt-dlp.exe"       # or "C:/mpv/yt-dlp.exe"
+
+# YouTube authentication (optional)
+youtube_cookies_file = ""           # path to Netscape cookies.txt for yt-dlp
+youtube_cookies_browser = ""        # browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
+youtube_ca_bundle = ""              # path to custom CA bundle PEM file for yt-dlp certificate verification
 
 # Audio output device (from: mpv --audio-device=help)
-audio_device = ""                   # e.g. "wasapi/{guid}" for virtual cable
+audio_device = "auto"               # "auto" = system default; or wasapi/{GUID} for virtual cable
+
+# Audio effects
+audio_fade = true                   # enable audio volume fade-in and fade-out
+audio_fade_in_sec = 1.2             # fade-in duration in seconds
+audio_fade_out_sec = 1.5            # fade-out duration on skip/stop in seconds
+audio_normalize = false             # enable dynamic audio loudness normalization (dynaudnorm)
 
 # Default volume (0-100)
-volume = 70
+volume = 100
 ```
 
 ### Music Library
@@ -171,31 +191,31 @@ voteskip_dynamic_pct = 30      # Percentage for dynamic mode
 # Cooldown & flood control
 cooldown = 3.0                 # Seconds between commands per user
 send_interval = 1.5            # Seconds between chat messages
-max_msg_len = 180              # Max message length
+max_msg_len = 200              # Max message length
 ```
 
-### Autoplay & Idle Behavior (New in 0.3.0)
+### Autoplay & Idle Behavior
 
 ```toml
 # Seconds of no user requests before switching to autoplay
-autoplay_idle_timeout = 30.0   # Min 60s if auto_reply_enabled
+autoplay_idle_timeout = 30.0       # Min 30s
 
 # Playlist persistence
-playlist_file = "playlist.json"    # User requests saved here
-playlist_dir = ""                  # Folder of .json playlist files
-search_limit = 1                   # YouTube search results per request
+playlist_file = "playlist.json"    # User requests saved here (deduplicated)
+playlist_dir = "playlist/"         # Folder of .json playlist files (auto-loaded at startup)
+search_limit = 1                   # YouTube search results per non-admin !play (1 = first match only; max 50)
 
 # mpv timeout (0 = never timeout)
-mpv_timeout = 30
+mpv_timeout = 30                   # seconds to wait for one mpv track before treating it as hung
 ```
 
-### Admin Greeting (New in 0.3.0)
+### Admin Greeting
 
 ```toml
 # Greet admin on first message in session
-admin_greeting_enabled = false
-admin_greeting_message = "Welcome back admin {admin}!"
-admin_greeting_cooldown = 3600.0   # Seconds between greetings per admin
+admin_greeting_enabled = true
+admin_greeting_message = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"
+admin_greeting_cooldown = 3600.0   # Seconds between greetings per admin (1 hour)
 ```
 
 ### IM Security (New in 0.3.0)
@@ -208,9 +228,9 @@ im_require_room_presence = true
 ### Auto-Reply (Scheduled Messages)
 
 ```toml
-auto_reply_enabled = false
-auto_reply_interval = 300.0      # Min 60 seconds
-auto_reply_file = "ads-list.json"  # JSON file with messages
+auto_reply_enabled = true
+auto_reply_interval = 300.0        # seconds between auto-reply messages (min 60s)
+auto_reply_file = "ads-list.json"  # JSON file with messages to rotate through
 ```
 
 ### TTS (Text-to-Speech)
@@ -227,10 +247,10 @@ tts_duck = 25                    # Music volume during TTS (0-100)
 
 ```toml
 message_style = { 
-    font_family = "Consolas", 
+    font_family = "Tahoma", 
     font_size = 14, 
     font_color = "#FF0000", 
-    bold = false, 
+    bold = true, 
     italic = false, 
     underline = false 
 }
@@ -242,23 +262,129 @@ message_style = {
 log_file = ""                    # e.g. "autodj.log" (rotating 1MB x3)
 log_path = ""                    # Custom log directory
 log_encoding = "utf-8"
+
+# JSON structured logging
+log_json = false                 # enable JSON structured logging output
+log_json_fields = [              # extra fields to include in JSON logs
+  "request_id", "delivery_id", "user", "track_id", "generation",
+  "attempt_id", "category", "stage", "state"
+]
 ```
 
 ### Auto-Launch (Windows Only)
 
 ```toml
 auto_launch = false              # Launch Camfrog and join room automatically
-camfrog_exe = ""                 # Path to Camfrog executable
+camfrog_exe = "%USERPROFILE%\\AppData\\Local\\Programs\\Camfrog Video Chat\\Camfrog Video Chat.exe"  # Path to Camfrog exe
 client_title_re = ".*"           # Main client window title regex
 room = ""                        # Room name to join
-join_uri_template = ""           # URI template with {room} placeholder
+join_uri_template = "camfrog://room/{room}"  # URI template with {room} placeholder (URL-encoded)
 launch_timeout = 60              # Seconds to wait for room window
 ```
 
 ### Blocked Users
 
 ```toml
-blocked_users = []               # Nicks whose commands are ignored
+blocked_users = []               # Nicks whose commands are ignored (admins cannot be blocked)
+```
+
+### IM Auto-Reply & Viewer
+
+```toml
+im_auto_reply_enabled = true       # enable auto-reply to private/instant messages
+im_auto_reply_message = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
+im_auto_reply_cooldown = 60.0      # seconds between auto-replies to the same user (avoid spam)
+im_viewer_enabled = true           # show the IM / private message viewer tab in the GUI
+im_require_room_presence = true    # only users seen in room chat can DM the bot
+allow_play_in_room = false         # when true, !play works in room chat for all users
+```
+
+### Camfrog RE Integrations (Gift / Avatar / Status / Alerts)
+
+```toml
+# Gift / virtual-gift announcement (detect gift messages in room chat)
+gift_announce_enabled = true
+
+# Avatar change announcement (detect avatar changes in room chat)
+avatar_change_enabled = true
+
+# Status indicator announcement (detect online/away/busy/invisible/admin/moderator/owner)
+status_indicator_enabled = true
+
+# Status alerts (detect upgrade/payment-required status text)
+status_alert_enabled = true
+```
+
+### Welcome Message
+
+```toml
+welcome_message_enabled = true
+welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ camfrog://room/{room}!"
+welcome_message_cooldown = 3600.0   # seconds between welcome messages for same user (1 hour)
+```
+
+### Admin Command Gating (Config-gated Features)
+
+```toml
+# Admin mic mute/unmute
+admin_mute_mic = true
+admin_unmute_mic = true
+
+# Admin block/unblock user
+admin_block_user = false
+admin_unblock_user = false
+
+# Admin block/unblock bot
+admin_block_bot = true
+admin_unblock_bot = true
+
+# Admin kick/ban/unban user
+admin_kick_user = true
+admin_ban_user = true
+admin_unban_user = true
+
+# Admin punish user/bot
+admin_punish_user = true
+admin_punish_bot = true
+
+# Admin delete message
+admin_delete_message_enabled = true
+
+# Mic mute state
+mute_enabled = false
+```
+
+### JSON Structured Logging
+
+```toml
+log_json = false                       # enable JSON structured logging output
+log_json_fields = [                    # extra fields to include in JSON logs
+  "request_id", "delivery_id", "user", "track_id", "generation",
+  "attempt_id", "category", "stage", "state"
+]
+```
+
+### Webhook / API Integration
+
+```toml
+webhook_enabled = false                # enable HTTP webhook server for external control
+webhook_host = "127.0.0.1"             # host to bind webhook server (use 0.0.0.0 for external access)
+webhook_port = 8080                    # port for webhook server
+webhook_secret = ""                    # HMAC secret for webhook signature verification (empty = no verification)
+webhook_rate_limit_per_ip = 60         # max requests per IP per minute
+webhook_cors_origins = ["*"]           # CORS allowed origins (e.g. ["https://example.com"]; default ["*"] = all)
+```
+
+### Config Hot Reload
+
+```toml
+config_hot_reload = false              # enable hot reload of config.toml (requires 'watchdog' extra: pip install -e .[hotreload])
+```
+
+### Plugin System
+
+```toml
+plugins = ["builtin.stats", "builtin.help"]  # list of plugin modules to load (e.g. "builtin.stats", "myplugin")
 ```
 
 ---

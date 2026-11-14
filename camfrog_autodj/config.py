@@ -247,6 +247,7 @@ class Config:
     webhook_secret: str = ""
     webhook_host: str = "127.0.0.1"
     webhook_rate_limit_per_ip: int = 60
+    webhook_cors_origins: list[str] = field(default_factory=lambda: ["*"])
     # Plugin system
     plugins: list[str] = field(default_factory=lambda: ["builtin.stats", "builtin.help"])
     # Config hot reload

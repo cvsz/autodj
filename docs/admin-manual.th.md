@@ -99,37 +99,57 @@ prefix = "!"
 
 ```toml
 # การตรวจจับหน้าต่างห้อง Camfrog
-window_title_re = ".*"          # Regex ชื่อหน้าต่างห้อง
-process_re = "(?i)camfrog"      # กรองชื่อโปรเซส
-auto_discover = true            # ตรวจจับห้องอัตโนมัติตอนเริ่มต้น
+window_title_re = ".*"              # Regex ชื่อหน้าต่างห้อง
+process_re = "(?i)camfrog"          # กรองชื่อโปรเซส
+window_exclude_re = ""              # Drop matching titles when several windows match
+window_index = 0                    # Pick the Nth remaining match
+auto_discover = true                # ตรวจจับห้องอัตโนมัติตอนเริ่มต้น
 
 # แอดอัปเตอร์แชท: "uia" (Windows UI Automation) | "logtail" | "console"
 chat_reader = "uia"
 chat_sender = "uia"
 
 # เฉพาะ UIA (เติมอัตโนมัติโดย --discover)
-view_kind = "auto"
-view_type = "Document"
+view_kind = "auto"                  # auto | web | text
+send_mode = "auto"                  # background | foreground | auto
+send_verify = true                  # auto: check the line really appeared in the room
+web_strict_body = true              # web view: drop plain text right after message body
+web_view_title = "wb-log-room-data" # substring of the chat-history pane title
+web_input_title = "wb-edit-data"    # substring of the message-box pane title
+view_type = "Document"              # (filled in by auto_discover)
 view_index = 0
 input_type = "Edit"
 input_index = -1
 line_regex = '^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$'
+log_path = ""                       # also write the log to this file (rotating, 1 MB x 3)
+log_encoding = "utf-8"              # log file encoding
 ```
 
 ### การตั้งค่าเสียง
 
 ```toml
 # เส้นทาง mpv player (จำเป็น)
-mpv_path = "mpv"                    # หรือพาธเต็ม: "C:/mpv/mpv.exe"
+mpv_path = "mpv/mpv.exe"            # หรือพาธเต็ม: "C:/mpv/mpv.exe"
 
 # เส้นทาง yt-dlp (ตรวจจับอัตโนมัติถ้าว่าง)
-ytdlp_path = ""                     # หรือ "C:/mpv/yt-dlp.exe"
+ytdlp_path = "mpv/yt-dlp.exe"       # หรือ "C:/mpv/yt-dlp.exe"
+
+# การยืนยันตัวตน YouTube (ตัวเลือก)
+youtube_cookies_file = ""           # path to Netscape cookies.txt for yt-dlp
+youtube_cookies_browser = ""        # browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
+youtube_ca_bundle = ""              # path to custom CA bundle PEM file for yt-dlp certificate verification
 
 # อุปกรณ์เอาท์พุตเสียง (จาก: mpv --audio-device=help)
-audio_device = ""                   # เช่น "wasapi/{guid}" สำหรับ virtual cable
+audio_device = "auto"               # "auto" = system default; หรือ wasapi/{GUID} สำหรับ virtual cable
+
+# เอฟเฟกต์เสียง
+audio_fade = true                   # enable audio volume fade-in and fade-out
+audio_fade_in_sec = 1.2             # fade-in duration in seconds
+audio_fade_out_sec = 1.5            # fade-out duration on skip/stop in seconds
+audio_normalize = false             # enable dynamic audio loudness normalization (dynaudnorm)
 
 # ระดับเสียงเริ่มต้น (0-100)
-volume = 70
+volume = 100
 ```
 
 ### คลังเพลง
@@ -171,31 +191,31 @@ voteskip_dynamic_pct = 30      # เปอร์เซ็นต์สำหร�
 # คูลดาวน์และป้องกันน้ำท่วม
 cooldown = 3.0                 # วินาทีระหว่างคำสั่งต่อผู้ใช้
 send_interval = 1.5            # วินาทีระหว่างข้อความแชท
-max_msg_len = 180              # ความยาวข้อความสูงสุด
+max_msg_len = 200              # ความยาวข้อความสูงสุด
 ```
 
-### การเล่นอัตโนมัติและพฤติกรรมเวลาว่าง (ใหม่ใน 0.3.0)
+### การเล่นอัตโนมัติและพฤติกรรมเวลาว่าง
 
 ```toml
 # วินาทีที่ไม่มีคำขอจากผู้ใช้ ก่อนสลับไปเล่นอัตโนมัติ
-autoplay_idle_timeout = 30.0   # ขั้นต่ำ 60 วินาที ถ้า auto_reply_enabled
+autoplay_idle_timeout = 30.0       # ขั้นต่ำ 30 วินาที
 
 # ความคงที่ของเพลย์ลิสต์
-playlist_file = "playlist.json"    # บันทึกคำขอผู้ใช้ที่นี่
-playlist_dir = ""                  # โฟลเดอร์ไฟล์ .json เพลย์ลิสต์
-search_limit = 1                   # ผลลัพธ์ค้นหา YouTube ต่อคำขอ
+playlist_file = "playlist.json"    # บันทึกคำขอผู้ใช้ที่นี่ (ลบซ้ำ)
+playlist_dir = "playlist/"         # โฟลเดอร์ไฟล์ .json เพลย์ลิสต์ (โหลดอัตโนมัติตอนเริ่มต้น)
+search_limit = 1                   # ผลลัพธ์ค้นหา YouTube ต่อ !play ของ non-admin (1 = ผลลัพธ์แรก; สูงสุด 50)
 
 # หมดเวลา mpv (0 = ไม่มี timeout)
-mpv_timeout = 30
+mpv_timeout = 30                   # วินาทีรอหนึ่งเพลง mpv ก่อนถือว่า hang
 ```
 
-### ทักทายแอดมิน (ใหม่ใน 0.3.0)
+### ทักทายแอดมิน
 
 ```toml
 # ทักทายแอดมินเมื่อส่งข้อความครั้งแรกในเซสชัน
-admin_greeting_enabled = false
+admin_greeting_enabled = true
 admin_greeting_message = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"
-admin_greeting_cooldown = 3600.0   # วินาทีระหว่างการทักทายต่อแอดมิน
+admin_greeting_cooldown = 3600.0   # วินาทีระหว่างการทักทายต่อแอดมิน (1 ชั่วโมง)
 ```
 
 ### ความปลอดภัย IM (ใหม่ใน 0.3.0)
@@ -208,9 +228,9 @@ im_require_room_presence = true
 ### ตอบกลับอัตโนมัติ (ข้อความตามกำหนด)
 
 ```toml
-auto_reply_enabled = false
-auto_reply_interval = 300.0      # ขั้นต่ำ 60 วินาที
-auto_reply_file = "ads-list.json"  # ไฟล์ JSON เก็บข้อความ
+auto_reply_enabled = true
+auto_reply_interval = 300.0        # วินาทีระหว่างข้อความ auto-reply (ขั้นต่ำ 60 วินาที)
+auto_reply_file = "ads-list.json"  # ไฟล์ JSON เก็บข้อความสำหรับหมุนเวียน
 ```
 
 ### TTS (Text-to-Speech)
@@ -227,10 +247,10 @@ tts_duck = 25                    # ระดับเสียงเพลงร
 
 ```toml
 message_style = { 
-    font_family = "Consolas", 
+    font_family = "Tahoma", 
     font_size = 14, 
     font_color = "#FF0000", 
-    bold = false, 
+    bold = true, 
     italic = false, 
     underline = false 
 }
@@ -242,23 +262,129 @@ message_style = {
 log_file = ""                    # เช่น "autodj.log" (หมุน 1MB x3)
 log_path = ""                    # ไดเรกทอรี log แบบกำหนดเอง
 log_encoding = "utf-8"
+
+# JSON structured logging
+log_json = false                 # enable JSON structured logging output
+log_json_fields = [              # extra fields to include in JSON logs
+  "request_id", "delivery_id", "user", "track_id", "generation",
+  "attempt_id", "category", "stage", "state"
+]
 ```
 
 ### เปิดอัตโนมัติ (Windows เท่านั้น)
 
 ```toml
 auto_launch = false              # เปิด Camfrog และเข้าห้องอัตโนมัติ
-camfrog_exe = ""                 # เส้นทางไฟล์ Camfrog executable
+camfrog_exe = "%USERPROFILE%\\AppData\\Local\\Programs\\Camfrog Video Chat\\Camfrog Video Chat.exe"  # เส้นทางไฟล์ Camfrog exe
 client_title_re = ".*"           # Regex ชื่อหน้าต่างไคลเอนต์หลัก
 room = ""                        # ชื่อห้องที่จะเข้าร่วม
-join_uri_template = ""           # URI template พร้อม placeholder {room}
+join_uri_template = "camfrog://room/{room}"  # URI template พร้อม placeholder {room} (URL-encoded)
 launch_timeout = 60              # วินาทีรอหน้าต่างห้อง
 ```
 
 ### ผู้ใช้ที่ถูกบล็อก
 
 ```toml
-blocked_users = []               # นามเดิมที่คำสั่งจะถูกเพิกเฉย
+blocked_users = []               # นามเดิมที่คำสั่งจะถูกเพิกเฉย (แอดมินไม่สามารถถูกบล็อกได้)
+```
+
+### IM Auto-Reply & Viewer
+
+```toml
+im_auto_reply_enabled = true       # enable auto-reply to private/instant messages
+im_auto_reply_message = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
+im_auto_reply_cooldown = 60.0      # seconds between auto-replies to the same user (avoid spam)
+im_viewer_enabled = true           # show the IM / private message viewer tab in the GUI
+im_require_room_presence = true    # only users seen in room chat can DM the bot
+allow_play_in_room = false         # when true, !play works in room chat for all users
+```
+
+### Camfrog RE Integrations (Gift / Avatar / Status / Alerts)
+
+```toml
+# Gift / virtual-gift announcement (detect gift messages in room chat)
+gift_announce_enabled = true
+
+# Avatar change announcement (detect avatar changes in room chat)
+avatar_change_enabled = true
+
+# Status indicator announcement (detect online/away/busy/invisible/admin/moderator/owner)
+status_indicator_enabled = true
+
+# Status alerts (detect upgrade/payment-required status text)
+status_alert_enabled = true
+```
+
+### Welcome Message
+
+```toml
+welcome_message_enabled = true
+welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ camfrog://room/{room}!"
+welcome_message_cooldown = 3600.0   # seconds between welcome messages for same user (1 hour)
+```
+
+### Admin Command Gating (Config-gated Features)
+
+```toml
+# Admin mic mute/unmute
+admin_mute_mic = true
+admin_unmute_mic = true
+
+# Admin block/unblock user
+admin_block_user = false
+admin_unblock_user = false
+
+# Admin block/unblock bot
+admin_block_bot = true
+admin_unblock_bot = true
+
+# Admin kick/ban/unban user
+admin_kick_user = true
+admin_ban_user = true
+admin_unban_user = true
+
+# Admin punish user/bot
+admin_punish_user = true
+admin_punish_bot = true
+
+# Admin delete message
+admin_delete_message_enabled = true
+
+# Mic mute state
+mute_enabled = false
+```
+
+### JSON Structured Logging
+
+```toml
+log_json = false                       # enable JSON structured logging output
+log_json_fields = [                    # extra fields to include in JSON logs
+  "request_id", "delivery_id", "user", "track_id", "generation",
+  "attempt_id", "category", "stage", "state"
+]
+```
+
+### Webhook / API Integration
+
+```toml
+webhook_enabled = false                # enable HTTP webhook server for external control
+webhook_host = "127.0.0.1"             # host to bind webhook server (use 0.0.0.0 for external access)
+webhook_port = 8080                    # port for webhook server
+webhook_secret = ""                    # HMAC secret for webhook signature verification (empty = no verification)
+webhook_rate_limit_per_ip = 60         # max requests per IP per minute
+webhook_cors_origins = ["*"]           # CORS allowed origins (e.g. ["https://example.com"]; default ["*"] = all)
+```
+
+### Config Hot Reload
+
+```toml
+config_hot_reload = false              # enable hot reload of config.toml (requires 'watchdog' extra: pip install -e .[hotreload])
+```
+
+### Plugin System
+
+```toml
+plugins = ["builtin.stats", "builtin.help"]  # list of plugin modules to load (e.g. "builtin.stats", "myplugin")
 ```
 
 ---
