@@ -36,7 +36,7 @@ def test_tts_ducks_music_volume_real_player():
 
     mock_player.set_volume.side_effect = set_volume_side_effect
 
-    def play_file_side_effect(path, duck_volume=None):
+    def play_file_side_effect(path, duck_volume=None, restore_volume=None, timeout=120.0):
         # Simulate play_file setting up IPC
         mock_player._ipc = "/fake/ipc/path"
         # Apply duck volume if provided
@@ -46,6 +46,9 @@ def test_tts_ducks_music_volume_real_player():
         import time
 
         time.sleep(0.01)
+        # Apply restore volume if provided (simulating the fix)
+        if restore_volume is not None:
+            mock_player.set_volume(restore_volume)
         mock_player._ipc = None
 
     mock_player.play_file.side_effect = play_file_side_effect

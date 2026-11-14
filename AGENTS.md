@@ -181,7 +181,7 @@ For repository administration, `scripts/github_admin.py` requires an authenticat
 
 - **Git credentials:** `$HOME/.git-credentials` (never expose contents)
 - **GPG signing:** `commit.gpgsign=true`, `gpg.program` configured per environment
-- **GPG key:** configured via `user.signingkey` in git config (key fingerprint not tracked)
+- **GPG key:** configured via `user.signingkey` in git config (key fingerprint not tracked; use `REPLACE_ME_KEY_FINGERPRINT` as placeholder)
 
 ### Phase A — Developer (cvsz): Implement & Open PR
 
@@ -267,7 +267,7 @@ git pull origin main  # fast-forward
 - **Never** commit directly to main — all changes via PR
 - **Always** verify exact HEAD SHA before merge (`--match-head-commit`)
 - **GPG signing required** for merge commit and feature commits
-- **Credential reference:** `/home/cvsz/.git-credentials` — never print or expose
+- **Credential reference:** `$HOME/.git-credentials` — never print or expose
 
 ## Multi-Account GitHub Switching
 
@@ -281,7 +281,7 @@ gh auth switch -u cvsz
 
 This activates the cvsz GitHub account (keyring-stored token). After switching:
 
-- `git commit -S` will GPG-sign commits with cvsz's key (`88391BC64A359AA11350FDF5C25DCEC4509AB245`)
+- `git commit -S` will GPG-sign commits with cvsz's key (`REPLACE_ME_KEY_FINGERPRINT`)
 - `gh pr create` will open PRs under the cvsz identity
 - `gh pr merge` will merge with cvsz's approval
 

@@ -378,13 +378,25 @@ class MpvPlayer:
     def set_volume(self, v: int) -> bool:
         return self._cmd("set_property", "volume", v)
 
-    def play_file(self, path: str, duck_volume: int | None = None):
+    def play_file(
+        self,
+        path: str,
+        duck_volume: int | None = None,
+        restore_volume: int | None = None,
+        timeout: float = 120.0,
+    ):
         """Play a single file (e.g. TTS WAV) and set up IPC so volume control works during playback.
 
         Args:
             path: Path to the audio file to play.
             duck_volume: Optional volume level (0-100) to set after IPC is established
                 but before playback starts. Used for TTS ducking.
+            restore_volume: Optional volume level (0-100) to restore after playback completes.
+                If provided, the volume is restored atomically after the file finishes playing,
+                ensuring IPC is still available. This avoids a race where the caller restores
+                volume after play_file() returns but IPC has already been cleared.
+            timeout: Maximum time in seconds to wait for playback to complete.
+                Default 120s to accommodate TTS synthesis (up to 60s) + playback.
         """
         # Set up IPC so set_volume() (ducking) works during TTS playback
         n = next(_ids)
@@ -392,7 +404,7 @@ class MpvPlayer:
         kw: dict = {}
         if _is_windows():
             kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
-        kw["timeout"] = 30
+        kw["timeout"] = timeout
         cmd = self._base() + [
             "--volume=100",
             f"--input-ipc-server={ipc}",
@@ -413,6 +425,9 @@ class MpvPlayer:
         except subprocess.TimeoutExpired:
             log.warning("play_file timed out")
         finally:
+            # Restore volume BEFORE clearing IPC, so the restore command can reach mpv
+            if restore_volume is not None:
+                self.set_volume(restore_volume)
             with self._lock:
                 self.proc = None
                 self._ipc = None

@@ -591,7 +591,7 @@ def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path, monkeypatch):
     nt = os.name == "nt"
     real_which = shutil.which
     monkeypatch.setattr(
-        "camfrog_autodj.library.shutil.which",
+        "camfrog_autodj.paths.shutil.which",
         lambda command: None if command == "yt-dlp" else real_which(command),
     )
     mpv = tmp_path / ("mpv.exe" if nt else "mpv")
@@ -614,7 +614,7 @@ def test_find_ytdlp_falls_back_to_path(monkeypatch):
     from camfrog_autodj.library import find_ytdlp
 
     monkeypatch.setattr(
-        "camfrog_autodj.library.shutil.which",
+        "camfrog_autodj.paths.shutil.which",
         lambda command: "/opt/bin/yt-dlp" if command == "yt-dlp" else None,
     )
     assert find_ytdlp("", "missing-mpv") == "/opt/bin/yt-dlp"

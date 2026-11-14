@@ -1,171 +1,235 @@
-bot_nick = "zdevz"            # nick the bot uses in the room (its own lines are ignored)
-# admins = []                  # case-insensitive list of admin nicks (no default; configure operator nicks only)
+# CamfrogAutoDJ Configuration
+# ============================
+# Copy this file to config.toml and edit as needed.
+# All settings are documented below with their types and valid ranges.
+#
+# Configuration precedence (highest to lowest):
+#   1. Command-line arguments (--flag=value)
+#   2. config.toml (this file)
+# 3. Built-in defaults (shown in comments)
+#
+# Validation: On startup, config.toml is validated. Any invalid value raises a
+# ConfigError with the exact line number and a marker pointing to the problem.
+# See camfrog_autodj/config.py for the complete validation logic.
+
+# --- Core Bot Identity --------------------------------------------------------
+bot_nick = "AutoDJ"                 # Nickname the bot uses in the room (its own lines are ignored)
+admins = []                         # Case-insensitive list of admin nicks (no default; configure operator nicks only)
 # WARNING: Nickname-based authorization is spoofable. Prefer immutable authenticated
 # account identifiers where the chat protocol supports them.
-admins = ["Seaza"]
-prefix = "!"                   # command prefix
-lang = "th"                    # "en" | "th": bot replies + GUI (switchable live in the GUI)
+prefix = "!"                        # Command prefix (e.g. "!", "/", ".")
+lang = "en"                         # "en" | "th": bot replies + GUI language (switchable live in the GUI)
 
-# chat I/O: "uia" (Windows UI automation), "logtail" (read only), "console" (testing)
+# --- Chat I/O (UI Automation / Log Tail / Console) ---------------------------
+# chat_reader: "uia" (Windows UI Automation), "logtail" (read chat log file), "console" (stdin for testing)
+# chat_sender: "uia" (UIA send), "logtail" (write to log file), "console" (stdout)
 chat_reader = "uia"
 chat_sender = "uia"
-window_title_re = ".*"         # room windows are titled "<room>: ห้องสนทนา"; auto_discover fills this in
-process_re = "(?i)camfrog"     # only windows of a process whose exe name matches (skips browser tabs etc.); "" = any
-# several windows can match (main client + room). Narrow it, or filter/choose:
-window_exclude_re = ""         # drop matching titles when several windows match
-window_index = 0               # pick the Nth remaining match
-auto_discover = true           # at startup: find the room window + chat/input controls and rewrite the 5 lines below
-view_kind = "auto"             # auto | web | text. Camfrog rooms are "web" (chat is an embedded web view)
-send_mode = "auto"             # background = post messages to the chat window, Camfrog stays in the background | foreground | auto (background, verify, fallback)
-send_verify = true             # auto: check the line really appeared in the room (else retry in foreground)
-web_strict_body = true         # web view: text right after a body, with no emoticon/link between, is a system/date line: ignored
-web_view_title = "wb-log-room-data"   # substring of the chat-history pane title
-web_input_title = "wb-edit-data"      # substring of the message-box pane title
-view_type = "Document"         # (filled in by auto_discover; or tools/inspect_ui.py)
+
+# Window discovery (used when chat_reader/chat_sender = "uia")
+window_title_re = ".*"              # Room window title regex (e.g. ".*: ห้องสนทนา"); auto_discover rewrites this
+process_re = "(?i)camfrog"          # Process exe name regex filter ("" = any process)
+window_exclude_re = ""              # Drop matching titles when several windows match
+window_index = 0                    # Pick the Nth remaining match (0 = first)
+auto_discover = true                # At startup: find room window + chat/input controls, save to config.toml
+view_kind = "auto"                  # auto | web (Camfrog room: embedded web panes) | text (Document/Edit controls)
+send_mode = "auto"                  # background (no focus steal) | foreground (focus + paste) | auto (background, verify, fallback)
+send_verify = true                  # auto mode: confirm line appeared in room before accepting background send
+web_strict_body = true              # Web view: drop plain text directly following a message body (date headers / system lines)
+web_view_title = "wb-log-room-data" # Substring of the chat-history pane title (for UIA element search)
+web_input_title = "wb-edit-data"    # Substring of the message-box pane title (for UIA element search)
+view_type = "Document"              # Filled in by auto_discover (or tools/inspect_ui.py)
 view_index = 0
 input_type = "Edit"
 input_index = -1
-# log_path = "logs/chat.log"
-log_path = ""                   # also write the log to this file (rotating, 1 MB x 3)
-log_encoding = "utf-8"            # log file encoding
+
+# Log file (optional, for logtail reader or additional logging)
+log_path = ""                       # Also write chat log to this file (rotating, 1 MB x 3)
+log_encoding = "utf-8"              # Log file encoding
+
+# Line parsing regex for logtail reader (must have named groups: user, text)
 line_regex = '^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$'
 
+# --- Media Playback (mpv / yt-dlp) -------------------------------------------
 # mpv and yt-dlp are installed alongside AutoDJ by the NSIS installer:
 #   $INSTDIR/mpv/mpv.exe        (mpv player)
 #   $INSTDIR/mpv/yt-dlp.exe     (YouTube downloader for mpv + title lookups)
 # Example: mpv_path = "mpv/mpv.exe"  (relative to AutoDJ.exe install dir)
 # Example: ytdlp_path = "mpv/yt-dlp.exe"
 mpv_path = "mpv/mpv.exe"
-ytdlp_path = "mpv/yt-dlp.exe"
-youtube_cookies_file = ""          # path to Netscape cookies.txt for yt-dlp
-youtube_cookies_browser = ""       # browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
-youtube_ca_bundle = ""             # path to custom CA bundle PEM file for yt-dlp certificate verification
+ytdlp_path = "mpv/yt-dlp.exe"       # "" = auto: yt-dlp(.exe) next to mpv or on PATH, else bundled Python module
 
-audio_device = "auto"              # "auto" = system default; or wasapi/{GUID} for virtual cable (run: mpv --audio-device=help)
-audio_fade = true                  # enable audio volume fade-in and fade-out
-audio_fade_in_sec = 1.2            # fade-in duration in seconds
-audio_fade_out_sec = 1.5           # fade-out duration on skip/stop in seconds
-audio_normalize = false            # enable dynamic audio loudness normalization (dynaudnorm)
-# --- local music library (mutagen reads title/artist/duration; falls back to filename
-# if mutagen is not installed) and TTS (pyttsx3 / Windows SAPI) ---------------------
-volume = 100
-music_dirs = ["music/"]   # local library: requestable by name, also autoplayed
-autoplay_sources = []          # extra YouTube playlist URLs / folders / files to autoplay
-shuffle = true
+# YouTube authentication (for age-restricted / private content)
+youtube_cookies_file = ""           # Path to Netscape cookies.txt for yt-dlp
+youtube_cookies_browser = ""        # Browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
+youtube_ca_bundle = ""              # Path to custom CA bundle PEM file for yt-dlp certificate verification
 
-allowed_hosts = ["youtube.com", "youtu.be", "music.youtube.com"]
-max_requests_per_user = 3
-max_queue = 50
-max_duration = 900             # seconds, non-admin requests
-voteskip_threshold = 3
-voteskip_dynamic = false           # dynamic voteskip threshold based on participant count
-voteskip_dynamic_pct = 30          # percentage of participants required to skip
-user_request_limit = 5             # max song requests allowed per user within rate_limit_window
-rate_limit_window = 300.0          # rolling time window for per-user request limit (seconds)
-cooldown = 3.0
-send_interval = 1.5            # seconds between chat lines (flood control)
-max_msg_len = 200
-announce_next = true
-# msg_now / msg_next: leave unset to use the built-in text for `lang`; set to override (fields: {title} {duration} {requester})
-msg_now = "{requester} : ขอเพลง {title} {duration}"                    # override built-in now-playing text
-msg_next = "เพลงต่อไป อีก {duration} เพลง {title} ขอโดย {requester} "                   # override built-in up-next text
+# Audio output
+audio_device = "auto"               # "auto" = system default; or wasapi/{GUID} for virtual cable (run: mpv --audio-device=help)
+volume = 70                         # Playback volume 0-100
 
-tts_voice = ""                 # substring of an installed voice name (Thai voice for Thai text)
-tts_rate = 170
-tts_duck = 25                  # music volume while speaking
+# Audio engineering
+audio_fade = true                   # Enable audio volume fade-in and fade-out
+audio_fade_in_sec = 1.2             # Fade-in duration in seconds (0.1-10.0)
+audio_fade_out_sec = 1.5            # Fade-out duration on skip/stop in seconds (0.1-10.0)
+audio_normalize = false             # Enable dynamic audio loudness normalization (dynaudnorm filter)
 
-# --- auto launch (Windows). Off = you open Camfrog/the room yourself; AutoDJ waits for the window.
-auto_launch = false            # set true to have AutoDJ launch Camfrog and join the room automatically
-camfrog_exe = "%USERPROFILE%\\AppData\\Local\\Programs\\Camfrog Video Chat\\Camfrog Video Chat.exe"  # path to Camfrog exe, required if auto_launch = true
-client_title_re = ".*"          # main client window
-room = "ZeaZDev"              # your Camfrog room name, required if auto_launch = true
-join_uri_template = "camfrog://room/{room}"          # URI your Camfrog build accepts for joining; {room} is URL-encoded
-launch_timeout = 60               # seconds to wait for Camfrog to appear after auto-launch
+# --- Local Music Library & TTS -----------------------------------------------
+music_dirs = []                     # Local library directories: requestable by name, also autoplayed
+autoplay_sources = []               # Extra YouTube playlist URLs / folders / files to autoplay
+shuffle = true                      # Shuffle autoplay pool
 
-# --- added in 0.2.0 ---------------------------------------------------------------------------------
-blocked_users = []             # nicks whose commands are ignored (admins cannot be blocked). Admins can also use !block / !unblock live
-poll_interval = 0.5            # seconds between chat reads; raise to 1.0 if AutoDJ uses too much CPU
-log_file = "logs/autodj.log"                  # e.g. "autodj.log": also write the log to a rotating file (1 MB x 3). Same as --log-file.
-                                 # Relative paths are resolved to %APPDATA%/CamfrogAutoDJ/ so they are
-                                 # writable even when AutoDJ is installed to Program Files.
-playlist_file = "playlist.json"   # user-requested tracks (!play / GUI request / !load) are appended here
-                                   # (deduplicated) and join the autoplay pool (random); "" = disable persistence
-search_limit = 1               # YouTube text-search results fetched per non-admin !play (1 = first match only; max 50)
-mpv_timeout = 30               # seconds to wait for one mpv track before treating it as hung (0 = never)
+# --- Request / Queue Limits --------------------------------------------------
+allowed_hosts = ["youtube.com", "youtu.be", "music.youtube.com"]  # Allowed domains for !play
+max_requests_per_user = 3           # Max concurrent requests per user (1-1000)
+max_queue = 50                      # Max queue length (1-100000)
+max_duration = 900                  # Max track duration for non-admin requests, seconds (1-604800)
+voteskip_threshold = 3              # Votes needed to skip (1-1000)
+cooldown = 3.0                      # Seconds between commands from same user (0-3600)
+send_interval = 1.5                 # Seconds between chat lines sent by bot (flood control, 0-3600)
+max_msg_len = 180                   # Max message length sent to chat (20-2000)
+announce_next = true                # Announce up-next track in chat
 
-# --- playlist directory (auto-load *.json playlists) ---------------------------------------------
-playlist_dir = "playlist/"      # folder with *.json playlists; auto-loaded at startup
+# Now-playing / up-next message templates (leave empty to use built-in text for `lang`)
+# Fields available: {title}, {duration}, {requester}
+msg_now = ""                        # Override built-in now-playing text
+msg_next = ""                       # Override built-in up-next text
 
-# --- auto-reply (scheduled ads/messages to the room) ------------------------------------------
-auto_reply_enabled = true           # enable scheduled auto-reply messages to the room
-auto_reply_interval = 300.0         # seconds between auto-reply messages (min 60s)
+# Text-to-Speech (pyttsx3 / Windows SAPI)
+tts_voice = ""                      # Substring of an installed voice name (Thai voice for Thai text)
+tts_rate = 170                      # Speech rate (words per minute)
+tts_duck = 25                       # Music volume while speaking (0-100)
+
+# --- Auto Launch (Windows) ---------------------------------------------------
+# Off = you open Camfrog/the room yourself; AutoDJ waits for the window.
+auto_launch = false                 # Set true to have AutoDJ launch Camfrog and join the room automatically
+camfrog_exe = ""                    # Path to Camfrog exe, required if auto_launch = true
+client_title_re = ".*"              # Main client window title regex
+room = ""                           # Your Camfrog room name, required if auto_launch = true
+join_uri_template = ""              # URI your Camfrog build accepts for joining; {room} is URL-encoded
+launch_timeout = 60                 # Seconds to wait for Camfrog to appear after auto-launch
+
+# --- Moderation & Security ---------------------------------------------------
+blocked_users = []                  # Nicks whose commands are ignored (admins cannot be blocked)
+# Admins can also use !block / !unblock live to modify this list at runtime
+
+poll_interval = 0.5                 # Seconds between chat reads; raise to 1.0 if AutoDJ uses too much CPU (0.05-60)
+
+# IM Security
+im_require_room_presence = true     # Only users seen in room chat can DM the bot
+allow_play_in_room = false          # When true, !play works in room chat for all users (not just IM)
+
+# --- Logging -----------------------------------------------------------------
+log_file = ""                       # Also write the log to this file (rotating, 1 MB x 3). Same as --log-file.
+# Relative paths are resolved to %APPDATA%/CamfrogAutoDJ/ so they are
+# writable even when AutoDJ is installed to Program Files.
+
+# JSON structured logging
+log_json = false                    # Enable JSON structured logging output
+log_json_fields = [                 # Extra fields to include in JSON logs
+  "request_id", "delivery_id", "user", "track_id", "generation",
+  "attempt_id", "category", "stage", "state"
+]
+
+# --- Playlist Persistence ----------------------------------------------------
+playlist_file = "playlist.json"     # User-requested tracks (!play / GUI request / !load) are appended here
+# (deduplicated) and join the autoplay pool (random); "" = disable persistence
+playlist_dir = "playlist"           # Directory of *.json playlist files auto-loaded at startup; "" = disabled
+
+# --- YouTube Search ----------------------------------------------------------
+search_limit = 1                    # YouTube text-search results fetched per non-admin !play (1 = first match only; max 50)
+
+# --- mpv Hang Detection ------------------------------------------------------
+mpv_timeout = 30.0                  # Seconds to wait for one mpv track before treating it as hung (0 = never, max 3600)
+
+# --- Dynamic Moderation ------------------------------------------------------
+voteskip_dynamic = false            # Dynamic voteskip threshold based on participant count
+voteskip_dynamic_pct = 30           # Percentage of participants required to skip (1-100)
+user_request_limit = 5              # Max song requests allowed per user within rate_limit_window (1-1000)
+rate_limit_window = 300.0           # Rolling time window for per-user request limit, seconds (10-86400)
+
+# --- Auto-reply (Scheduled Ads/Messages) -------------------------------------
+auto_reply_enabled = true           # Enable scheduled auto-reply messages to the room
+auto_reply_interval = 300.0         # Seconds between auto-reply messages (min 60s, max 86400)
 auto_reply_file = "ads-list.json"   # JSON file with messages to rotate through
 
 # IM Auto-reply: automatic reply to private/instant messages
-im_auto_reply_enabled = true       # enable auto-reply to private/instant messages
+im_auto_reply_enabled = true        # Enable auto-reply to private/instant messages
 im_auto_reply_message = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
-im_auto_reply_cooldown = 60.0       # seconds between auto-replies to the same user (avoid spam)
+im_auto_reply_cooldown = 60.0       # Seconds between auto-replies to the same user (avoid spam, 10-3600)
 
-# --- autoplay: switch to autoplay pool after idle timeout ---
-autoplay_idle_timeout = 30.0      # seconds before autoplay starts when no user requests
+# --- Autoplay: Switch to Autoplay Pool After Idle Timeout --------------------
+autoplay_idle_timeout = 30.0        # Seconds before autoplay starts when no user requests (30-86400)
 
-# --- admin greeting ---
-admin_greeting_enabled = true      # enable admin greeting on first message
-admin_greeting_message = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"
-admin_greeting_cooldown = 3600.0    # seconds between greetings for same admin (1 hour)
+# --- Admin Greeting ----------------------------------------------------------
+admin_greeting_enabled = true       # Enable admin greeting on first message
+admin_greeting_message = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"  # Greeting message, {admin} will be replaced
+admin_greeting_cooldown = 3600.0    # Seconds between greetings for same admin (1 hour, 60-86400)
 
-# --- IM security: require user to be in room to use IM commands ---
-im_require_room_presence = true     # only users seen in room chat can DM the bot
-# Allow play/request commands in the room (not just via IM). Default false for backward compatibility.
-allow_play_in_room = false          # when true, !play works in room chat for all users
+# --- IM Viewer ---------------------------------------------------------------
+im_viewer_enabled = true            # Show the IM / private message viewer tab in the GUI
 
-# --- IM viewer: show private/instant messages in a dedicated GUI tab ---
-im_viewer_enabled = true            # show the IM / private message viewer tab in the GUI
-
-# --- font/style customization for GUI preview only ---
+# --- Font/Style Customization (GUI Preview Only) -----------------------------
 # Camfrog desktop client does NOT support rich text in outgoing messages.
 # This configuration is used ONLY for the FontEditor preview panel in the GUI.
 # Sent messages are always plain text via UIA.
 message_style = { font_family = "Tahoma", font_size = 14, font_color = "#FF0000", bold = true, italic = false, underline = false }
 
-# --- admin mic mute/unmute (config-gated) ---
-admin_mute_mic = true             # enable !mute command
-admin_unmute_mic = true           # enable !unmute command
+# --- Admin Mic Mute/Unmute (Config-Gated) ------------------------------------
+admin_mute_mic = true               # Enable !mute command
+admin_unmute_mic = true             # Enable !unmute command
 
-# --- block/unblock user (config-gated) ---
-admin_block_user = false          # enable !block user command (admin can block a user)
-admin_unblock_user = false        # enable !unblock user command (admin can unblock a user)
+# --- Block/Unblock User (Config-Gated) ---------------------------------------
+admin_block_user = false            # Enable !block user command (admin can block a user)
+admin_unblock_user = false          # Enable !unblock user command (admin can unblock a user)
 
-# --- mic mute state ---
-mute_enabled = false              # mic muted state
+# --- Mic Mute State ----------------------------------------------------------
+mute_enabled = false                # Mic muted state (persisted)
 
-# --- block/unblock bot (config-gated) ---
-admin_block_bot = true            # enable !blockbot command
-admin_unblock_bot = true          # enable !unblockbot command
+# --- Block/Unblock Bot (Config-Gated) ----------------------------------------
+admin_block_bot = true              # Enable !blockbot command
+admin_unblock_bot = true            # Enable !unblockbot command
 
-# --- kick/ban/unban user (config-gated) ---
-admin_kick_user = true            # enable !kick command
-admin_ban_user = true             # enable !ban command
-admin_unban_user = true           # enable !unban command
+# --- Kick/Ban/Unban User (Config-Gated) --------------------------------------
+admin_kick_user = true              # Enable !kick command
+admin_ban_user = true               # Enable !ban command
+admin_unban_user = true             # Enable !unban command
 
-# --- punish user/bot (config-gated) ---
-admin_punish_user = true          # enable !punish command
-admin_punish_bot = true           # enable !punishbot command
+# --- Punish User/Bot (Config-Gated) ------------------------------------------
+admin_punish_user = true            # Enable !punish command
+admin_punish_bot = true             # Enable !punishbot command
 
-# --- delete message (config-gated) ---
-admin_delete_message_enabled = true   # enable !delete <msg id> command
+# --- Delete Message (Config-Gated) -------------------------------------------
+admin_delete_message_enabled = true # Enable !delete <msg id> command
 
-# --- welcome message ---
-welcome_message_enabled = true          # enable welcome message
-welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ camfrog://room/{room}!"
-welcome_message_cooldown = 3600.0       # seconds between welcome messages for same user (1 hour)
+# --- Welcome Message ---------------------------------------------------------
+welcome_message_enabled = true      # Enable welcome message
+welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"  # Welcome message
+welcome_message_cooldown = 3600.0   # Seconds between welcome messages for same user (1 hour, 60-86400)
 
-# --- Camfrog RE integrations (gift / avatar / status / status alert) ---
+# --- Camfrog RE Integrations (Gift / Avatar / Status / Status Alert) ---------
 # Gift / virtual-gift announcement (detect gift messages in room chat; see docs/camfrog-re/08-feature-gift.md)
-gift_announce_enabled = true             # announce virtual-gift messages sent to the room
+gift_announce_enabled = true        # Announce virtual-gift messages sent to the room
+
 # Avatar change announcement (detect avatar changes in room chat; see docs/camfrog-re/16-user-icon-avatar.md)
-avatar_change_enabled = true             # announce avatar change messages sent to the room
+avatar_change_enabled = true        # Announce avatar change messages sent to the room
+
 # Status indicator announcement (detect online/away/busy/invisible/admin/moderator/owner; see docs/camfrog-re/14-png-assets.md)
-status_indicator_enabled = true          # announce user status changes in room chat
+status_indicator_enabled = true     # Announce user status changes in room chat
+
 # Status alerts (detect upgrade/payment-required status text; see docs/camfrog-re/07-upgrade-logic.md, 09-payment.md)
-status_alert_enabled = true              # alert when Camfrog shows upgrade/payment-required status
+status_alert_enabled = true         # Alert when Camfrog shows upgrade/payment-required status
+
+# --- Webhook / API Integration -----------------------------------------------
+webhook_enabled = false             # Enable HTTP webhook server for external control
+webhook_host = "127.0.0.1"          # Host to bind webhook server (use 0.0.0.0 for external access)
+webhook_port = 8080                 # Port for webhook server (1-65535)
+webhook_secret = ""                 # HMAC secret for webhook signature verification (empty = no verification)
+webhook_rate_limit_per_ip = 60      # Max requests per IP per minute (1-10000)
+webhook_cors_origins = ["*"]        # CORS allowed origins (e.g. ["https://example.com"]; default ["*"] = all)
+
+# --- Config Hot Reload -------------------------------------------------------
+config_hot_reload = false           # Enable hot reload of config.toml (requires 'watchdog' extra: pip install -e .[hotreload])
+
+# --- Plugin System -----------------------------------------------------------
+plugins = ["builtin.stats", "builtin.help"]  # List of plugin modules to load (e.g. "builtin.stats", "myplugin")

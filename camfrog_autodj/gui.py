@@ -444,7 +444,9 @@ class App(tk.Tk):
         self._q_tracks: list = []  # the Track objects behind the queue list box, in display order
         self._drag = False
         self._seen = 0  # show whatever is already in the log
+        self._seen_version = -1  # last chat_version seen
         self._im_seen = 0  # show whatever is already in the IM log
+        self._im_seen_version = -1  # last im_version seen
         self._q_cache = self._h_cache = self._im_cache = None
         self._q_version = -1  # last PlayQueue version seen when the queue listbox was rebuilt
         self._state = "idle"  # idle | playing | paused (drives the animations)
@@ -1427,11 +1429,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_im_viewer_enabled",
-            self._lbl(sp_inner, "g_settings_im_viewer_enabled"),
-            "g_settings_im_auto_reply_enabled",
-        )
 
         # IM auto-reply toggle
         self.s_im_auto_reply_enabled = self.e.cfg.im_auto_reply_enabled
@@ -1519,11 +1516,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_allow_play_in_room",
-            self._lbl(sp_inner, "g_settings_allow_play_in_room"),
-            "g_settings_message_style_font_family",
-        )
 
         # message_style_font_family
         self.s_msg_font_family = self._entry(sp_inner)
@@ -1634,15 +1626,7 @@ class App(tk.Tk):
             minw=200,
         )
         cb_mute_enabled.set_active(self.e.cfg.mute_enabled)
-        cb_mute_enabled.grid(
-            row=row,
-            column=0,
-            columnspan=2,
-            sticky="w",
-            pady=(self.px(6), self.px(2)),
-            padx=(self.px(14), self.px(14)),
-        )
-        row += 1
+        _setting_row("g_settings_mute_enabled", cb_mute_enabled, "g_settings_admin_mute_mic")
 
         # admin_mute_mic toggle
         self.s_admin_mute_mic = self.e.cfg.admin_mute_mic
@@ -1850,11 +1834,6 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
-        _setting_row(
-            "g_settings_admin_unban_user",
-            self._lbl(sp_inner, "g_settings_admin_unban_user"),
-            "g_settings_admin_punish_user",
-        )
 
         # admin_punish_user toggle
         self.s_admin_punish_user = self.e.cfg.admin_punish_user
@@ -1931,6 +1910,15 @@ class App(tk.Tk):
         _setting_row(
             "g_settings_welcome_message_message",
             self.s_welcome_message_message,
+            "g_settings_welcome_message_cooldown",
+        )
+
+        # welcome_message_cooldown
+        self.s_welcome_message_cooldown = self._entry(sp_inner)
+        self.s_welcome_message_cooldown.insert(0, str(self.e.cfg.welcome_message_cooldown))
+        _setting_row(
+            "g_settings_welcome_message_cooldown",
+            self.s_welcome_message_cooldown,
             "g_settings_admin_delete_message_enabled",
         )
 
@@ -2047,7 +2035,12 @@ class App(tk.Tk):
         # log_file
         self.s_log_file = self._entry(sp_inner)
         self.s_log_file.insert(0, self.e.cfg.log_file)
-        _setting_row("g_settings_log_file", self.s_log_file, "g_settings_config_hot_reload")
+        _setting_row("g_settings_log_file", self.s_log_file, "g_settings_log_path")
+
+        # log_path
+        self.s_log_path = self._entry(sp_inner)
+        self.s_log_path.insert(0, self.e.cfg.log_path)
+        _setting_row("g_settings_log_path", self.s_log_path, "g_settings_config_hot_reload")
 
         # config_hot_reload toggle
         self.s_config_hot_reload = self.e.cfg.config_hot_reload
@@ -2071,6 +2064,69 @@ class App(tk.Tk):
             padx=(self.px(14), self.px(14)),
         )
         row += 1
+
+        # webhook_enabled toggle
+        self.s_webhook_enabled = self.e.cfg.webhook_enabled
+        cb_webhook_enabled: PillButton = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_webhook_enabled", cb_webhook_enabled),
+            "chip",
+            icon="✓" if self.e.cfg.webhook_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_webhook_enabled.set_active(self.e.cfg.webhook_enabled)
+        cb_webhook_enabled.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+
+        # webhook_host
+        self.s_webhook_host = self._entry(sp_inner)
+        self.s_webhook_host.insert(0, self.e.cfg.webhook_host)
+        _setting_row("g_settings_webhook_host", self.s_webhook_host, "g_settings_webhook_port")
+
+        # webhook_port
+        self.s_webhook_port = self._entry(sp_inner)
+        self.s_webhook_port.insert(0, str(self.e.cfg.webhook_port))
+        _setting_row("g_settings_webhook_port", self.s_webhook_port, "g_settings_webhook_secret")
+
+        # webhook_secret
+        self.s_webhook_secret = self._entry(sp_inner)
+        self.s_webhook_secret.insert(0, self.e.cfg.webhook_secret)
+        _setting_row(
+            "g_settings_webhook_secret",
+            self.s_webhook_secret,
+            "g_settings_webhook_rate_limit_per_ip",
+        )
+
+        # webhook_rate_limit_per_ip
+        self.s_webhook_rate_limit_per_ip = self._entry(sp_inner)
+        self.s_webhook_rate_limit_per_ip.insert(0, str(self.e.cfg.webhook_rate_limit_per_ip))
+        _setting_row(
+            "g_settings_webhook_rate_limit_per_ip",
+            self.s_webhook_rate_limit_per_ip,
+            "g_settings_webhook_cors_origins",
+        )
+
+        # webhook_cors_origins
+        self.s_webhook_cors_origins = self._entry(sp_inner)
+        self.s_webhook_cors_origins.insert(0, ", ".join(self.e.cfg.webhook_cors_origins))
+        _setting_row(
+            "g_settings_webhook_cors_origins", self.s_webhook_cors_origins, "g_settings_plugins"
+        )
+
+        # plugins
+        self.s_plugins = self._entry(sp_inner)
+        self.s_plugins.insert(0, ", ".join(self.e.cfg.plugins))
+        _setting_row("g_settings_plugins", self.s_plugins, "g_settings_save")
 
         # Save / Cancel buttons
         btn_row = tk.Frame(sp_inner, bg=SURFACE)
@@ -2827,6 +2883,7 @@ class App(tk.Tk):
             cfg.client_title_re = self.s_client_title_re.get().strip()
             cfg.line_regex = self.s_line_regex.get().strip()
             cfg.log_file = self.s_log_file.get().strip()
+            cfg.log_path = self.s_log_path.get().strip()
 
             # List fields
             cfg.admins = [a.strip() for a in self.s_admins.get().split(",") if a.strip()]
@@ -2857,6 +2914,7 @@ class App(tk.Tk):
             cfg.auto_discover = self.s_auto_discover
             cfg.auto_launch = self.s_auto_launch
             cfg.auto_reply_enabled = self.s_auto_reply_enabled
+            cfg.config_hot_reload = self.s_config_hot_reload
 
             # TTS voice
             cfg.tts_voice = self.s_tts_voice.get().strip()
@@ -2899,6 +2957,26 @@ class App(tk.Tk):
             cfg.im_require_room_presence = self.s_im_require_room_presence
             cfg.allow_play_in_room = self.s_allow_play_in_room
 
+            # Welcome message cooldown
+            cfg.welcome_message_cooldown = self._parse_float(
+                self.s_welcome_message_cooldown, "welcome message cooldown"
+            )
+
+            # Webhook settings
+            cfg.webhook_enabled = self.s_webhook_enabled
+            cfg.webhook_host = self.s_webhook_host.get().strip()
+            cfg.webhook_port = self._parse_int(self.s_webhook_port, "webhook port")
+            cfg.webhook_secret = self.s_webhook_secret.get().strip()
+            cfg.webhook_rate_limit_per_ip = self._parse_int(
+                self.s_webhook_rate_limit_per_ip, "webhook rate limit per IP"
+            )
+            cfg.webhook_cors_origins = [
+                o.strip() for o in self.s_webhook_cors_origins.get().split(",") if o.strip()
+            ]
+
+            # Plugins
+            cfg.plugins = [p.strip() for p in self.s_plugins.get().split(",") if p.strip()]
+
             # Message style (font customization for GUI preview only)
             cfg.message_style.font_family = self.s_msg_font_family.get().strip()
             cfg.message_style.font_size = self._parse_int(self.s_msg_font_size, "font size")
@@ -2928,6 +3006,7 @@ class App(tk.Tk):
             lines.append(f"window_exclude_re = {_toml_str(cfg.window_exclude_re)}")
             lines.append(f"window_index = {cfg.window_index}")
             lines.append(f"auto_discover = {str(cfg.auto_discover).lower()}")
+            lines.append(f"config_hot_reload = {str(cfg.config_hot_reload).lower()}")
             lines.append(f"view_kind = {_toml_str(cfg.view_kind)}")
             lines.append(f"send_mode = {_toml_str(cfg.send_mode)}")
             lines.append(f"send_verify = {str(cfg.send_verify).lower()}")
@@ -3058,12 +3137,25 @@ class App(tk.Tk):
             cfg.welcome_message_message = self.s_welcome_message_message.get().strip()
             lines.append(f"welcome_message_enabled = {str(cfg.welcome_message_enabled).lower()}")
             lines.append(f"welcome_message_message = {_toml_str(cfg.welcome_message_message)}")
+            lines.append(f"welcome_message_cooldown = {cfg.welcome_message_cooldown}")
 
             # Admin delete message
             cfg.admin_delete_message_enabled = self.s_admin_delete_message_enabled
             lines.append(
                 f"admin_delete_message_enabled = {str(cfg.admin_delete_message_enabled).lower()}"
             )
+
+            # Webhook settings
+            lines.append(f"webhook_enabled = {str(cfg.webhook_enabled).lower()}")
+            lines.append(f"webhook_host = {_toml_str(cfg.webhook_host)}")
+            lines.append(f"webhook_port = {cfg.webhook_port}")
+            lines.append(f"webhook_secret = {_toml_str(cfg.webhook_secret)}")
+            lines.append(f"webhook_rate_limit_per_ip = {cfg.webhook_rate_limit_per_ip}")
+            lines.append(f"webhook_cors_origins = {cfg.webhook_cors_origins!r}")
+
+            # Plugins
+            lines.append(f"plugins = {cfg.plugins!r}")
+
             lines.append(
                 f"message_style = {{ font_family = {_toml_str(cfg.message_style.font_family)}, font_size = {cfg.message_style.font_size}, font_color = {_toml_str(cfg.message_style.font_color)}, bold = {str(cfg.message_style.bold).lower()}, italic = {str(cfg.message_style.italic).lower()}, underline = {str(cfg.message_style.underline).lower()} }}"
             )
@@ -3183,7 +3275,10 @@ class App(tk.Tk):
 
     def _refresh_im(self):
         """Poll new IM / private messages from the engine and append them to the IM tab."""
-        im_seq, im_entries = self.e.im_snapshot()
+        im_seq, im_version, im_entries = self.e.im_snapshot()
+        # Skip refresh if IM log hasn't changed (version unchanged)
+        if im_version == self._im_seen_version:
+            return
         im_new = min(im_seq - self._im_seen, len(im_entries))
         if im_new > 0 and self.e.cfg.im_viewer_enabled:
             self.im_chat.configure(state="normal")
@@ -3196,9 +3291,10 @@ class App(tk.Tk):
             self.im_chat.see("end")
             self.im_chat.configure(state="disabled")
         self._im_seen = im_seq
+        self._im_seen_version = im_version
 
-    def _refresh(self):
-        s = self.e.snapshot()
+    def _refresh_now_playing(self, s: dict) -> None:
+        """Refresh the now-playing section (title, progress bar, time)."""
         t = s["current"]
         if t is not None and id(t) != self._last_track_id:
             self._last_track_id = id(t)
@@ -3209,8 +3305,6 @@ class App(tk.Tk):
             self.v_title.configure(text=t.title)
             self.v_sub.configure(text=f"{t.requester}  ·  {t.dur}")
             self.bar.set(s["position"] / t.duration if t.duration else 0)
-            # Elapsed position from the player loop (monotonic clock, excludes pauses).
-            # round() keeps the countdown smooth: no more skipping from 0:00 to 0:01.
             elapsed = max(0.0, s["position"])
             self.v_time.configure(
                 text=(f"{mmss(elapsed)} / {t.dur}" if t.duration else f"{mmss(elapsed)} / --:--")
@@ -3221,6 +3315,9 @@ class App(tk.Tk):
             self.bar.set(0)
             self.v_time.configure(text="")
         self._sync_pause()
+
+    def _refresh_next_and_volume(self, s: dict) -> None:
+        """Refresh up-next track, volume, shuffle/repeat controls."""
         n = s["next"]
         self.v_next.configure(
             text=(f"{self.e.t('g_up_next')}: {n.title} [{n.dur}] ({n.requester})" if n else "")
@@ -3230,8 +3327,9 @@ class App(tk.Tk):
             self.v_volpct.configure(text=f"{int(s['volume'])}%")
         self.c_shuffle.set_active(s["shuffle"])
         self.c_repeat.set_active(s["repeat"] == "one")
-        # Only rebuild the queue listbox (string formatting + Tk calls) when the
-        # queue actually changed; avoids O(queue_size) work on every 500 ms poll.
+
+    def _refresh_queue(self, s: dict) -> None:
+        """Refresh the queue listbox only when the queue version changed."""
         if self.e.queue.changed_since(self._q_version):
             items = [
                 f"{i}. {q.title}  [{q.dur}]  ({q.requester})" for i, q in enumerate(s["queue"], 1)
@@ -3242,6 +3340,9 @@ class App(tk.Tk):
                 self._q_cache = items
                 self.lb.delete(0, "end")
                 self.lb.insert("end", *items)
+
+    def _refresh_history(self, s: dict) -> None:
+        """Refresh the history listbox only when history changed."""
         hist = [
             f"{i}. {q.title}  [{q.dur}]  ({q.requester})"
             for i, q in enumerate(s.get("history", []), 1)
@@ -3250,7 +3351,12 @@ class App(tk.Tk):
             self._h_cache = hist
             self.hist.delete(0, "end")
             self.hist.insert("end", *hist)
-        seq, log_entries = self.e.chat_snapshot()
+
+    def _refresh_chat(self) -> None:
+        """Refresh the chat log only when new messages arrived (version-based)."""
+        seq, chat_version, log_entries = self.e.chat_snapshot()
+        if chat_version == self._seen_version:
+            return
         new = min(seq - self._seen, len(log_entries))
         if new > 0:
             self.chat.configure(state="normal")
@@ -3258,11 +3364,19 @@ class App(tk.Tk):
                 bot = who == self.e.cfg.bot_nick
                 self.chat.insert("end", who + ": ", ("who", "bot") if bot else ("who",))
                 self.chat.insert("end", text + "\n")
-            extra = int(self.chat.index("end-1c").split(".")[0]) - 1000  # keep the log box bounded
+            extra = int(self.chat.index("end-1c").split(".")[0]) - 1000
             if extra > 0:
                 self.chat.delete("1.0", f"{extra + 1}.0")
             self.chat.see("end")
             self.chat.configure(state="disabled")
         self._seen = seq
+        self._seen_version = chat_version
 
+    def _refresh(self):
+        s = self.e.snapshot()
+        self._refresh_now_playing(s)
+        self._refresh_next_and_volume(s)
+        self._refresh_queue(s)
+        self._refresh_history(s)
+        self._refresh_chat()
         self._refresh_im()
