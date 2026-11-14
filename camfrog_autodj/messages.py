@@ -206,6 +206,7 @@ STR = {
         "g_settings_launch_timeout": "Launch timeout (seconds)",
         "g_settings_line_regex": "Chat line regex",
         "g_settings_log_file": "Log file path",
+        "g_settings_config_hot_reload": "Config hot reload (auto-reload on file change)",
         "g_settings_saved": "Settings saved to config.toml",
         "g_settings_save_failed": "Failed to save settings: {err}",
     },
@@ -299,6 +300,7 @@ STR = {
         "welcome_message": "ยินดีต้อนรับสู่ห้องแชท! {text}",
         "welcome_enabled": "เปิดข้อความต้อนรับแล้ว",
         "welcome_disabled": "ปิดข้อความต้อนรับแล้ว",
+        "g_settings_config_hot_reload": "โหลดการตั้งค่าอัตโนมัติเมื่อไฟล์เปลี่ยนแปลง",
         "yt_missing": "ตอนนี้ค้นหาเพลงจาก YouTube ไม่ได้",
         # Room owner/operator commands
         "usage_owner": "วิธีใช้: {p}เจ้าของห้อง <ชื่อ>",

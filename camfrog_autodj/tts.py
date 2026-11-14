@@ -26,6 +26,7 @@ _tts_queue: queue.Queue[Callable[[], None] | None] = queue.Queue()
 _tts_started = False
 _tts_lock = threading.Lock()
 _tts_shutdown = False
+_tts_thread: threading.Thread | None = None
 TTS_TIMEOUT = 60.0  # seconds a caller waits for one synthesis before giving up
 
 
@@ -52,23 +53,32 @@ def _worker():
 
 
 def _ensure_worker():
-    global _tts_started
+    global _tts_started, _tts_thread
     with _tts_lock:
         if not _tts_started and not _tts_shutdown:
             t = threading.Thread(target=_worker, daemon=True, name="autodj-tts")
+            _tts_thread = t
             t.start()
             _tts_started = True
 
 
 def shutdown_tts():
     """Shut down the TTS worker thread gracefully."""
-    global _tts_started, _tts_shutdown
+    global _tts_started, _tts_shutdown, _tts_thread
+    thread = None
     with _tts_lock:
         if _tts_started and not _tts_shutdown:
             _tts_shutdown = True
             _tts_queue.put(None)
+            # Wait for the worker thread to finish
+            thread = _tts_thread
+            _tts_thread = None
             _tts_started = False
-            log.debug("TTS worker shutdown requested")
+    if thread is not None and thread.is_alive():
+        thread.join(timeout=5.0)
+        if thread.is_alive():
+            log.warning("TTS worker thread did not shut down within timeout")
+    log.debug("TTS worker shutdown complete")
 
 
 # ---- public API ------------------------------------------------------------

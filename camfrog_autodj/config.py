@@ -249,6 +249,8 @@ class Config:
     webhook_rate_limit_per_ip: int = 60
     # Plugin system
     plugins: list[str] = field(default_factory=lambda: ["builtin.stats", "builtin.help"])
+    # Config hot reload
+    config_hot_reload: bool = False
 
     @classmethod
     def load(cls, path: str | None) -> Config:

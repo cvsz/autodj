@@ -41,6 +41,13 @@ class PluginInterface:
         """Send a message to the chat room."""
         return self._engine.say(text)
 
+    def list_plugins(self) -> list[dict]:
+        """List all loaded plugins with name, version, and description."""
+        pm = getattr(self._engine, "_plugin_manager", None)
+        if pm is None:
+            return []
+        return pm.list_plugins()
+
     def get_config(self) -> "ConfigView":
         """Get read-only view of safe config settings."""
         return ConfigView(self._engine.cfg)
