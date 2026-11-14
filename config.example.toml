@@ -191,5 +191,8 @@ log_json_fields = [                      # extra fields to include in JSON logs
     "state",
 ]
 
+# Config hot reload
+config_hot_reload = false  # enable automatic config reload on file change (requires watchdog)
+
 # --- Plugin system ---
 plugins = ["builtin.stats", "builtin.help"]  # list of plugins to load (builtin.stats, builtin.help, or full module paths)

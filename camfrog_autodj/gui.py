@@ -2047,7 +2047,30 @@ class App(tk.Tk):
         # log_file
         self.s_log_file = self._entry(sp_inner)
         self.s_log_file.insert(0, self.e.cfg.log_file)
-        _setting_row("g_settings_log_file", self.s_log_file, None)
+        _setting_row("g_settings_log_file", self.s_log_file, "g_settings_config_hot_reload")
+
+        # config_hot_reload toggle
+        self.s_config_hot_reload = self.e.cfg.config_hot_reload
+        cb_config_hot_reload: PillButton = self._btn(
+            sp_inner,
+            "",
+            lambda: self._toggle_bool("s_config_hot_reload", cb_config_hot_reload),
+            "chip",
+            icon="✓" if self.e.cfg.config_hot_reload else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_config_hot_reload.set_active(self.e.cfg.config_hot_reload)
+        cb_config_hot_reload.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
 
         # Save / Cancel buttons
         btn_row = tk.Frame(sp_inner, bg=SURFACE)

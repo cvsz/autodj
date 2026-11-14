@@ -162,6 +162,18 @@ class Engine:
             from .plugins import PluginManager
 
             self._plugin_manager = PluginManager(self, plugin_names)
+        # ---- Config hot reload -----------------------------------------------------
+        self._config_watcher = None
+        if getattr(cfg, "config_hot_reload", False) and cfg_path:
+            try:
+                from .config_watcher import ConfigWatcher
+
+                self._config_watcher = ConfigWatcher(cfg_path)
+                self._config_watcher.on_change(self._on_config_reload)
+                self._config_watcher.start(initial_config=cfg)
+                log.info("Config hot reload enabled for %s", cfg_path)
+            except RuntimeError as ex:
+                log.warning("Config hot reload not available: %s", ex)
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -214,6 +226,31 @@ class Engine:
             return "list" in query
         except (ValueError, AttributeError):
             return False
+
+    def _on_config_reload(self, new_cfg) -> None:
+        """Handle config reload from ConfigWatcher."""
+        log.info("Config reloaded, applying changes")
+        old_cfg = self.cfg
+        self.cfg = new_cfg
+        self.lang = new_cfg.lang
+        # Update volume if changed
+        if new_cfg.volume != old_cfg.volume:
+            self.set_volume(new_cfg.volume)
+        # Update admins set
+        self.admins = {a.lower() for a in new_cfg.admins}
+        # Update blocked users set
+        self.blocked = {b.lower() for b in new_cfg.blocked_users}
+        # Update auto-reply settings
+        if new_cfg.auto_reply_enabled != old_cfg.auto_reply_enabled:
+            if new_cfg.auto_reply_enabled:
+                # Restart auto-reply loop
+                self.wake.set()
+        # Update IM auto-reply settings
+        if new_cfg.im_auto_reply_enabled != old_cfg.im_auto_reply_enabled:
+            pass  # IM auto-reply is handled in chat loop
+        # Update other dynamic settings
+        self.volume = new_cfg.volume
+        log.info("Config reload applied successfully")
 
     # ---- chat out -------------------------------------------------------
     def log_chat(self, who: str, text: str):
@@ -1743,6 +1780,10 @@ class Engine:
         self.stop_evt.set()
         self.wake.set()
         self.player.stop()
+        # Stop config watcher
+        if self._config_watcher:
+            self._config_watcher.stop()
+            self._config_watcher = None
         # Unload plugins
         if self._plugin_manager:
             self._plugin_manager.unload_plugins()
@@ -1751,13 +1792,16 @@ class Engine:
             import asyncio
 
             webhook_server = self._webhook_server
-
-            def stop_webhook():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+            try:
+                # Try to get the running event loop; if none, create one
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
                 loop.run_until_complete(webhook_server.stop())
-
-            stop_webhook()
+            except Exception:
+                log.exception("Failed to stop webhook server")
         self.adapter.close()
         self.exec.shutdown(wait=False, cancel_futures=True)
         # Shutdown TTS worker
