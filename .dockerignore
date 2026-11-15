@@ -21,6 +21,7 @@ htmlcov/
 # Local environment and state (never ship local config/logs into the image)
 .env
 .env.*
+.git-credentials
 config.toml
 config.toml.bak
 config.toml.tmp
