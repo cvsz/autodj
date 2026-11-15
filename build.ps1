@@ -172,11 +172,45 @@ if (-not $certDriveAvailable) {
     Import-Module -Name Certificate -ErrorAction Stop
     $certDriveAvailable = Test-Path "Cert:\" -ErrorAction SilentlyContinue
   } catch {
-    # Module may not exist in this PowerShell edition; try the legacy provider name.
+    # Module may not exist in this PowerShell edition; try creating the drive explicitly.
     try {
-      Import-Module -Name Microsoft.PowerShell.Security -ErrorAction Stop
+      New-PSDrive -Name Cert -PSProvider Certificate -Root '\' -Scope Global -ErrorAction Stop
       $certDriveAvailable = Test-Path "Cert:\" -ErrorAction SilentlyContinue
-    } catch { $certDriveAvailable = $false }
+    } catch {
+      # Try the legacy provider name as a last resort.
+      try {
+        Import-Module -Name Microsoft.PowerShell.Security -ErrorAction Stop
+        $certDriveAvailable = Test-Path "Cert:\" -ErrorAction SilentlyContinue
+        if (-not $certDriveAvailable) {
+          # Provider loaded but drive not mounted - mount it explicitly.
+          New-PSDrive -Name Cert -PSProvider Certificate -Root '\' -Scope Global -ErrorAction Stop
+          $certDriveAvailable = Test-Path "Cert:\" -ErrorAction SilentlyContinue
+        }
+      } catch { $certDriveAvailable = $false }
+    }
+  }
+}
+
+# Helper function: find a code-signing certificate in the CurrentUser\My store.
+# Tries Cert: drive first; falls back to .NET X509Store if the PS drive is unavailable.
+function Find-SigningCertificate($subjectPattern) {
+  if ($certDriveAvailable) {
+    Get-ChildItem Cert:\CurrentUser\My | Where-Object {
+      $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date) -and $_.Subject -like "CN=$subjectPattern*" -and
+      ($_.EnhancedKeyUsageList | Where-Object { $_.ObjectId -eq "1.3.6.1.5.5.7.3.3" })
+    } | Sort-Object NotAfter -Descending | Select-Object -First 1
+  } else {
+    # .NET X509Store fallback: works without the Cert: PS drive.
+    $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("My", "CurrentUser")
+    try {
+      $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
+      $store.Certificates | Where-Object {
+        $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date) -and $_.Subject -like "CN=$subjectPattern*" -and
+        ($_.EnhancedKeyUsageList | Where-Object { $_.ObjectId -eq "1.3.6.1.5.5.7.3.3" })
+      } | Sort-Object NotAfter -Descending | Select-Object -First 1
+    } finally {
+      $store.Close()
+    }
   }
 }
 
@@ -184,23 +218,27 @@ if ($Pfx) {
   $sec = if ($Password) { ConvertTo-SecureString $Password -AsPlainText -Force } else { $null }
   $cert = Get-PfxCertificate -FilePath $Pfx -Password $sec
 } elseif ($Thumbprint) {
-  if (-not $certDriveAvailable) {
-    throw "Cert: drive is not available in this PowerShell environment. Install the Certificate provider or use -Pfx/-Password or -NoSign to build without signing."
-  }
   $tp = $Thumbprint -replace "\s", ""
-  $cert = Get-ChildItem Cert:\CurrentUser\My, Cert:\LocalMachine\My | Where-Object Thumbprint -eq $tp | Select-Object -First 1
-  if (-not $cert) { throw "certificate $tp not found in the CurrentUser/LocalMachine My store" }
-} else {
-  if (-not $certDriveAvailable) {
-    throw "Cert: drive is not available in this PowerShell environment. Install the Certificate provider or use -Pfx/-Password or -NoSign to build without signing."
+  if ($certDriveAvailable) {
+    $cert = Get-ChildItem Cert:\CurrentUser\My, Cert:\LocalMachine\My | Where-Object Thumbprint -eq $tp | Select-Object -First 1
+  } else {
+    $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("My", "CurrentUser")
+    try {
+      $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
+      $cert = $store.Certificates | Where-Object { $_.Thumbprint -eq $tp } | Select-Object -First 1
+    } finally {
+      $store.Close()
+    }
   }
+  if (-not $cert) { throw "certificate $tp not found in the CurrentUser\My store" }
+} else {
   $cn = if ($Subject -match "CN=([^,]+)") { $Matches[1].Trim() } else { $Subject }
   # (no -CodeSigningCert switch: that dynamic provider parameter is not available in every PowerShell host)
-  $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object {
-            $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date) -and $_.Subject -like "CN=$cn*" -and
-            ($_.EnhancedKeyUsageList | Where-Object { $_.ObjectId -eq "1.3.6.1.5.5.7.3.3" })
-          } | Sort-Object NotAfter -Descending | Select-Object -First 1
+  $cert = Find-SigningCertificate $cn
   if (-not $cert) {
+    if (-not $certDriveAvailable) {
+      throw "No code-signing certificate for '$cn' found in CurrentUser\My and Cert: drive is unavailable. Create a self-signed cert on Windows, or use -Pfx/-Password or -NoSign to build without signing."
+    }
     "no code-signing certificate for '$cn': creating a self-signed one (3 years)"
     $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject $Subject -KeyAlgorithm RSA -KeyLength 3072 `
             -HashAlgorithm SHA256 -KeyExportPolicy Exportable -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddYears(3)
@@ -210,14 +248,34 @@ if ($Pfx) {
   $cer = Join-Path $certDir "autodj-codesign.cer"
   Export-Certificate -Cert $cert -FilePath $cer | Out-Null
   foreach ($store in "Root", "TrustedPublisher") {  # trust it on THIS machine so the signature validates here
-    if (-not (Test-Path "Cert:\CurrentUser\$store\$($cert.Thumbprint)")) {
-      Import-Certificate -FilePath $cer -CertStoreLocation "Cert:\CurrentUser\$store" | Out-Null
-      "trusted on this PC: $store"
+    if ($certDriveAvailable) {
+      if (-not (Test-Path "Cert:\CurrentUser\$store\$($cert.Thumbprint)")) {
+        Import-Certificate -FilePath $cer -CertStoreLocation "Cert:\CurrentUser\$store" | Out-Null
+        "trusted on this PC: $store"
+      }
+    } else {
+      "note: Cert: drive unavailable; skipping local trust of $store store"
     }
   }
   "public cert for other PCs: $cer"
 }
 "signing with: $($cert.Subject)  [$($cert.Thumbprint)]"
+# Ensure Microsoft.PowerShell.Security module is loaded for Set-AuthenticodeSignature
+try {
+  Import-Module -Name Microsoft.PowerShell.Security -ErrorAction Stop
+} catch {
+  # Try loading from known module path
+  $modulePath = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1"
+  if (Test-Path $modulePath) {
+    try {
+      Import-Module $modulePath -ErrorAction Stop
+    } catch {
+      "warning: Microsoft.PowerShell.Security module not available; signing may fail"
+    }
+  } else {
+    "warning: Microsoft.PowerShell.Security module not found; signing may fail"
+  }
+}
 $sig = $null
 foreach ($ts in "http://timestamp.digicert.com", "http://timestamp.sectigo.com", "http://timestamp.globalsign.com/tsa/r6advanced1") {
   try { $sig = Set-AuthenticodeSignature -FilePath $exe -Certificate $cert -HashAlgorithm SHA256 -TimestampServer $ts; if ($sig.SignerCertificate) { break } }
@@ -232,5 +290,5 @@ $v = Get-AuthenticodeSignature $exe
 "signature: $($v.Status)  $($v.StatusMessage)"
 "signer:    $($v.SignerCertificate.Subject)"
 "timestamp: $($v.TimeStamperCertificate.Subject)"
-"sha256:    $((Get-FileHash $exe -Algorithm SHA256).Hash)"
+"sha256:    $([BitConverter]::ToString(([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.IO.File]::ReadAllBytes($exe)))).Replace('-','').ToLower())"
 if ($v.Status -ne "Valid") { Write-Warning "not 'Valid': expected for a self-signed cert on a PC that has not imported autodj-codesign.cer" }
