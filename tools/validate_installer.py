@@ -180,12 +180,19 @@ def main() -> int:
         print("skipped: installer validation is a Windows build gate (non-Windows host)")
         return 0
 
-    all_errors = (
-        validate_required_files()
-        + validate_required_dirs()
-        + validate_installer_nsi()
-        + validate_version_consistency()
-    )
+    all_errors = validate_installer_nsi() + validate_version_consistency()
+
+    # Required build artifacts (dist/AutoDJ.exe, dist/mpv, etc.) only exist
+    # after a successful build.  Skip their existence checks gracefully when
+    # no build has been performed yet, so `make all` / `make validate-all`
+    # work on a fresh checkout without requiring a prior build step.
+    dist_exe = ROOT / "dist" / "AutoDJ.exe"
+    if dist_exe.exists():
+        all_errors += validate_required_files() + validate_required_dirs()
+    else:
+        print(
+            "note: dist/AutoDJ.exe not found -- skipping build-artifact existence checks (run 'make build' first)"
+        )
 
     if all_errors:
         for error in all_errors:

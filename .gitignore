@@ -117,6 +117,7 @@ docs/camfrog-re/
 # Test artifacts and evidence (local qualification runs)
 WINDOWS_11_VALIDATION_REPORT.md
 WINDOWS_11_PERMISSION_VALIDATION_FIXES.md
+verification-log-*.txt
 check-*.txt
 config_bad_mpv.toml
 create_shortcuts.ps1

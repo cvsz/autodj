@@ -7,6 +7,7 @@
 - **IM auto-reply**: Changed to use `self.say()` instead of `self.adapter.send()` for proper message queueing and delivery tracking
 - **Engine shutdown**: Added proper shutdown calls for TTS worker (`shutdown_tts`) and library caches (`shutdown_library_caches`) to prevent resource leaks
 - **Code formatting**: Applied ruff formatting to all source files (camfrog_autodj, tests, tools) for consistent style
+- **Installer validation**: `tools/validate_installer.py` now skips build-artifact existence checks (`dist/AutoDJ.exe`, `dist/mpv`) gracefully when no build has been performed, so `make all` / `make validate-all` pass on a fresh checkout without requiring a prior build step (Windows build gate still runs fail-closed on Windows when artifacts exist)
 
 ## 0.3.0
 2026-11-09
