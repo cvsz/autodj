@@ -29,6 +29,10 @@ packages = ["camfrog_autodj", "camfrog_autodj.adapters"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # pythonpath = ["."]  # removed to avoid path resolution issues on CI
+filterwarnings = [
+    # Suppress third-party deprecation warnings from dependencies
+    "ignore::DeprecationWarning:starlette",
+]
 
 [tool.mypy]
 # Third-party dependencies used by AutoDJ ship without type stubs
