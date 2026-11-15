@@ -18,8 +18,7 @@ symlinks, which Windows represents as reparse points.
 from __future__ import annotations
 
 import os
-
-import pytest
+from pathlib import Path
 
 from camfrog_autodj.library import MEDIA, LocalIndex, scan_folder
 
@@ -70,24 +69,25 @@ def test_scan_symlink_cycle_does_not_recurse_forever(tmp_path):
     assert _sources(scan_folder(str(root))) == [str(root / "real.mp3")]
 
 
-def test_scan_unreadable_directory_is_skipped(tmp_path):
+def test_scan_unreadable_directory_is_skipped(tmp_path, monkeypatch):
     """A directory we cannot read is logged and skipped; the rest still scans."""
-    if os.name == "nt":
-        pytest.skip("Unix permission bits are not enforced the same way on Windows.")
-
     root = tmp_path / "root"
     root.mkdir()
     _media(str(root), "keep.mp3", b"x")
     no_perm = root / "no_perm"
     no_perm.mkdir()
     _media(str(no_perm), "hidden.mp3", b"x")
-    no_perm.chmod(0o000)
 
-    try:
-        sources = _sources(scan_folder(str(root)))
-    finally:
-        no_perm.chmod(0o755)  # so the temp dir can be removed
+    original_scandir = os.scandir
 
+    def scandir_with_permission_error(path):
+        if Path(path) == no_perm:
+            raise PermissionError("access denied")
+        return original_scandir(path)
+
+    monkeypatch.setattr(os, "scandir", scandir_with_permission_error)
+
+    sources = _sources(scan_folder(str(root)))
     assert sources == [str(root / "keep.mp3")]
 
 

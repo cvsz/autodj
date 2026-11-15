@@ -13,7 +13,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
 import sys
 import threading
@@ -195,7 +194,6 @@ def test_play_hidden_console_on_windows(monkeypatch):
     assert captured_kw["creationflags"] == 0x08000000
 
 
-@pytest.mark.skipif(os.name == "nt", reason="Tests POSIX-specific behavior (creationflags)")
 def test_play_no_creationflags_on_posix(monkeypatch):
     """On non-Windows, play() must not set creationflags."""
     captured_kw = {}
