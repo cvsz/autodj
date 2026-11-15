@@ -163,14 +163,25 @@ if ($handleLocked) {
 if ($NoSign) { "`n(not signed: -NoSign)"; return }
 Step "sign"
 $cert = $null
+
+# The Certificate (Cert:) PS drive is only available on Windows with the
+# Certificate provider loaded. Guard against environments where it is missing.
+$certDriveAvailable = Test-Path "Cert:\" -ErrorAction SilentlyContinue
+
 if ($Pfx) {
   $sec = if ($Password) { ConvertTo-SecureString $Password -AsPlainText -Force } else { $null }
   $cert = Get-PfxCertificate -FilePath $Pfx -Password $sec
 } elseif ($Thumbprint) {
+  if (-not $certDriveAvailable) {
+    throw "Cert: drive is not available in this PowerShell environment. Use -Pfx/-Password or -Thumbprint to specify a certificate, or -NoSign to build without signing."
+  }
   $tp = $Thumbprint -replace "\s", ""
   $cert = Get-ChildItem Cert:\CurrentUser\My, Cert:\LocalMachine\My | Where-Object Thumbprint -eq $tp | Select-Object -First 1
   if (-not $cert) { throw "certificate $tp not found in the CurrentUser/LocalMachine My store" }
 } else {
+  if (-not $certDriveAvailable) {
+    throw "Cert: drive is not available in this PowerShell environment. Use -Pfx/-Password or -Thumbprint to specify a certificate, or -NoSign to build without signing."
+  }
   $cn = if ($Subject -match "CN=([^,]+)") { $Matches[1].Trim() } else { $Subject }
   # (no -CodeSigningCert switch: that dynamic provider parameter is not available in every PowerShell host)
   $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object {
