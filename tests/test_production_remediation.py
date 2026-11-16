@@ -704,9 +704,8 @@ def test_thai_unicode_preserved_in_chat():
 def test_duplicate_request_prevented_same_user():
     """Same user requesting the same track twice must be rejected."""
     e = make()
-    e._active_room_users.add("amy")
     e.resolve = lambda arg, user, admin: [Track("https://youtu.be/same", "same", 100, user)]
-    e.router.handle(ChatMessage("amy", "play same", is_im=True))
+    e.router.handle(ChatMessage("amy", "!play same"))
     out(e)  # consume "Queued #1"
     e.router.handle(ChatMessage("amy", "play same", is_im=True))
     assert "already" in out(e)[0]

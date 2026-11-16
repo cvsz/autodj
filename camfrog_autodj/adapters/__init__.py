@@ -241,8 +241,9 @@ def _test_adapter(adapter: ChatAdapter) -> None:
 
 
 def build_adapter(cfg) -> ChatAdapter:
-    """Build adapter from config with fallback chain enabled."""
-    return build_adapter_with_fallback(cfg, use_fallback=True)
+    reader = _make(cfg.chat_reader, cfg)
+    sender = reader if cfg.chat_sender == cfg.chat_reader else _make(cfg.chat_sender, cfg)
+    return Composite(reader, sender)
 
 
 class NullAdapter(ChatAdapter):

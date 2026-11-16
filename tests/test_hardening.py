@@ -262,7 +262,6 @@ def test_admin_can_run_admin_command():
     e = make()
     e.admins = {"boss"}
     e.player.play = lambda s, v, d=None: True
-    e.player.set_pause = lambda v: True  # mock IPC accept
     e.current = Track("s", "now", 90, "boss")  # a track must be "playing" for pause to act
     e.router.handle(ChatMessage("boss", "!pause"))
     out(e)  # consume any output

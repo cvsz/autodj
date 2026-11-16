@@ -107,10 +107,7 @@ def install_clipboard(root: tk.Misc, lang=lambda: "en"):
             ("paste", "Paste", "วาง"),
             ("all", "Select all", "เลือกทั้งหมด"),
         ):
-            m.add_command(
-                label=thai if th else en,
-                command=lambda a=act: _do_clip(w, a),  # type: ignore[misc]
-            )
+            m.add_command(label=thai if th else en, command=lambda a=act: _do_clip(w, a))
         m.tk_popup(e.x_root, e.y_root)
         return "break"
 
@@ -471,8 +468,6 @@ class App(tk.Tk):
         ] = []  # (launch_time, piece, item) still animating
         self._last_track_id: int | None = None
         self._border_glow = 0.0  # 0..1 window-border-glow intensity, pulses with playback
-        self._line_width: int = 0  # cached line canvas width for gradient caching
-        self._stage_wh: tuple[int, int] = (0, 0)  # cached stage canvas width/height
         self._fonts()
         self._style()
         self._build()
@@ -544,8 +539,8 @@ class App(tk.Tk):
         def mk(size, weight="normal", fam=FAMILY):
             return tkfont.Font(root=self, family=fam, size=size, weight=weight)
 
-        self.f_body, self.f_bold, self.f_small = mk(10), mk(10, "bold"), mk(8)
-        self.f_list, self.f_title, self.f_brand = mk(11), mk(22, "bold"), mk(22, "bold")
+        self.f_body, self.f_bold, self.f_small = mk(10), mk(10, "bold"), mk(9)
+        self.f_list, self.f_title, self.f_brand = mk(11), mk(21, "bold"), mk(21, "bold")
         self.f_h2, self.f_icon = mk(11, "bold"), mk(11, "normal", "Segoe UI Symbol")
         self.f_big_icon = mk(14, "normal", "Segoe UI Symbol")
         self.f_caption = mk(8, "normal")
@@ -715,8 +710,8 @@ class App(tk.Tk):
             anchor="w",
         )
         self._logo_halo = halo
-        tk.Label(hdr, text="CAMFROG  ·  ROOM MUSIC BOT", bg=BG, fg=MUTED, font=self.f_caption).pack(
-            side="left", padx=(px(10), 0), pady=(px(10), 0)
+        tk.Label(hdr, text="CAMFROG  ·  ROOM MUSIC BOT", bg=BG, fg=MUTED, font=self.f_small).pack(
+            side="left", padx=(px(8), 0), pady=(px(8), 0)
         )
         self.b_lang = {}
         for code in ("th", "en"):
@@ -733,7 +728,7 @@ class App(tk.Tk):
             )
             b.pack(side="right", padx=(px(6), 0))
             self.b_lang[code] = b
-        self.led = tk.Canvas(hdr, width=px(20), height=px(20), bg=BG, highlightthickness=0, bd=0)
+        self.led = tk.Canvas(hdr, width=px(18), height=px(18), bg=BG, highlightthickness=0, bd=0)
         self._led_id = self.led.create_oval(
             px(3), px(3), px(17), px(17), fill=IDLE, outline=PINK, width=1
         )
@@ -787,7 +782,7 @@ class App(tk.Tk):
         # ---- now-playing card
         card = self._card(left)
         card.pack(fill="x")
-        self.stage = tk.Canvas(card, height=px(150), bg=SURFACE, highlightthickness=0, bd=0)
+        self.stage = tk.Canvas(card, height=px(230), bg=SURFACE, highlightthickness=0, bd=0)
         self.stage.pack(fill="x")
         self.stage.bind("<Configure>", self._layout_stage)
         info = tk.Frame(card, bg=SURFACE)
@@ -825,32 +820,12 @@ class App(tk.Tk):
         self.b_pause.pack(side="left")
         skip = self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=44, minw=110)
         skip.pack(side="left", padx=(px(10), 0))
-        self.v_voteskip = self._lbl(ctl, "g_voteskip_progress", font=self.f_small, bg=SURFACE)
-        self.v_voteskip.configure(
-            text=self.e.t(
-                "g_voteskip_progress",
-                n=0,
-                need=self.e.cfg.voteskip_threshold,
-            )
-        )
-        self.v_voteskip.pack(side="left", padx=(px(12), 0))
-        vs = self._btn(ctl, None, self._on_voteskip, "chip", height=34, minw=90)
-        vs.configure(text="โหวต")
-        vs.pack(side="left", padx=(px(8), 0))
         discover = self._btn(ctl, "g_discover", self.do_discover, icon="🔍", height=44, minw=130)
         discover.pack(side="left", padx=(px(10), 0))
         check = self._btn(ctl, "g_check", self.do_check, icon="✓", height=44, minw=110)
         check.pack(side="left", padx=(px(10), 0))
-
-        # ---- volume row (separate row so it is never squeezed out by
-        # playback buttons on small screens)
-        vol_row = tk.Frame(info, bg=SURFACE)
-        vol_row.pack(fill="x", pady=(px(10), 0))
-        self._lbl(vol_row, "g_vol", bg=SURFACE).pack(side="right", padx=(px(18), 0))
-        self.v_volpct = tk.Label(
-            vol_row, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e"
-        )
-        self.v_volpct.pack(side="right", padx=(px(6), 0))
+        self.v_volpct = tk.Label(ctl, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e")
+        self.v_volpct.pack(side="right")
         self.vol = VolSlider(
             vol_row,
             command=self._vol_release,
@@ -883,7 +858,7 @@ class App(tk.Tk):
         add = tk.Frame(left, bg=SURFACE2, highlightthickness=1, highlightbackground=BORDER)
         add.pack(fill="x", pady=(px(6), 0), padx=px(2))
         self.ent_add = self._entry(add)
-        self.ent_add.pack(side="left", fill="x", expand=True, ipady=px(8), padx=(px(10), px(10)))
+        self.ent_add.pack(side="left", fill="x", expand=True, ipady=px(9), padx=(0, px(10)))
         self.ent_add.bind("<Return>", lambda _e: self.add())
         self.b_add = self._btn(
             add,
@@ -894,11 +869,13 @@ class App(tk.Tk):
             height=38,
             minw=px(100),
         )
-        self.b_add.pack(side="left", padx=(px(8), 0))
-        self._btn(add, "g_file", self.add_files, kind="ghost", height=38).pack(
-            side="left", padx=(px(6), 0)
+        self.b_add.pack(side="left", padx=(px(10), 0))
+        self.b_folder = self._btn(add, "g_folder", self.load_folder, bg=BG, height=40)
+        self.b_folder.pack(side="left", padx=(px(8), 0))
+        self._btn(add, "g_file", self.add_files, bg=BG, height=40).pack(
+            side="left", padx=(px(8), 0)
         )
-        self.v_hint = tk.Label(left, bg=BG, fg=MUTED, font=self.f_caption, anchor="w")
+        self.v_hint = tk.Label(left, bg=BG, fg=MUTED, font=self.f_small, anchor="w")
         self.v_hint.pack(fill="x", pady=(px(6), 0))
         self._section(left, "g_playback_controls")
         opts = tk.Frame(left, bg=BG)
@@ -930,7 +907,7 @@ class App(tk.Tk):
             self.tabs[key] = b
         pages = tk.Frame(panel, bg=SURFACE)
         pages.pack(fill="both", expand=True, padx=px(14), pady=(0, px(14)))
-        self.pages = {k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat", "im")}
+        self.pages = {k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat")}
 
         qp = self.pages["queue"]
         qb = tk.Frame(qp, bg=SURFACE)
@@ -1021,10 +998,9 @@ class App(tk.Tk):
     def open_settings(self):
         """Open the settings dialog as a standalone (non-modal) window."""
         # Bring existing settings window to front if already open
-        win = self._settings_win
-        if win is not None and win.winfo_exists():
-            win.lift()
-            win.focus_set()
+        if getattr(self, "_settings_win", None) is not None and self._settings_win.winfo_exists():
+            self._settings_win.lift()
+            self._settings_win.focus_set()
             return
 
         sp = tk.Toplevel(self)
@@ -1133,32 +1109,7 @@ class App(tk.Tk):
         # ytdlp_path
         self.s_ytdlp_path = self._entry(sp_inner)
         self.s_ytdlp_path.insert(0, self.e.cfg.ytdlp_path)
-        _setting_row("g_settings_ytdlp_path", self.s_ytdlp_path, "g_settings_youtube_cookies_file")
-
-        # youtube_cookies_file
-        self.s_youtube_cookies_file = self._entry(sp_inner)
-        self.s_youtube_cookies_file.insert(0, self.e.cfg.youtube_cookies_file)
-        _setting_row(
-            "g_settings_youtube_cookies_file",
-            self.s_youtube_cookies_file,
-            "g_settings_youtube_cookies_browser",
-        )
-
-        # youtube_cookies_browser
-        self.s_youtube_cookies_browser = self._entry(sp_inner)
-        self.s_youtube_cookies_browser.insert(0, self.e.cfg.youtube_cookies_browser)
-        _setting_row(
-            "g_settings_youtube_cookies_browser",
-            self.s_youtube_cookies_browser,
-            "g_settings_youtube_ca_bundle",
-        )
-
-        # youtube_ca_bundle
-        self.s_youtube_ca_bundle = self._entry(sp_inner)
-        self.s_youtube_ca_bundle.insert(0, self.e.cfg.youtube_ca_bundle)
-        _setting_row(
-            "g_settings_youtube_ca_bundle", self.s_youtube_ca_bundle, "g_settings_audio_device"
-        )
+        _setting_row("g_settings_ytdlp_path", self.s_ytdlp_path, "g_settings_audio_device")
 
         # audio_device
         self.s_audio_device = self._entry(sp_inner)
@@ -1218,39 +1169,7 @@ class App(tk.Tk):
         # max_duration
         self.s_max_duration = self._entry(sp_inner)
         self.s_max_duration.insert(0, str(self.e.cfg.max_duration))
-        _setting_row("g_settings_max_duration", self.s_max_duration, "g_settings_allowed_hosts")
-
-        # allowed_hosts
-        self.s_allowed_hosts = self._entry(sp_inner)
-        self.s_allowed_hosts.insert(0, ", ".join(self.e.cfg.allowed_hosts))
-        _setting_row(
-            "g_settings_allowed_hosts", self.s_allowed_hosts, "g_settings_max_requests_per_user"
-        )
-
-        # max_requests_per_user
-        self.s_max_requests_per_user = self._entry(sp_inner)
-        self.s_max_requests_per_user.insert(0, str(self.e.cfg.max_requests_per_user))
-        _setting_row(
-            "g_settings_max_requests_per_user",
-            self.s_max_requests_per_user,
-            "g_settings_user_request_limit",
-        )
-
-        # user_request_limit
-        self.s_user_request_limit = self._entry(sp_inner)
-        self.s_user_request_limit.insert(0, str(self.e.cfg.user_request_limit))
-        _setting_row(
-            "g_settings_user_request_limit",
-            self.s_user_request_limit,
-            "g_settings_rate_limit_window",
-        )
-
-        # rate_limit_window
-        self.s_rate_limit_window = self._entry(sp_inner)
-        self.s_rate_limit_window.insert(0, str(self.e.cfg.rate_limit_window))
-        _setting_row(
-            "g_settings_rate_limit_window", self.s_rate_limit_window, "g_settings_cooldown"
-        )
+        _setting_row("g_settings_max_duration", self.s_max_duration, "g_settings_cooldown")
 
         # cooldown
         self.s_cooldown = self._entry(sp_inner)
@@ -1316,11 +1235,7 @@ class App(tk.Tk):
         # auto_reply_file
         self.s_auto_reply_file = self._entry(sp_inner)
         self.s_auto_reply_file.insert(0, self.e.cfg.auto_reply_file)
-        _setting_row(
-            "g_settings_auto_reply_file",
-            self.s_auto_reply_file,
-            "g_settings_autoplay_idle_timeout",
-        )
+        _setting_row("g_settings_auto_reply_file", self.s_auto_reply_file, "g_settings_tts_voice")
 
         # autoplay_idle_timeout
         self.s_autoplay_idle_timeout = self._entry(sp_inner)
@@ -2259,20 +2174,13 @@ class App(tk.Tk):
         w = self.line.winfo_width()
         if w < 10:
             return
-        # Cache the gradient segments - only recreate if width changed significantly
-        if not hasattr(self, "_line_width") or abs(w - self._line_width) > 2:
-            self._line_width = w
-            self.line.delete("all")
-            n = 90
-            cols = gradient([PINK, VIOLET, CYAN, VIOLET, PINK], n)
-            seg = w / n
-            self._line_segments = []
-            for i, c in enumerate(cols):
-                seg_id = self.line.create_rectangle(
-                    i * seg, 0, (i + 1) * seg + 1, 3, fill=c, outline=""
-                )
-                self._line_segments.append(seg_id)
-            self._shimmer = self.line.create_rectangle(-200, 0, -80, 3, fill="#ffffff", outline="")
+        self.line.delete("all")
+        n = 90
+        cols = gradient([PINK, VIOLET, CYAN, VIOLET, PINK], n)
+        seg = w / n
+        for i, c in enumerate(cols):
+            self.line.create_rectangle(i * seg, 0, (i + 1) * seg + 1, 3, fill=c, outline="")
+        self._shimmer = self.line.create_rectangle(-200, 0, -80, 3, fill="#ffffff", outline="")
 
     def _layout_stage(self, _e=None):
         c, px = self.stage, self.px
@@ -2329,7 +2237,6 @@ class App(tk.Tk):
             )
             for i, d in enumerate((px(44), px(28), px(14)))
         ]
-        # Static record base elements (don't animate)
         c.create_oval(cx - r, cy - r, cx + r, cy + r, fill="#07080f", outline="#2b3156", width=2)
         for f in (0.92, 0.82, 0.72, 0.62, 0.52):
             c.create_oval(cx - r * f, cy - r * f, cx + r * f, cy + r * f, outline="#171a2e")
@@ -2412,28 +2319,19 @@ class App(tk.Tk):
                 log.exception("GUI animation frame failed")
         finally:
             if not self._closing:
-                # When idle (and not minimised) there is nothing meaningful to
-                # animate, so throttle the tick to match the iconic slowdown
-                # and cut constant redraws / wake-ups.
-                self._anim = self.after(
-                    (250 if (self.state() == "iconic" or self._state == "idle") else FPS_MS),
-                    self._tick,
-                )
+                self._anim = self.after(250 if self.state() == "iconic" else FPS_MS, self._tick)
 
     def _frame(self):
         t = time.monotonic()
         dt, self._t_prev = min(t - self._t_prev, 0.2), t
         st = self._state
-        # Always update border glow/level and playback indicators (lightweight)
+        self._animate_aurora(t)
+        self._animate_particles(t, st)
+        self._run_confetti(t)
         self._update_border_glow_and_level(t, st)
+        self._animate_bars(t)
+        self._animate_record(t, st, dt)
         self._update_playback_indicators(t, st)
-        # Skip heavy animations when idle
-        if st != "idle":
-            self._animate_aurora(t)
-            self._animate_particles(t, st)
-            self._run_confetti(t)
-            self._animate_bars(t)
-            self._animate_record(t, st, dt)
 
     def _animate_aurora(self, t: float) -> None:
         if not getattr(self, "_aurora_items", None):
@@ -2442,12 +2340,10 @@ class App(tk.Tk):
         w, h = getattr(self, "_stage_wh", (0, 0))
         n = len(self._aurora_items)
         strip = h / n * 1.8 if n else 0
-        # Batch coords updates
         for i, item in enumerate(self._aurora_items):
             off = aurora_offset(t, i, n) * h * 0.1
             y0 = i * h / n - off
             c.coords(item, 0, y0, w, y0 + strip)
-        # Stars: update stipple only (cheaper than coords)
         for i, (item, (_sx, _sy, _sr)) in enumerate(
             zip(self._star_items, self._stars, strict=False)
         ):
@@ -2458,39 +2354,30 @@ class App(tk.Tk):
             )
 
     def _animate_particles(self, t: float, st: str) -> None:
-        # Skip particle animation when idle - no visual benefit
-        if st == "idle" or not (self._vc and getattr(self, "_particle_items", None)):
+        if not (self._vc and getattr(self, "_particle_items", None)):
             return
         c = self.stage
         cx, cy, r, _lab = self._vc
-        # Reduce particle updates when paused
-        playing = st == "playing"
         for item, p in zip(self._particle_items, self._particles, strict=False):
             x, y, alpha = particle_pos(p, t, cx, cy, r + self.px(70))
-            s = p["size"] * (0.6 + 0.7 * alpha) * (1.0 if playing else 0.5)
+            s = p["size"] * (0.6 + 0.7 * alpha) * (1.0 if st == "playing" else 0.5)
             c.coords(item, x - s, y - s, x + s, y + s)
             c.itemconfigure(
                 item,
-                stipple=("gray75" if alpha > 0.75 else ("gray50" if alpha > 0.45 else "gray25")),
+                stipple="gray75" if alpha > 0.75 else ("gray50" if alpha > 0.45 else "gray25"),
             )
 
     def _update_border_glow_and_level(self, t: float, st: str) -> None:
-        if st == "playing":
-            glow_target = 0.75 + 0.25 * pulse(t, 1.5)
-            target_level = 1.0
-        elif st == "paused":
-            glow_target = 0.0
-            target_level = 0.10
-        else:  # idle
-            glow_target = 0.0
-            target_level = 0.05 + 0.04 * pulse(t, 3.0)
+        glow_target = 0.75 + 0.25 * pulse(t, 1.5) if st == "playing" else 0.0
         self._border_glow = ease(self._border_glow, glow_target, 0.12, 0.05)
         self._border.configure(bg=lerp_color(BG, PINK, 0.55 * self._border_glow))
-        self._level = ease(self._level, target_level, 0.15, 0.08)
+        target = (
+            1.0 if st == "playing" else (0.10 if st == "paused" else 0.05 + 0.04 * pulse(t, 3.0))
+        )
+        self._level = ease(self._level, target, 0.15, 0.08)
 
     def _animate_bars(self, t: float) -> None:
-        # Skip equalizer bars when idle - no visual benefit
-        if not self._bar_items or self._state == "idle":
+        if not self._bar_items:
             return
         c = self.stage
         tgt = bar_heights(t, len(self._bar_items), self._level)
@@ -2510,46 +2397,36 @@ class App(tk.Tk):
             return
         c = self.stage
         cx, cy, _r, lab = self._vc
-        # Spin down when not playing
-        target_spin = 1.0 if st == "playing" else 0.0
-        self._spin = ease(self._spin, target_spin, 0.08, 0.04)
-        if self._spin > 0.01:  # Only update angle/needle if actually spinning
-            self._angle = (self._angle + self._spin * dt * 200.0) % 360.0
-            c.itemconfigure(self._sheen[0], start=self._angle)
-            c.itemconfigure(self._sheen[1], start=(self._angle + 180) % 360)
-            a = math.radians(self._angle)
-            c.coords(
-                self._needle,
-                cx,
-                cy,
-                cx + lab * 0.8 * math.cos(a),
-                cy - lab * 0.8 * math.sin(a),
+        self._spin = ease(self._spin, 1.0 if st == "playing" else 0.0, 0.08, 0.04)
+        self._angle = (self._angle + self._spin * dt * 200.0) % 360.0  # 33⅓ rpm = 200 deg/s
+        c.itemconfigure(self._sheen[0], start=self._angle)
+        c.itemconfigure(self._sheen[1], start=(self._angle + 180) % 360)
+        a = math.radians(self._angle)
+        c.coords(
+            self._needle,
+            cx,
+            cy,
+            cx + lab * 0.8 * math.cos(a),
+            cy - lab * 0.8 * math.sin(a),
+        )
+        for i, ring in enumerate(self._glow):
+            c.itemconfigure(
+                ring,
+                fill=lerp_color(
+                    "#0d1021",
+                    PINK,
+                    (0.04 + 0.03 * i) + 0.10 * self._level * pulse(t, 1.8) * (i + 1) / 3,
+                ),
             )
-        # Glow rings: only animate when playing (level > 0.1)
-        if self._level > 0.1:
-            for i, ring in enumerate(self._glow):
-                c.itemconfigure(
-                    ring,
-                    fill=lerp_color(
-                        "#0d1021",
-                        PINK,
-                        (0.04 + 0.03 * i) + 0.10 * self._level * pulse(t, 1.8) * (i + 1) / 3,
-                    ),
-                )
 
     def _update_playback_indicators(self, t: float, st: str) -> None:
         if st == "playing" and self._cur_dur:
             self.bar.set(self.e.position() / self._cur_dur)
-        # LED pulse only when playing
-        if st == "playing":
-            self.led.itemconfigure(
-                self._led_id,
-                fill=lerp_color("#4a1f2c", RED, pulse(t, 1.4)),
-            )
-        else:
-            self.led.itemconfigure(self._led_id, fill="#3a3f5c")
-        # Shimmer line animation only when playing
-        if st == "playing" and self._shimmer is not None and self.line.winfo_width() > 10:
+        self.led.itemconfigure(
+            self._led_id,
+            fill=lerp_color("#4a1f2c", RED, pulse(t, 1.4)) if st == "playing" else "#3a3f5c",
+        )
+        if self._shimmer is not None and self.line.winfo_width() > 10:
             x = (t * 220) % (self.line.winfo_width() + 400) - 200
             self.line.coords(self._shimmer, x, 0, x + 110, 3)
 
@@ -2640,7 +2517,7 @@ class App(tk.Tk):
             self.stage.coords(item, x - s, y - s, x + s, y + s)
             self.stage.itemconfigure(
                 item,
-                stipple=("gray75" if alpha > 0.7 else ("gray50" if alpha > 0.35 else "gray25")),
+                stipple="gray75" if alpha > 0.7 else ("gray50" if alpha > 0.35 else "gray25"),
             )
             keep.append((launch, piece, item))
         self._confetti = keep
@@ -2765,53 +2642,23 @@ class App(tk.Tk):
             self.after(0, self._set_folder_loading, False)
             return
         if not d:
-            self._loading_folder = False
-            self.after(0, self._set_folder_loading, False)
             return
         self._loading_folder = True
         self.after(0, self._set_folder_loading, True)
-        # Safety timeout: re-enable the button if scanning never completes
-        self._folder_scan_deadline = self.after(self.px(30000), self._folder_scan_timeout)
         try:
             self.e.load_async(
                 d,
                 limit=2000,
-                max_dirs=50,
                 on_success=lambda tracks: self.after(0, self._on_folder_loaded, len(tracks)),
                 on_error=lambda msg: self.after(0, self._on_folder_failed, msg),
             )
         except Exception as ex:
-            self.after(0, self._cancel_folder_timeout)
             log.exception("load folder failed: %s", d)
             self.after(0, self._on_folder_failed, self.e.t("load_failed", err=ex))
 
-    def _cancel_folder_timeout(self):
-        """Cancel the folder-scan safety timeout if it is still pending."""
-        deadline = getattr(self, "_folder_scan_deadline", None)
-        if deadline:
-            try:
-                self.after_cancel(deadline)
-            except (tk.TclError, ValueError):
-                pass
-            self._folder_scan_deadline = None
-
-    def _folder_scan_timeout(self):
-        """Safety net: re-enable the folder button if a scan never reports back."""
-        self._folder_scan_deadline = None
-        log.warning("folder scan timeout: re-enabling Load folder button")
-        self._loading_folder = False
-        self.after(0, self._set_folder_loading, False)
-        self._set_hint(self.e.t("load_failed", err="สแกนนานเกินไป ยกเลิกแล้ว"))
-
     def _set_folder_loading(self, loading: bool):
-        """Disable the folder button and show a scanning hint while loading.
-
-        The folder button may have been removed from the UI; guard against that
-        so load_folder() still works when called programmatically.
-        """
-        b_folder = getattr(self, "b_folder", None)
-        if b_folder is not None:
-            b_folder.configure(state="disabled" if loading else "normal")
+        """Disable the folder button and show a scanning hint while loading."""
+        self.b_folder.configure(state="disabled" if loading else "normal")
         self.v_hint.configure(
             text=self.e.t("folder_loading") if loading else self.e.t("g_add_hint")
         )
@@ -2972,12 +2819,6 @@ class App(tk.Tk):
             cfg.volume = self._parse_int(self.s_volume, "volume")
             cfg.max_queue = self._parse_int(self.s_max_queue, "max queue length")
             cfg.max_duration = self._parse_int(self.s_max_duration, "max track duration")
-            cfg.max_requests_per_user = self._parse_int(
-                self.s_max_requests_per_user, "max requests per user"
-            )
-            cfg.user_request_limit = self._parse_int(
-                self.s_user_request_limit, "user request limit"
-            )
             cfg.search_limit = self._parse_int(self.s_search_limit, "search limit")
             cfg.tts_rate = self._parse_int(self.s_tts_rate, "TTS rate")
             cfg.tts_duck = self._parse_int(self.s_tts_duck, "TTS duck volume")
@@ -3269,19 +3110,11 @@ class App(tk.Tk):
                 )
             _probe = Config(**_candidate_data)
             try:
-                _cfg_validate(_probe, _candidate_data, "settings")
-            except ConfigError as ex:
-                raise ValueError(f"invalid settings: {ex}") from ex
-
-            # Write to config.toml; if not writable (e.g. installed to Program Files),
-            # relocate to %APPDATA%\CamfrogAutoDJ\config.toml and write there instead.
-            try:
                 if p.exists():
                     shutil.copyfile(p, p.with_name(p.name + ".bak"))
                 tmp = p.with_name(p.name + ".tmp")
                 tmp.write_text(new_text, "utf-8")
                 os.replace(tmp, p)
-                os.chmod(p, 0o600)
             except (OSError, PermissionError):
                 app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
                 app_cfg_dir = Path(app_data) / "CamfrogAutoDJ"
@@ -3294,7 +3127,6 @@ class App(tk.Tk):
                 tmp = app_cfg_path.with_name(app_cfg_path.name + ".tmp")
                 tmp.write_text(new_text, "utf-8")
                 os.replace(tmp, app_cfg_path)
-                os.chmod(app_cfg_path, 0o600)
                 p = app_cfg_path
                 # Remember the writable location so subsequent saves don't keep trying
                 # the original (read-only) path first.
@@ -3395,7 +3227,7 @@ class App(tk.Tk):
             self.bar.set(s["position"] / t.duration if t.duration else 0)
             elapsed = max(0.0, s["position"])
             self.v_time.configure(
-                text=(f"{mmss(elapsed)} / {t.dur}" if t.duration else f"{mmss(elapsed)} / --:--")
+                text=f"{mmss(elapsed)} / {t.dur}" if t.duration else f"{mmss(elapsed)} / --:--"
             )
         else:
             self.v_title.configure(text=self.e.t("g_nothing"))
@@ -3408,29 +3240,19 @@ class App(tk.Tk):
         """Refresh up-next track, volume, shuffle/repeat controls."""
         n = s["next"]
         self.v_next.configure(
-            text=(f"{self.e.t('g_up_next')}: {n.title} [{n.dur}] ({n.requester})" if n else "")
+            text=f"{self.e.t('g_up_next')}: {n.title} [{n.dur}] ({n.requester})" if n else ""
         )
         if not self.vol.dragging:
             self.vol.set(s["volume"])
             self.v_volpct.configure(text=f"{int(s['volume'])}%")
         self.c_shuffle.set_active(s["shuffle"])
         self.c_repeat.set_active(s["repeat"] == "one")
-
-    def _refresh_queue(self, s: dict) -> None:
-        """Refresh the queue listbox only when the queue version changed."""
-        if self.e.queue.changed_since(self._q_version):
-            items = [
-                f"{i}. {q.title}  [{q.dur}]  ({q.requester})" for i, q in enumerate(s["queue"], 1)
-            ]
-            self._q_tracks = list(s["queue"])
-            self._q_version = self.e.queue.version
-            if items != self._q_cache:
-                self._q_cache = items
-                self.lb.delete(0, "end")
-                self.lb.insert("end", *items)
-
-    def _refresh_history(self, s: dict) -> None:
-        """Refresh the history listbox only when history changed."""
+        items = [f"{i}. {q.title}  [{q.dur}]  ({q.requester})" for i, q in enumerate(s["queue"], 1)]
+        self._q_tracks = list(s["queue"])
+        if items != self._q_cache:
+            self._q_cache = items
+            self.lb.delete(0, "end")
+            self.lb.insert("end", *items)
         hist = [
             f"{i}. {q.title}  [{q.dur}]  ({q.requester})"
             for i, q in enumerate(s.get("history", []), 1)
@@ -3439,12 +3261,7 @@ class App(tk.Tk):
             self._h_cache = hist
             self.hist.delete(0, "end")
             self.hist.insert("end", *hist)
-
-    def _refresh_chat(self) -> None:
-        """Refresh the chat log only when new messages arrived (version-based)."""
-        seq, chat_version, log_entries = self.e.chat_snapshot()
-        if chat_version == self._seen_version:
-            return
+        seq, log_entries = self.e.chat_snapshot()
         new = min(seq - self._seen, len(log_entries))
         if new > 0:
             self.chat.configure(state="normal")
@@ -3452,19 +3269,9 @@ class App(tk.Tk):
                 bot = who == self.e.cfg.bot_nick
                 self.chat.insert("end", who + ": ", ("who", "bot") if bot else ("who",))
                 self.chat.insert("end", text + "\n")
-            extra = int(self.chat.index("end-1c").split(".")[0]) - 1000
+            extra = int(self.chat.index("end-1c").split(".")[0]) - 1000  # keep the log box bounded
             if extra > 0:
                 self.chat.delete("1.0", f"{extra + 1}.0")
             self.chat.see("end")
             self.chat.configure(state="disabled")
         self._seen = seq
-        self._seen_version = chat_version
-
-    def _refresh(self):
-        s = self.e.snapshot()
-        self._refresh_now_playing(s)
-        self._refresh_next_and_volume(s)
-        self._refresh_queue(s)
-        self._refresh_history(s)
-        self._refresh_chat()
-        self._refresh_im()

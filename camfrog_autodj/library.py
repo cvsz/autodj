@@ -10,8 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .exceptions import YtdlpMissingError
-from .models import Track
+from .models import Track, YtdlpMissingError
 from .paths import resolve_executable
 
 
@@ -317,123 +316,12 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
     return Track(str(p), title, dur, requester)
 
 
-def scan_folder(
-    folder,
-    requester: str = "AutoDJ",
-    limit: int = 0,
-    max_dirs: int = 0,
-    incremental: bool = True,
-) -> list[Track]:
+def scan_folder(folder, requester: str = "AutoDJ", limit: int = 0) -> list[Track]:
     """Recursively scan *folder* for media files, skipping unreadable directories.
 
     Symlinks are never followed (avoids symlink cycles and slow reparse-point
-    hangs on Windows). *limit* caps the total tracks returned (0 = no cap).
-    *max_dirs* caps the total number of sub-directories entered across the
-    entire scan (0 = no cap) so a very deep/wide folder tree cannot scan forever.
-    *incremental*: if True, only re-scan files whose mtime has changed.
-    """
-    budget = _DirBudget(max_dirs)
-    return _scan_folder_recursive(folder, requester, limit, budget, incremental)
-
-
-def _process_file_entry(
-    entry: os.DirEntry,
-    requester: str,
-    media_extensions: set[str],
-    scan_state: ScanState | None,
-    incremental: bool,
-) -> Track | None:
-    """Process a single file entry, returning a Track or None."""
-    entry_path = Path(entry.path)
-    if entry_path.suffix.lower() not in media_extensions:
-        return None
-    # Check incremental scan state
-    if incremental and scan_state:
-        try:
-            current_mtime = entry.stat().st_mtime
-        except OSError:
-            return None
-        stored_mtime = scan_state.get_file_mtime(entry_path)
-        if stored_mtime is not None and stored_mtime == current_mtime:
-            # File unchanged, try to get from metadata cache
-            cache = _get_metadata_cache([str(entry_path.parent)])
-            cached = cache.get(entry_path, current_mtime)
-            if cached:
-                scan_state.set_file_mtime(entry_path, current_mtime)
-                return Track(str(entry_path), cached["title"], cached["duration"], requester)
-    # File changed or no cache: extract metadata
-    track = local_track(entry_path, requester)
-    if scan_state:
-        try:
-            scan_state.set_file_mtime(entry_path, entry.stat().st_mtime)
-        except OSError:
-            pass
-    return track
-
-
-def _process_dir_entry(
-    entry: os.DirEntry,
-    remaining_dirs: int,
-    dirs_consumed: int,
-) -> tuple[int, bool]:
-    """Process a single directory entry, returning (new_dirs_consumed, should_continue)."""
-    if remaining_dirs - dirs_consumed <= 0:
-        return dirs_consumed, False  # global directory budget exhausted
-    return dirs_consumed + 1, True
-
-
-def _scan_dir_entries(
-    entries: list[os.DirEntry],
-    requester: str,
-    limit: int,
-    remaining_dirs: int,
-    media_extensions: set[str],
-    scan_state: ScanState | None,
-    incremental: bool,
-) -> tuple[list[Track], int]:
-    """Scan a list of directory entries (for parallel processing).
-
-    Returns (tracks, dirs_consumed).
-    """
-    tracks: list[Track] = []
-    dirs_consumed = 0
-
-    for entry in entries:
-        if limit and len(tracks) >= limit:
-            break
-        try:
-            if entry.is_symlink():
-                continue  # never follow symlinks: avoids cycles and slow reparse points
-            if entry.is_dir():
-                dirs_consumed, should_continue = _process_dir_entry(
-                    entry, remaining_dirs, dirs_consumed
-                )
-                if not should_continue:
-                    continue
-            elif entry.is_file():
-                track = _process_file_entry(
-                    entry, requester, media_extensions, scan_state, incremental
-                )
-                if track:
-                    tracks.append(track)
-        except (OSError, PermissionError):
-            continue
-
-    return tracks, dirs_consumed
-
-
-def _scan_folder_recursive(  # noqa: C901
-    folder: str,
-    requester: str,
-    limit: int,
-    budget: _DirBudget,
-    incremental: bool = True,
-) -> list[Track]:
-    """Internal recursive implementation with global directory budget.
-
-    Uses ThreadPoolExecutor for parallel subdirectory scanning when
-    there are multiple subdirectories to process. The budget is consumed
-    atomically across all concurrent scans via _DirBudget.
+    hangs on Windows). *limit* caps the total tracks returned (0 = no cap) so a
+    very large folder can never scan forever and block the caller.
     """
     root = Path(folder)
     scan_state = _get_scan_state([str(root)]) if incremental else None
@@ -446,52 +334,20 @@ def _scan_folder_recursive(  # noqa: C901
         return []
 
     tracks: list[Track] = []
-    subdirs: list[str] = []
-
-    # Update directory mtime
-    if scan_state:
-        try:
-            scan_state.set_dir_mtime(root, root.stat().st_mtime)
-        except OSError:
-            pass
-
-    # First pass: collect files and subdirectories (consume budget atomically)
     for entry in entries:
         if limit and len(tracks) >= limit:
             break
         try:
             if entry.is_symlink():
-                continue
+                continue  # never follow symlinks: avoids cycles and slow reparse points
             if entry.is_dir():
-                if not budget.consume(1):
-                    continue  # global directory budget exhausted
-                subdirs.append(entry.path)
-            elif entry.is_file():
-                entry_path = Path(entry.path)
-                if entry_path.suffix.lower() in MEDIA:
-                    # Check incremental scan state
-                    if incremental and scan_state:
-                        current_mtime = entry.stat().st_mtime
-                        stored_mtime = scan_state.get_file_mtime(entry_path)
-                        if stored_mtime is not None and stored_mtime == current_mtime:
-                            # File unchanged, try to get from metadata cache
-                            cache = _get_metadata_cache([str(entry_path.parent)])
-                            cached = cache.get(entry_path, current_mtime)
-                            if cached:
-                                tracks.append(
-                                    Track(
-                                        str(entry_path),
-                                        cached["title"],
-                                        cached["duration"],
-                                        requester,
-                                    )
-                                )
-                                scan_state.set_file_mtime(entry_path, current_mtime)
-                                continue
-                    # File changed or no cache: extract metadata
-                    tracks.append(local_track(entry_path, requester))
-                    if scan_state:
-                        scan_state.set_file_mtime(entry_path, entry.stat().st_mtime)
+                need = limit - len(tracks) if limit else 0
+                sub = scan_folder(str(entry), requester, limit=limit)
+                tracks.extend(sub[:need] if need else sub)
+                if limit and len(tracks) >= limit:
+                    break
+            elif entry.is_file() and entry.suffix.lower() in MEDIA:
+                tracks.append(local_track(entry, requester))
         except (OSError, PermissionError):
             continue
 
