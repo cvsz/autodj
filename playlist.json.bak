@@ -1,0 +1,390 @@
+{
+ "version": 1,
+ "tracks": [
+  {
+   "source": "https://youtu.be/song_one",
+   "title": "song one",
+   "duration": 120,
+   "added_by": "amy",
+   "added": "2026-11-11T16:08:09"
+  },
+  {
+   "source": "https://youtu.be/song0",
+   "title": "song0",
+   "duration": 120,
+   "added_by": "amy",
+   "added": "2026-11-11T16:08:11"
+  },
+  {
+   "source": "https://youtu.be/song1",
+   "title": "song1",
+   "duration": 120,
+   "added_by": "user1",
+   "added": "2026-11-11T16:08:11"
+  },
+  {
+   "source": "https://youtu.be/song2",
+   "title": "song2",
+   "duration": 120,
+   "added_by": "user2",
+   "added": "2026-11-11T16:08:11"
+  },
+  {
+   "source": "https://youtu.be/song3",
+   "title": "song3",
+   "duration": 120,
+   "added_by": "user3",
+   "added": "2026-11-11T16:08:11"
+  },
+  {
+   "source": "https://youtu.be/song4",
+   "title": "song4",
+   "duration": 120,
+   "added_by": "user4",
+   "added": "2026-11-11T16:08:11"
+  },
+  {
+   "source": "https://youtu.be/song5",
+   "title": "song5",
+   "duration": 120,
+   "added_by": "user5",
+   "added": "2026-11-11T16:08:11"
+  },
+  {
+   "source": "https://youtu.be/song6",
+   "title": "song6",
+   "duration": 120,
+   "added_by": "user6",
+   "added": "2026-11-11T16:08:11"
+  },
+  {
+   "source": "https://youtu.be/song7",
+   "title": "song7",
+   "duration": 120,
+   "added_by": "user7",
+   "added": "2026-11-11T16:08:11"
+  },
+  {
+   "source": "https://youtu.be/song8",
+   "title": "song8",
+   "duration": 120,
+   "added_by": "user8",
+   "added": "2026-11-11T16:08:11"
+  },
+  {
+   "source": "https://youtu.be/song9",
+   "title": "song9",
+   "duration": 120,
+   "added_by": "user9",
+   "added": "2026-11-11T16:08:11"
+  },
+  {
+   "source": "https://youtu.be/unique-song",
+   "title": "unique-song",
+   "duration": 120,
+   "added_by": "amy",
+   "added": "2026-11-11T16:08:11"
+  },
+  {
+   "source": "https://youtu.be/s0",
+   "title": "s0",
+   "duration": 120,
+   "added_by": "amy",
+   "added": "2026-11-11T16:08:16"
+  },
+  {
+   "source": "https://youtu.be/s1",
+   "title": "s1",
+   "duration": 120,
+   "added_by": "amy",
+   "added": "2026-11-11T16:08:16"
+  },
+  {
+   "source": "https://youtu.be/s2",
+   "title": "s2",
+   "duration": 120,
+   "added_by": "amy",
+   "added": "2026-11-11T16:08:16"
+  },
+  {
+   "source": "https://youtu.be/a",
+   "title": "a",
+   "duration": 120,
+   "added_by": "amy",
+   "added": "2026-11-11T16:08:16"
+  },
+  {
+   "source": "https://youtu.be/เพลงหนึ่ง",
+   "title": "เพลงหนึ่ง",
+   "duration": 120,
+   "added_by": "amy",
+   "added": "2026-11-11T16:08:16"
+  },
+  {
+   "source": "https://youtu.be/my_song",
+   "title": "my song",
+   "duration": 120,
+   "added_by": "DJ",
+   "added": "2026-11-11T16:08:17"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-65/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:08:18"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-65/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:08:18"
+  },
+  {
+   "source": "https://youtu.be/b",
+   "title": "b",
+   "duration": 120,
+   "added_by": "bob",
+   "added": "2026-11-11T16:08:18"
+  },
+  {
+   "source": "https://youtu.be/same",
+   "title": "same",
+   "duration": 120,
+   "added_by": "amy",
+   "added": "2026-11-11T16:08:18"
+  },
+  {
+   "source": "https://youtu.be/x",
+   "title": "x",
+   "duration": 120,
+   "added_by": "amy",
+   "added": "2026-11-11T16:08:19"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-66/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:10:05"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-66/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:10:05"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-67/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:11:29"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-67/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:11:29"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-68/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:13:07"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-68/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:13:07"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-69/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:14:19"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-69/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:14:19"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-70/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:17:10"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-70/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:17:10"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-71/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:18:01"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-71/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:18:01"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-72/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:18:33"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-72/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:18:33"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-73/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:20:22"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-73/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:20:22"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-75/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:21:37"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-75/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T16:21:37"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-102/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:22:27"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-102/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:22:27"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-103/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:29:01"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-103/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:29:01"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-104/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:36:38"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-104/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:36:38"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-105/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:52:11"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-105/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:52:11"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-106/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:58:08"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-106/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T18:58:08"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-107/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T19:01:05"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-107/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T19:01:05"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-108/test_load_folder_gives_visible0/music/song one.mp3",
+   "title": "song one",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T19:03:52"
+  },
+  {
+   "source": "/tmp/pytest-of-cvsz/pytest-108/test_load_folder_gives_visible0/music/sub/song two.flac",
+   "title": "song two",
+   "duration": null,
+   "added_by": "AutoDJ",
+   "added": "2026-11-11T19:03:52"
+  }
+ ]
+}

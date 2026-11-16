@@ -112,6 +112,11 @@ for f in "${REQUIRED_FILES[@]}"; do
         echo "  [OK] $f"
     fi
 done
+# makensis would fail later with a far less obvious message; stop here for the exe itself.
+if [[ ! -f "$SRCDIR/AutoDJ.exe" ]]; then
+    echo "ERROR: $SRCDIR/AutoDJ.exe is missing -- run the exe build first (make build)."
+    exit 1
+fi
 
 # --- 3. render installer.nsi with the real version (shared renderer) --------------
 RENDERED_NSI="$SRCDIR/installer.nsi"
