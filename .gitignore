@@ -60,6 +60,10 @@ config.toml.tmp
 playlist.json
 playlist.json.bak
 playlist.json.tmp
+favorites.json
+favorites.json.bak
+top_requests.json
+top_requests.json.tmp
 *.log
 *.pfx
 *.cer
