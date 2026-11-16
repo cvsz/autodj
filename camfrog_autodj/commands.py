@@ -314,50 +314,59 @@ def _lastp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 @command("aplay", "addm")
 def _aplay(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     """ขอเพลงผ่าน IM (alias ของ /play) รองรับการมอบเพลงด้วย @{USER} เช่น /aplay ครับพี่ @user"""
-    # รองรับคำสั่ง /aplay fav <ลำดับ> — เล่นเพลงโปรดลำดับที่ n
     stripped = a.strip()
     if stripped.lower().startswith("fav "):
-        try:
-            index = int(stripped[4:].strip())
-        except ValueError as err:
-            raise UserError(e.t("aplay_fav_usage", p=e.cfg.prefix)) from err
-        from .favorites import FavoritesStore
-
-        fav = FavoritesStore(e.cfg_path)
-        entry = fav.get(m.user, index)
-        if not entry:
-            raise UserError(e.t("aplay_fav_not_found", n=index))
-        # เล่นเพลงโปรดโดยตรง
-        tracks = e.resolve(entry["source"], m.user, admin)
-        if not tracks:
-            raise UserError(e.t("nothing_found"))
-        pos = 0
-        with e.queue.lock:
-            for t in tracks:
-                pos = e.queue.add_request(t, position=0)
-                e.record_request(t.source, t.title)
-        e.wake.set()
-        _cut_current(e)
-        e._last_user_request_time = time.monotonic()
-        if e._autoplay_mode:
-            e._autoplay_mode = False
-            log.info("Autoplay mode deactivated: new user request received")
-        e.record_request(entry["source"], entry["title"])
-        if len(tracks) == 1:
-            e.say(
-                e.t(
-                    "queued_one",
-                    pos=pos,
-                    title=tracks[0].title,
-                    dur=tracks[0].dur,
-                    user=m.user,
-                )
-            )
-        else:
-            e.say(e.t("queued_many", n=len(tracks), user=m.user))
+        _aplay_fav(e, m, stripped, admin)
         return
-
     _play(e, m, a, admin)
+
+
+def _aplay_fav(e: "Engine", m: "ChatMessage", stripped: str, admin: bool) -> None:
+    """เล่นเพลงโปรดจากคำสั่ง /aplay fav <ลำดับ>."""
+    try:
+        index = int(stripped[4:].strip())
+    except ValueError as err:
+        raise UserError(e.t("aplay_fav_usage", p=e.cfg.prefix)) from err
+    from .favorites import FavoritesStore
+
+    fav = FavoritesStore(e.cfg_path)
+    entry = fav.get(m.user, index)
+    if not entry:
+        raise UserError(e.t("aplay_fav_not_found", n=index))
+    # เล่นเพลงโปรดโดยตรง
+    tracks = e.resolve(entry["source"], m.user, admin)
+    if not tracks:
+        raise UserError(e.t("nothing_found"))
+    if not admin:
+        _assert_queue_capacity(e, m.user)  # Fast pre-check
+        for t in tracks:
+            _assert_not_already_queued(e, t)  # Prevent duplicate favorite requests
+    pos = 0
+    with e.queue.lock:  # Re-check under lock to prevent TOCTOU race
+        if not admin:
+            _assert_queue_capacity(e, m.user)
+            _assert_not_already_queued(e, tracks[0])
+        for t in tracks:
+            pos = e.queue.add_request(t, position=0)
+            e.record_request(t.source, t.title)
+    e.wake.set()
+    _cut_current(e)
+    e._last_user_request_time = time.monotonic()
+    if e._autoplay_mode:
+        e._autoplay_mode = False
+        log.info("Autoplay mode deactivated: new user request received")
+    if len(tracks) == 1:
+        e.say(
+            e.t(
+                "queued_one",
+                pos=pos,
+                title=tracks[0].title,
+                dur=tracks[0].dur,
+                user=m.user,
+            )
+        )
+    else:
+        e.say(e.t("queued_many", n=len(tracks), user=m.user))
 
 
 @command("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง", "เปิดเพลง")
