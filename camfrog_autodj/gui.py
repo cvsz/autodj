@@ -3233,7 +3233,9 @@ class App(tk.Tk):
             lines.append(f"webhook_enabled = {str(cfg.webhook_enabled).lower()}")
             lines.append(f"webhook_host = {_toml_str(cfg.webhook_host)}")
             lines.append(f"webhook_port = {cfg.webhook_port}")
-            lines.append(f"webhook_secret = {_toml_str(cfg.webhook_secret)}")
+            # webhook_secret is not written to config.toml; it is read from
+            # the WEBHOOK_SECRET environment variable at runtime to avoid
+            # storing secrets in plain text on disk.
             lines.append(f"webhook_rate_limit_per_ip = {cfg.webhook_rate_limit_per_ip}")
             lines.append(f"webhook_cors_origins = {cfg.webhook_cors_origins!r}")
 
