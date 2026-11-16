@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from .base import Plugin, PluginInterface
 
@@ -72,13 +72,13 @@ class PluginManager:
         """Get a loaded plugin by name."""
         return self.plugins.get(name)
 
-    def emit(self, event: str, data: Any) -> None:
+    def emit(self, event: str, *args) -> None:
         """Emit an event to all loaded plugins."""
         for name, plugin in self.plugins.items():
             try:
                 method = getattr(plugin, f"on_{event}", None)
                 if method:
-                    method(data)
+                    method(*args)
             except Exception:
                 log.exception("Plugin %s error in event %s", name, event)
 

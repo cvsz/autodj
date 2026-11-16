@@ -107,6 +107,10 @@ class Router:
             return
 
         try:
+            # Emit command event for plugins before execution
+            pm = getattr(e, "_plugin_manager", None)
+            if pm:
+                pm.emit("command", name, arg.strip(), msg.user, admin, is_im)
             fn(e, msg, arg.strip(), admin)
         except UserError as ex:
             e.say(f"{msg.user}: {ex}")
