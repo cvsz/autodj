@@ -157,10 +157,10 @@ def _add_metrics_endpoint(app: "FastAPI"):
                 f"autodj_im_entries {health['checks'].get('im_viewer', {}).get('entries', 0)}",
             ]
             return Response(content="\n".join(lines) + "\n", media_type="text/plain")
-        except Exception as ex:
+        except Exception:
             log.exception("Failed to generate metrics")
             return Response(
-                content=f"# Error generating metrics: {ex}\n",
+                content="# Error generating metrics\n",
                 media_type="text/plain",
                 status_code=500,
             )

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import difflib
 import logging
+import os
 import re
 import threading
 import tomllib
@@ -288,6 +289,10 @@ class Config:
         # Handle nested message_style dataclass
         if "message_style" in data and isinstance(data["message_style"], dict):
             data["message_style"] = MessageStyle.from_toml_dict(data["message_style"])
+        # Read webhook_secret from environment variable if not in config file
+        # This prevents storing secrets in plain text in config.toml
+        if not data.get("webhook_secret") and os.environ.get("WEBHOOK_SECRET"):
+            data["webhook_secret"] = os.environ["WEBHOOK_SECRET"]
         cfg = cls(**data)
         _validate(cfg, data, str(p) if p else "config")
         return cfg
