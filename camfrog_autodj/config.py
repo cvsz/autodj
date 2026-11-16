@@ -180,6 +180,7 @@ class Config:
     # Dynamic Moderation
     voteskip_dynamic: bool = False  # dynamic voteskip threshold based on participant count
     voteskip_dynamic_pct: int = 30  # percentage of participants required to skip
+    voteskip_cooldown: float = 10.0  # seconds between voteskips from the same user
     user_request_limit: int = 5  # max song requests allowed per user within rate_limit_window
     rate_limit_window: float = 300.0  # rolling time window for per-user request limit (seconds)
     # Auto-reply: scheduled messages sent to the room from ads-list.json
@@ -253,7 +254,7 @@ class Config:
     webhook_secret: str = ""
     webhook_host: str = "127.0.0.1"
     webhook_rate_limit_per_ip: int = 60
-    webhook_cors_origins: list[str] = field(default_factory=lambda: ["*"])
+    webhook_cors_origins: list[str] = field(default_factory=lambda: ["http://127.0.0.1:8080"])
     # Plugin system
     plugins: list[str] = field(default_factory=lambda: ["builtin.stats", "builtin.help"])
     # Config hot reload
@@ -384,6 +385,7 @@ _RANGES = {
     "audio_fade_in_sec": (0.1, 10.0),
     "audio_fade_out_sec": (0.1, 10.0),
     "voteskip_dynamic_pct": (1, 100),
+    "voteskip_cooldown": (1.0, 3600.0),
     "user_request_limit": (1, 1000),
     "rate_limit_window": (10.0, 86400.0),
     "auto_reply_interval": (60.0, 86400.0),
@@ -459,10 +461,18 @@ def _validate(cfg: Config, data: dict, where: str) -> None:
     cfg.prefix = cfg.prefix.strip()
     cfg.admins = [a.strip() for a in cfg.admins if a.strip()]
     cfg.blocked_users = [a.strip() for a in cfg.blocked_users if a.strip()]
-    # Webhook: secret must be non-empty when webhook is enabled
+    _validate_webhook_secret(cfg, where)
+
+
+def _validate_webhook_secret(cfg: Config, where: str) -> None:
+    """Validate webhook secret requirements."""
     if cfg.webhook_enabled and not cfg.webhook_secret.strip():
         raise ConfigError(
             f"{where}: 'webhook_secret' must not be empty when 'webhook_enabled' is true"
+        )
+    if cfg.webhook_enabled and len(cfg.webhook_secret.strip()) < 16:
+        raise ConfigError(
+            f"{where}: 'webhook_secret' must be at least 16 characters when 'webhook_enabled' is true"
         )
 
 

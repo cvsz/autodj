@@ -146,6 +146,9 @@ class Engine:
         # ---- Per-nick chat rate limiting -----------------------------------------
         self._chat_rate_window: dict[str, deque[float]] = {}  # nick -> deque of message times
         self._chat_rate_lock: threading.Lock = threading.Lock()  # guards rate window dict
+        # ---- VOTESKIP cooldown -----------------------------------------------------
+        self._voteskip_cooldowns: dict[str, float] = {}  # user -> last voteskip time
+        self._voteskip_cooldown_lock: threading.Lock = threading.Lock()  # guards cooldown dict
         # ---- Health check state --------------------------------------------------
         self._last_health_check: float = 0.0
         self._health_check_interval: float = 30.0  # seconds between auto health checks
@@ -538,7 +541,17 @@ class Engine:
         """
         if not self.current:
             return False, self.t("nothing_playing")
-        self.votes.add(user.lower())
+        # Per-user cooldown check
+        now = time.monotonic()
+        who = user.lower()
+        with self._voteskip_cooldown_lock:
+            last_voteskip = self._voteskip_cooldowns.get(who, 0.0)
+            cooldown = getattr(self.cfg, "voteskip_cooldown", 10.0)
+            if now - last_voteskip < cooldown:
+                remaining = cooldown - (now - last_voteskip)
+                return False, self.t("voteskip_cooldown", remaining=round(remaining, 1))
+            self._voteskip_cooldowns[who] = now
+        self.votes.add(who)
         n = len(self.votes)
         need = self.cfg.voteskip_threshold
         if getattr(self.cfg, "voteskip_dynamic", False):

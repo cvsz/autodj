@@ -113,10 +113,12 @@ def _create_base_app(config: WebhookConfig) -> "FastAPI":
 
 def _add_health_endpoint(app: "FastAPI"):
     """Add health check endpoint."""
-    from fastapi import HTTPException
+    from fastapi import Depends, HTTPException
+
+    auth_dep = Depends(verify_signature_dep)
 
     @app.get("/webhook/health")
-    async def health():
+    async def health(_: bool = auth_dep):
         state = app.state.webhook_state
         if not state.config.enabled:
             raise HTTPException(status_code=404, detail="Webhook disabled")
@@ -129,10 +131,12 @@ def _add_health_endpoint(app: "FastAPI"):
 
 def _add_metrics_endpoint(app: "FastAPI"):
     """Add Prometheus metrics endpoint."""
-    from fastapi import HTTPException, Response
+    from fastapi import Depends, HTTPException, Response
+
+    auth_dep = Depends(verify_signature_dep)
 
     @app.get("/webhook/metrics")
-    async def metrics():
+    async def metrics(_: bool = auth_dep):
         state = app.state.webhook_state
         if not state.config.enabled:
             raise HTTPException(status_code=404, detail="Webhook disabled")
