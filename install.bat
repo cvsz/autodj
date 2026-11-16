@@ -5,8 +5,8 @@ rem This wrapper ensures PowerShell execution policy allows the script to run.
 
 echo.
 echo ============================================================================
-echo  CamfrogAutoDJ - Windows 11 Automated Installer
-echo  Version 0.3.0
+echo  Camfrog AutoDJ - Windows 11 Automated Installer
+echo  Version 0.2.7
 echo ============================================================================
 echo.
 

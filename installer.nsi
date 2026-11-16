@@ -25,8 +25,8 @@
 ; -----------------------------------------------------------------------------
 ; Metadata (overridable from command line)
 ; -----------------------------------------------------------------------------
-!define /IfNDef APP_NAME "CamfrogAutoDJ"
-!define /IfNDef APP_VERSION "0.3.0"
+!define /IfNDef APP_NAME "Camfrog AutoDJ"
+!define /IfNDef APP_VERSION "0.2.7"
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
 !define /IfNDef APP_EXE "AutoDJ.exe"

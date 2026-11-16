@@ -953,8 +953,8 @@ function Main {
     # Header
     Write-Host ""
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
-    Write-Host "           CamfrogAutoDJ - Windows 11 Automated Installer" -ForegroundColor $C_CYAN
-    Write-Host "                         Version 0.3.0" -ForegroundColor $C_CYAN
+    Write-Host "           Camfrog AutoDJ - Windows 11 Automated Installer" -ForegroundColor $C_CYAN
+    Write-Host "                         Version 0.2.7" -ForegroundColor $C_CYAN
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
     Write-Host ""
     Write-Log "=== CamfrogAutoDJ Installer Started ==="

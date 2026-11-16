@@ -8,29 +8,9 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-GEN_PYTHON="${PYTHON:-python3}"
-WINEPREFIX="${WINEPREFIX:-$HOME/.wine}"
-
-# Optional arguments:
-#   build_installer_linux.sh [VERSION] [SRCDIR] [OUTDIR]
-# VERSION defaults to pyproject.toml's project.version (never a hard-coded literal).
-POSITIONAL=()
-for arg in "$@"; do
-    case "$arg" in
-        --clean) ;;  # accepted for parity with build_exe_linux.sh; installer has no build cache
-        *) POSITIONAL+=("$arg") ;;
-    esac
-done
-VERSION="${POSITIONAL[0]:-}"
-SRCDIR="${POSITIONAL[1]:-dist}"
-OUTDIR="${POSITIONAL[2]:-dist}"
-
-if [[ -z "$VERSION" ]]; then
-    VERSION="$("$GEN_PYTHON" -c "import tomllib; print(tomllib.load(open('$REPO_ROOT/pyproject.toml','rb'))['project']['version'])")"
-fi
-
+VERSION="${1:-0.2.7}"
+SRCDIR="${2:-dist}"
+OUTDIR="${3:-dist}"
 NSIS_PATH="${NSIS_PATH:-$HOME/.wine/drive_c/NSIS/makensis.exe}"
 WINE_BIN="${WINE_BIN:-$(command -v wine || command -v wine64 || true)}"
 
