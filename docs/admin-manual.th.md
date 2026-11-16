@@ -202,7 +202,7 @@ autoplay_idle_timeout = 30.0       # ขั้นต่ำ 30 วินาที
 
 # ความคงที่ของเพลย์ลิสต์
 playlist_file = "playlist.json"    # บันทึกคำขอผู้ใช้ที่นี่ (ลบซ้ำ)
-playlist_dir = "playlist/"         # โฟลเดอร์ไฟล์ .json เพลย์ลิสต์ (โหลดอัตโนมัติตอนเริ่มต้น)
+playlist_dir = ""         # โฟลเดอร์ไฟล์ .json เพลย์ลิสต์ (โหลดอัตโนมัติตอนเริ่มต้น); "" = ปิดการใช้งาน
 search_limit = 1                   # ผลลัพธ์ค้นหา YouTube ต่อ !play ของ non-admin (1 = ผลลัพธ์แรก; สูงสุด 50)
 
 # หมดเวลา mpv (0 = ไม่มี timeout)
@@ -229,7 +229,7 @@ im_require_room_presence = true
 
 ```toml
 auto_reply_enabled = true
-auto_reply_interval = 300.0        # วินาทีระหว่างข้อความ auto-reply (ขั้นต่ำ 60 วินาที)
+auto_reply_interval = 60.0        # วินาทีระหว่างข้อความ auto-reply (ขั้นต่ำ 60 วินาที)
 auto_reply_file = "ads-list.json"  # ไฟล์ JSON เก็บข้อความสำหรับหมุนเวียน
 ```
 

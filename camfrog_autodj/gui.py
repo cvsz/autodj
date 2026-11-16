@@ -1133,7 +1133,32 @@ class App(tk.Tk):
         # ytdlp_path
         self.s_ytdlp_path = self._entry(sp_inner)
         self.s_ytdlp_path.insert(0, self.e.cfg.ytdlp_path)
-        _setting_row("g_settings_ytdlp_path", self.s_ytdlp_path, "g_settings_audio_device")
+        _setting_row("g_settings_ytdlp_path", self.s_ytdlp_path, "g_settings_youtube_cookies_file")
+
+        # youtube_cookies_file
+        self.s_youtube_cookies_file = self._entry(sp_inner)
+        self.s_youtube_cookies_file.insert(0, self.e.cfg.youtube_cookies_file)
+        _setting_row(
+            "g_settings_youtube_cookies_file",
+            self.s_youtube_cookies_file,
+            "g_settings_youtube_cookies_browser",
+        )
+
+        # youtube_cookies_browser
+        self.s_youtube_cookies_browser = self._entry(sp_inner)
+        self.s_youtube_cookies_browser.insert(0, self.e.cfg.youtube_cookies_browser)
+        _setting_row(
+            "g_settings_youtube_cookies_browser",
+            self.s_youtube_cookies_browser,
+            "g_settings_youtube_ca_bundle",
+        )
+
+        # youtube_ca_bundle
+        self.s_youtube_ca_bundle = self._entry(sp_inner)
+        self.s_youtube_ca_bundle.insert(0, self.e.cfg.youtube_ca_bundle)
+        _setting_row(
+            "g_settings_youtube_ca_bundle", self.s_youtube_ca_bundle, "g_settings_audio_device"
+        )
 
         # audio_device
         self.s_audio_device = self._entry(sp_inner)
@@ -1193,7 +1218,39 @@ class App(tk.Tk):
         # max_duration
         self.s_max_duration = self._entry(sp_inner)
         self.s_max_duration.insert(0, str(self.e.cfg.max_duration))
-        _setting_row("g_settings_max_duration", self.s_max_duration, "g_settings_cooldown")
+        _setting_row("g_settings_max_duration", self.s_max_duration, "g_settings_allowed_hosts")
+
+        # allowed_hosts
+        self.s_allowed_hosts = self._entry(sp_inner)
+        self.s_allowed_hosts.insert(0, ", ".join(self.e.cfg.allowed_hosts))
+        _setting_row(
+            "g_settings_allowed_hosts", self.s_allowed_hosts, "g_settings_max_requests_per_user"
+        )
+
+        # max_requests_per_user
+        self.s_max_requests_per_user = self._entry(sp_inner)
+        self.s_max_requests_per_user.insert(0, str(self.e.cfg.max_requests_per_user))
+        _setting_row(
+            "g_settings_max_requests_per_user",
+            self.s_max_requests_per_user,
+            "g_settings_user_request_limit",
+        )
+
+        # user_request_limit
+        self.s_user_request_limit = self._entry(sp_inner)
+        self.s_user_request_limit.insert(0, str(self.e.cfg.user_request_limit))
+        _setting_row(
+            "g_settings_user_request_limit",
+            self.s_user_request_limit,
+            "g_settings_rate_limit_window",
+        )
+
+        # rate_limit_window
+        self.s_rate_limit_window = self._entry(sp_inner)
+        self.s_rate_limit_window.insert(0, str(self.e.cfg.rate_limit_window))
+        _setting_row(
+            "g_settings_rate_limit_window", self.s_rate_limit_window, "g_settings_cooldown"
+        )
 
         # cooldown
         self.s_cooldown = self._entry(sp_inner)
@@ -1960,7 +2017,17 @@ class App(tk.Tk):
         # tts_duck
         self.s_tts_duck = self._entry(sp_inner)
         self.s_tts_duck.insert(0, str(self.e.cfg.tts_duck))
-        _setting_row("g_settings_tts_duck", self.s_tts_duck, "g_settings_auto_discover")
+        _setting_row("g_settings_tts_duck", self.s_tts_duck, "g_settings_msg_now")
+
+        # msg_now
+        self.s_msg_now = self._entry(sp_inner)
+        self.s_msg_now.insert(0, self.e.cfg.msg_now)
+        _setting_row("g_settings_msg_now", self.s_msg_now, "g_settings_msg_next")
+
+        # msg_next
+        self.s_msg_next = self._entry(sp_inner)
+        self.s_msg_next.insert(0, self.e.cfg.msg_next)
+        _setting_row("g_settings_msg_next", self.s_msg_next, "g_settings_auto_discover")
 
         # auto_discover toggle
         self.s_auto_discover = self.e.cfg.auto_discover
@@ -2874,6 +2941,9 @@ class App(tk.Tk):
             # String fields
             cfg.mpv_path = self.s_mpv_path.get().strip()
             cfg.ytdlp_path = self.s_ytdlp_path.get().strip()
+            cfg.youtube_cookies_file = self.s_youtube_cookies_file.get().strip()
+            cfg.youtube_cookies_browser = self.s_youtube_cookies_browser.get().strip()
+            cfg.youtube_ca_bundle = self.s_youtube_ca_bundle.get().strip()
             cfg.audio_device = self.s_audio_device.get().strip()
             cfg.bot_nick = self.s_bot_nick.get().strip()
             cfg.prefix = self.s_prefix.get().strip()
@@ -2894,11 +2964,20 @@ class App(tk.Tk):
             cfg.autoplay_sources = [
                 a.strip() for a in self.s_autoplay_sources.get().split(",") if a.strip()
             ]
+            cfg.allowed_hosts = [
+                a.strip() for a in self.s_allowed_hosts.get().split(",") if a.strip()
+            ]
 
             # Int fields
             cfg.volume = self._parse_int(self.s_volume, "volume")
             cfg.max_queue = self._parse_int(self.s_max_queue, "max queue length")
             cfg.max_duration = self._parse_int(self.s_max_duration, "max track duration")
+            cfg.max_requests_per_user = self._parse_int(
+                self.s_max_requests_per_user, "max requests per user"
+            )
+            cfg.user_request_limit = self._parse_int(
+                self.s_user_request_limit, "user request limit"
+            )
             cfg.search_limit = self._parse_int(self.s_search_limit, "search limit")
             cfg.tts_rate = self._parse_int(self.s_tts_rate, "TTS rate")
             cfg.tts_duck = self._parse_int(self.s_tts_duck, "TTS duck volume")
@@ -2909,6 +2988,7 @@ class App(tk.Tk):
             cfg.cooldown = self._parse_float(self.s_cooldown, "cooldown")
             cfg.send_interval = self._parse_float(self.s_send_interval, "send interval")
             cfg.poll_interval = self._parse_float(self.s_poll_interval, "poll interval")
+            cfg.rate_limit_window = self._parse_float(self.s_rate_limit_window, "rate limit window")
 
             # Bool fields
             cfg.auto_discover = self.s_auto_discover
@@ -2918,6 +2998,10 @@ class App(tk.Tk):
 
             # TTS voice
             cfg.tts_voice = self.s_tts_voice.get().strip()
+
+            # msg_now / msg_next templates
+            cfg.msg_now = self.s_msg_now.get().strip()
+            cfg.msg_next = self.s_msg_next.get().strip()
 
             # Validate prefix not empty
             if not cfg.prefix.strip():
@@ -3195,6 +3279,7 @@ class App(tk.Tk):
                 tmp = p.with_name(p.name + ".tmp")
                 tmp.write_text(new_text, "utf-8")
                 os.replace(tmp, p)
+                os.chmod(p, 0o600)
             except (OSError, PermissionError):
                 app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
                 app_cfg_dir = Path(app_data) / "CamfrogAutoDJ"
@@ -3207,6 +3292,7 @@ class App(tk.Tk):
                 tmp = app_cfg_path.with_name(app_cfg_path.name + ".tmp")
                 tmp.write_text(new_text, "utf-8")
                 os.replace(tmp, app_cfg_path)
+                os.chmod(app_cfg_path, 0o600)
                 p = app_cfg_path
                 # Remember the writable location so subsequent saves don't keep trying
                 # the original (read-only) path first.

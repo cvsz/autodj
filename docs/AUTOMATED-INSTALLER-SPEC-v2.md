@@ -399,7 +399,7 @@ mpv_path = "mpv/mpv.exe"
 ytdlp_path = "mpv/yt-dlp.exe"
 music_dirs = ["Music"]
 playlist_file = "playlist.json"
-playlist_dir = "playlist"
+playlist_dir = ""
 
 [playback]
 default_volume = 70
@@ -425,7 +425,7 @@ voteskip_threshold = 3
 
 [features]
 auto_reply_enabled = true
-auto_reply_interval = 300.0
+auto_reply_interval = 60.0
 auto_reply_file = "ads-list.json"
 im_auto_reply_enabled = true
 im_auto_reply_cooldown = 60.0

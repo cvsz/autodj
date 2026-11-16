@@ -195,7 +195,7 @@ AutoDJError (base)
 | **Chat** | `chat_reader`, `chat_sender`, `window_title_re`, `process_re`, `send_mode`, `send_verify` | `uia`/`logtail`/`console` |
 | **Window Discovery** | `auto_discover`, `view_kind`, `view_type`, `view_index`, `input_type`, `input_index` | Auto-filled by `--discover` |
 | **Audio** | `mpv_path`, `ytdlp_path`, `audio_device`, `volume`, `mpv_timeout` | `audio_device="auto"` default |
-| **Library** | `music_dirs[]`, `autoplay_sources[]`, `shuffle`, `allowed_hosts[]` | `playlist_dir="playlist"` |
+| **Library** | `music_dirs[]`, `autoplay_sources[]`, `shuffle`, `allowed_hosts[]` | `playlist_dir=""` disabled by default |
 | **Queue Limits** | `max_requests_per_user`, `max_queue`, `max_duration`, `voteskip_threshold`, `cooldown` | Dynamic voteskip option |
 | **YouTube** | `search_limit`, `youtube_cookies_file`, `youtube_cookies_browser`, `youtube_ca_bundle` | Auth support |
 | **Rate Limiting** | `user_request_limit`, `rate_limit_window`, `voteskip_dynamic`, `voteskip_dynamic_pct` | Per-nick rolling window |
@@ -945,7 +945,7 @@ volume = 70
 mpv_timeout = 30.0
 
 # Library
-playlist_dir = "playlist"
+playlist_dir = ""
 shuffle = true
 max_queue = 50
 max_duration = 900
@@ -959,7 +959,7 @@ rate_limit_window = 300.0
 
 # Auto-reply
 auto_reply_enabled = true
-auto_reply_interval = 300.0
+auto_reply_interval = 60.0
 auto_reply_file = "ads-list.json"
 
 # IM

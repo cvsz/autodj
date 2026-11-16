@@ -202,7 +202,7 @@ autoplay_idle_timeout = 30.0       # Min 30s
 
 # Playlist persistence
 playlist_file = "playlist.json"    # User requests saved here (deduplicated)
-playlist_dir = "playlist/"         # Folder of .json playlist files (auto-loaded at startup)
+playlist_dir = ""         # Folder of .json playlist files (auto-loaded at startup); "" = disabled
 search_limit = 1                   # YouTube search results per non-admin !play (1 = first match only; max 50)
 
 # mpv timeout (0 = never timeout)
@@ -229,7 +229,7 @@ im_require_room_presence = true
 
 ```toml
 auto_reply_enabled = true
-auto_reply_interval = 300.0        # seconds between auto-reply messages (min 60s)
+auto_reply_interval = 60.0        # seconds between auto-reply messages (min 60s)
 auto_reply_file = "ads-list.json"  # JSON file with messages to rotate through
 ```
 

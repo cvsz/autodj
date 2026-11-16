@@ -94,10 +94,13 @@ def _create_base_app(config: WebhookConfig) -> "FastAPI":
     app.add_middleware(RawBodyMiddleware)
 
     # CORS middleware
+    # allow_credentials must be False when allow_origins is ["*"] (browsers reject
+    # credentials with wildcard origin). Restrict origins explicitly if credentials
+    # are required.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=config.cors_origins,
-        allow_credentials=True,
+        allow_credentials=config.cors_origins != ["*"],
         allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )

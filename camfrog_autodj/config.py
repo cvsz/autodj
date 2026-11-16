@@ -103,7 +103,9 @@ class Config:
     audio_device: str = "auto"
     volume: int = 70
     music_dirs: list[str] = field(default_factory=list)
-    autoplay_sources: list[str] = field(default_factory=list)
+    autoplay_sources: list[str] = field(
+        default_factory=lambda: ["https://www.youtube.com/watch?v=HhVVVgYsBYw&t"]
+    )
     shuffle: bool = True
     allowed_hosts: list[str] = field(
         default_factory=lambda: ["youtube.com", "youtu.be", "music.youtube.com"]
@@ -154,7 +156,7 @@ class Config:
     )
     # (deduplicated) and join the autoplay pool (random); "" = disable persistence
     playlist_dir: str = (
-        "playlist"  # directory of *.json playlist files auto-loaded at startup; "" = disabled
+        ""  # directory of *.json playlist files auto-loaded at startup; "" = disabled (default off)
     )
     search_limit: int = (
         1  # YouTube text-search results fetched per non-admin !play (1 = first match only)
@@ -182,10 +184,14 @@ class Config:
     rate_limit_window: float = 300.0  # rolling time window for per-user request limit (seconds)
     # Auto-reply: scheduled messages sent to the room from ads-list.json
     auto_reply_enabled: bool = True  # enable scheduled auto-reply messages
-    auto_reply_interval: float = 300.0  # seconds between auto-reply messages (5 minutes)
+    auto_reply_interval: float = 60.0  # seconds between auto-reply messages (1 minute)
     auto_reply_file: str = "ads-list.json"  # JSON file with messages to rotate through
     # IM Auto-reply: automatic reply to private/instant messages
-    im_auto_reply_enabled: bool = True  # enable auto-reply to private/instant messages
+    # NOTE: Currently posts notification to room chat (ChatAdapter doesn't support IM sending yet).
+    # Set to true to enable room notifications when IMs are received.
+    im_auto_reply_enabled: bool = (
+        False  # enable auto-reply notification for private/instant messages
+    )
     im_auto_reply_message: str = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."  # message to send as auto-reply
     im_auto_reply_cooldown: float = (
         60.0  # seconds between auto-replies to the same user (avoid spam)
@@ -453,6 +459,11 @@ def _validate(cfg: Config, data: dict, where: str) -> None:
     cfg.prefix = cfg.prefix.strip()
     cfg.admins = [a.strip() for a in cfg.admins if a.strip()]
     cfg.blocked_users = [a.strip() for a in cfg.blocked_users if a.strip()]
+    # Webhook: secret must be non-empty when webhook is enabled
+    if cfg.webhook_enabled and not cfg.webhook_secret.strip():
+        raise ConfigError(
+            f"{where}: 'webhook_secret' must not be empty when 'webhook_enabled' is true"
+        )
 
 
 def _validate_field(cfg: Config, data: dict, f, defaults: Config, where: str) -> None:
