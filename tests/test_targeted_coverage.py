@@ -93,6 +93,21 @@ class TestConfigUncoveredLines:
         assert data["font_size"] == 14
         assert data["font_color"] == "#FF0000"
 
+    def test_message_style_from_toml_dict_matches_dataclass_defaults(self):
+        """from_toml_dict({}) must match the MessageStyle() dataclass defaults.
+
+        Regression guard: loading message_style from config.toml without font_size /
+        font_color must not silently produce different preview values than MessageStyle().
+        """
+        style = MessageStyle.from_toml_dict({})
+        default = MessageStyle()
+        assert style.font_family == default.font_family == "Consolas"
+        assert style.font_size == default.font_size == 14
+        assert style.font_color == default.font_color == "#000000"
+        assert style.bold == default.bold is False
+        assert style.italic == default.italic is False
+        assert style.underline == default.underline is False
+
     def test_config_load_unicode_decode_error(self, tmp_path):
         """Test Config.load UnicodeDecodeError handling (lines 232-233)."""
         bad_file = tmp_path / "bad.toml"
