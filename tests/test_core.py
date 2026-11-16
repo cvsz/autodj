@@ -190,6 +190,20 @@ def test_skip_and_voteskip():
     assert e.player.stopped == 2
 
 
+def test_play_cuts_current_track_now():
+    """!play inserts at front and cuts the current track so it plays now."""
+    e = make()
+    e._active_room_users.add("amy")
+    e.current = Track("s", "now", 90, "bob")
+    e.router.handle(ChatMessage("amy", "play next song", is_im=True))
+    # The current track was cut (skip invoked) rather than making the user wait.
+    assert e.player.stopped == 1
+    # The new request is at the front of the queue, ready to play immediately.
+    peeked = e.queue.peek()
+    assert peeked is not None and peeked.title == "next song"
+    assert "Queued #1" in out(e)[0]
+
+
 def test_remove_own_only_and_say_local():
     e = make()
     e._active_room_users.add("amy")

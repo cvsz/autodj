@@ -657,6 +657,79 @@ class Engine:
         fresh = [t for t in tracks if getattr(t, "added", "")]
         return fresh[-n:]
 
+    def top_requests(self, period: str = "today", limit: int = 5) -> list[dict]:
+        """คืนรายการเพลงที่ถูกขอมากสุดในช่วงเวลาที่กำหนด.
+
+        Args:
+            period: "today" หรือ "week"
+            limit: จำนวนเพลงสูงสุดที่คืน
+
+        Returns:
+            list of {"title": str, "count": int} เรียงจากมากไปน้อย
+        """
+        from pathlib import Path
+
+        counter_path: Path | None = None
+        if self.cfg_path:
+            counter_path = Path(self.cfg_path).parent / "top_requests.json"
+        else:
+            counter_path = Path("top_requests.json")
+
+        try:
+            data = json.loads(counter_path.read_text(encoding="utf-8-sig"))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            return []
+
+        now = time.time()
+        if period == "today":
+            cutoff = now - 86400.0  # 24 hours
+        else:  # week
+            cutoff = now - 86400.0 * 7
+
+        counts: dict[str, int] = {}
+        titles: dict[str, str] = {}
+        for entry in data.get("requests", []):
+            ts = entry.get("ts", 0)
+            if ts < cutoff:
+                continue
+            src = entry.get("source", "")
+            title = entry.get("title", src)
+            counts[src] = counts.get(src, 0) + 1
+            titles[src] = title
+
+        ranked = sorted(counts.items(), key=lambda x: x[1], reverse=True)[:limit]
+        return [{"title": titles[src], "count": cnt} for src, cnt in ranked]
+
+    def record_request(self, source: str, title: str) -> None:
+        """บันทึกการขอเพลงสำหรับสถิติ /topm."""
+        from pathlib import Path
+
+        counter_path: Path | None = None
+        if self.cfg_path:
+            counter_path = Path(self.cfg_path).parent / "top_requests.json"
+        else:
+            counter_path = Path("top_requests.json")
+
+        try:
+            try:
+                data = json.loads(counter_path.read_text(encoding="utf-8-sig"))
+            except (FileNotFoundError, json.JSONDecodeError, OSError):
+                data = {"requests": []}
+            if not isinstance(data, dict) or not isinstance(data.get("requests"), list):
+                data = {"requests": []}
+            data["requests"].append({"source": source, "title": title, "ts": time.time()})
+            # เก็บแค่ 30 วันย้อนหลัง
+            cutoff = time.time() - 86400.0 * 30
+            data["requests"] = [r for r in data["requests"] if r.get("ts", 0) >= cutoff]
+            tmp = counter_path.with_suffix(".json.tmp")
+            tmp.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            tmp.replace(counter_path)
+        except OSError:
+            log.exception("failed to record request for top_requests")
+
     def resolve(self, arg: str, user: str, admin: bool) -> list[Track]:
         arg = self._normalize_url_arg(arg.strip().strip('"'))
         if not arg:
@@ -977,16 +1050,17 @@ class Engine:
 
         return self._autoplay_mode
 
-    def _pop_next_track(self, is_request: bool) -> Track | None:
-        """Pop the next track based on request/autoplay mode.
+    def _pop_next_track(self) -> Track | None:
+        """Pop the next track to play.
 
-        Requests always take priority over the autoplay pool. When not in
-        request mode, pick from the autoplay pool (shuffled or sequential).
+        User requests always take priority over the autoplay pool. When no user
+        requests are pending, fall back to the autoplay pool (e.g. the YouTube
+        autoplay source) so music keeps playing without user input.
         """
-        if is_request and self.queue.requests:
-            return self.queue.pop()
-        if not is_request and self.queue.pool:
-            return self.queue.pop_pool()
+        if self.queue.requests:
+            return self.queue.pop()  # user request: play now
+        if self.queue.pool:
+            return self.queue.pop_pool()  # autoplay pool: no user request
         return None
 
     def _player_loop(self):
@@ -1017,10 +1091,8 @@ class Engine:
 
             now = time.monotonic()
             has_requests = bool(self.queue.requests)
-            is_request = self._check_autoplay_mode(now, idle_timeout)
-            is_request = has_requests or is_request  # prefer requests
-
-            t = self._pop_next_track(is_request)
+            self._check_autoplay_mode(now, idle_timeout)  # updates self._autoplay_mode state
+            t = self._pop_next_track()
             if t is None:
                 self.wake.wait(2)
                 self.wake.clear()
@@ -1038,7 +1110,7 @@ class Engine:
 
             # After popping and resolving current, trigger preload for next in queue (only if needed)
             self._maybe_preload_search_tracks()
-            fails = self._play_one_track(t, fails, is_request=is_request)
+            fails = self._play_one_track(t, fails, is_request=has_requests)
 
     def _mpv_available(self) -> bool:
         # Players without an `available` method (e.g. test fakes) are treated as available.
@@ -1571,7 +1643,12 @@ class Engine:
                     log.debug("Cleaned up %d stale IM reply cooldowns", len(stale))
 
     def _handle_im_message(self, msg: ChatMessage):
-        """Handle incoming IM (private message) and send auto-reply if enabled."""
+        """Handle incoming IM (private message) and send auto-reply if enabled.
+
+        Note: Current ChatAdapter interface only supports sending to room chat.
+        IM auto-reply posts to the room with an [IM] prefix as a fallback.
+        For true IM replies, a future enhancement would need IM sending support.
+        """
         if not self.cfg.im_auto_reply_enabled:
             return
         if not msg.is_im:
@@ -1583,15 +1660,17 @@ class Engine:
             if now - last_reply < self.cfg.im_auto_reply_cooldown:
                 log.debug("IM auto-reply on cooldown for %s", user)
                 return
-            # Send auto-reply
+            # Send auto-reply (currently posts to room as fallback)
             reply_text = self.cfg.im_auto_reply_message
             if reply_text:
                 try:
-                    self.say(f"[IM] {reply_text}")
+                    # TODO: When ChatAdapter supports send_im(), use that instead.
+                    # For now, post to room with IM prefix as notification.
+                    self.say(f"[IM auto-reply to {msg.user}] {reply_text}")
                     self._im_reply_cooldowns[user] = time.monotonic()
-                    log.info("Sent IM auto-reply to %s", msg.user)
+                    log.info("Sent IM auto-reply notification to room for %s", msg.user)
                 except Exception:
-                    log.exception("Failed to send IM auto-reply to %s", msg.user)
+                    log.exception("Failed to send IM auto-reply notification for %s", msg.user)
 
     def _rate_limit_cleanup_loop(self):
         """Periodically clean up expired rate limit entries in the Router.

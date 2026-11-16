@@ -252,10 +252,108 @@ def _line(t) -> str:
     return f"{t.title} [{t.dur}] ({t.requester})"
 
 
+def _cut_current(e: "Engine") -> None:
+    """Stop the current track so the next queued request plays immediately.
+
+    Used by ``!play`` so a new request cuts in now instead of making the user
+    wait for the current track to finish. Safe to call when nothing is playing.
+    """
+    if e.current:
+        e.skip()
+
+
 @command("help", "commands", "ช่วยเหลือ")
 def _help(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     p = e.cfg.prefix
     e.say(e.t("help_base", p=p) + (e.t("help_admin", p=p) if admin else ""))
+
+
+@command("hadj", "คู่มือคำสั่ง", "คู่มือ")
+def _hadj(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """Send the full IM help guide (both pages) to the user.
+
+    Works via IM (no prefix) or in the room (with prefix). Replies are posted
+    to the room via ``e.say()``, matching the existing command-reply pattern.
+    """
+    full = (
+        e.t(
+            "help_im_page1",
+            BOT=e.cfg.bot_nick,
+            ROOM=e.cfg.room,
+        )
+        + "\n"
+        + e.t("help_im_page2")
+        + "\n"
+        + e.t("help_im_next_page")
+    )
+    e.say(full)
+
+
+@command("skipp", "ข้ามเพลง", admin=True)
+def _skipp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """ข้ามเพลงปัจจุบัน — ผู้ขอหรือ Main Owner เท่านั้น (alias ของ /skip)."""
+    _skip(e, m, a, admin)
+
+
+@command("nowp")
+def _nowp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """ดูเพลงปัจจุบันและผู้ขอ (alias ของ /np)."""
+    _np(e, m, a, admin)
+
+
+@command("lastp")
+def _lastp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """ดูเพลงที่เล่นไปล่าสุด (alias ของ /last)."""
+    _last(e, m, a, admin)
+
+
+@command("aplay", "addm")
+def _aplay(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """ขอเพลงผ่าน IM (alias ของ /play) รองรับการมอบเพลงด้วย @{USER} เช่น /aplay ครับพี่ @user"""
+    # รองรับคำสั่ง /aplay fav <ลำดับ> — เล่นเพลงโปรดลำดับที่ n
+    stripped = a.strip()
+    if stripped.lower().startswith("fav "):
+        try:
+            index = int(stripped[4:].strip())
+        except ValueError as err:
+            raise UserError(e.t("aplay_fav_usage", p=e.cfg.prefix)) from err
+        from .favorites import FavoritesStore
+
+        fav = FavoritesStore(e.cfg_path)
+        entry = fav.get(m.user, index)
+        if not entry:
+            raise UserError(e.t("aplay_fav_not_found", n=index))
+        # เล่นเพลงโปรดโดยตรง
+        tracks = e.resolve(entry["source"], m.user, admin)
+        if not tracks:
+            raise UserError(e.t("nothing_found"))
+        pos = 0
+        with e.queue.lock:
+            for t in tracks:
+                pos = e.queue.add_request(t, position=0)
+                e.record_request(t.source, t.title)
+        e.wake.set()
+        _cut_current(e)
+        e._last_user_request_time = time.monotonic()
+        if e._autoplay_mode:
+            e._autoplay_mode = False
+            log.info("Autoplay mode deactivated: new user request received")
+        e.record_request(entry["source"], entry["title"])
+        if len(tracks) == 1:
+            e.say(
+                e.t(
+                    "queued_one",
+                    pos=pos,
+                    title=tracks[0].title,
+                    dur=tracks[0].dur,
+                    user=m.user,
+                )
+            )
+        else:
+            e.say(e.t("queued_many", n=len(tracks), user=m.user))
+        return
+
+    _play(e, m, a, admin)
 
 
 @command("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง", "เปิดเพลง")
@@ -277,7 +375,9 @@ def _play(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
             _assert_not_already_queued(e, tracks[0])
         for t in tracks:
             pos = e.queue.add_request(t, position=0)  # insert at front: play next immediately
+            e.record_request(t.source, t.title)  # บันทึกสถิติสำหรับ /topm
     e.wake.set()
+    _cut_current(e)
     # Update last user request time for autoplay idle timeout
     e._last_user_request_time = time.monotonic()
     # Exit autoplay mode immediately when user makes a request
@@ -700,3 +800,73 @@ def _remove_operator(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None
     if not a:
         raise UserError(e.t("usage_deop", p=e.cfg.prefix))
     e.say(f"/deop {a.strip()}")
+
+
+# ============================================================================
+# ขอเพลงและดูคิว / Song requests (IM commands) — ตามคู่มือ /hadj
+# ============================================================================
+
+
+@command("hbdp", "hbdm", "อวยพรวันเกิด", admin=False)
+def _hbdp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """อวยพรวันเกิดหน้าห้อง + เปิดเพลงวันเกิด"""
+    if not a:
+        raise UserError(e.t("hbdp_usage", p=e.cfg.prefix))
+    name = a.strip()
+    # อวยพรวันเกิดในห้อง
+    e.say(e.t("hbdp_wish", name=name))
+    # เปิดเพลงวันเกิด (ใช้ resolve ค้นหาเพลงวันเกิด)
+    tracks = e.resolve("生日快乐 happy birthday", "AutoDJ", True)
+    if not tracks:
+        # fallback: ค้นหาเป็นภาษาอังกฤษ
+        tracks = e.resolve("happy birthday", "AutoDJ", True)
+    if tracks:
+        with e.queue.lock:
+            for t in tracks:
+                e.queue.add_request(t, position=0)
+        e.wake.set()
+        _cut_current(e)
+        e.say(e.t("hbdp_playing", title=tracks[0].title, name=name))
+    else:
+        e.say(e.t("hbdp_no_song", name=name))
+
+
+@command("topp", "topm", "เพลงขอสูงสุด", admin=False)
+def _topp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """เพลงที่ถูกขอมากสุดวันนี้ (/topm week = สัปดาห์นี้)"""
+    period = a.strip().lower() if a else "today"
+    if period not in ("today", "week"):
+        period = "today"
+    top = e.top_requests(period=period, limit=5)
+    if not top:
+        e.say(e.t("topp_none", period=period))
+        return
+    lines = " | ".join(f"{i + 1}) {t['title']} ({t['count']} ครั้ง)" for i, t in enumerate(top))
+    e.say(e.t("topp_list", period=period, list=lines))
+
+
+@command("favp", "favm", "เพลงโปรด", admin=False)
+def _favp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """เก็บเพลงที่กำลังเล่นไว้ในเพลงโปรด"""
+    cur = e.current
+    if not cur:
+        raise UserError(e.t("nothing_playing"))
+    from .favorites import FavoritesStore
+
+    fav = FavoritesStore(e.cfg_path)
+    fav.add(m.user, cur)
+    e.say(e.t("favp_saved", title=cur.title))
+
+
+@command("myfavp", "myfavm", "ดูเพลงโปรด", admin=False)
+def _myfavp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """ดูเพลงโปรดของตัวเอง"""
+    from .favorites import FavoritesStore
+
+    fav = FavoritesStore(e.cfg_path)
+    items = fav.list_for(m.user)
+    if not items:
+        e.say(e.t("myfavp_empty"))
+        return
+    lines = " | ".join(f"{i + 1}) {it['title']}" for i, it in enumerate(items[:10]))
+    e.say(e.t("myfavp_list", list=lines))

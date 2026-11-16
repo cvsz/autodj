@@ -76,7 +76,7 @@ audio_normalize = false             # Enable dynamic audio loudness normalizatio
 
 # --- Local Music Library & TTS -----------------------------------------------
 music_dirs = []                     # Local library directories: requestable by name, also autoplayed
-autoplay_sources = []               # Extra YouTube playlist URLs / folders / files to autoplay
+autoplay_sources = ["https://www.youtube.com/watch?v=HhVVVgYsBYw&t"]  # Extra YouTube playlist URLs / folders / files to autoplay
 shuffle = true                      # Shuffle autoplay pool
 
 # --- Request / Queue Limits --------------------------------------------------
@@ -134,7 +134,7 @@ log_json_fields = [                 # Extra fields to include in JSON logs
 # --- Playlist Persistence ----------------------------------------------------
 playlist_file = "playlist.json"     # User-requested tracks (!play / GUI request / !load) are appended here
 # (deduplicated) and join the autoplay pool (random); "" = disable persistence
-playlist_dir = "playlist"           # Directory of *.json playlist files auto-loaded at startup; "" = disabled
+playlist_dir = ""           # Directory of *.json playlist files auto-loaded at startup; "" = disabled (default off)
 
 # --- YouTube Search ----------------------------------------------------------
 search_limit = 1                    # YouTube text-search results fetched per non-admin !play (1 = first match only; max 50)

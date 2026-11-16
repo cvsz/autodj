@@ -47,7 +47,7 @@ Expected: "472 passed, 3 subtests passed"
 Change "Tested (325 passed" to "Tested (472 passed"
 
 - [ ] **Step 3: Verify README config defaults match config.example.toml**
-Check autoplay_idle_timeout (30s vs 30m), auto_reply_interval (300s vs 60s), im_auto_reply_cooldown (60s vs 30s)
+Check autoplay_idle_timeout (30s vs 30m), auto_reply_interval (60s now matches config), im_auto_reply_cooldown (60s vs 30s)
 
 - [ ] **Step 4: Run validation**
 ```bash
