@@ -1,134 +1,171 @@
 #!/usr/bin/env python3
-"""Check Windows 11 version and prerequisites.
+"""Windows 11 prerequisite checks for Makefile."""
 
-This script replaces the inline PowerShell commands in the Makefile
-to avoid shell quoting issues across different shells (bash, cmd, pwsh).
-"""
-
-import importlib.util
-import os
-import subprocess
-import sys
-
-WIN11_MIN_BUILD = 22000
-
-
-def check_windows_version() -> tuple[bool, str]:
-    """Check if Windows version is 11 (build 22000+)."""
+def run_ps(cmd):
+    """Run a PowerShell command and return (success, output)."""
     try:
-        # Use PowerShell to get OS build number (works in both native and WSL)
         result = subprocess.run(
-            [
-                "powershell.exe",
-                "-NoProfile",
-                "-Command",
-                "(Get-Item 'C:\\Windows\\System32\\ntoskrnl.exe').VersionInfo.ProductVersion",
-            ],
+            ["powershell.exe", "-NoProfile", "-Command", cmd],
             capture_output=True,
             text=True,
-            timeout=10,
+            check=False,
         )
-        if result.returncode != 0:
-            return False, "PowerShell command failed"
-
-        # Parse output: e.g., "10.0.26300.1234"
-        version_str = result.stdout.strip()
-        parts = version_str.split(".")
-        if len(parts) >= 3 and parts[2].isdigit():
-            build = int(parts[2])
-            return build >= WIN11_MIN_BUILD, f"Windows build {build}"
-
-        return False, f"Could not parse build number from: {version_str}"
+        return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
     except Exception as e:
-        return False, f"Error checking Windows version: {e}"
+        return False, "", str(e)
 
 
-def check_nsis() -> tuple[bool, str]:
+def check_windows11(min_build=22000):
+    """Check if Windows 11 (build >= min_build)."""
+    success, out, _err = run_ps(
+        "$v = (Get-Item 'C:\\Windows\\System32\\ntoskrnl.exe').VersionInfo.ProductVersion; "
+        "$build = [int]($v.Split('.')[2]); "
+        "Write-Host $build; "
+        "if ($build -lt " + str(min_build) + ") { exit 1 }"
+    )
+    if success:
+        print(f"  OK: Windows 11 detected (build {out})")
+        return True
+    else:
+        print(
+            f"ERROR: Not Windows 11 (build < {min_build}). Install Windows 11 or set SKIP_CHECKS=1 to bypass."
+        )
+        return False
+
+
+def check_nsis():
     """Check if NSIS (makensis) is available."""
-    # Check PATH first using appropriate command for platform
-    if sys.platform == "win32":
-        # Native Windows Python - use where
-        for cmd in ["makensis", "makensis.exe"]:
-            result = subprocess.run(["where", cmd], capture_output=True, text=True)
-            if result.returncode == 0:
-                return True, f"NSIS found in PATH: {result.stdout.strip()}"
+    success, out, _err = run_ps(
+        "if (Get-Command makensis -ErrorAction SilentlyContinue) { "
+        "  echo '  OK: NSIS (makensis) in PATH' "
+        "} elseif (Test-Path 'C:\\Program Files (x86)\\NSIS\\makensis.exe') { "
+        "  echo '  OK: NSIS found at C:\\Program Files (x86)\\NSIS\\makensis.exe' "
+        "} elseif (Test-Path 'C:\\Program Files\\NSIS\\makensis.exe') { "
+        "  echo '  OK: NSIS found at C:\\Program Files\\NSIS\\makensis.exe' "
+        "} else { "
+        "  echo 'ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis) or set SKIP_CHECKS=1 to bypass.'; "
+        "  exit 1 "
+        "}"
+    )
+    if success:
+        print(f"  {out}")
+        return True
     else:
-        # WSL/Linux - use which
-        for cmd in ["makensis", "makensis.exe"]:
-            result = subprocess.run(["which", cmd], capture_output=True, text=True)
-            if result.returncode == 0:
-                return True, f"NSIS found in PATH: {result.stdout.strip()}"
-
-    # Check common install locations (Windows paths work in WSL via /mnt/c/)
-    common_paths = [
-        r"C:\Program Files (x86)\NSIS\makensis.exe",
-        r"C:\Program Files\NSIS\makensis.exe",
-        "/mnt/c/Program Files (x86)/NSIS/makensis.exe",
-        "/mnt/c/Program Files/NSIS/makensis.exe",
-    ]
-    for path in common_paths:
-        if os.path.exists(path):
-            return True, f"NSIS found at {path}"
-
-    return False, "NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis)"
+        print(f"ERROR: {out}")
+        return False
 
 
-def check_mpv() -> tuple[bool, str]:
+def check_mpv():
     """Check if mpv is available."""
-    # Check PATH first using appropriate command for platform
-    if sys.platform == "win32":
-        # Native Windows Python - use where
-        for cmd in ["mpv", "mpv.exe"]:
-            result = subprocess.run(["where", cmd], capture_output=True, text=True)
-            if result.returncode == 0:
-                return True, f"mpv found in PATH: {result.stdout.strip()}"
+    success, out, _err = run_ps(
+        "if (Get-Command mpv.exe -ErrorAction SilentlyContinue) { "
+        "  echo '  OK: mpv.exe in PATH' "
+        "} elseif (Test-Path 'C:\\Program Files\\mpv\\mpv.exe') { "
+        "  echo '  OK: mpv found at C:\\Program Files\\mpv\\mpv.exe' "
+        "} else { "
+        "  echo 'WARN: mpv.exe not found in PATH. Install: choco install mpv --yes' "
+        "}"
+    )
+    print(f"  {out}")
+    return True  # mpv is a warning, not an error
+
+
+def check_pyinstaller(pip_cmd):
+    """Check if PyInstaller is installed."""
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", "import PyInstaller"], capture_output=True, check=False
+        )
+        if result.returncode == 0:
+            print("  OK: PyInstaller installed")
+            return True
+        else:
+            print(f"WARN: PyInstaller not installed. Run: {pip_cmd} install pyinstaller")
+            return True  # PyInstaller is a warning, not an error
+    except Exception:
+        print(f"WARN: PyInstaller not installed. Run: {pip_cmd} install pyinstaller")
+        return True
+
+
+def _run_win11_check(skip_checks, min_build, pip_cmd, log_dir, log_ts):
+    """Run the full win11-check."""
+    log_file = os.path.join(log_dir, f"win11-check-{log_ts}.log")
+
+    def log(msg):
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(msg + "\n")
+
+    print(f"=== Windows 11 Prerequisite Check ({log_ts}) ===")
+    log(f"=== Windows 11 Prerequisite Check ({log_ts}) ===")
+
+    if skip_checks:
+        msg = "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)"
+        print(msg)
+        log(msg)
     else:
-        # WSL/Linux - use which
-        for cmd in ["mpv", "mpv.exe"]:
-            result = subprocess.run(["which", cmd], capture_output=True, text=True)
-            if result.returncode == 0:
-                return True, f"mpv found in PATH: {result.stdout.strip()}"
+        if not check_windows11(min_build):
+            return False
+        log("  OK: Windows 11 detected")
 
-    # Check common install locations (Windows paths work in WSL via /mnt/c/)
-    common_paths = [
-        r"C:\Program Files\mpv\mpv.exe",
-        r"C:\Program Files (x86)\mpv\mpv.exe",
-        "/mnt/c/Program Files/mpv/mpv.exe",
-        "/mnt/c/Program Files (x86)/mpv/mpv.exe",
-    ]
-    for path in common_paths:
-        if os.path.exists(path):
-            return True, f"mpv found at {path}"
+        if not check_nsis():
+            return False
 
-    return False, "mpv.exe not found in PATH. Install: choco install mpv --yes"
+        check_mpv()
+        check_pyinstaller(pip_cmd)
+
+    print(f"Logs: {log_file}")
+    return True
 
 
-def check_pyinstaller() -> tuple[bool, str]:
-    """Check if PyInstaller is available."""
-    if importlib.util.find_spec("PyInstaller") is not None:
-        return True, "PyInstaller installed"
-    return False, "PyInstaller not installed. Run: pip install pyinstaller"
+def _run_simple_check(cmd_name, check_func, skip_checks, log_dir, log_ts):
+    """Run a simple check (mpv-check, nsis-check, pyinstaller-check)."""
+    log_file = os.path.join(log_dir, f"{cmd_name}-{log_ts}.log")
+
+    if skip_checks:
+        msg = f"  SKIP: {cmd_name} check disabled (SKIP_CHECKS=1)"
+        print(msg)
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(msg + "\n")
+    else:
+        check_func()
 
 
 def main():
-    """Run all checks and return appropriate exit code."""
-    checks = [
-        ("Windows 11", check_windows_version),
-        ("NSIS", check_nsis),
-        ("mpv", check_mpv),
-        ("PyInstaller", check_pyinstaller),
-    ]
+    if len(sys.argv) < 2:
+        print("Usage: python win11_check.py <command> [args...]")
+        sys.exit(1)
 
-    all_passed = True
-    for name, check_func in checks:
-        passed, msg = check_func()
-        status = "OK" if passed else "ERROR"
-        print(f"  {status}: {msg}")
-        if not passed and name != "mpv":  # mpv is warning only
-            all_passed = False
+    cmd = sys.argv[1]
+    skip_checks = os.environ.get("SKIP_CHECKS") == "1"
+    min_build = int(os.environ.get("WIN11_MIN_BUILD", "22000"))
+    pip_cmd = os.environ.get("PIP", f"{sys.executable} -m pip")
+    log_dir = os.environ.get("BUILD_LOG_DIR", "logs")
+    log_ts = os.environ.get("BUILD_LOG_TS", "unknown")
 
-    return 0 if all_passed else 1
+    import os
+
+    os.makedirs(log_dir, exist_ok=True)
+
+    if cmd == "win11-check":
+        ok = _run_win11_check(skip_checks, min_build, pip_cmd, log_dir, log_ts)
+        sys.exit(0 if ok else 1)
+
+    elif cmd == "mpv-check":
+        _run_simple_check("mpv-check", check_mpv, skip_checks, log_dir, log_ts)
+
+    elif cmd == "nsis-check":
+        _run_simple_check("nsis-check", check_nsis, skip_checks, log_dir, log_ts)
+
+    elif cmd == "pyinstaller-check":
+        _run_simple_check(
+            "pyinstaller-check", lambda: check_pyinstaller(pip_cmd), skip_checks, log_dir, log_ts
+        )
+
+    else:
+        print(f"Unknown command: {cmd}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    import sys
+    main()
