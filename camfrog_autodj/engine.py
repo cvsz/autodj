@@ -1244,6 +1244,9 @@ class Engine:
         self._log_im_message(msg)
         if self.cfg.im_auto_reply_enabled:
             self._handle_im_message(msg)
+        # Emit chat event for plugins
+        if self._plugin_manager:
+            self._plugin_manager.emit("chat", msg)
         # Process IM commands through the router (like room messages)
         self.exec.submit(self.router.handle, msg)
 
@@ -1256,6 +1259,9 @@ class Engine:
                 return
 
         self.log_chat(msg.user, msg.text)
+        # Emit chat event for plugins
+        if self._plugin_manager:
+            self._plugin_manager.emit("chat", msg)
 
         # Track active room users
         self._update_participant_count(msg.user)
