@@ -89,15 +89,3 @@ jobs:
             "${{ env.AUDIT_RESULT }}" \
             "0" \
             "${{ github.repository }}"
-        env:
-          GH_TOKEN: ${{ secrets.POLIEDBC_PAT }}
-
-      - name: Request changes if audit failed or security issues found
-        if: env.AUDIT_RESULT != 'PASSED'
-        run: |
-          gh pr review ${{ github.event.inputs.pr_number }} \
-            --request-changes \
-            --body "Audit failed. Fix the errors above before review." \
-            --repo ${{ github.repository }}
-        env:
-          GH_TOKEN: ${{ secrets.POLIEDBC_PAT }}

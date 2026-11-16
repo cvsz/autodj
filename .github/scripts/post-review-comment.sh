@@ -27,7 +27,15 @@ Reviewed by: @policedbc (automated service account)
 
 **Note:** Auto-approve is intentionally disabled. Only a deliberate reviewer
 action may create an approval or change request per independent review policy."
+  if [ "${AUTO_APPROVE_SAFE}" = "1" ]; then
+    BODY="${BODY}
 
+- Auto-approve: safe (no security-sensitive paths changed)"
+  else
+    BODY="${BODY}
+
+- Auto-approve: skipped (security-sensitive paths changed — human review required per CODEOWNERS)"
+  fi
   gh pr comment "${PR_NUMBER}" --body "$BODY" --repo "${REPO}"
 else
   BODY="## Automated Audit — policedbc
@@ -37,4 +45,3 @@ Audit **FAILED**. Fix the errors above before review.
 Reviewed by: @policedbc (automated service account)"
 
   gh pr comment "${PR_NUMBER}" --body "$BODY" --repo "${REPO}"
-fi
