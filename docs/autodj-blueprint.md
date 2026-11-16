@@ -195,11 +195,11 @@ AutoDJError (base)
 | **Chat** | `chat_reader`, `chat_sender`, `window_title_re`, `process_re`, `send_mode`, `send_verify` | `uia`/`logtail`/`console` |
 | **Window Discovery** | `auto_discover`, `view_kind`, `view_type`, `view_index`, `input_type`, `input_index` | Auto-filled by `--discover` |
 | **Audio** | `mpv_path`, `ytdlp_path`, `audio_device`, `volume`, `mpv_timeout` | `audio_device="auto"` default |
-| **Library** | `music_dirs[]`, `autoplay_sources[]`, `shuffle`, `allowed_hosts[]` | `playlist_dir=""` disabled by default |
+| **Library** | `music_dirs[]`, `autoplay_sources[]`, `shuffle`, `allowed_hosts[]` | `playlist_dir=""` disabled by default; `autoplay_sources` includes default YouTube URL |
 | **Queue Limits** | `max_requests_per_user`, `max_queue`, `max_duration`, `voteskip_threshold`, `cooldown` | Dynamic voteskip option |
 | **YouTube** | `search_limit`, `youtube_cookies_file`, `youtube_cookies_browser`, `youtube_ca_bundle` | Auth support |
-| **Rate Limiting** | `user_request_limit`, `rate_limit_window`, `voteskip_dynamic`, `voteskip_dynamic_pct` | Per-nick rolling window |
-| **Auto-reply** | `auto_reply_enabled`, `auto_reply_interval`, `auto_reply_file` | Scheduled room messages |
+| **Rate Limiting** | `user_request_limit`, `rate_limit_window`, `voteskip_dynamic`, `voteskip_dynamic_pct`, `voteskip_cooldown` | Per-nick rolling window |
+| **Auto-reply** | `auto_reply_enabled`, `auto_reply_interval`, `auto_reply_file` | Scheduled room messages; default interval 60s |
 | **IM** | `im_auto_reply_enabled`, `im_auto_reply_message`, `im_auto_reply_cooldown`, `im_require_room_presence`, `im_viewer_enabled` | Private message handling |
 | **Admin Features** | `admin_mute_mic`, `admin_unmute_mic`, `admin_block_user`, `admin_unblock_user`, `admin_block_bot`, `admin_unblock_bot`, `admin_kick_user`, `admin_ban_user`, `admin_unban_user`, `admin_punish_user`, `admin_punish_bot`, `admin_delete_message_enabled`, `admin_greeting_enabled`, `admin_greeting_message`, `admin_greeting_cooldown` | All config-gated |
 | **Welcome** | `welcome_message_enabled`, `welcome_message_message` | First-join greeting |
@@ -419,6 +419,15 @@ class Router:
 | `owner` | `เจ้าของห้อง` | Yes | Set room owner |
 | `op` | `operator` | Yes | Set room operator |
 | `deop` | `เลิกออพ` | Yes | Remove operator |
+| `aplay` | `addm` | No | Request song via IM (alias of play); supports `/aplay fav <n>` |
+| `nowp` | | No | Show current song (alias of np) |
+| `skipp` | | Yes | Skip current song (alias of skip) |
+| `lastp` | | No | Show last played song (alias of last) |
+| `hbdp` | `hbdm` | No | Birthday wish + play birthday song |
+| `topp` | `topm` | No | Top requested songs today/week |
+| `favp` | `favm` | No | Save current song to favorites |
+| `myfavp` | `myfavm` | No | View user's favorites |
+| `hadj` | `helpm`, `คู่มือ` | No | Full command guide (both pages) |
 
 ### Rate Limiting
 ```python
@@ -956,6 +965,7 @@ voteskip_threshold = 3
 cooldown = 3.0
 user_request_limit = 5
 rate_limit_window = 300.0
+voteskip_cooldown = 10.0
 
 # Auto-reply
 auto_reply_enabled = true
@@ -967,6 +977,14 @@ im_auto_reply_enabled = true
 im_auto_reply_cooldown = 60.0
 im_require_room_presence = true
 im_viewer_enabled = true
+
+# Webhook / API Integration
+webhook_enabled = false
+webhook_host = "127.0.0.1"
+webhook_port = 8080
+webhook_secret = ""  # must be >= 16 chars when webhook_enabled = true
+webhook_rate_limit_per_ip = 60
+webhook_cors_origins = ["http://127.0.0.1:8080"]
 
 # Admin (all enabled by default)
 admin_mute_mic = true

@@ -145,12 +145,13 @@ mpv_timeout = 30.0                  # Seconds to wait for one mpv track before t
 # --- Dynamic Moderation ------------------------------------------------------
 voteskip_dynamic = false            # Dynamic voteskip threshold based on participant count
 voteskip_dynamic_pct = 30           # Percentage of participants required to skip (1-100)
+voteskip_cooldown = 10.0            # Seconds between voteskips from same user (1-3600)
 user_request_limit = 5              # Max song requests allowed per user within rate_limit_window (1-1000)
 rate_limit_window = 300.0           # Rolling time window for per-user request limit, seconds (10-86400)
 
 # --- Auto-reply (Scheduled Ads/Messages) -------------------------------------
 auto_reply_enabled = true           # Enable scheduled auto-reply messages to the room
-auto_reply_interval = 300.0         # Seconds between auto-reply messages (min 60s, max 86400)
+auto_reply_interval = 60.0         # Seconds between auto-reply messages (min 60s, max 86400)
 auto_reply_file = "ads-list.json"   # JSON file with messages to rotate through
 
 # IM Auto-reply: automatic reply to private/instant messages

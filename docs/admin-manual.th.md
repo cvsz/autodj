@@ -76,6 +76,15 @@
 | `next` | `upnext`, `ถัดไป` | เพลงถัดไป | `!ถัดไป` |
 | `queue` | `q`, `คิว` | คิวทั้งหมด | `!คิว` |
 | `voteskip` | `vs`, `โหวตข้าม` | โหวตข้าม (แอดมินใช้ได้) | `!โหวตข้าม` |
+| `aplay` | `addm` | ขอเพลงผ่าน IM (alias ของ play) | `/aplay <เพลงหรือลิงก์ YouTube>` |
+| `nowp` | `เพลงนี้` | แสดงเพลงปัจจุบัน (alias ของ np) | `/nowp` |
+| `skipp` | `ข้ามเพลง` | ข้ามเพลงปัจจุบัน (alias ของ skip) | `/skipp` |
+| `lastp` | `ขอล่าสุด` | แสดงเพลงที่เล่นล่าสุด (alias ของ last) | `/lastp` |
+| `hbdp` | `hbdm` | อวยพรวันเกิด + เปิดเพลงวันเกิด | `/hbdp <ชื่อ>` |
+| `topp` | `topm` | เพลงขอสูงสุดวันนี้/สัปดาห์นี้ | `/topp` หรือ `/topp week` |
+| `favp` | `favm` | บันทึกเพลงที่เล่นอยู่ในเพลงโปรด | `/favp` |
+| `myfavp` | `myfavm` | ดูเพลงโปรดของตัวเอง | `/myfavp` |
+| `hadj` | `helpm`, `คู่มือ` | คู่มือคำสั่งทั้งหมด (ทั้งสองหน้า) | `/hadj` |
 
 ---
 
@@ -187,6 +196,7 @@ max_duration = 900             # ความยาวเพลงสูงส�
 voteskip_threshold = 3         # คะแนนที่ต้องการเพื่อข้าม
 voteskip_dynamic = false       # เกณฑ์ไดนามิกตามจำนวนคนในห้อง
 voteskip_dynamic_pct = 30      # เปอร์เซ็นต์สำหรับโหมดไดนามิก
+voteskip_cooldown = 10.0       # วินาทีระหว่างการโหวตข้ามจากผู้ใช้เดียวกัน
 
 # คูลดาวน์และป้องกันน้ำท่วม
 cooldown = 3.0                 # วินาทีระหว่างคำสั่งต่อผู้ใช้
@@ -372,7 +382,7 @@ webhook_host = "127.0.0.1"             # host to bind webhook server (use 0.0.0.
 webhook_port = 8080                    # port for webhook server
 webhook_secret = ""                    # HMAC secret for webhook signature verification (empty = no verification)
 webhook_rate_limit_per_ip = 60         # max requests per IP per minute
-webhook_cors_origins = ["*"]           # CORS allowed origins (e.g. ["https://example.com"]; default ["*"] = all)
+webhook_cors_origins = ["http://127.0.0.1:8080"]           # CORS allowed origins (e.g. ["https://example.com"]; default ["http://127.0.0.1:8080"])
 ```
 
 ### Config Hot Reload

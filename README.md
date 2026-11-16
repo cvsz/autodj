@@ -30,7 +30,7 @@ Highlights: **Enterprise-grade exception hierarchy** with structured error codes
 4. **IM-Only Play Commands**: `!play`, `!request`, `!req`, `!p`, `!เล่น`, `!ขอเพลง`, `!เล่นเพลง` now only work via private message (IM). Room users must DM the bot. Admins can still use in room.
 5. **Autoplay Idle Timeout**: After 30 seconds (configurable) with no user requests, bot switches to autoplay pool. New `!play` immediately exits autoplay mode.
 6. **New Thai Aliases**: `!ขอเพลง` (request song), `!เล่นเพลง` (play song).
-7. **Auto-Reply**: Every 300 seconds (5 minutes) from `ads-list.json` (configurable `auto_reply_interval`, min 60s).
+7. **Auto-Reply**: Every 60 seconds (1 minute) from `ads-list.json` (configurable `auto_reply_interval`, min 60s).
 8. **REA Reverse Engineering**: Documented Camfrog font logic (GDI imports, chat/IM font settings, HTML rendering for display only).
 9. **Mic Mute/Unmute**: Admin commands `!mute` / `!unmute` to mute/unmute the mic (config-gated: `admin_mute_mic`, `admin_unmute_mic`).
 10. **Block/Unblock Bot**: Admin commands `!blockbot` / `!unblockbot` to block/unblock bots (config-gated: `admin_block_bot`, `admin_unblock_bot`).
