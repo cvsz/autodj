@@ -76,6 +76,15 @@ This manual covers administrative features, configuration, and operational proce
 | `next` | `upnext`, `ถัดไป` | Next track | `!next` |
 | `queue` | `q`, `คิว` | Full queue | `!queue` |
 | `voteskip` | `vs`, `โหวตข้าม` | Vote skip (admin can also use) | `!voteskip` |
+| `aplay` | `addm` | Request a song via IM | `/aplay <song or YouTube link>` |
+| `nowp` | `เพลงนี้` | Show current song (alias of np) | `/nowp` |
+| `skipp` | `ข้ามเพลง` | Skip current song (alias of skip) | `/skipp` |
+| `lastp` | `ขอล่าสุด` | Show last played song (alias of last) | `/lastp` |
+| `hbdp` | `hbdm` | Birthday wish + play birthday song | `/hbdp <name>` |
+| `topp` | `topm` | Top requested songs today/week | `/topp` or `/topp week` |
+| `favp` | `favm` | Save current song to favorites | `/favp` |
+| `myfavp` | `myfavm` | View your favorites | `/myfavp` |
+| `hadj` | `helpm`, `คู่มือ` | Full command guide (both pages) | `/hadj` |
 
 ---
 
@@ -187,6 +196,7 @@ max_duration = 900             # Max track length (seconds) for non-admins
 voteskip_threshold = 3         # Votes needed to skip
 voteskip_dynamic = false       # Dynamic threshold based on participants
 voteskip_dynamic_pct = 30      # Percentage for dynamic mode
+voteskip_cooldown = 10.0       # Seconds between voteskips from same user
 
 # Cooldown & flood control
 cooldown = 3.0                 # Seconds between commands per user
@@ -372,7 +382,7 @@ webhook_host = "127.0.0.1"             # host to bind webhook server (use 0.0.0.
 webhook_port = 8080                    # port for webhook server
 webhook_secret = ""                    # HMAC secret for webhook signature verification (empty = no verification)
 webhook_rate_limit_per_ip = 60         # max requests per IP per minute
-webhook_cors_origins = ["*"]           # CORS allowed origins (e.g. ["https://example.com"]; default ["*"] = all)
+webhook_cors_origins = ["http://127.0.0.1:8080"]           # CORS allowed origins (e.g. ["https://example.com"]; default ["http://127.0.0.1:8080"])
 ```
 
 ### Config Hot Reload

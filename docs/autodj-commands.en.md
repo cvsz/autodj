@@ -29,6 +29,15 @@
 | `voteskip` | `vs` | Vote to skip current track | `!voteskip` |
 | `remove` | `rm` | Remove your own request from queue by position | `!remove <n>` |
 | `last` | `requested` | Show last 5 requested tracks (from playlist.json) | `!last` |
+| `aplay` | `addm` | Request a song via IM (alias of play); supports `/aplay fav <n>` | `/aplay <song or YouTube link>` |
+| `nowp` | `เพลงนี้` | Show current song (alias of np) | `/nowp` |
+| `skipp` | `ข้ามเพลง` | Skip current song (alias of skip) | `/skipp` |
+| `lastp` | `ขอล่าสุด` | Show last played song (alias of last) | `/lastp` |
+| `hbdp` | `hbdm` | Birthday wish + play birthday song | `/hbdp <name>` |
+| `topp` | `topm` | Top requested songs today/week | `/topp` or `/topp week` |
+| `favp` | `favm` | Save current song to favorites | `/favp` |
+| `myfavp` | `myfavm` | View your favorites | `/myfavp` |
+| `hadj` | `helpm`, `คู่มือ` | Full command guide (both pages) | `/hadj` |
 
 ### Examples
 
@@ -105,45 +114,101 @@
 
 ---
 
-## IM (Private Message) Commands
+## IM Command Details
 
-### Special Rules for IM/DM
+### /aplay (alias: /addm)
 
-1. **No prefix required** — Send commands directly without `!`
-2. **Play commands ONLY work via IM** — Non-admins must use IM for `!play`/`!request`
-3. **Room presence required** — You must be in the room (seen in chat) to use IM commands
-4. **Cooldowns still apply** — Rate limits and cooldowns are enforced
-5. **Admin commands work** — Admins can use admin commands via IM
+Request a song via IM. Works exactly like `!play` but without the `!` prefix.
 
-### IM Command Examples
-
+**Examples:**
 ```
-play never gonna give you up
-request despacito
-np
-next
-queue
-history
-voteskip
-remove 2
-last
-help
+/aplay https://www.youtube.com/watch?v=dQw4w9WgXcQ
+/aplay never gonna give you up
+/aplay despacito
 ```
 
-### Admin via IM
+### /aplay fav <n>
 
+Play a favorite song by its position number (1-based) from your favorites list. See `/favp` to view your favorites.
+
+**Example:**
 ```
-pause
-resume
-vol 80
-shuffle on
-repeat one
-clear
-load https://youtube.com/playlist?list=...
-say Hello from admin!
-speak Admin announcement
-block user123
-unblock user123
+/aplay fav 1
+/aplay fav 3
+```
+
+### /nowp (alias: /เพลงนี้)
+
+Show the currently playing track and who requested it.
+
+**Example:**
+```
+/nowp
+```
+
+### /skipp (alias: /ข้ามเพลง)
+
+Skip the current track. Only the requester or a Main Owner can skip.
+
+**Example:**
+```
+/skipp
+```
+
+### /lastp (alias: /ขอล่าสุด)
+
+Show the last 5 played tracks.
+
+**Example:**
+```
+/lastp
+```
+
+### /hbdp (alias: /hbdm)
+
+Send a birthday wish to the room and play a birthday song.
+
+**Example:**
+```
+/hbdp kris
+/hbdp สมชาย
+```
+
+### /topp (alias: /topm)
+
+Show the most requested songs today or this week.
+
+**Examples:**
+```
+/topp
+/topp week
+```
+
+### /favp (alias: /favm)
+
+Save the currently playing song to your favorites.
+
+**Example:**
+```
+/favp
+```
+
+### /myfavp (alias: /myfavm)
+
+View your saved favorite songs.
+
+**Example:**
+```
+/myfavp
+```
+
+### /hadj (alias: /helpm, /คู่มือ)
+
+Show the full command guide (both pages). Sent as IM to the bot.
+
+**Example:**
+```
+/hadj
 ```
 
 ---
@@ -161,6 +226,15 @@ unblock user123
 | `queue` | `q` |
 | `history` | `recent` |
 | `voteskip` | `vs` |
+| `aplay` | `addm` |
+| `nowp` | |
+| `skipp` | |
+| `lastp` | |
+| `hbdp` | `hbdm` |
+| `topp` | `topm` |
+| `favp` | `favm` |
+| `myfavp` | `myfavm` |
+| `hadj` | `helpm` |
 | `remove` | `rm` |
 | `last` | `requested` |
 | `resume` | `unpause` |
@@ -180,8 +254,17 @@ unblock user123
 | `queue` | `คิว` |
 | `history` | `ประวัติ` |
 | `voteskip` | `โหวตข้าม` |
+| `aplay` | `addm` |
+| `nowp` | `เพลงนี้` |
+| `skipp` | `ข้ามเพลง` |
+| `lastp` | `ขอล่าสุด` |
+| `hbdp` | `hbdm` |
+| `topp` | `topm` |
+| `favp` | `favm` |
+| `myfavp` | `myfavm` |
+| `hadj` | `helpm`, `คู่มือ` |
 | `remove` | `ลบ` |
-| `last` | `ขอล่าสุด` |
+| `last` | `requested` |
 | `skip` | `ข้าม` |
 | `pause` | `หยุดชั่วคราว` |
 | `resume` | `เล่นต่อ` |
@@ -205,6 +288,8 @@ unblock user123
 |---------|---------|-------------|
 | `cooldown` | 3.0s | Minimum time between commands from same user |
 | `max_requests_per_user` | 3 | Max requests in queue per user |
+| `voteskip_threshold` | 3 | Votes needed to skip current track |
+| `voteskip_cooldown` | 10.0s | Cooldown between voteskips from same user |
 | `user_request_limit` | 5 | Max requests per user in sliding window |
 | `rate_limit_window` | 300s | Sliding window for request limit |
 | `max_duration` | 900s | Max track length for non-admin requests |
