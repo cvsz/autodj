@@ -463,7 +463,8 @@ class App(tk.Tk):
         self._tab = "queue"
         self._closing = False
         self._anim_err = False
-        self._settings_win: tk.Toplevel | None = None
+        self._settings_win: tk.Frame | None = None
+        self._settings_visible: bool = False
         self._folder_scan_deadline: str | None = None
         self._stage_wh: tuple[int, int] | None = None
         self.v_voteskip: tk.Label | None = None
@@ -476,6 +477,7 @@ class App(tk.Tk):
         self._fonts()
         self._style()
         self._build()
+        self._build_menu()
         install_clipboard(self, lambda: self.e.lang)
         self.relabel()
         self.show_tab("queue")
@@ -740,18 +742,7 @@ class App(tk.Tk):
         self.led.pack(side="right", padx=(0, px(8)))
         self.v_onair = self._lbl(hdr, "g_on_air", font=self.f_bold, bg=BG)
         self.v_onair.pack(side="right", padx=(px(18), px(4)))
-        self.b_settings = PillButton(
-            hdr,
-            text="⚙️",
-            command=self.show_settings,
-            kind="tab",
-            font=self.f_bold,
-            bg=BG,
-            height=px(32),
-            minw=px(52),
-            padx=px(10),
-        )
-        self.b_settings.pack(side="right", padx=(px(6), 0))
+        # Settings moved to menu bar (Settings item)
 
         # animated gradient line under the header
         self.line = tk.Canvas(root, height=3, bg=BG, highlightthickness=0, bd=0)
@@ -999,31 +990,14 @@ class App(tk.Tk):
         ihs.configure(command=self.im_chat.yview)
         self.im_chat.tag_configure("who", foreground=PINK, font=self.f_bold)
 
-    # ---- settings popup ------------------------------------------------------
+    # ---- settings panel ------------------------------------------------------
     def open_settings(self):
-        """Open the settings dialog as a standalone (non-modal) window."""
-        # Bring existing settings window to front if already open
-        win: tk.Toplevel | None = getattr(self, "_settings_win", None)
-        if win is not None:
-            win.winfo_exists()
-            win.lift()
-            win.focus_set()
+        """Build the settings panel inside the main window (replaces popup)."""
+        if self._settings_win is not None:
             return
 
-        sp = tk.Toplevel(self)
-        sp.title(self.e.t("g_settings"))
-        sp.configure(bg=BG)
-        # Standalone window: no transient, no grab_set (non-modal)
-        # Optional: mark as tool window on Windows to not show in taskbar separately
-        if os.name == "nt":
-            try:
-                sp.attributes("-toolwindow", True)
-            except (tk.TclError, AttributeError):
-                pass
-
-        # Make it a decent size and center-ish
-        sp.geometry(f"{self.px(700)}x{self.px(620)}")
-        sp.minsize(self.px(560), self.px(480))
+        sp = tk.Frame(self, bg=SURFACE)
+        sp.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         # header bar
         hdr = tk.Frame(sp, bg=SURFACE)
@@ -1042,6 +1016,40 @@ class App(tk.Tk):
             font=self.f_small,
             text=self.e.t("g_settings_lang") + " (use header pills to switch)",
         ).pack(side="right")
+
+        # Back / Close button
+        back_btn = self._btn(
+            hdr,
+            "Close",
+            lambda: self._settings_close(),
+            "ghost",
+            icon="✕",
+            bg=SURFACE,
+            height=32,
+            minw=80,
+        )
+        back_btn.pack(side="right", padx=(self.px(8), 0))
+
+        # scrollable content
+        container = tk.Frame(sp, bg=SURFACE)
+        container.pack(fill="both", expand=True, padx=self.px(14), pady=(0, self.px(14)))
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(0, weight=1)
+
+        sp_scroll = ttk.Scrollbar(container, orient="vertical")
+        sp_scroll.grid(row=0, column=1, sticky="ns")
+        sp_canvas = tk.Canvas(container, bg=SURFACE, highlightthickness=0)
+        sp_canvas.grid(row=0, column=0, sticky="nsew")
+        sp_canvas.configure(yscrollcommand=sp_scroll.set)
+        sp_scroll.configure(command=sp_canvas.yview)
+        sp_inner = tk.Frame(sp_canvas, bg=SURFACE)
+        sp_inner.bind(
+            "<Configure>",
+            lambda e: sp_canvas.configure(scrollregion=sp_canvas.bbox("all")),
+        )
+        sp_inner.columnconfigure(0, weight=1)
+
+        row = 0
 
         # scrollable content
         container = tk.Frame(sp, bg=SURFACE)
@@ -2149,7 +2157,7 @@ class App(tk.Tk):
         self.s_plugins.insert(0, ", ".join(self.e.cfg.plugins))
         _setting_row("g_settings_plugins", self.s_plugins, "g_settings_save")
 
-        # Save / Cancel buttons
+        # Save button only (Close is in the header)
         btn_row = tk.Frame(sp_inner, bg=SURFACE)
         btn_row.grid(
             row=row,
@@ -2169,17 +2177,6 @@ class App(tk.Tk):
             minw=120,
         )
         save_btn.pack(side="left")
-        cancel_btn = self._btn(
-            btn_row,
-            "Close",
-            lambda: self._settings_close(),
-            "ghost",
-            icon="✕",
-            bg=SURFACE,
-            height=40,
-            minw=100,
-        )
-        cancel_btn.pack(side="left", padx=(self.px(8), 0))
 
         # Place inner frame inside the canvas so it becomes visible.
         # Store the canvas window item ID for the resize binding.
@@ -2192,9 +2189,6 @@ class App(tk.Tk):
             lambda e: sp_canvas.itemconfigure(sp_window_id, width=e.width),
         )
 
-        # Protocol handler for window close
-        sp.protocol("WM_DELETE_WINDOW", self._settings_close)
-
         # Store reference
         self._settings_win = sp
 
@@ -2202,11 +2196,12 @@ class App(tk.Tk):
         self.s_mpv_path.focus_set()
 
     def _settings_close(self):
-        """Close the settings popup."""
+        """Hide the settings panel and return to the main view."""
         win = self._settings_win
-        if win is not None and win.winfo_exists():
-            win.destroy()
+        if win is not None:
+            win.place_forget()
             self._settings_win = None
+            self._settings_visible = False
 
     # ---- animated scenery ---------------------------------------------------
     def _layout_line(self, _e=None):
@@ -2474,6 +2469,16 @@ class App(tk.Tk):
         self.pages[name].pack(fill="both", expand=True)
         for k, b in self.tabs.items():
             b.set_active(k == name)
+
+    def _build_menu(self):
+        """Build the top menu bar with a Settings entry."""
+        menu_bar = tk.Menu(self)
+        self.config(menu=menu_bar)
+        settings_menu = tk.Menu(menu_bar, tearoff=0)
+        settings_menu.add_command(
+            label=self.e.t("g_settings"), command=self.show_settings
+        )
+        menu_bar.add_cascade(label=self.e.t("g_settings"), menu=settings_menu)
 
     def set_lang(self, code: str):
         self.e.lang = code
@@ -3201,16 +3206,27 @@ class App(tk.Tk):
                 log.debug("say() failed for settings_save_failed", exc_info=True)
 
     def show_settings(self):
-        """Open the settings popup window."""
-        self.open_settings()
+        """Toggle the settings panel visibility."""
+        if self._settings_win is None:
+            self.open_settings()
+        win = self._settings_win
+        if win is None:
+            return
+        if self._settings_visible:
+            self._settings_close()
+        else:
+            win.place(relx=0, rely=0, relwidth=1, relheight=1)
+            self._settings_visible = True
+            self.s_mpv_path.focus_set()
 
     def close(self):
         self._closing = True
-        # Close settings window if open
+        # Hide settings panel if open
         win = self._settings_win
-        if win is not None and win.winfo_exists():
-            win.destroy()
+        if win is not None:
+            win.place_forget()
             self._settings_win = None
+            self._settings_visible = False
         for attr in ("_anim", "_ref"):
             timer_id = getattr(self, attr, None)
             if timer_id:

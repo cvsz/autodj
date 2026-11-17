@@ -250,6 +250,15 @@ class Tk(Misc):
 class Frame(Misc):
     _kind = "Frame"
 
+    def place(self, **k):
+        pass
+
+    def place_forget(self):
+        pass
+
+    def winfo_exists(self):
+        return True
+
 
 class Label(Misc):
     _kind = "Label"
@@ -259,6 +268,9 @@ class Menu(Misc):
     _kind = "Menu"
 
     def add_command(self, **k):
+        pass
+
+    def add_cascade(self, **k):
         pass
 
 
