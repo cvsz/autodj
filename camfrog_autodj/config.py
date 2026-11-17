@@ -1,47 +1,46 @@
+"""Configuration loading, validation, and defaults for CamfrogAutoDJ.
+
+The :class:`Config` dataclass holds all runtime settings.  :meth:`Config.load`
+parses ``config.toml`` with ``tomllib`` and validates values with exact line
+and column markers so operators can fix problems by hand.
+"""
+
 from __future__ import annotations
 
 import difflib
-import logging
-import os
 import re
-import threading
 import tomllib
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Callable, ClassVar
+from typing import ClassVar
 
 from .exceptions import ConfigError
-
-log = logging.getLogger("autodj")
 
 
 @dataclass
 class MessageStyle:
-    """Font/style configuration for GUI preview only.
-
-    Camfrog desktop client does NOT support rich text in outgoing messages.
-    This configuration is used ONLY for the FontEditor preview panel in the GUI.
-    Sent messages are always plain text via UIA.
-    """
+    """Style for message display (GUI preview only; Camfrog sends plain text)."""
 
     font_family: str = "Consolas"
     font_size: int = 14
-    font_color: str = "#FF0000"
+    font_color: str = "#000000"
     bold: bool = False
     italic: bool = False
     underline: bool = False
 
+    _HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
     def validate(self) -> None:
-        """Validate style values. Raises ValueError on invalid config."""
+        """Validate all fields; raises ValueError on any invalid field."""
         if not self.font_family or not self.font_family.strip():
             raise ValueError("font_family must not be empty")
         if not (8 <= self.font_size <= 72):
             raise ValueError("font_size must be between 8 and 72")
-        if not re.match(r"^#[0-9A-Fa-f]{6}$", self.font_color):
-            raise ValueError("font_color must be a valid hex color (e.g., #FFFFFF)")
+        if not self._HEX_RE.match(self.font_color or ""):
+            raise ValueError("font_color must be a valid hex color")
 
     def to_toml_dict(self) -> dict:
-        """Convert to dict for TOML serialization."""
+        """Return a plain dict suitable for writing back to a TOML file."""
         return {
             "font_family": self.font_family,
             "font_size": self.font_size,
@@ -53,15 +52,20 @@ class MessageStyle:
 
     @classmethod
     def from_toml_dict(cls, data: dict) -> "MessageStyle":
-        """Create from TOML dict with defaults."""
+        """Build a MessageStyle from a TOML table dict; missing keys keep defaults."""
         return cls(
-            font_family=data.get("font_family", "Consolas"),
-            font_size=int(data.get("font_size", 12)),
-            font_color=data.get("font_color", "#FF0000"),
-            bold=bool(data.get("bold", False)),
-            italic=bool(data.get("italic", False)),
-            underline=bool(data.get("underline", False)),
+            font_family=data.get("font_family", cls.font_family),
+            font_size=data.get("font_size", cls.font_size),
+            font_color=data.get("font_color", cls.font_color),
+            bold=data.get("bold", cls.bold),
+            italic=data.get("italic", cls.italic),
+            underline=data.get("underline", cls.underline),
         )
+
+
+# ConfigError is re-exported from exceptions so that config.py and
+# tests using `from camfrog_autodj.exceptions import ConfigError` refer
+# to the same class.
 
 
 @dataclass
@@ -86,8 +90,10 @@ class Config:
     )
     web_view_title: str = "wb-log-room-data"  # substring of the chat-history pane title
     web_input_title: str = "wb-edit-data"  # substring of the message-box pane title
-    send_mode: str = "auto"  # background (no focus steal) | foreground (focus + paste) | auto (background, verify, else foreground)
-    send_verify: bool = True  # auto mode: confirm the line appeared in the room before accepting the background send
+    send_mode: str = "auto"  # background | foreground | auto (background, verify, fallback)
+    send_verify: bool = (
+        True  # auto mode: confirm line appeared in room before accepting background send
+    )
     web_strict_body: bool = (
         True  # drop plain text that directly follows a message body (date headers / system lines)
     )
@@ -95,18 +101,16 @@ class Config:
     view_index: int = 0
     input_type: str = "Edit"
     input_index: int = -1
-    log_path: str = ""
-    log_encoding: str = "utf-8"
+    log_path: str = ""  # Also write chat log to this file (rotating, 1 MB x 3)
+    log_encoding: str = "utf-8"  # Log file encoding
     line_regex: str = (
         r"^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$"
     )
-    mpv_path: str = "mpv/mpv.exe"
-    audio_device: str = "auto"
+    mpv_path: str = "mpv"
+    audio_device: str = ""
     volume: int = 70
     music_dirs: list[str] = field(default_factory=list)
-    autoplay_sources: list[str] = field(
-        default_factory=lambda: ["https://www.youtube.com/watch?v=HhVVVgYsBYw&t"]
-    )
+    autoplay_sources: list[str] = field(default_factory=list)
     shuffle: bool = True
     allowed_hosts: list[str] = field(
         default_factory=lambda: ["youtube.com", "youtu.be", "music.youtube.com"]
@@ -128,42 +132,28 @@ class Config:
     camfrog_exe: str = ""
     client_title_re: str = ".*"
     room: str = ""
-    join_uri_template: str = (
-        ""  # e.g. "<scheme>://...{room}": must match what your Camfrog build accepts
-    )
+    join_uri_template: str = ""  # e.g. "<scheme>://...{room}"
     launch_timeout: int = 60
     blocked_users: list[str] = field(
         default_factory=list
     )  # nicks whose commands are ignored (admins cannot be blocked)
-    ytdlp_path: str = "mpv/yt-dlp.exe"  # "" = auto: yt-dlp(.exe) next to mpv or on PATH, else the bundled Python module
+    ytdlp_path: str = (
+        ""  # "" = auto: yt-dlp(.exe) next to mpv or on PATH, else the bundled Python module
+    )
     poll_interval: float = 0.5  # seconds between chat reads (raise it if AutoDJ uses too much CPU)
     log_file: str = ""  # also write the log to this file (rotating, 1 MB x 3)
-    log_json: bool = False  # enable JSON structured logging output
-    log_json_fields: list[str] = field(
-        default_factory=lambda: [
-            "request_id",
-            "delivery_id",
-            "user",
-            "track_id",
-            "generation",
-            "attempt_id",
-            "category",
-            "stage",
-            "state",
-        ]
-    )  # extra fields to include in JSON logs
     playlist_file: str = (
         "playlist.json"  # user-requested tracks (!play / GUI request / !load) are appended here
     )
     # (deduplicated) and join the autoplay pool (random); "" = disable persistence
     playlist_dir: str = (
-        ""  # directory of *.json playlist files auto-loaded at startup; "" = disabled (default off)
+        ""  # directory of *.json playlist files auto-loaded at startup; "" = disabled
     )
     search_limit: int = (
         1  # YouTube text-search results fetched per non-admin !play (1 = first match only)
     )
     mpv_timeout: float = (
-        30.0  # seconds to wait for one mpv track before treating it as hung (0 = no timeout)
+        0.0  # seconds to wait for one mpv track before treating it as hung (0 = no timeout)
     )
     # Audio Engineering
     audio_fade: bool = True  # enable audio volume fade-in and fade-out
@@ -181,88 +171,136 @@ class Config:
     # Dynamic Moderation
     voteskip_dynamic: bool = False  # dynamic voteskip threshold based on participant count
     voteskip_dynamic_pct: int = 30  # percentage of participants required to skip
-    voteskip_cooldown: float = 10.0  # seconds between voteskips from the same user
     user_request_limit: int = 5  # max song requests allowed per user within rate_limit_window
     rate_limit_window: float = 300.0  # rolling time window for per-user request limit (seconds)
+    voteskip_cooldown: float = 10.0  # seconds between voteskips from same user
+    admin_block_user: bool = False  # Enable !block user command (admin can block a user)
+    admin_unblock_user: bool = False  # Enable !unblock user command (admin can unblock a user)
+    admin_block_bot: bool = True  # Enable !block-bot command
+    admin_unblock_bot: bool = True  # Enable !unblock-bot command
+    admin_kick_user: bool = True  # Enable !kick command
+    admin_ban_user: bool = True  # Enable !ban command
+    admin_unban_user: bool = True  # Enable !unban command
+    admin_punish_user: bool = True  # Enable !punish command
+    admin_punish_bot: bool = True  # Enable !punish-bot command
+    admin_delete_message_enabled: bool = True  # Enable !delete <msg id> command
     # Auto-reply: scheduled messages sent to the room from ads-list.json
-    auto_reply_enabled: bool = True  # enable scheduled auto-reply messages
-    auto_reply_interval: float = 60.0  # seconds between auto-reply messages (1 minute)
+    auto_reply_enabled: bool = False  # enable scheduled auto-reply messages
+    auto_reply_interval: float = 300.0  # seconds between auto-reply messages (5 minutes)
     auto_reply_file: str = "ads-list.json"  # JSON file with messages to rotate through
+
     # IM Auto-reply: automatic reply to private/instant messages
-    # NOTE: Currently posts notification to room chat (ChatAdapter doesn't support IM sending yet).
-    # Set to true to enable room notifications when IMs are received.
-    im_auto_reply_enabled: bool = (
-        False  # enable auto-reply notification for private/instant messages
+    im_auto_reply_enabled: bool = True  # enable auto-reply to private/instant messages
+    im_auto_reply_message: str = (
+        "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
     )
-    im_auto_reply_message: str = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."  # message to send as auto-reply
-    im_auto_reply_cooldown: float = (
-        60.0  # seconds between auto-replies to the same user (avoid spam)
-    )
-    # IM Security: require user to be in the room (seen in chat) to use IM commands
-    im_require_room_presence: bool = True  # only users currently in room can DM the bot
-    # Allow play/request commands in the room (not just via IM). Default false for backward compatibility.
+    im_auto_reply_cooldown: float = 60.0  # seconds between auto-replies to the same user
+
+    # IM Security: require user to be in room to use IM commands
+    im_require_room_presence: bool = True  # only users seen in room chat can DM the bot
     allow_play_in_room: bool = False  # when true, !play works in room chat for all users
-    # Autoplay: switch to autoplay pool after idle timeout with no user requests
+
+    # Autoplay: switch to autoplay pool after idle timeout
     autoplay_idle_timeout: float = 30.0  # seconds before autoplay starts when no user requests
-    # Mic mute state
-    mute_enabled: bool = False  # mic muted state
-    # Admin mute mic - admin can mute mic
-    admin_mute_mic: bool = True  # admin can mute mic
-    admin_unmute_mic: bool = True  # admin can unmute mic
-    # Admin block user - admin can block user
-    admin_block_user: bool = False  # admin can block user
-    admin_unblock_user: bool = False  # admin can unblock user
-    # Admin block bot - admin can block bot
-    admin_block_bot: bool = True  # admin can block bot
-    admin_unblock_bot: bool = True  # admin can unblock bot
-    # Admin kick user - admin can kick user
-    admin_kick_user: bool = True  # admin can kick user
-    # Admin ban user - admin can ban user
-    admin_ban_user: bool = True  # admin can ban user
-    admin_unban_user: bool = True  # admin can unban user
-    # Admin punish user - admin can punish user
-    admin_punish_user: bool = True  # admin can punish user
-    admin_punish_bot: bool = True  # admin can punish bot
-    # Admin greeting: greet admin when they send first message in session
-    admin_greeting_enabled: bool = True  # enable admin greeting
-    admin_greeting_message: str = (
-        "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"  # greeting message, {admin} will be replaced
-    )
+
+    # Admin Greeting
+    admin_greeting_enabled: bool = True  # enable admin greeting on first message
+    admin_greeting_message: str = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"
     admin_greeting_cooldown: float = 3600.0  # seconds between greetings for same admin (1 hour)
-    # Gift / virtual-gift announcement (detect gift messages in room chat; see docs/camfrog-re/08-feature-gift.md)
-    gift_announce_enabled: bool = True  # announce virtual-gift messages sent to the room
-    # Avatar change announcement (detect avatar change in room chat; see docs/camfrog-re/16-user-icon-avatar.md)
-    avatar_change_enabled: bool = True  # announce avatar change messages sent to the room
-    # Status indicator announcement (detect status changes: online/away/busy/invisible/admin/moderator/owner; see docs/camfrog-re/14-png-assets.md)
-    status_indicator_enabled: bool = True  # announce user status changes in room chat
-    # Status alerts (detect upgrade / payment-required status text from Camfrog; see docs/camfrog-re/07-upgrade-logic.md, 09-payment.md)
-    status_alert_enabled: bool = True  # alert when Camfrog shows upgrade/payment-required status
-    # IM viewer: show private/instant messages in a dedicated GUI tab (see docs/camfrog-re/)
+
+    # IM Viewer
     im_viewer_enabled: bool = True  # show the IM / private message viewer tab in the GUI
-    # Welcome message - welcome message config
+
+    # Font/Style Customization (GUI Preview Only)
+    message_style: MessageStyle = field(default_factory=MessageStyle)
+
+    # Admin Mic Mute/Unmute
+    admin_mute_mic: bool = True  # enable !mute command
+    admin_unmute_mic: bool = True  # enable !unmute command
+    mute_enabled: bool = False  # mic muted state (persisted)
+
+    # Welcome Message
     welcome_message_enabled: bool = True  # enable welcome message
-    welcome_message_message: str = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"  # welcome message
-    welcome_message_cooldown: float = (
-        3600.0  # seconds between welcome messages for same user (1 hour)
-    )
-    # Admin delete message - admin delete message feature
-    admin_delete_message_enabled: bool = True  # enable admin delete message feature
-    # Font/style customization for GUI preview only (Camfrog does not support rich text in sent messages)
-    message_style: MessageStyle = field(default_factory=lambda: MessageStyle(font_color="#FF0000"))
-    # Webhook/API integration
-    webhook_enabled: bool = False
-    webhook_port: int = 8080
-    webhook_secret: str = ""
-    webhook_host: str = "127.0.0.1"
-    webhook_rate_limit_per_ip: int = 60
-    webhook_cors_origins: list[str] = field(default_factory=lambda: ["http://127.0.0.1:8080"])
-    # Plugin system
-    plugins: list[str] = field(default_factory=lambda: ["builtin.stats", "builtin.help"])
-    # Config hot reload
-    config_hot_reload: bool = False
+    welcome_message_message: str = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"
+    welcome_message_cooldown: float = 3600.0  # seconds between welcome messages (1 hour)
+
+    # Camfrog RE Integrations (Gift / Avatar / Status / Status Alert)
+    gift_announce_enabled: bool = True  # announce virtual-gift messages sent to the room
+    avatar_change_enabled: bool = True  # announce avatar change messages sent to the room
+    status_indicator_enabled: bool = True  # announce user status changes in room chat
+    status_alert_enabled: bool = True  # alert when Camfrog shows upgrade/payment-required status
+
+    # Webhook / API Integration
+    webhook_enabled: bool = False  # enable HTTP webhook server for external control
+    webhook_host: str = "127.0.0.1"  # host to bind webhook server
+    webhook_port: int = 8080  # port for webhook server
+    webhook_secret: str = ""  # HMAC secret for webhook signature verification
+    webhook_rate_limit_per_ip: int = 60  # max requests per IP per minute
+    webhook_cors_origins: list[str] = field(default_factory=lambda: ["*"])  # CORS allowed origins
+
+    # Config Hot Reload
+    config_hot_reload: bool = False  # enable hot reload of config.toml
+
+    # Plugin System
+    plugins: list[str] = field(
+        default_factory=lambda: ["builtin.stats", "builtin.help"]
+    )  # plugin modules to load
+
+    # JSON structured logging
+    log_json: bool = False  # enable JSON structured logging output
+    log_json_fields: list[str] = field(
+        default_factory=lambda: [
+            "request_id",
+            "delivery_id",
+            "user",
+            "track_id",
+            "generation",
+            "attempt_id",
+            "category",
+            "stage",
+            "state",
+        ]
+    )  # extra fields to include in JSON logs
+
+    # Auto-update: check GitHub releases for newer AutoDJ.exe
+    auto_update_enabled: bool = False  # enable automatic update checks
+    auto_update_repo: str = "cvsz/autodj"  # GitHub repo (owner/name) for release checks
+    auto_update_check_interval: float = 21600.0  # seconds between checks (default 6h)
+    auto_update_asset: str = "AutoDJ.exe"  # release asset filename to download
+
+    # Reload callbacks (class-level, shared across all instances)
+    _reload_callbacks: ClassVar[list] = []
 
     @classmethod
-    def load(cls, path: str | None) -> Config:
+    def register_reload_callback(cls, callback) -> None:
+        """Register a callback to be invoked on Config.reload()."""
+        Config._reload_callbacks.append(callback)
+
+    @classmethod
+    def unregister_reload_callback(cls, callback) -> None:
+        """Remove a previously registered reload callback."""
+        try:
+            cls._reload_callbacks.remove(callback)
+        except ValueError:
+            pass
+
+    @classmethod
+    def _fire_reload_callbacks(cls, cfg: "Config") -> None:
+        for cb in list(cls._reload_callbacks):
+            try:
+                cb(cfg)
+            except Exception:  # pragma: no cover - callback exceptions must not break reload  # noqa: S110
+                pass
+
+    @classmethod
+    def reload(cls, path: str | None) -> "Config":
+        """Reload config from *path*, re-validating and firing callbacks."""
+        cfg = cls.load(path)
+        cls._fire_reload_callbacks(cfg)
+        return cfg
+
+    @classmethod
+    def load(cls, path: str | None) -> "Config":
         p = Path(path) if path else None
         data: dict = {}
         if p and p.exists():
@@ -278,6 +316,15 @@ class Config:
                 data = tomllib.loads(text)
             except tomllib.TOMLDecodeError as ex:
                 raise ConfigError(_syntax_message(p, text, ex)) from None
+        # Convert an inline TOML table for message_style into a MessageStyle instance
+        # so the dataclass field receives the right type (tomllib yields plain dicts).
+        if "message_style" in data and isinstance(data["message_style"], dict):
+            try:
+                style = MessageStyle(**data["message_style"])
+                style.validate()  # reject invalid font values early
+            except (TypeError, ValueError) as ex:
+                raise ConfigError(f"{p or 'config'}: invalid message_style table: {ex}") from None
+            data["message_style"] = style
         names = {f.name for f in fields(cls)}
         bad = sorted(set(data) - names)
         if bad:
@@ -286,75 +333,8 @@ class Config:
                 near = difflib.get_close_matches(k, names, n=1)
                 lines.append(f"  {k}" + (f"   (did you mean '{near[0]}'?)" if near else ""))
             raise ConfigError(f"{p or 'config'}: unknown setting(s):\n" + "\n".join(lines))
-        # Handle nested message_style dataclass
-        if "message_style" in data and isinstance(data["message_style"], dict):
-            data["message_style"] = MessageStyle.from_toml_dict(data["message_style"])
-        # Read webhook_secret from environment variable if not in config file
-        # This prevents storing secrets in plain text in config.toml
-        if not data.get("webhook_secret") and os.environ.get("WEBHOOK_SECRET"):
-            data["webhook_secret"] = os.environ["WEBHOOK_SECRET"]
         cfg = cls(**data)
         _validate(cfg, data, str(p) if p else "config")
-        return cfg
-
-    # ---- class-level reload callback registry ---------------------------------------------------
-    _reload_callbacks: ClassVar[list[Callable[["Config"], None]]] = []
-    _reload_callbacks_lock: ClassVar[threading.Lock] = threading.Lock()
-
-    @classmethod
-    def register_reload_callback(cls, callback: Callable[["Config"], None]) -> None:
-        """Register a callback to be invoked when any Config instance is reloaded.
-
-        The callback receives the new Config instance. Callbacks are invoked
-        in registration order. Exceptions in callbacks are logged but do not
-        stop other callbacks.
-
-        Note: This is a class-level registry, so callbacks fire for any
-        Config.reload() call. For instance-specific callbacks, use
-        ConfigWatcher directly.
-        """
-        with cls._reload_callbacks_lock:
-            cls._reload_callbacks.append(callback)
-
-    @classmethod
-    def unregister_reload_callback(cls, callback: Callable[["Config"], None]) -> bool:
-        """Remove a previously registered reload callback. Returns True if found."""
-        with cls._reload_callbacks_lock:
-            try:
-                cls._reload_callbacks.remove(callback)
-                return True
-            except ValueError:
-                return False
-
-    @classmethod
-    def _notify_reload_callbacks(cls, config: "Config") -> None:
-        """Internal: notify all registered reload callbacks."""
-        with cls._reload_callbacks_lock:
-            callbacks = list(cls._reload_callbacks)
-        for cb in callbacks:
-            try:
-                cb(config)
-            except Exception:
-                log.exception("Config reload callback failed")
-
-    @classmethod
-    def reload(cls, path: str | None) -> "Config":
-        """Reload configuration from file with full validation.
-
-        This is a convenience method that loads a new Config instance from
-        the given path and notifies all registered reload callbacks.
-
-        Args:
-            path: Path to config.toml (same as load())
-
-        Returns:
-            New Config instance
-
-        Raises:
-            ConfigError: If the config file is invalid
-        """
-        cfg = cls.load(path)
-        cls._notify_reload_callbacks(cfg)
         return cfg
 
 
@@ -390,16 +370,9 @@ _RANGES = {
     "audio_fade_in_sec": (0.1, 10.0),
     "audio_fade_out_sec": (0.1, 10.0),
     "voteskip_dynamic_pct": (1, 100),
-    "voteskip_cooldown": (1.0, 3600.0),
     "user_request_limit": (1, 1000),
     "rate_limit_window": (10.0, 86400.0),
     "auto_reply_interval": (60.0, 86400.0),
-    "im_auto_reply_cooldown": (10.0, 3600.0),
-    "autoplay_idle_timeout": (30.0, 86400.0),
-    "admin_greeting_cooldown": (60.0, 86400.0),
-    "welcome_message_cooldown": (60.0, 86400.0),
-    "webhook_port": (1, 65535),
-    "webhook_rate_limit_per_ip": (1, 10000),
 }
 
 
@@ -434,22 +407,12 @@ def _type_name(v) -> str:
     }.get(type(v), type(v).__name__)
 
 
-def _validate_message_style(cfg: Config, data: dict, where: str) -> None:
-    """Validate message_style if present in data."""
-    if "message_style" in data:
-        try:
-            cfg.message_style.validate()
-        except ValueError as ex:
-            raise ConfigError(f"{where}: 'message_style' {ex}") from None
-
-
 def _validate(cfg: Config, data: dict, where: str) -> None:
     defaults = Config()
     for f in fields(Config):
         if f.name not in data:
             continue
         _validate_field(cfg, data, f, defaults, where)
-    _validate_message_style(cfg, data, where)
     for k, allowed in _CHOICES.items():
         if getattr(cfg, k) not in allowed:
             raise ConfigError(
@@ -466,27 +429,11 @@ def _validate(cfg: Config, data: dict, where: str) -> None:
     cfg.prefix = cfg.prefix.strip()
     cfg.admins = [a.strip() for a in cfg.admins if a.strip()]
     cfg.blocked_users = [a.strip() for a in cfg.blocked_users if a.strip()]
-    _validate_webhook_secret(cfg, where)
-
-
-def _validate_webhook_secret(cfg: Config, where: str) -> None:
-    """Validate webhook secret requirements."""
-    if cfg.webhook_enabled and not cfg.webhook_secret.strip():
-        raise ConfigError(
-            f"{where}: 'webhook_secret' must not be empty when 'webhook_enabled' is true"
-        )
-    if cfg.webhook_enabled and len(cfg.webhook_secret.strip()) < 16:
-        raise ConfigError(
-            f"{where}: 'webhook_secret' must be at least 16 characters when 'webhook_enabled' is true"
-        )
 
 
 def _validate_field(cfg: Config, data: dict, f, defaults: Config, where: str) -> None:
     v = data[f.name]
     want = type(getattr(defaults, f.name))
-    # Skip type validation for message_style (handled specially in load())
-    if f.name == "message_style":
-        return
     if not _is_type(v, want):
         hint = ' (a list looks like ["nick1", "nick2"])' if want is list else ""
         raise ConfigError(

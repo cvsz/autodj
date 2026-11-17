@@ -21,7 +21,8 @@ echo.
 
 REM Check for required files (built artifacts are in dist/)
 echo Checking required files...
-set REQUIRED=dist\AutoDJ.exe dist\app.ico config.example.toml README.md CHANGELOG.md LICENSE install.ps1 run_autodj.py
+REM installer.nsi packages everything from dist\ (build.ps1 stages it there), so check dist\.
+set REQUIRED=dist\AutoDJ.exe dist\app.ico dist\config.toml dist\README.md dist\CHANGELOG.md dist\LICENSE dist\install.ps1 dist\run_autodj.py
 for %%f in (%REQUIRED%) do (
     if not exist "%%f" (
         echo WARNING: Missing required file: %%f
@@ -32,8 +33,17 @@ for %%f in (%REQUIRED%) do (
 
 REM Build installer
 echo.
-echo Building NSIS installer...
-makensis installer.nsi
+REM Take the version from pyproject.toml; installer.nsi's built-in default can be stale.
+set APP_VERSION=
+for /f "usebackq delims=" %%v in (`python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])"`) do set APP_VERSION=%%v
+if "%APP_VERSION%"=="" (
+    echo ERROR: could not read the version from pyproject.toml ^(is python on PATH?^)
+    exit /b 1
+)
+
+echo.
+echo Building NSIS installer %APP_VERSION%...
+makensis /DAPP_VERSION=%APP_VERSION% /DOUTDIR=dist installer.nsi
 if errorlevel 1 (
     echo.
     echo ERROR: NSIS build failed!
@@ -44,7 +54,7 @@ echo.
 echo ==========================================
 echo Installer built successfully!
 echo.
-dir /b *.exe | findstr /i "setup"
+dir /b dist\*Setup*.exe
 echo ==========================================
 
 echo.

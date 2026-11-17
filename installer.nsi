@@ -25,12 +25,15 @@
 ; -----------------------------------------------------------------------------
 ; Metadata (overridable from command line)
 ; -----------------------------------------------------------------------------
-!define /IfNDef APP_NAME "CamfrogAutoDJ"
+!define /IfNDef APP_NAME "Camfrog AutoDJ"
 !define /IfNDef APP_VERSION "0.3.0"
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
 !define /IfNDef APP_EXE "AutoDJ.exe"
 !define /IfNDef INSTALLER_NAME "Camfrog-AutoDJ-Setup-${APP_VERSION}.exe"
+; Directory the finished installer is written to (build scripts pass /DOUTDIR=...).
+; Relative paths resolve against the makensis working directory (repo root).
+!define /IfNDef OUTDIR "."
 
 ; -----------------------------------------------------------------------------
 ; Version info for the executable manifest
@@ -44,7 +47,7 @@
 ; General Settings
 ; -----------------------------------------------------------------------------
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "${INSTALLER_NAME}"
+OutFile "${OUTDIR}\${INSTALLER_NAME}"
 InstallDir "$APPDATA\CamfrogAutoDJ"
 InstallDirRegKey HKCU "Software\CamfrogAutoDJ" "InstallDir"
 ShowInstDetails show
@@ -68,12 +71,12 @@ CRCCheck on
 !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of ${APP_NAME} ${APP_VERSION}.\n\nClick Next to continue."
 !define MUI_FINISHPAGE_TITLE "Installation Complete"
 !define MUI_FINISHPAGE_TEXT "Setup has finished installing ${APP_NAME} ${APP_VERSION} on your computer.\n\nClick Finish to close the wizard."
-!define MUI_FINISHPAGE_RUN "${APP_EXE}"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\${APP_EXE}"
 !define MUI_FINISHPAGE_RUN_TEXT "Launch ${APP_NAME} now"
 !define MUI_FINISHPAGE_RUN_NOTCHECKED
 !define MUI_FINISHPAGE_LINK "https://github.com/cvsz/autodj"
 !define MUI_FINISHPAGE_LINK_LOCATION "https://github.com/cvsz/autodj"
-!define MUI_FINISHPAGE_SHOWREADME "README.md"
+!define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\README.md"
 
 !define MUI_LICENSEPAGE_TEXT_TOP "Please review the license agreement before installing ${APP_NAME}."
 !define MUI_LICENSEPAGE_TEXT_BOTTOM "If you accept the terms, click I Agree to continue. You must accept the agreement to install ${APP_NAME}."
@@ -110,10 +113,12 @@ Section "!MainProgram" SEC_MAIN
     File "dist\README.md"
     File "dist\CHANGELOG.md"
     File "dist\LICENSE"
-    File "dist\ads-list.json"
+    File /nonfatal "dist\ads-list.json"
     ; Preserve an existing user configuration during upgrades.
+    ; Ship the staged template (dist\config.toml, copied from config.example.toml by the
+    ; build scripts) -- never a developer's local, possibly secret-bearing config.toml.
     IfFileExists "$INSTDIR\config.toml" config_exists
-    File "config.toml"
+    File "dist\config.toml"
 config_exists:
     ; config.toml can be customized by install.ps1 on first run (interactive prompts)
     File "dist\run_autodj.py"
@@ -127,7 +132,7 @@ SectionEnd
 Section /o "mpv + yt-dlp" SEC_MPV
     SetOutPath "$INSTDIR\mpv"
     File "dist\mpv\mpv.exe"
-    File "dist\mpv\mpv.com"
+    File /nonfatal "dist\mpv\mpv.com"
     File "dist\mpv\yt-dlp.exe"
     File /nonfatal "dist\mpv\mpv-register.bat"
     File /nonfatal "dist\mpv\mpv-unregister.bat"
@@ -135,18 +140,13 @@ Section /o "mpv + yt-dlp" SEC_MPV
     File /r "dist\mpv\_internal\*.*"
     ; Register mpv file associations and protocols (optional, requires admin)
     ; Run hidden so user doesn't see command window flash
+    IfFileExists "$INSTDIR\mpv\mpv-register.bat" do_register skip_register
+do_register:
     ExecWait '"$INSTDIR\mpv\mpv-register.bat"'
+skip_register:
 SectionEnd
 
-Section /o "VBCable Virtual Audio Driver" SEC_VBCABLE
-    SetOutPath "$INSTDIR\mpv\vbcable"
-    File "dist\mpv\vbcable\VBCABLE_Setup_x64.exe"
-    File "dist\mpv\vbcable\VBCABLE_ControlPanel.exe"
-    File "dist\mpv\vbcable\readme.txt"
-    File /r "dist\mpv\vbcable\*.inf"
-    File /r "dist\mpv\vbcable\*.cat"
-    File /r "dist\mpv\vbcable\*.sys"
-SectionEnd
+; VB-CABLE is not bundled. install.ps1 retains the existing Driver Pack 43 download/setup workflow.
 
 Section "Documentation" SEC_DOCS
     SetOutPath "$INSTDIR\docs"
@@ -182,7 +182,7 @@ FunctionEnd
 
 Function .onInstSuccess
     HideWindow
-    MessageBox MB_ICONINFORMATION|MB_OK "CamfrogAutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nIf you selected VBCable, its driver package is included under mpv\vbcable. Driver installation requires Administrator approval; run VBCABLE_Setup_x64.exe manually using Run as administrator."
+    MessageBox MB_ICONINFORMATION|MB_OK "CamfrogAutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nVB-CABLE is not bundled. Run install.ps1 to use the existing VB-CABLE setup workflow."
 FunctionEnd
 
 ; -----------------------------------------------------------------------------

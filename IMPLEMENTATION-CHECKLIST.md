@@ -112,10 +112,10 @@ Every claim includes an evidence reference (test file, workflow, or documented r
 ## Final verification
 
 - [ ] Fresh clone works with documented setup. — **UNVERIFIED** — not tested from a fresh clone
-- [x] Repository validator passes. — **VERIFIED** — `python scripts/validate_repo.py` exits 0
-- [x] Required CI/security checks pass on the exact release head. — **VERIFIED** — 414 tests pass, ruff clean, mypy clean, shellcheck clean on main
-- [x] Protected-branch/admin verification succeeds. — **PARTIALLY VERIFIED** — push to `main` rejected (GH006) confirming protection
-- [x] No secrets/private data are committed. — **VERIFIED** — CI secret-file scan passes; no .env, .pem, .key tracked
+- [x] Repository validator passes. — **VERIFIED** — `python scripts/validate_repo.py` exits 0; all required template paths present and all local Markdown links valid (audit run 2026-11-07 on `fix/gui-thread-safety-main-thread` @ 9fa9c94).
+- [ ] Required CI/security checks pass on the exact release head. — **UNVERIFIED** — no release tag created yet
+- [ ] Protected-branch/admin verification succeeds. — **PARTIALLY VERIFIED** — push to `main` rejected (GH006) confirming protection; admin verification not run
+- [ ] No secrets/private data are committed. — **VERIFIED** — CI secret-file scan passes; no .env, .pem, .key tracked
 - [ ] Deployment is verified in the intended environment. — **UNVERIFIED** — not deployed
 - [ ] Backup/restore and rollback evidence exists where applicable. — **UNVERIFIED** — no backup/restore tested
 - [ ] Every applicable production-readiness gate is `VERIFIED`; any `NOT APPLICABLE` gate has an explicit reason. — **VERIFIED** — all gates VERIFIED; Windows build/installer/code-signing/UIA/TTS/E2E all VERIFIED on Windows 11 host with evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped)

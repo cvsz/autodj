@@ -10,8 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .exceptions import YtdlpMissingError
-from .models import Track
+from .models import Track, YtdlpMissingError
 from .paths import resolve_executable
 
 
@@ -317,87 +316,26 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
     return Track(str(p), title, dur, requester)
 
 
-def scan_folder(
-    folder,
-    requester: str = "AutoDJ",
-    limit: int = 0,
-    max_dirs: int = 0,
-    incremental: bool = True,
+def scan_folder(  # noqa: C901
+    folder, requester: str = "AutoDJ", limit: int = 0, incremental: bool = False, max_dirs: int = 0
 ) -> list[Track]:
     """Recursively scan *folder* for media files, skipping unreadable directories.
 
     Symlinks are never followed (avoids symlink cycles and slow reparse-point
-    hangs on Windows). *limit* caps the total tracks returned (0 = no cap).
-    *max_dirs* caps the total number of sub-directories entered across the
-    entire scan (0 = no cap) so a very deep/wide folder tree cannot scan forever.
-    *incremental*: if True, only re-scan files whose mtime has changed.
+    hangs on Windows). *limit* caps the total tracks returned (0 = no cap) so a
+    very large folder can never scan forever and block the caller.
     """
-    budget = _DirBudget(max_dirs)
-    return _scan_folder_recursive(folder, requester, limit, budget, incremental)
+    root = Path(folder)
 
+    try:
+        # Use os.scandir for better performance: DirEntry has cached stat info
+        entries = list(os.scandir(root))
+    except (OSError, PermissionError):
+        log.warning("cannot read folder %r: permission denied", folder)
+        return []
 
-def _process_file_entry(
-    entry: os.DirEntry,
-    requester: str,
-    media_extensions: set[str],
-    scan_state: ScanState | None,
-    incremental: bool,
-) -> Track | None:
-    """Process a single file entry, returning a Track or None."""
-    entry_path = Path(entry.path)
-    if entry_path.suffix.lower() not in media_extensions:
-        return None
-    # Check incremental scan state
-    if incremental and scan_state:
-        try:
-            current_mtime = entry.stat().st_mtime
-        except OSError:
-            return None
-        stored_mtime = scan_state.get_file_mtime(entry_path)
-        if stored_mtime is not None and stored_mtime == current_mtime:
-            # File unchanged, try to get from metadata cache
-            cache = _get_metadata_cache([str(entry_path.parent)])
-            cached = cache.get(entry_path, current_mtime)
-            if cached:
-                scan_state.set_file_mtime(entry_path, current_mtime)
-                return Track(str(entry_path), cached["title"], cached["duration"], requester)
-    # File changed or no cache: extract metadata
-    track = local_track(entry_path, requester)
-    if scan_state:
-        try:
-            scan_state.set_file_mtime(entry_path, entry.stat().st_mtime)
-        except OSError:
-            pass
-    return track
-
-
-def _process_dir_entry(
-    entry: os.DirEntry,
-    remaining_dirs: int,
-    dirs_consumed: int,
-) -> tuple[int, bool]:
-    """Process a single directory entry, returning (new_dirs_consumed, should_continue)."""
-    if remaining_dirs - dirs_consumed <= 0:
-        return dirs_consumed, False  # global directory budget exhausted
-    return dirs_consumed + 1, True
-
-
-def _scan_dir_entries(
-    entries: list[os.DirEntry],
-    requester: str,
-    limit: int,
-    remaining_dirs: int,
-    media_extensions: set[str],
-    scan_state: ScanState | None,
-    incremental: bool,
-) -> tuple[list[Track], int]:
-    """Scan a list of directory entries (for parallel processing).
-
-    Returns (tracks, dirs_consumed).
-    """
     tracks: list[Track] = []
-    dirs_consumed = 0
-
+    subdirs: list[str] = []
     for entry in entries:
         if limit and len(tracks) >= limit:
             break
@@ -405,35 +343,59 @@ def _scan_dir_entries(
             if entry.is_symlink():
                 continue  # never follow symlinks: avoids cycles and slow reparse points
             if entry.is_dir():
-                dirs_consumed, should_continue = _process_dir_entry(
-                    entry, remaining_dirs, dirs_consumed
-                )
-                if not should_continue:
-                    continue
-            elif entry.is_file():
-                track = _process_file_entry(
-                    entry, requester, media_extensions, scan_state, incremental
-                )
-                if track:
-                    tracks.append(track)
+                subdirs.append(entry.path)
+            elif entry.is_file() and Path(entry).suffix.lower() in MEDIA:
+                tracks.append(local_track(entry, requester))
         except (OSError, PermissionError):
             continue
 
-    return tracks, dirs_consumed
+    # Parallel scan subdirectories if there are multiple and we have budget
+    if subdirs:
+        # Limit parallelism to avoid overwhelming the filesystem
+        max_workers = min(4, len(subdirs))
+        # Respect max_dirs cap
+        subdirs_to_scan = subdirs[:max_dirs] if max_dirs else subdirs
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {}
+            for subdir in subdirs_to_scan:
+                if limit and len(tracks) >= limit:
+                    break
+                futures[
+                    executor.submit(
+                        _scan_folder_recursive,
+                        subdir,
+                        requester,
+                        limit,
+                        max_dirs if max_dirs else 0,
+                        incremental,
+                    )
+                ] = subdir
+
+            for future in as_completed(futures):
+                if limit and len(tracks) >= limit:
+                    break
+                try:
+                    sub_tracks = future.result()
+                    if limit:
+                        tracks.extend(sub_tracks[: limit - len(tracks)])
+                    else:
+                        tracks.extend(sub_tracks)
+                except Exception as ex:
+                    log.debug("subdirectory scan failed: %s", ex)
+
+    tracks.sort(key=lambda t: t.source)
+    return tracks
 
 
 def _scan_folder_recursive(  # noqa: C901
-    folder: str,
-    requester: str,
-    limit: int,
-    budget: _DirBudget,
-    incremental: bool = True,
+    folder: str, requester: str, limit: int, remaining_dirs: int, incremental: bool = True
 ) -> list[Track]:
     """Internal recursive implementation with global directory budget.
 
     Uses ThreadPoolExecutor for parallel subdirectory scanning when
     there are multiple subdirectories to process. The budget is consumed
-    atomically across all concurrent scans via _DirBudget.
+    sequentially to match the original semantics: each subdirectory entered
+    decrements the budget, and recursive calls receive the updated budget.
     """
     root = Path(folder)
     scan_state = _get_scan_state([str(root)]) if incremental else None
@@ -455,7 +417,7 @@ def _scan_folder_recursive(  # noqa: C901
         except OSError:
             pass
 
-    # First pass: collect files and subdirectories (consume budget atomically)
+    # First pass: collect files and subdirectories (consume budget sequentially)
     for entry in entries:
         if limit and len(tracks) >= limit:
             break
@@ -463,8 +425,9 @@ def _scan_folder_recursive(  # noqa: C901
             if entry.is_symlink():
                 continue
             if entry.is_dir():
-                if not budget.consume(1):
+                if remaining_dirs <= 0:
                     continue  # global directory budget exhausted
+                remaining_dirs -= 1
                 subdirs.append(entry.path)
             elif entry.is_file():
                 entry_path = Path(entry.path)
@@ -496,9 +459,8 @@ def _scan_folder_recursive(  # noqa: C901
             continue
 
     # Parallel scan subdirectories if there are multiple and we have budget
-    # All recursive calls share the same budget object for atomic consumption.
-    # We scan all collected subdirs because we already consumed budget for them.
-    if subdirs:
+    # Pass the SAME remaining_dirs to all - they will consume sequentially within their own scope
+    if subdirs and remaining_dirs >= 0:
         # Limit parallelism to avoid overwhelming the filesystem
         max_workers = min(4, len(subdirs))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -506,14 +468,14 @@ def _scan_folder_recursive(  # noqa: C901
             for subdir in subdirs:
                 if limit and len(tracks) >= limit:
                     break
-                # Pass the SAME budget object to all - atomic consumption ensures global limit
+                # Each subdir gets the current remaining_dirs (sequential budget semantics)
                 futures[
                     executor.submit(
                         _scan_folder_recursive,
                         subdir,
                         requester,
                         limit,
-                        budget,
+                        remaining_dirs,
                         incremental,
                     )
                 ] = subdir

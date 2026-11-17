@@ -6,10 +6,15 @@ All FastAPI/uvicorn imports are lazy to avoid making them mandatory dependencies
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from camfrog_autodj.engine import Engine
+    from camfrog_autodj.models import Track
 
 from pydantic import BaseModel, Field
 
@@ -36,7 +41,7 @@ class VolumeRequest(BaseModel):
     volume: int = Field(ge=0, le=100)
 
 
-def _track_to_dict(track: Any) -> Optional[dict]:
+def _track_to_dict(track: "Track") -> Optional[dict]:
     """Convert Track object or dict to dict."""
     if track is None:
         return None
@@ -58,7 +63,7 @@ class WebhookAppState:
     via FastAPI's app.state mechanism.
     """
 
-    def __init__(self, engine: Any, config: WebhookConfig):
+    def __init__(self, engine: "Engine | None", config: WebhookConfig):
         self.engine = engine
         self.config = config
 
@@ -431,7 +436,7 @@ def _add_exception_handlers(app: "FastAPI"):
         )
 
 
-def create_webhook_app(config: WebhookConfig, engine: Any = None) -> "FastAPI":
+def create_webhook_app(config: WebhookConfig, engine: "Engine | None" = None) -> "FastAPI":
     """Create the FastAPI webhook application.
 
     Args:
@@ -462,12 +467,12 @@ def create_webhook_app(config: WebhookConfig, engine: Any = None) -> "FastAPI":
 class WebhookServer:
     """Async webhook server wrapper."""
 
-    def __init__(self, config: WebhookConfig, engine: Any):
+    def __init__(self, config: WebhookConfig, engine: "Engine"):
         self.config = config
         self.engine = engine
         self._app = create_webhook_app(config, engine)
         self._server: "uvicorn.Server | None" = None
-        self._task: Any = None
+        self._task: asyncio.Task[None] | None = None
 
     async def start(self):
         """Start the webhook server."""

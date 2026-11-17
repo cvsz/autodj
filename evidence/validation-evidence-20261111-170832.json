@@ -1,0 +1,129 @@
+﻿{
+    "timestamp":  "2026-11-11T17:08:32.9942727+07:00",
+    "windowsBuild":  "10.0.26300.0",
+    "results":  {
+                    "tts_runtime":  {
+                                        "detail":  "TTS SAPI available, 2 voice(s), WAV created",
+                                        "status":  "PASS",
+                                        "evidence":  {
+                                                         "voices":  [
+                                                                        {
+                                                                            "culture":  "en-US",
+                                                                            "name":  "Microsoft David Desktop",
+                                                                            "age":  30,
+                                                                            "gender":  1
+                                                                        },
+                                                                        {
+                                                                            "culture":  "en-US",
+                                                                            "name":  "Microsoft Zira Desktop",
+                                                                            "age":  30,
+                                                                            "gender":  2
+                                                                        }
+                                                                    ],
+                                                         "testWavCreated":  true,
+                                                         "voiceCount":  2,
+                                                         "testWavPath":  "C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-tts-test.wav"
+                                                     },
+                                        "time":  "2026-11-11T17:08:43.7648128+07:00"
+                                    },
+                    "uia_adapter":  {
+                                        "detail":  "UIA adapter attached to Camfrog room",
+                                        "status":  "PASS",
+                                        "evidence":  {
+                                                         "discoverOutput":  [
+                                                                                "2026-11-11 17:08:36,027 INFO config: C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-validate-config.toml",
+                                                                                "2026-11-11 17:08:37,868 INFO auto-discover: scanning 2 window(s) of processes matching \u0027(?i)camfrog\u0027: [\u0027ZeaZDev, ��Ǣ��: ZeaZDev\u0027, \u0027Camfrog Video Chat\u0027]",
+                                                                                "2026-11-11 17:08:39,305 INFO candidate \u0027ZeaZDev, ��Ǣ��: ZeaZDev\u0027: web chat view + message box (112 chat lines)",
+                                                                                "2026-11-11 17:08:39,729 WARNING auto-discover: NOT saving to C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-validate-config.toml, the result would not be valid TOML (Cannot overwrite a value (at line 141, column 47))",
+                                                                                "2026-11-11 17:08:39,729 INFO auto-discover: unchanged C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-validate-config.toml",
+                                                                                "{\u0027window_title_re\u0027: \u0027ZeaZDev,\\\\ ��Ǣ��:\\\\ ZeaZDev\u0027, \u0027view_kind\u0027: \u0027web\u0027}"
+                                                                            ],
+                                                         "camfrogWindows":  [
+                                                                                "exe=\u0027explorer.exe\u0027 pid=4340 class=\u0027CabinetWClass\u0027 title=\u0027camfrog-autodj - File Explorer\u0027",
+                                                                                "exe=\u0027explorer.exe\u0027 pid=4340 class=\u0027CabinetWClass\u0027 title=\u0027camfrog-autodj - File Explorer\u0027",
+                                                                                "exe=\u0027Camfrog Video Chat.exe\u0027 pid=12900 class=\u0027#32770\u0027 title=\u0027ZeaZDev, ��Ǣ��: ZeaZDev\u0027",
+                                                                                "exe=\u0027WinSCP.exe\u0027 pid=7140 class=\u0027TScpCommanderForm\u0027 title=\u0027camfrog-autodj � cvsz@192.168.1.85 � WinSCP\u0027",
+                                                                                "exe=\u0027explorer.exe\u0027 pid=4340 class=\u0027CabinetWClass\u0027 title=\u0027camfrog-autodj - File Explorer\u0027",
+                                                                                "exe=\u0027Camfrog Video Chat.exe\u0027 pid=12900 class=\u0027#32770\u0027 title=\u0027Camfrog Video Chat\u0027"
+                                                                            ],
+                                                         "windowCount":  6,
+                                                         "checkOutput":  [
+                                                                             "2026-11-11 17:08:40,313 INFO config: D:\\data\\camfrog-autodj\\config.toml",
+                                                                             "[ OK ] mpv: D:\\data\\camfrog-autodj\\mpv\\mpv.exe",
+                                                                             "[ OK ] yt-dlp: D:\\data\\camfrog-autodj\\mpv\\yt-dlp.exe (version 2026.10.26)",
+                                                                             "[INFO] yt_dlp Python module is available for title lookups",
+                                                                             "[WARN] music_dirs: folder not found: REPLACE_ME:/path/to/your/music",
+                                                                             "[WARN] admins is empty: nobody can use admin commands from the room. Add admins = [\"yournick\"].",
+                                                                             "[INFO] bot_nick is the default \u0027AutoDJ\u0027. Lines the bot posts are recognised by their text anyway, but set bot_nick to the nickname it chats as so the GUI log labels them correctly.",
+                                                                             "[ OK ] Camfrog room window found: \u0027ZeaZDev, ��Ǣ��: ZeaZDev\u0027"
+                                                                         ]
+                                                     },
+                                        "time":  "2026-11-11T17:08:43.3943564+07:00"
+                                    },
+                    "installer_build":  {
+                                            "detail":  "SkipBuild switch set",
+                                            "status":  "SKIPPED",
+                                            "evidence":  null,
+                                            "time":  "2026-11-11T17:08:33.0361341+07:00"
+                                        },
+                    "code_signing":  {
+                                         "detail":  "Signature status: NotSigned",
+                                         "status":  "WARN",
+                                         "evidence":  {
+                                                          "timestamp":  "none",
+                                                          "signatureMessage":  "The file D:\\data\\camfrog-autodj\\dist\\AutoDJ.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+                                                          "signatureStatus":  2,
+                                                          "signerSubject":  "none"
+                                                      },
+                                         "time":  "2026-11-11T17:08:33.3171809+07:00"
+                                     },
+                    "e2e_integration":  {
+                                            "detail":  "Missing E2E prerequisites: admins_configured (looked for /\\[WARN\\] admins is empty/ in --check output)",
+                                            "status":  "FAIL",
+                                            "evidence":  {
+                                                             "camfrogRoom":  "ZeaZDev",
+                                                             "discoverOutput":  [
+                                                                                    "2026-11-11 17:08:47,040 INFO config: C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-validate-config.toml",
+                                                                                    "2026-11-11 17:08:48,783 INFO auto-discover: scanning 2 window(s) of processes matching \u0027(?i)camfrog\u0027: [\u0027ZeaZDev, ��Ǣ��: ZeaZDev\u0027, \u0027Camfrog Video Chat\u0027]",
+                                                                                    "2026-11-11 17:08:49,878 INFO candidate \u0027ZeaZDev, ��Ǣ��: ZeaZDev\u0027: web chat view + message box (112 chat lines)",
+                                                                                    "2026-11-11 17:08:50,222 WARNING auto-discover: NOT saving to C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-validate-config.toml, the result would not be valid TOML (Cannot overwrite a value (at line 141, column 47))",
+                                                                                    "2026-11-11 17:08:50,222 INFO auto-discover: unchanged C:\\Users\\CVSZ~1.ZEA\\AppData\\Local\\Temp\\autodj-validate-config.toml",
+                                                                                    "{\u0027window_title_re\u0027: \u0027ZeaZDev,\\\\ ��Ǣ��:\\\\ ZeaZDev\u0027, \u0027view_kind\u0027: \u0027web\u0027}"
+                                                                                ],
+                                                             "testCases":  [
+                                                                               {
+                                                                                   "detail":  "\\[ OK \\] mpv:",
+                                                                                   "name":  "mpv_available",
+                                                                                   "passed":  true
+                                                                               },
+                                                                               {
+                                                                                   "detail":  "\\[ OK \\] yt-dlp:",
+                                                                                   "name":  "yt_dlp_available",
+                                                                                   "passed":  true
+                                                                               },
+                                                                               {
+                                                                                   "detail":  "\\[WARN\\] admins is empty",
+                                                                                   "name":  "admins_configured",
+                                                                                   "passed":  false
+                                                                               },
+                                                                               {
+                                                                                   "detail":  "\\[ OK \\] Camfrog room window found.*ZeaZDev",
+                                                                                   "name":  "room_window_found",
+                                                                                   "passed":  true
+                                                                               }
+                                                                           ],
+                                                             "checkOutput":  [
+                                                                                 "2026-11-11 17:08:44,065 INFO config: D:\\data\\camfrog-autodj\\config.toml",
+                                                                                 "[ OK ] mpv: D:\\data\\camfrog-autodj\\mpv\\mpv.exe",
+                                                                                 "[ OK ] yt-dlp: D:\\data\\camfrog-autodj\\mpv\\yt-dlp.exe (version 2026.10.26)",
+                                                                                 "[INFO] yt_dlp Python module is available for title lookups",
+                                                                                 "[WARN] music_dirs: folder not found: REPLACE_ME:/path/to/your/music",
+                                                                                 "[WARN] admins is empty: nobody can use admin commands from the room. Add admins = [\"yournick\"].",
+                                                                                 "[INFO] bot_nick is the default \u0027AutoDJ\u0027. Lines the bot posts are recognised by their text anyway, but set bot_nick to the nickname it chats as so the GUI log labels them correctly.",
+                                                                                 "[ OK ] Camfrog room window found: \u0027ZeaZDev, ��Ǣ��: ZeaZDev\u0027"
+                                                                             ]
+                                                         },
+                                            "time":  "2026-11-11T17:08:50.3850819+07:00"
+                                        }
+                }
+}

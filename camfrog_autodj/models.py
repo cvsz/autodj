@@ -3,6 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
+class UserError(Exception):
+    """Message safe to show in the room."""
+
+
+class YtdlpMissingError(UserError):
+    """No way to look up YouTube metadata (neither the yt_dlp module nor a yt-dlp executable)."""
+
+
 def fmt_time(sec: float | None) -> str:
     if not sec:
         return "?"

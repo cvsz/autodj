@@ -1,0 +1,8 @@
+2026-11-11 17:49:16,131 INFO config: D:\data\camfrog-autodj\config.toml
+2026-11-11 17:49:18,729 INFO 4 windows match '.*'; using 'clara19 (�͹�Ź�)' (pid 12900). Others: ['��ª�����ͧʹ���', 'Camfrog Video Chat', 'ZeazBot (�͹�Ź�)']
+[ OK ] mpv: D:\data\camfrog-autodj\mpv\mpv.exe
+[ OK ] yt-dlp: D:\data\camfrog-autodj\mpv\yt-dlp.exe (version 2026.10.26)
+[INFO] yt_dlp Python module is available for title lookups
+[ OK ] music_dirs: /music: 0 media file(s)
+[ OK ] admins: Seaza
+[ OK ] Camfrog room window found: 'clara19 (�͹�Ź�)'

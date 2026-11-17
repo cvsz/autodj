@@ -95,27 +95,15 @@ class MpvPlayer:
     def _wait_for_mpv_end(
         self, p: subprocess.Popen, started: float, limit: float | None
     ) -> tuple[int | None, bool]:
-        """Wait for mpv to exit; return (returncode, hung). hung means the grace limit was exceeded.
-
-        For live streams (limit=None), we still poll at POLL interval to allow cooperative
-        cancellation via stop_evt, but we don't enforce a hard timeout since live duration
-        is unknown. The caller is responsible for managing overall track lifecycle.
-        """
+        """Wait for mpv to exit; return (returncode, hung). hung means the grace limit was exceeded."""
         rc, hung = None, False
         while rc is None:
             try:
-                # Always use POLL timeout to allow periodic checks; when limit is None
-                # (live stream), we don't treat timeout as "hung" but just continue waiting.
-                rc = p.wait(timeout=POLL)
+                rc = p.wait(timeout=POLL if limit is not None else None)
             except subprocess.TimeoutExpired:
-                # Check for cooperative cancellation
-                if self.stop_evt is not None and self.stop_evt.is_set():
-                    log.debug("mpv wait cancelled via stop_evt")
-                    break
                 if limit is not None and self._played(started) >= limit:
                     hung = True
                     break
-                # For live streams (limit=None), continue waiting - no hung detection
         return rc, hung
 
     def play(self, source: str, volume: int, duration: float | None = None) -> bool:
@@ -243,9 +231,16 @@ class MpvPlayer:
         with self._lock:
             p = self.proc
             self._pos_cache = None
+            self._ipc = None  # Clear IPC so no further commands target dead process
             if p and p.poll() is None:
                 self.skipped = True
                 p.terminate()
+                try:
+                    _ = p.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    log.warning("mpv did not exit after terminate; killing")
+                    p.kill()
+                    _ = p.wait()
 
     def _cmd(self, *cmd) -> bool:
         """Send a command to mpv via IPC (fire-and-forget). Returns True if sent."""
@@ -404,34 +399,6 @@ class MpvPlayer:
         kw: dict = {}
         if _is_windows():
             kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
-        kw["timeout"] = timeout
-        cmd = self._base() + [
-            "--volume=100",
-            f"--input-ipc-server={ipc}",
-            f"--log-file={logf}",
-            "--",
-            path,
-        ]
-        with self._lock:
-            self.skipped = False
-            self._paused_since, self._paused_total = None, 0.0
-            self._ipc = ipc
-            self._pos_cache = None
-        # Apply duck volume immediately after IPC is established, before playback starts
-        if duck_volume is not None:
-            self.set_volume(duck_volume)
-        try:
-            subprocess.run(cmd, check=False, **kw)
-        except subprocess.TimeoutExpired:
-            log.warning("play_file timed out")
-        finally:
-            # Restore volume BEFORE clearing IPC, so the restore command can reach mpv
-            if restore_volume is not None:
-                self.set_volume(restore_volume)
-            with self._lock:
-                self.proc = None
-                self._ipc = None
-            try:
-                os.remove(logf)
-            except OSError:
-                pass
+        # Timeout so a corrupted or unplayable WAV cannot block the caller forever.
+        kw["timeout"] = 30
+        subprocess.run(self._base() + ["--volume=100", "--", path], check=False, **kw)

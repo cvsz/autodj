@@ -9,15 +9,19 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .adapters.base import ChatMessage
+    from .config import Config
     from .engine import Engine
 
 from .exceptions import UserError
+
+if TYPE_CHECKING:
+    from .models import Track
 
 log = logging.getLogger("autodj")
 COMMANDS: dict[str, tuple] = {}
 
 
-def command(*names, admin=False):
+def command(*names: str, admin: bool = False):
     def deco(fn):
         for n in names:
             if n in COMMANDS:  # a silent overwrite would make one command unreachable
@@ -29,7 +33,7 @@ def command(*names, admin=False):
 
 
 class Router:
-    def __init__(self, engine):
+    def __init__(self, engine: "Engine"):
         self.e = engine
         self.last: dict[str, float] = {}
         self.user_requests: dict[str, list[float]] = {}
@@ -37,7 +41,7 @@ class Router:
             threading.Lock()
         )  # guards last + user_requests (TOCTOU protection)
 
-    def is_admin(self, msg) -> bool:
+    def is_admin(self, msg: "ChatMessage") -> bool:
         # NOTE: Nickname-based authorization is spoofable — any user can adopt an
         # operator's nick and gain admin privileges. Prefer immutable authenticated
         # account identifiers where the chat protocol supports them.
@@ -49,7 +53,7 @@ class Router:
             return False
         return msg.user.lower() in self.e.admins
 
-    def handle(self, msg):
+    def handle(self, msg: "ChatMessage") -> None:
         e = self.e
         p = e.cfg.prefix
         # Fail-closed: empty prefix means no commands are recognized;
@@ -63,62 +67,7 @@ class Router:
             return
         name, arg = parsed
         entry = COMMANDS.get(name.lower())
-        if not entry:
-            return
-        fn, need_admin = entry
         admin = self.is_admin(msg)
-        self._log_command(msg, name, arg, admin, is_im, p)
-        self._dispatch_command(e, fn, msg, name, arg, admin, is_im, need_admin)
-
-    def _dispatch_command(
-        self,
-        e,
-        fn,
-        msg,
-        name: str,
-        arg: str,
-        admin: bool,
-        is_im: bool,
-        need_admin: bool,
-    ) -> None:
-        """Run *fn* after authorization checks; send replies on failure."""
-        # Play/Request commands only work via IM for non-admins unless allow_play_in_room is enabled
-        if self._is_play_command_blocked_in_room(msg, name, is_im, admin):
-            return
-
-        # IM Security: require user to be in the room (seen in chat) to use IM commands
-        if is_im and not admin and getattr(e.cfg, "im_require_room_presence", True):
-            active_users = getattr(e, "_active_room_users", None)
-            if active_users is not None and msg.user.lower() not in active_users:
-                log.info("IM command %s from %s rejected: user not in room", name, msg.user)
-                e.say(f"{msg.user}: {e.t('im_user_not_in_room')}")
-                return
-
-        if not admin and msg.user.lower() in e.blocked:
-            self._log_blocked(msg, is_im)
-            return
-
-        if need_admin and not admin:
-            e.say(f"{msg.user}: {e.t('admin_only')}")
-            return
-
-        now = time.monotonic()
-        if not admin and not self._within_limits(msg, name, now, is_im):
-            return
-
-        try:
-            # Emit command event for plugins before execution
-            pm = getattr(e, "_plugin_manager", None)
-            if pm:
-                pm.emit("command", name, arg.strip(), msg.user, admin, is_im)
-            fn(e, msg, arg.strip(), admin)
-        except UserError as ex:
-            e.say(f"{msg.user}: {ex}")
-        except Exception:
-            log.exception("command failed: %s", msg.text)
-            e.say(f"{msg.user}: {e.t('error')}")
-
-    def _log_command(self, msg, name: str, arg: str, admin: bool, is_im: bool, prefix: str):
         if is_im:
             log.info(
                 "im command %s (%s) from %s%s",
@@ -130,28 +79,35 @@ class Router:
         else:
             log.info(
                 "command %s%s (%s) from %s%s",
-                prefix,
+                p,
                 name,
                 arg,
                 msg.user,
                 ", admin" if admin else "",
             )
-
-    def _is_play_command_blocked_in_room(self, msg, name: str, is_im: bool, admin: bool) -> bool:
-        """Play/Request commands only work via IM for non-admins, unless allow_play_in_room is enabled."""
-        play_commands = ("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง", "เปิดเพลง")
-        if name.lower() in play_commands and not is_im:
-            if not admin and not getattr(self.e.cfg, "allow_play_in_room", False):
-                self.e.say(f"{msg.user}: {self.e.t('im_only_command')}")
-                return True
-        return False
-
-    def _log_blocked(self, msg, is_im: bool):
-        log.info(
-            "blocked: ignoring %s's command from %s",
-            msg.user,
-            "IM" if is_im else "room",
-        )
+        if not entry:
+            return
+        fn, need_admin = entry
+        if not admin and msg.user.lower() in e.blocked:
+            log.info(
+                "blocked: ignoring %s's command from %s",
+                msg.user,
+                "IM" if is_im else "room",
+            )
+            return  # blocked users get no reply at all
+        if need_admin and not admin:
+            e.say(f"{msg.user}: {e.t('admin_only')}")
+            return
+        now = time.monotonic()
+        if not admin and not self._within_limits(msg, name, now, is_im):
+            return
+        try:
+            fn(e, msg, arg.strip(), admin)
+        except UserError as ex:
+            e.say(f"{msg.user}: {ex}")
+        except Exception:
+            log.exception("command failed: %s", text)
+            e.say(f"{msg.user}: {e.t('error')}")
 
     def _parse_command(self, text: str, p: str, is_im: bool) -> tuple[str, str] | None:
         """Return (name, arg) when *text* is a command, else None."""
@@ -165,94 +121,58 @@ class Router:
         name, _, arg = text[len(p) :].partition(" ")
         return name, arg
 
-    def _within_limits(self, msg, name: str, now: float, is_im: bool) -> bool:
+    def _within_limits(self, msg: "ChatMessage", name: str, now: float, is_im: bool) -> bool:
         """Cooldown + per-user sliding-window request limit.
 
         Returns False when the command must be dropped (a reply is sent for rate limits).
-        Thread-safe: all reads/writes to self.last and self.user_requests are guarded
-        by self._lock to prevent TOCTOU races under concurrent command handling.
-
-        Rate limit window check: cooldown and sliding-window request limits are checked here.
-        The actual expired-entry cleanup is performed periodically by
-        `cleanup_expired_entries()` to avoid O(N) work on every command.
         """
         e = self.e
         who = (
             msg.user.lower()
         )  # "Bob" and "bob" are one person: changing case must not dodge the cooldown
-
-        with self._lock:
-            # Cooldown check
-            if now - self.last.get(who, -1e9) < e.cfg.cooldown:
-                log.info(
-                    "cooldown: dropping %s's command from %s (%.1fs to go)",
-                    msg.user,
-                    "IM" if is_im else "room",
-                    e.cfg.cooldown - (now - self.last[who]),
-                )
-                return False
-
-            # Sliding window request limit per user - entries are kept fresh
-            # by the periodic cleanup task; we just check the current window.
+        if now - self.last.get(who, -1e9) < e.cfg.cooldown:
+            log.info(
+                "cooldown: dropping %s's command from %s (%.1fs to go)",
+                msg.user,
+                "IM" if is_im else "room",
+                e.cfg.cooldown - (now - self.last[who]),
+            )
+            return False
+        # Sliding window request limit per user
+        if name.lower() in ("play", "request", "req", "p", "เล่น"):
+            limit = getattr(e.cfg, "user_request_limit", 5)
             window = getattr(e.cfg, "rate_limit_window", 300.0)
+            reqs = [t for t in self.user_requests.get(who, []) if now - t < window]
+            if len(reqs) >= limit:
+                log.info(
+                    "rate limit: user %s exceeded %d requests in %.0fs",
+                    who,
+                    limit,
+                    window,
+                )
+                e.say(f"{msg.user}: {e.t('max_requests', n=limit)}")
+                return False
+            reqs.append(now)
+            self.user_requests[who] = reqs
+        self.last[who] = now
+        return True
 
-            # Sliding window request limit per user
-            if name.lower() in (
-                "play",
-                "request",
-                "req",
-                "p",
-                "เล่น",
-                "ขอเพลง",
-                "เล่นเพลง",
-                "เปิดเพลง",
-            ):
-                limit = getattr(e.cfg, "user_request_limit", 5)
-                reqs = [t for t in self.user_requests.get(who, []) if now - t < window]
-                if len(reqs) >= limit:
-                    log.info(
-                        "rate limit: user %s exceeded %d requests in %.0fs",
-                        who,
-                        limit,
-                        window,
-                    )
-                    e.say(f"{msg.user}: {e.t('max_requests', n=limit)}")
-                    return False
-                reqs.append(now)
-                self.user_requests[who] = reqs
-            self.last[who] = now
-            return True
-
-    def cleanup_expired_entries(self, now: float | None = None) -> None:
-        """Remove expired rate limit entries to prevent memory growth.
-
-        This should be called periodically (e.g., every 60 seconds) from a
-        background thread instead of on every command.
-        """
-        if now is None:
-            import time
-
-            now = time.monotonic()
-        e = self.e
-        window = getattr(e.cfg, "rate_limit_window", 300.0)
+    def cleanup_expired_entries(self, now: float) -> None:
+        """Evict stale rate-limit records so the tracking dicts do not grow
+        unboundedly over long sessions. Called periodically by the engine."""
+        window = float(getattr(self.e.cfg, "rate_limit_window", 300.0))
         cutoff = now - window
-
         with self._lock:
-            # Prune expired user_requests entries
-            expired = [
-                u for u, ts_list in self.user_requests.items() if all(t < cutoff for t in ts_list)
-            ]
-            for u in expired:
-                del self.user_requests[u]
-
-            # Prune stale cooldown entries (last dict) - keep only entries within 2x window
-            cooldown_cutoff = now - window * 2
-            stale_last = [u for u, t in self.last.items() if t < cooldown_cutoff]
-            for u in stale_last:
-                del self.last[u]
+            self.last = {u: t for u, t in self.last.items() if t >= cutoff}
+            for user in list(self.user_requests):
+                kept = [t for t in self.user_requests[user] if t >= cutoff]
+                if kept:
+                    self.user_requests[user] = kept
+                else:
+                    del self.user_requests[user]
 
 
-def _line(t) -> str:
+def _line(t: "Track") -> str:
     return f"{t.title} [{t.dur}] ({t.requester})"
 
 
@@ -375,16 +295,16 @@ def _play(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not a:
         raise UserError(e.t("usage_play", p=p))
     if not admin:
-        _assert_queue_capacity(e, m.user)  # Fast pre-check before expensive resolve()
+        _assert_queue_capacity(e, m.user)
     tracks = e.resolve(a, m.user, admin)
     if not tracks:
         raise UserError(e.t("nothing_found"))
     if not admin:
         tracks = _validate_non_admin_track(e, c, tracks)
     pos = 0
-    with e.queue.lock:  # The lookup above can take seconds: re-check now, atomically with the add
+    with e.queue.lock:  # the lookup above can take seconds: re-check now, atomically with the add
         if not admin:
-            _assert_queue_capacity(e, m.user)  # Re-check under lock to prevent TOCTOU race
+            _assert_queue_capacity(e, m.user)
             _assert_not_already_queued(e, tracks[0])
         for t in tracks:
             pos = e.queue.add_request(t, position=0)  # insert at front: play next immediately
@@ -400,20 +320,12 @@ def _play(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if e.playlist:  # promised by the playlist docs / config: chat requests are saved too (feeds !last and the pool)
         e.playlist.add(tracks)
     if len(tracks) == 1:
-        e.say(
-            e.t(
-                "queued_one",
-                pos=pos,
-                title=tracks[0].title,
-                dur=tracks[0].dur,
-                user=m.user,
-            )
-        )
+        e.say(e.t("queued_one", pos=pos, title=tracks[0].title, dur=tracks[0].dur, user=m.user))
     else:
         e.say(e.t("queued_many", n=len(tracks), user=m.user))
 
 
-def _assert_queue_capacity(e, user: str) -> None:
+def _assert_queue_capacity(e: "Engine", user: str) -> None:
     c = e.cfg
     if len(e.queue.requests) >= c.max_queue:
         raise UserError(e.t("queue_full"))
@@ -421,7 +333,7 @@ def _assert_queue_capacity(e, user: str) -> None:
         raise UserError(e.t("max_requests", n=c.max_requests_per_user))
 
 
-def _validate_non_admin_track(e, c, tracks: list) -> list:
+def _validate_non_admin_track(e: "Engine", c: "Config", tracks: list["Track"]) -> list["Track"]:
     tracks = tracks[:1]
     t = tracks[0]
     if t.duration is None and t.source.startswith("http"):
@@ -431,7 +343,7 @@ def _validate_non_admin_track(e, c, tracks: list) -> list:
     return tracks
 
 
-def _assert_not_already_queued(e, t) -> None:
+def _assert_not_already_queued(e: "Engine", t: "Track") -> None:
     # e.current is read under the queue lock to avoid a data race with _player_loop
     src = t.source
     current_source = e.current.source if e.current else None
@@ -786,6 +698,39 @@ def _welcome_message(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None
     # toggle or set welcome message
     e.set_welcome_message(a.strip())
     e.say(e.t("welcome_enabled") if e.cfg.welcome_message_enabled else e.t("welcome_disabled"))
+
+
+# ---- Auto-update (GitHub releases) ------------------------------------------
+
+
+@command("update", "อัปเดต", admin=True)
+def _update_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """Check GitHub for a newer AutoDJ version.
+
+    Usage: !update           — check for updates
+           !update apply    — download and stage AutoDJ.exe.next (admin only)
+    """
+    from camfrog_autodj import __version__ as _version
+
+    arg = a.strip().lower()
+    if arg == "apply":
+        ok = e.updater.apply_update()
+        if not ok:
+            e.say(e.t("update_no_release"))
+        return
+    # Plain check
+    release = e.updater.check_for_update()
+    if release is None:
+        e.say(e.t("update_up_to_date", version=_version))
+    else:
+        e.say(
+            e.t(
+                "update_available",
+                version=release["tag"],
+                current=_version,
+                url=release["html_url"],
+            )
+        )
 
 
 # ---- Room owner/operator commands -------------------------------------------

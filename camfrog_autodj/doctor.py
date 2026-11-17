@@ -17,6 +17,30 @@ Result = tuple[str, str]
 JS_RUNTIMES = ("deno", "node", "bun")
 
 
+def _count_media_files(folder: Path) -> int:
+    """Count media files under *folder*, never following symlinks.
+
+    Symlinked files and symlinked directories are skipped to avoid counting
+    files outside the library and to prevent symlink-cycle hangs.
+    """
+    count = 0
+    try:
+        entries = list(os.scandir(folder))
+    except (OSError, PermissionError):
+        return 0
+    for entry in entries:
+        try:
+            if entry.is_symlink():
+                continue  # never follow symlinks
+            if entry.is_dir(follow_symlinks=False):
+                count += _count_media_files(Path(entry.path))
+            elif entry.is_file(follow_symlinks=False) and Path(entry).suffix.lower() in MEDIA:
+                count += 1
+        except (OSError, PermissionError):
+            continue
+    return count
+
+
 def _have(module: str) -> bool:
     try:
         return importlib.util.find_spec(module) is not None
@@ -55,7 +79,7 @@ def run_checks(cfg, check_window: bool = True) -> list[Result]:
     _check_music_dirs(cfg, out)
     _check_admin_bot_nick_audio(cfg, out)
     _check_optional_python(out)
-    if os.name == "nt" and (cfg.chat_reader == "uia" or cfg.chat_sender == "uia"):
+    if os.name == "nt" and "uia" in (cfg.chat_reader, cfg.chat_sender):
         _check_windows_uia(cfg, out, check_window)
     return out
 
@@ -115,25 +139,6 @@ def _check_js_runtime(out: list[Result]) -> None:
         )
 
 
-def _count_media_files(folder: Path) -> int:
-    """Count media files in *folder* without following symlinks (avoids cycles and reparse hangs)."""
-    count = 0
-    try:
-        for entry in folder.iterdir():
-            try:
-                if entry.is_symlink():
-                    continue  # never follow symlinks
-                if entry.is_dir():
-                    count += _count_media_files(entry)
-                elif entry.is_file() and entry.suffix.lower() in MEDIA:
-                    count += 1
-            except (OSError, PermissionError):
-                continue
-    except (OSError, PermissionError):
-        pass
-    return count
-
-
 def _check_music_dirs(cfg, out: list[Result]) -> None:
     for d in cfg.music_dirs:
         p = Path(d)
@@ -183,11 +188,7 @@ def _check_optional_python(out: list[Result]) -> None:
             "mutagen is not installed: titles/durations of local files come from file names only",
         )
     if not _have("pyttsx3"):
-        _add(
-            out,
-            "WARN",
-            "pyttsx3 is not installed: the speak / TTS feature will not work",
-        )
+        _add(out, "WARN", "pyttsx3 is not installed: the speak / TTS feature will not work")
 
 
 def _check_windows_uia(cfg, out: list[Result], check_window: bool) -> None:

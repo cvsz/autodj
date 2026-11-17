@@ -138,9 +138,7 @@ def _run(a, level):
         )
     _migrate_config(a.config)
     cfg = Config.load(a.config)
-
-    _configure_logging(a, cfg, level)
-
+    _setup_log_file(a, cfg, level)
     cfg = _relocate_config(a, cfg)
     if a.lang:
         cfg.lang = a.lang
@@ -170,21 +168,14 @@ def _handle_windows(a) -> bool:
     from .windows import list_all
 
     for c in list_all():
-        # Handle Unicode characters in window titles (e.g., emojis) that may not be
-        # representable in the current console code page (e.g., cp874 for Thai).
-        exe = str(c.exe).encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
-        cls = str(c.cls).encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
-        title = (
-            str(c.title).encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
-        )
-        print(f"exe={exe!r} pid={c.pid} class={cls!r} title={title!r}")
+        print(f"exe={c.exe!r} pid={c.pid} class={c.cls!r} title={c.title!r}")
     return True
 
 
 def _handle_dump(a) -> bool:
     if not a.dump:
         return False
-    from pywinauto import Desktop
+    from pywinauto import Desktop  # type: ignore[import-untyped]  # pywinauto ships no py.typed stubs
 
     from .windows import candidates
 
@@ -220,11 +211,11 @@ def _setup_log_file(a, cfg, level) -> None:
     if not (a.log_file or cfg.log_file):
         return
     log_path = a.log_file or cfg.log_file
-    # Resolve relative log paths to a user-writable directory (APPDATA/CamfrogAutoDJ)
+    # Resolve relative log paths to a user-writable directory (APPDATA/Camfrog AutoDJ)
     # instead of CWD which may be Program Files (write-protected).
     if log_path and not os.path.isabs(log_path):
         app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-        log_path = os.path.join(app_data, "CamfrogAutoDJ", log_path)
+        log_path = os.path.join(app_data, "Camfrog AutoDJ", log_path)
     try:
         _add_log_file(log_path, level)
     except (OSError, PermissionError):
@@ -241,7 +232,7 @@ def _relocate_config(a, cfg):
     if p.exists() and os.access(p, os.W_OK):
         return cfg
     app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-    app_cfg_dir = Path(app_data) / "CamfrogAutoDJ"
+    app_cfg_dir = Path(app_data) / "Camfrog AutoDJ"
     app_cfg_dir.mkdir(parents=True, exist_ok=True)
     app_cfg_path = app_cfg_dir / "config.toml"
     if p.exists() and not app_cfg_path.exists():
@@ -251,13 +242,6 @@ def _relocate_config(a, cfg):
             p,
             app_cfg_path,
         )
-        # Also copy associated data files (ads-list.json, playlist.json) if they exist
-        for data_file in ("ads-list.json", "playlist.json"):
-            src = p.parent / data_file
-            dst = app_cfg_dir / data_file
-            if src.exists() and not dst.exists():
-                shutil.copyfile(src, dst)
-                log.info("copied %s to %s", src, dst)
     p = app_cfg_path
     a.config = str(p)
     # Migrate the relocated config before loading

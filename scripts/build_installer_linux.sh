@@ -8,29 +8,9 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-GEN_PYTHON="${PYTHON:-python3}"
-WINEPREFIX="${WINEPREFIX:-$HOME/.wine}"
-
-# Optional arguments:
-#   build_installer_linux.sh [VERSION] [SRCDIR] [OUTDIR]
-# VERSION defaults to pyproject.toml's project.version (never a hard-coded literal).
-POSITIONAL=()
-for arg in "$@"; do
-    case "$arg" in
-        --clean) ;;  # accepted for parity with build_exe_linux.sh; installer has no build cache
-        *) POSITIONAL+=("$arg") ;;
-    esac
-done
-VERSION="${POSITIONAL[0]:-}"
-SRCDIR="${POSITIONAL[1]:-dist}"
-OUTDIR="${POSITIONAL[2]:-dist}"
-
-if [[ -z "$VERSION" ]]; then
-    VERSION="$("$GEN_PYTHON" -c "import tomllib; print(tomllib.load(open('$REPO_ROOT/pyproject.toml','rb'))['project']['version'])")"
-fi
-
+VERSION="${1:-$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")}"
+SRCDIR="${2:-dist}"
+OUTDIR="${3:-dist}"
 NSIS_PATH="${NSIS_PATH:-$HOME/.wine/drive_c/NSIS/makensis.exe}"
 WINE_BIN="${WINE_BIN:-$(command -v wine || command -v wine64 || true)}"
 
@@ -112,6 +92,11 @@ for f in "${REQUIRED_FILES[@]}"; do
         echo "  [OK] $f"
     fi
 done
+# makensis would fail later with a far less obvious message; stop here for the exe itself.
+if [[ ! -f "$SRCDIR/AutoDJ.exe" ]]; then
+    echo "ERROR: $SRCDIR/AutoDJ.exe is missing -- run the exe build first (make build)."
+    exit 1
+fi
 
 # --- 3. render installer.nsi with the real version (shared renderer) --------------
 RENDERED_NSI="$SRCDIR/installer.nsi"

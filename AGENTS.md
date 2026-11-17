@@ -183,6 +183,22 @@ For repository administration, `scripts/github_admin.py` requires an authenticat
 - **GPG signing:** `commit.gpgsign=true`, `gpg.program` configured per environment
 - **GPG key:** configured via `user.signingkey` in git config (key fingerprint not tracked; use `REPLACE_ME_KEY_FINGERPRINT` as placeholder)
 
+### Git Credential Helper Setup
+
+- Configure the git credential helper to use the repository‑local `.git-credentials` file (located at `D:/.git-credentials`):
+
+```bash
+git config credential.helper "store --file D:/.git-credentials"
+```
+
+- Run the GitHub CLI helper to bind the accounts and cache the credentials for the cvsz and policedbc identities:
+
+```bash
+gh auth setup-git
+```
+
+These steps need to be performed once (or when the credential store changes) before starting the Four‑Eyes Git & PR Workflow described below.
+
 ### Phase A — Developer (cvsz): Implement & Open PR
 
 ```bash

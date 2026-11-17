@@ -20,7 +20,7 @@ from pathlib import Path
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="CamfrogAutoDJ Launcher - เรียกใช้ AutoDJ ได้ง่ายขึ้น")
+    parser = argparse.ArgumentParser(description="Camfrog AutoDJ Launcher - เรียกใช้ AutoDJ ได้ง่ายขึ้น")
     parser.add_argument(
         "--gui",
         action="store_true",

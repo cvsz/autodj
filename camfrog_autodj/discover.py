@@ -153,8 +153,16 @@ def discover(cfg) -> dict | None:
     """Scan every visible Camfrog window and return config updates for the best room, or None."""
     try:
         from pywinauto import Desktop
-    except ImportError:  # pywinauto is Windows-only; may be absent on other platforms
-        log.warning("auto-discover: pywinauto is not available; cannot scan Camfrog windows")
+    except (
+        ImportError,
+        PermissionError,
+    ):  # pywinauto is Windows-only; may be absent on other platforms
+        # PermissionError from comtypes gen-dir write failure when pywinauto is
+        # absent/broken on the current platform also counts as "not available"
+        log.warning(
+            "auto-discover: pywinauto is not available (ImportError or PermissionError); "
+            "cannot scan Camfrog windows"
+        )
         return None
 
     from .windows import candidates
@@ -200,13 +208,27 @@ def discover(cfg) -> dict | None:
 
 
 def _toml_value(v) -> str:
+    """Convert a Python value to a TOML basic string, preserving validity.
+
+    Rules:
+    - bool/int: native TOML
+    - str without control chars and no single quotes → single-quoted TOML
+    - str with backslashes → double-quoted TOML (backslashes are escape seqs)
+    - str with single quotes or control chars → double-quoted with escapes
+    """
     if isinstance(v, bool):
         return "true" if v else "false"
     if isinstance(v, int):
         return str(v)
     s = str(v)
-    if "'" not in s and not any(ord(c) < 32 or ord(c) == 127 for c in s):
-        return f"'{s}'"  # literal string: regex backslashes stay as-is
+    has_bs = "\\" in s
+    has_single = "'" in s
+    has_ctrl = any(ord(c) < 32 or ord(c) == 127 for c in s)
+    # If the string has backslashes, use double quotes so they're proper escape seqs.
+    # Otherwise, single-quoted TOML is more readable and preserves literal backslashes.
+    if not has_single and not has_ctrl and not has_bs:
+        return f"'{s}'"
+    # Double-quoted: escape backslash, double-quote, newline, carriage-return, tab
     esc = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"}
     return (
         '"'

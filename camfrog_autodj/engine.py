@@ -38,9 +38,8 @@ from .models import Track
 from .player import MpvPlayer
 from .playlist import PlaylistStore, load_playlist
 from .playqueue import PlayQueue
-from .renderer import RenderedMessage, get_renderer
 from .textutil import clean_text, norm
-from .webhook import WebhookConfig, WebhookServer
+from .updater import Updater
 
 log = logging.getLogger("autodj")
 
@@ -90,12 +89,21 @@ class Engine:
         self.started_at = 0.0
         self._paused_at: float | None = None
         self._paused_total = 0.0
+        self._active_room_users: set[str] = set()
+        self._participant_count = 0
+        self._autoplay_mode = False
+        self._voteskip_cooldown_lock = threading.Lock()
+        self._voteskip_cooldowns: dict[str, float] = {}
+        self._last_user_request_time = 0.0
         self.outbox: queue.Queue[str] = queue.Queue()
         self.chat_log: deque[tuple[str, str]] = deque(maxlen=300)
         self.chat_seq = 0
         self._chat_version = (
             0  # bumped on every chat_log mutation; GUI can skip refresh when unchanged
         )
+        self.im_seq = 0  # IM message sequence counter; GUI polls im_snapshot()
+        self._im_version = 0  # bumped on every im_log mutation; GUI can skip refresh when unchanged
+        self.im_log: list[tuple[str, str]] = []  # IM chat log
         self.chat_done = threading.Event()
         self.wake = threading.Event()
         self.exec = ThreadPoolExecutor(
@@ -106,24 +114,15 @@ class Engine:
         self.fail_delay = lambda n: min(
             MAX_BACKOFF, 2.0 ** (n - 1)
         )  # n = consecutive failures so far
+        self._backoff_until = 0.0  # monotonic time until playback may resume after failures
         self._sent: deque[tuple[float, str]] = deque(maxlen=64)
         self._sent_lock = threading.Lock()
-        self._chat_lock = (
-            threading.Lock()
-        )  # guards chat_log + chat_seq + im_log + im_seq (GUI polls them)
-        self._im_reply_cooldowns: dict[str, float] = {}  # user -> last IM reply time
-        self._admin_greeting_cooldowns: dict[str, float] = {}  # admin -> last greeting time
-        self._welcome_cooldowns: dict[str, float] = {}  # user -> last welcome message time
-        self._name_colors: dict[str, str] = {}  # user -> nickname color hex (GUI preview only)
-        self.im_log: deque[tuple[str, str]] = deque(maxlen=300)  # IM / private messages
-        self.im_seq = 0  # IM message sequence counter for GUI polling
-        self._im_version = 0  # bumped on every im_log mutation; GUI can skip refresh when unchanged
-        self._active_room_users: set[str] = set()  # users currently in room (seen in chat)
-        self._participant_count: int = 0  # estimated participants (updated from chat)
-        self._last_user_request_time: float = 0.0  # monotonic time of last user !play request
-        self._autoplay_mode: bool = (
-            False  # True when playing from autoplay pool due to idle timeout
-        )
+        self._chat_lock = threading.Lock()  # guards chat_log + chat_seq (GUI polls them)
+        self._chat_rate_lock = threading.Lock()  # guards _chat_rate_limit state
+        self._chat_rate_window: dict[
+            str, deque
+        ] = {}  # nick -> deque of timestamps for rate limiting
+        self._plugin_manager = None  # set up later if plugins enabled
         self._speak_lock = (
             threading.Lock()
         )  # one TTS clip at a time: overlapping jobs would un-duck the music early
@@ -135,55 +134,22 @@ class Engine:
         self._delivery_counter = itertools.count()  # per-engine delivery attempt ID counter
         self._active_requests: dict[str, dict] = {}  # request_id -> {user, arg, start, state}
         self._delivery_attempts: dict[int, dict] = {}  # attempt_id -> {text, stage, confirmed}
-        # ---- Circuit breaker state ------------------------------------------------
-        self._circuit_breaker_failures: int = 0  # consecutive track failures
-        self._circuit_breaker_open_until: float = 0.0  # monotonic time when breaker closes
-        self._circuit_breaker_lock: threading.Lock = (
-            threading.Lock()
-        )  # guards circuit breaker state
-        self._send_failure_count: int = 0  # consecutive chat send failures
-        self._send_failure_lock: threading.Lock = threading.Lock()  # guards send failure count
-        # ---- Per-nick chat rate limiting -----------------------------------------
-        self._chat_rate_window: dict[str, deque[float]] = {}  # nick -> deque of message times
-        self._chat_rate_lock: threading.Lock = threading.Lock()  # guards rate window dict
-        # ---- VOTESKIP cooldown -----------------------------------------------------
-        self._voteskip_cooldowns: dict[str, float] = {}  # user -> last voteskip time
-        self._voteskip_cooldown_lock: threading.Lock = threading.Lock()  # guards cooldown dict
-        # ---- Health check state --------------------------------------------------
-        self._last_health_check: float = 0.0
-        self._health_check_interval: float = 30.0  # seconds between auto health checks
-        self._backoff_until: float = 0.0  # monotonic time when back-off expires
-        # ---- Webhook server -------------------------------------------------------
-        self._webhook_server: WebhookServer | None = None
-        if getattr(cfg, "webhook_enabled", False):
-            webhook_cfg = WebhookConfig(
-                enabled=cfg.webhook_enabled,
-                port=cfg.webhook_port,
-                secret=cfg.webhook_secret,
-                host=cfg.webhook_host,
-                rate_limit_per_ip=cfg.webhook_rate_limit_per_ip,
-                cors_origins=getattr(cfg, "webhook_cors_origins", ["*"]),
-            )
-            self._webhook_server = WebhookServer(webhook_cfg, self)
-        # ---- Plugin system --------------------------------------------------------
-        self._plugin_manager: PluginManager | None = None
-        plugin_names = getattr(cfg, "plugins", [])
-        if plugin_names:
-            from .plugins import PluginManager
-
-            self._plugin_manager = PluginManager(self, plugin_names)
-        # ---- Config hot reload -----------------------------------------------------
-        self._config_watcher = None
-        if getattr(cfg, "config_hot_reload", False) and cfg_path:
-            try:
-                from .config_watcher import ConfigWatcher
-
-                self._config_watcher = ConfigWatcher(cfg_path)
-                self._config_watcher.on_change(self._on_config_reload)
-                self._config_watcher.start(initial_config=cfg)
-                log.info("Config hot reload enabled for %s", cfg_path)
-            except RuntimeError as ex:
-                log.warning("Config hot reload not available: %s", ex)
+        # ---- Camfrog RE / greeting / welcome cooldowns ------------------------
+        self._admin_greeting_cooldowns: dict[str, float] = {}
+        self._welcome_cooldowns: dict[str, float] = {}
+        self._name_colors: dict[str, str] = {}
+        self._im_reply_cooldowns: dict[str, float] = {}
+        # ---- Circuit breaker --------------------------------------------------
+        self._circuit_breaker_lock = threading.Lock()
+        self._circuit_breaker_failures = 0
+        self._circuit_breaker_open_until = 0.0
+        # ---- Chat send failure tracking ---------------------------------------
+        self._send_failure_lock = threading.Lock()
+        self._send_failure_count = 0
+        # ---- Optional subsystems ----------------------------------------------
+        self._config_watcher = None  # set up by the GUI if hot reload is enabled
+        self._webhook_server = None  # set up by the GUI if webhook is enabled
+        self.updater = Updater(self.cfg, engine=self)  # auto-update checker/downloader
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -301,7 +267,7 @@ class Engine:
         with self._chat_lock:
             self.chat_log.append((who, text))
             self.chat_seq += 1
-            self._chat_version += 1
+            self._chat_version += 1  # bump version so GUI refreshes on poll
         # Also to the logger (so --log-file / console keeps a trail of every line the bot sent and every
         # line it acted on, even with the GUI closed -- the in-memory chat_log above is lost on restart
         # and was never enough on its own to reconstruct what happened after the fact).
@@ -333,26 +299,9 @@ class Engine:
         """
         text = clean_text(text)
         if not text:
-            return True
-
-        # Check send circuit breaker
-        if self._is_send_suspended():
-            log.warning("Chat send suspended; dropping message: %r", text[:60])
             return False
-
-        # Validate and render using message style (for preview tags, sending is always plain text)
-        renderer = get_renderer()
-        err = renderer.validate(text)
-        if err:
-            log.warning("say validation failed: %s", err)
-            # Still send but log warning
-        rendered: RenderedMessage = renderer.render(self.cfg.message_style, text)
-        # Always send plain text - Camfrog does not support rich text
-        assert rendered.rich_text is None, "Camfrog protocol does not support rich text"
-        self.log_chat(self.cfg.bot_nick, rendered.plain_text)
-        for i, chunk in enumerate(
-            textwrap.wrap(rendered.plain_text, self.cfg.max_msg_len, break_long_words=True)
-        ):
+        self.log_chat(self.cfg.bot_nick, text)
+        for i, chunk in enumerate(textwrap.wrap(text, self.cfg.max_msg_len, break_long_words=True)):
             if i and chunk.startswith(self.cfg.prefix):
                 chunk = "… " + chunk  # a wrapped continuation must never look like a command
             self.outbox.put(chunk)
@@ -529,7 +478,6 @@ class Engine:
             if not self.player.set_pause(False):
                 log.warning("resume failed: mpv did not accept the command")
                 return
-            # Only update pause state if mpv actually accepted the command
             self._paused_total += time.monotonic() - (self._paused_at or time.monotonic())
             self.paused, self._paused_at = False, None
 
@@ -770,24 +718,13 @@ class Engine:
 
     def _resolve_local_file(self, arg: str, user: str, admin: bool) -> list[Track]:
         p = Path(arg)
-        # Resolve to absolute, normalized path to prevent traversal attacks
-        try:
-            p = p.resolve()
-        except (OSError, ValueError) as err:
-            raise UserError(self.t("load_failed", err="invalid path")) from err
-        # ALL users (including admins) must be within configured music_dirs
-        # This prevents path traversal even when music_dirs is empty
-        if not self.cfg.music_dirs:
-            raise UserError(self.t("folders_admin"))
-        music_dirs = [Path(d).resolve() for d in self.cfg.music_dirs if Path(d).is_dir()]
-        if music_dirs and not any(p.is_relative_to(d) for d in music_dirs):
-            raise UserError(self.t("folders_admin"))
-        # Admin bypass of music_dirs confinement removed — admins still must respect music_dirs
-        # Non-admin: must also be in the indexed music library
-        if not admin and not self.index.contains(p):
+        if not self.index.contains(p):
+            if admin:
+                raise UserError(self.t("folders_admin"))
             raise UserError(self.t("file_not_in_lib"))
         if p.is_dir():
-            # Admins may scan any directory in music_dirs; non-admins are rejected above
+            if not admin:
+                raise UserError(self.t("folders_admin"))
             return scan_folder(p, limit=500, requester=user)
         if p.is_file() and p.suffix.lower() in MEDIA:
             return [local_track(p, user)]
@@ -853,28 +790,22 @@ class Engine:
 
         self.exec.submit(job)
 
-    def load_source(self, src: str, limit: int = 0, max_dirs: int = 0) -> list[Track]:
+    def load_source(self, src: str, limit: int = 0) -> list[Track]:
         if is_url(src) or SEARCH_PREFIX.match(src):  # "ytsearch20:text" works as an autoplay source
             return self._remote(src, playlist=True, raw_target=True)
         p = Path(src)
         if p.is_dir():
-            return scan_folder(p, limit=limit, max_dirs=max_dirs)
+            return scan_folder(p, limit=limit)
         if p.is_file():
             return [local_track(p)]
         raise UserError(self.t("not_found", src=src))
 
     def load_async(
-        self,
-        src: str,
-        announce: bool = True,
-        on_success: Callable[[list[Track]], None] | None = None,
-        on_error: Callable[[str], None] | None = None,
-        limit: int = 0,
-        max_dirs: int = 0,
-    ) -> None:
+        self, src: str, announce: bool = True, on_success=None, on_error=None, limit: int = 0
+    ):
         def job():
             try:
-                tracks = self.load_source(src, limit=limit, max_dirs=max_dirs)
+                tracks = self.load_source(src, limit=limit)
                 self.queue.add_pool(tracks)
                 self.wake.set()
                 if self.playlist:
@@ -926,11 +857,6 @@ class Engine:
         """Asynchronously resolve upcoming search-backed tracks in the queue."""
         try:
             # Quick check: only proceed if there are search tracks to resolve
-            with self.queue.lock:
-                has_search = any(SEARCH_PREFIX.match(t.source) for t in self.queue.requests)
-            if not has_search:
-                return
-
             with self.queue.lock:
                 candidates = [t for t in self.queue.requests if SEARCH_PREFIX.match(t.source)][:3]
             for cand in candidates:
@@ -1080,18 +1006,6 @@ class Engine:
         fails = 0  # consecutive tracks that failed to play
         idle_timeout = getattr(self.cfg, "autoplay_idle_timeout", 30.0)
         while not self.stop_evt.is_set():
-            # Check circuit breaker before attempting playback
-            if self._is_circuit_open():
-                log.info("Circuit breaker open; waiting before next playback attempt")
-                self.stop_evt.wait(10.0)
-                continue
-
-            # Check back-off: if we're in a back-off period, wait briefly and retry
-            if self._backoff_until > 0 and time.monotonic() < self._backoff_until:
-                self.stop_evt.wait(1.0)
-                continue
-            self._backoff_until = 0.0
-
             if not self._mpv_available():
                 if fails == 0:
                     log.warning(
@@ -1102,8 +1016,15 @@ class Engine:
                 self.stop_evt.wait(30.0)  # wait 30s before checking again
                 continue
 
+            # Honor back-off after consecutive failures: do not start the next
+            # track until _backoff_until has passed.
             now = time.monotonic()
-            has_requests = bool(self.queue.requests)
+            if self._backoff_until > now:
+                remaining = self._backoff_until - now
+                if self.stop_evt.wait(min(remaining, 1.0)):
+                    break
+                continue
+
             self._check_autoplay_mode(now, idle_timeout)  # updates self._autoplay_mode state
             t = self._pop_next_track()
             if t is None:
@@ -1118,12 +1039,10 @@ class Engine:
                 log.warning("failed to resolve track %r: %s", t.source, ex)
                 fails += 1
                 self._track_failed(t, fails)
-                self._record_circuit_failure()
                 continue
-
-            # After popping and resolving current, trigger preload for next in queue (only if needed)
-            self._maybe_preload_search_tracks()
-            fails = self._play_one_track(t, fails, is_request=has_requests)
+            # After popping and resolving current, trigger preload for next in queue
+            self.exec.submit(self._preload_search_tracks)
+            fails = self._play_one_track(t, fails)
 
     def _mpv_available(self) -> bool:
         # Players without an `available` method (e.g. test fakes) are treated as available.
@@ -1144,16 +1063,21 @@ class Engine:
     def _track_failed(self, t: Track, fails: int) -> None:
         """Mark *t* failed, announce per the back-off policy, then back off.
 
-        The back-off is non-blocking: we record the failure time and let the
-        player loop check it on the next iteration instead of blocking the
-        thread with stop_evt.wait().
+        Non-blocking: sets ``_backoff_until`` so the player loop pauses before
+        the next attempt instead of sleeping here.
         """
         t.state = "FAILED"
         self._log_track(t, "FAILED")
         self.current = None
         self._announce_playback_failure(t, fails)
-        # Record back-off time; the player loop checks _backoff_until before playing
-        self._backoff_until = time.monotonic() + self.fail_delay(fails)
+        delay = self.fail_delay(fails)
+        self._backoff_until = time.monotonic() + delay
+        log.info(
+            "track failed (%s); backing off %.0fs (fail %d)",
+            t.source,
+            delay,
+            fails,
+        )
 
     def _try_play(self, t: Track) -> bool:
         try:
@@ -1165,14 +1089,12 @@ class Engine:
             )
             return False
 
-    def _play_one_track(self, t: Track, fails: int, is_request: bool = False) -> int:
-        """Play *t* (retrying pool tracks on failure with exponential backoff,
-        but advancing immediately for user requests) until it completes or the loop stops.
+    def _play_one_track(self, t: Track, fails: int) -> int:
+        """Play *t* (repeating if configured) until it completes or the loop stops.
 
         Returns the updated consecutive-failure count.
         """
         recorded = False
-        max_retries = MAX_FAIL_ANNOUNCE if not is_request else 0  # retry pool tracks, not requests
         while not self.stop_evt.is_set():
             self.current = t
             t.state = "PLAYING"
@@ -1185,39 +1107,16 @@ class Engine:
             else:
                 self.exec.submit(self._announce_if_playing, t)
             log.info("playing %s", t.source)
-            # Emit track_start event for plugins
-            if self._plugin_manager:
-                self._plugin_manager.emit("track_start", t)
             if not self._try_play(t):
                 fails += 1
                 self._track_failed(t, fails)
-                self._record_circuit_failure()
-                # Emit track_failed event for plugins
-                if self._plugin_manager:
-                    self._plugin_manager.emit(
-                        "track_failed", {"track": t, "error": "playback failed"}
-                    )
-                # Retry the same track if we haven't exceeded max retries (pool tracks only)
-                if fails < max_retries:
-                    log.info(
-                        "retrying track %r (attempt %d/%d)",
-                        t.source,
-                        fails + 1,
-                        max_retries,
-                    )
-                    continue
-                # Max retries exceeded (or zero retries for requests), give up and move to next track
                 return fails
             fails = 0
-            self._record_circuit_success()
             if not recorded:
                 t.state = "COMPLETED"
                 self._log_track(t, "COMPLETED")
                 self.history.appendleft(t)
                 recorded = True
-                # Emit track_end event for plugins
-                if self._plugin_manager:
-                    self._plugin_manager.emit("track_end", t)
             if self.queue.repeat != "one" or getattr(self.player, "skipped", False):
                 break
         self.current = None
@@ -1229,7 +1128,8 @@ class Engine:
             for msg in self.adapter.messages():
                 if self.stop_evt.is_set():
                     break
-                if self._should_ignore_message(msg):
+                # Ignore our own messages: match by normalized nick or by echo detection
+                if norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text):
                     continue
 
                 if msg.is_im:
@@ -1536,6 +1436,9 @@ class Engine:
             t = threading.Thread(target=fn, daemon=True, name=f"autodj-{fn.__name__}")
             self._threads.append(t)
             t.start()
+
+        # Start auto-update checker (owns its thread; no GUI needed)
+        self.updater.start()
 
     def _auto_reply_loop(self):
         """Send scheduled auto-reply messages from ads-list.json to the room.
@@ -1984,6 +1887,8 @@ class Engine:
         from .library import shutdown_library_caches
 
         shutdown_library_caches()
+        # Stop auto-update checker
+        self.updater.stop()
         # Join daemon threads with a timeout so shutdown does not hang forever.
         for t in self._threads:
             if t.is_alive():

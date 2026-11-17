@@ -248,6 +248,17 @@ STR = {
         "aplay_fav_usage": "usage: {p}aplay fav <n>",
         "aplay_fav_not_found": "No favorite track at position {n}",
         "usage": "usage: {p}<command>",
+        # Auto-update (GitHub releases)
+        "update_checking": "Checking for AutoDJ updates on GitHub...",
+        "update_up_to_date": "AutoDJ is up to date (v{version}).",
+        "update_available": "New AutoDJ version available: {version} (current: {current}). Release: {url}",
+        "update_downloaded": "AutoDJ v{version} downloaded to {path}. Run autodj_update.bat or restart to apply.",
+        "update_download_failed": "Auto-update download failed: {err}",
+        "update_check_failed": "Auto-update check failed: {err}",
+        "update_not_admin": "auto-update check is admin only.",
+        "update_no_release": "No new AutoDJ release found on GitHub.",
+        "update_settings_enabled": "Auto-update enabled.",
+        "update_settings_disabled": "Auto-update disabled.",
     },
     "th": {
         "admin_only": "เฉพาะแอดมินเท่านั้น",
@@ -494,6 +505,17 @@ STR = {
         "aplay_fav_usage": "วิธีใช้: {p}aplay fav <ลำดับ>",
         "aplay_fav_not_found": "ไม่พบเพลงโปรดลำดับที่ {n} ครับ",
         "usage": "วิธีใช้: {p}<คำสั่ง>",
+        # Auto-update (GitHub releases)
+        "update_checking": "กำลังตรวจสอบอัปเดต AutoDJ จาก GitHub...",
+        "update_up_to_date": "AutoDJ เวอร์ชันล่าสุดแล้ว (v{version}).",
+        "update_available": "มี AutoDJ เวอร์ชันใหม่: {version} (ปัจจุบัน: {current}). ปล่อย: {url}",
+        "update_downloaded": "ดาวน์โหลด AutoDJ v{version} ไปยัง {path} แล้ว. รัน autodj_update.bat หรือรีสตาร์ทเพื่อติดตั้ง.",
+        "update_download_failed": "ดาวน์โหลดอัปเดตล้มเหลว: {err}",
+        "update_check_failed": "ตรวจสอบอัปเดตล้มเหลว: {err}",
+        "update_not_admin": "ตรวจสอบอัปเดตสำหรับแอดมินเท่านั้น.",
+        "update_no_release": "ไม่พบリリース AutoDJ ใหม่บน GitHub.",
+        "update_settings_enabled": "เปิดใช้งานอัปเดตอัตโนมัติแล้ว.",
+        "update_settings_disabled": "ปิดใช้งานอัปเดตอัตโนมัติแล้ว.",
     },
 }
 

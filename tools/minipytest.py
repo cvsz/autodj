@@ -138,12 +138,8 @@ def main(argv):
 def _load_module(f):
     """Import one test file as a module; return None on collection error."""
     spec = importlib.util.spec_from_file_location(f.stem, f)
-    if spec is None:
-        return None
     m = importlib.util.module_from_spec(spec)
     sys.modules[f.stem] = m
-    if spec.loader is None:
-        return None
     try:
         spec.loader.exec_module(m)
     except (ImportError, SyntaxError, TypeError, AttributeError, OSError):
@@ -171,7 +167,7 @@ def _run_tests_in_module(m, f, want_name):
 
 def _param_cases(fn):
     """The parameterised cases for *fn*: a list of kwarg dicts (default [{}])."""
-    cases: list[dict[str, object]] = [{}]
+    cases = [{}]
     if hasattr(fn, "_params"):
         names, vals = fn._params
         names = [n.strip() for n in names.split(",")]

@@ -1,121 +1,11 @@
-# Changelog
-
 ## Unreleased
 
-### Fixed
-- **welcome_message_cooldown**: Added missing default value (3600s) and validation range (60-86400s) to Config class; fixed bug in `_handle_welcome_message` using wrong cooldown (`admin_greeting_cooldown` → `welcome_message_cooldown`); added `{room}` placeholder replacement in welcome messages
-- **IM auto-reply**: Changed to use `self.say()` instead of `self.adapter.send()` for proper message queueing and delivery tracking
-- **Engine shutdown**: Added proper shutdown calls for TTS worker (`shutdown_tts`) and library caches (`shutdown_library_caches`) to prevent resource leaks
-- **Code formatting**: Applied ruff formatting to all source files (camfrog_autodj, tests, tools) for consistent style
-- **Installer validation**: `tools/validate_installer.py` now skips build-artifact existence checks (`dist/AutoDJ.exe`, `dist/mpv`) gracefully when no build has been performed, so `make all` / `make validate-all` pass on a fresh checkout without requiring a prior build step (Windows build gate still runs fail-closed on Windows when artifacts exist)
-
-## 0.3.0
-2026-11-09
-
-### Enterprise Architecture
-- **Exception Hierarchy** (`camfrog_autodj/exceptions.py`): 20+ structured exception types with machine-readable codes (`config.error`, `chat.send_failed`, `player.hung`, `security.unauthorized`, etc.) and contextual metadata. All inherit from `AutoDJError` for unified catching. Backward-compatible `UserError = AutoDJError` alias preserved.
-- **Circuit Breakers** (`camfrog_autodj/engine.py`): 
-  - Playback: Opens after 5 consecutive failures, pauses 60s, half-opens for recovery
-  - Chat Send: Suspends after 10 consecutive delivery failures, auto-recovers on success
-- **Per-Nick Chat Rate Limiting** (`camfrog_autodj/engine.py`): Sliding window (20 messages/60s per nick), admins exempt, thread-safe with locks.
-- **Health Check Endpoint** (`engine.health_check()`): Returns structured dict with mpv availability, circuit breaker state, send suspension, queue depth, IM viewer status — safe for Prometheus/Grafana/Loki ingestion. Never raises.
-- **Code Quality**: C901 complexity refactored (`_chat_loop` split into `_handle_im`, `_handle_room_message`, `_should_ignore_message`), all methods < 10 branches.
-
-### Added
-- **IM Viewer GUI** (`camfrog_autodj/gui.py`): New IM tab in desktop window shows private/instant messages with 2 Hz polling. Settings dialog includes IM viewer enable/disable, auto-reply message, cooldown, and room presence requirement.
-- **IM Auto-Reply** (`camfrog_autodj/engine.py`): Configurable auto-reply to private messages with per-user cooldown (default 30s, min 10s). Uses `[IM]` prefix. Respects `im_require_room_presence` (default true).
-- **Camfrog Gift Detection** (`camfrog_autodj/engine.py`): Detect virtual-gift messages in room chat (`GIFT_RECEIVED`, `room_gift_message`, `camfrog://gift`, `vgift_`, etc.) and announce them. Config-gated: `gift_announce_enabled`. (see `docs/camfrog-re/08-feature-gift.md`)
-- **Camfrog Avatar Change Detection** (`camfrog_autodj/engine.py`): Detect avatar change messages (`updateAvatarMessage`, `avatar_changed`) and announce. Config-gated: `avatar_change_enabled`. (see `docs/camfrog-re/16-user-icon-avatar.md`)
-- **Camfrog Status Indicators** (`camfrog_autodj/engine.py`): Detect user status changes (online/away/busy/invisible/admin/moderator/owner) and announce. Config-gated: `status_indicator_enabled`. (see `docs/camfrog-re/14-png-assets.md`)
-- **Camfrog Upgrade/Payment Alerts** (`camfrog_autodj/engine.py`): Detect upgrade/payment-required status text and alert admin. Config-gated: `status_alert_enabled`. (see `docs/camfrog-re/07-upgrade-logic.md`, `09-payment.md`)
-- **Camfrog Name Color Tracking** (`camfrog_autodj/engine.py`): Read nickname color (`color: #RRGGBB`) from incoming chat HTML for GUI preview (read-only; AutoDJ cannot set name color). (see `docs/camfrog-re/15-name-color.md`)
-
-### Changed
-- **Version bump**: 0.2.8 → 0.3.0 across all artifacts (`pyproject.toml`, `version_info.txt`, `installer.nsi`, `install.bat`, `install.ps1`, `scripts/build_installer*.sh/ps1`, `camfrog_autodj/__init__.py`)
-- **Config**: New IM viewer/auto-reply fields, all RE integration toggles (default enabled)
-- **Tests**: Added `tests/test_autodj_enhancements.py` (21 new tests covering circuit breakers, rate limiting, health checks, exceptions, IM viewer, RE integrations)
-
-### Fixed
-- **C901 complexity**: `_chat_loop` refactored from 11 branches to 3 (split into 3 helper methods)
-- **Import sorting**: `library.py` imports organized per ruff I001
-- **Type hints**: All exception classes properly typed for mypy compatibility
-
-### Performance
-- **PlayQueue change-version gating** — `PlayQueue` now exposes a monotonic `version` counter (bumped on every mutation) and `changed_since(version)`; the GUI queue poller only rebuilds the queue listbox when the queue actually changed, eliminating O(queue_size) listbox work on every 500 ms poll. (`camfrog_autodj/playqueue.py`, `camfrog_autodj/gui.py`)
-- **mpv IPC position cache** — `MpvPlayer.get_time_pos()` caches the mpv-reported position for one poll cycle (0.5 s TTL) so the GUI's frequent progress polls no longer open a new IPC connection (named pipe on Windows / Unix socket on Linux) on every poll; the cache is invalidated on `seek()`, `stop()`, and new track start. (`camfrog_autodj/player.py`)
-- **GUI idle tick throttling** — when idle (and not minimised), the GUI animation tick throttles to 250 ms like the iconic state, cutting constant redraws and wake-ups. (`camfrog_autodj/gui.py`)
-- **LocalIndex precomputed search index** — `LocalIndex.scan()` precomputes lowercase search strings once per scan instead of rebuilding them on every `find()` call; substring-match semantics unchanged and pinned by test. (`camfrog_autodj/library.py`, `tests/test_core.py`, `tests/test_player_cache.py`)
-
-### Security
-- **Dependency audit make target** — added `make security-audit` (pip-audit based, advisory, not part of `make all` since environment-wide findings outside the project's declared dependencies must not fail the repository pipeline); `security-check` keeps the secret scan. Audit evidence: 0 known vulnerabilities in AutoDJ's declared dependencies (`yt-dlp`, `mutagen`, `pyttsx3`, `pywinauto`, `pyperclip`); findings in the shared dev environment belong to unrelated packages (mitmproxy, protobuf, soupsieve, etc.). (`Makefile`)
-- **Added `CODEOWNERS`** — security-sensitive paths (GitHub Actions workflows, installer scripts, `SECURITY.md`, config files) now require independent review by `@policedbc`; default ownership for everything else is `@cvsz`. (`CODEOWNERS`)
-
-### Ops
-- **Docker/WSL2 resource audit script** — added read-only `docker-resource-audit.sh` diagnostics (writes `logs/docker-resource-audit-*.log`); fixed leading-blank-line shebang so `shellcheck` passes clean (SC1128). (`docker-resource-audit.sh`)
-
-### Test
-- **Library scan symlink / reparse-point safety regression tests** — added `tests/test_library_scan_safety.py` (11 tests) pinning that `scan_folder`/`LocalIndex` never follow symlinks, skip broken symlinks and cycles, skip unreadable directories, enforce `limit`/`max_dirs`, and ignore unsupported extensions. (`docs/audit/library-scan-review.md`, `docs/audit/bugs-and-findings.md`)
-
-### Docs
-- **Full PR inventory + audit reports** — all 142 pull requests enumerated, dispositioned, and recorded in `docs/audit/all-pr-*.md`; architecture, security, playback, GUI, playlist, library-scan, Windows build, installer, dependency, penetration-test, performance, GPG/merge-evidence, production-readiness, and residual-risk reports added under `docs/audit/`. (`docs/audit/`)
-
-### Fixed (Additional)
-- **Player IPC read timeout** — `_cmd_get` in `player.py` now enforces a 2-second timeout on Windows named pipes and Unix sockets to prevent indefinite hangs if mpv doesn't respond. Extracted platform-specific read logic into `_ipc_read_windows` and `_ipc_read_unix` helpers to reduce C901 complexity.
-- **Cooperative playback cancellation** — `MpvPlayer` now accepts an optional `stop_evt` (threading.Event) passed from `Engine`. The `_wait_for_mpv_end` method checks this event during polling, allowing clean shutdown during long-running tracks or live streams.
-- **Live stream hang detection** — `_wait_for_mpv_end` now uses a fixed POLL interval (0.5s) for all tracks, including live streams (limit=None), while only enforcing the "hung" timeout for tracks with known duration. This prevents the player thread from blocking indefinitely.
-- **Circuit breaker thread safety** — All circuit breaker state (`_circuit_breaker_failures`, `_circuit_breaker_open_until`) is now protected by `_send_failure_lock` in `_record_circuit_failure`, `_record_circuit_success`, and `_is_circuit_open`. The health check also reads these values under the same lock for consistent snapshots.
-- **IM auto-reply thread safety** — `_im_reply_cooldowns` dict is now protected by `_chat_lock` in both `_handle_im_message` (chat loop) and `_im_auto_reply_loop` (cleanup loop). The redundant IM auto-reply loop was replaced with a periodic cleanup task (every 60s) that removes stale cooldown entries.
-- **Command cooldown memory leak** — `Router._within_limits` now prunes stale entries from the `last` dict (cooldown tracking) using a 2x window cutoff, preventing unbounded growth when users stop sending commands.
-- **Library scan directory budget** — `scan_folder` now uses a global `remaining_dirs` counter passed recursively, enforcing the `max_dirs` limit across the entire scan tree instead of per-directory-level. Added internal `_scan_folder_recursive` helper.
-- **Playlist source validation** — `_is_valid_source` in `playlist.py` now rejects paths containing `..` (directory traversal) and requires either a path separator or file extension for local paths, improving defense-in-depth.
-- **README/CHANGELOG config-default consistency** — corrected README statements that did not match `config.example.toml` / code defaults: IM auto-reply cooldown is `60s` (not `30s`), autoplay idle timeout is `30 seconds` (not `30 minutes`), scheduled auto-reply interval is `300 seconds / 5 minutes` (not `60 seconds`). (`README.md`, `CHANGELOG.md`)
-- **Configuration Hot Reload** — added `ConfigWatcher` using watchdog's PollingObserver for cross-platform file watching with debounced reload (default 500ms), full validation before applying changes (rejects invalid config, keeps previous), and callback registry for hot reload notifications. Optional `watchdog` dependency via `hotreload` extra. CLI integration ready. (`camfrog_autodj/config_watcher.py`, `camfrog_autodj/config.py`, `tests/test_config_hot_reload.py`)
-- **JSON Structured Logging** — added `JsonFormatter` for structured JSON log output with configurable extra fields (`request_id`, `user`, `track_id`, `generation`, etc.), ISO 8601 and epoch timestamp formats, exception/stack trace serialization, non-serializable field handling, field filtering via `log_json_fields` config. CLI flag `--log-json` and config settings `log_json`/`log_json_fields`. File handler support with rotation. (`camfrog_autodj/logging_json.py`, `camfrog_autodj/__main__.py`, `camfrog_autodj/config.py`, `tests/test_json_logging.py`)
-- **Graceful Degradation / Fallback Chat Adapters** — automatic fallback chain `uia` -> `logtail` -> `console` -> `null` on connection failure. `test_connection()` on all adapters (UIA, LogTail, Console). `AdapterStatus` tracking for health checks (active adapter, fallback count, errors, last fallback time). `build_adapter_with_fallback()` with configurable behavior. (`camfrog_autodj/adapters/__init__.py`, `camfrog_autodj/adapters/uia.py`, `camfrog_autodj/adapters/logtail.py`, `camfrog_autodj/adapters/console.py`)
-
-## 0.2.8
-2026-11-09
-
-### Added
-- **Font/Style Customization (GUI Preview Only)**: New `message_style` config section with `font_family`, `font_size`, `font_color`, `bold`, `italic`, `underline`. Live preview in Settings ⚙️ tab. **Note**: Camfrog desktop client does NOT support rich text in outgoing messages — sent messages are always plain text via UIA. This feature is for the GUI preview panel only. (`camfrog_autodj/config.py`, `camfrog_autodj/renderer.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
-- **Admin Greeting**: Greet admin on first message in session with configurable message (`{admin}` placeholder) and cooldown (default 1 hour). (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/messages.py`, `camfrog_autodj/gui.py`)
-- **Delete History**: Admin command `!deletehistory <all|N>` to clear history or remove oldest N entries. (`camfrog_autodj/commands.py`, `camfrog_autodj/messages.py`)
-- **IM-Only Play Commands**: `!play`, `!request`, `!req`, `!p`, `!เล่น`, `!ขอเพลง`, `!เล่นเพลง` now only work via IM (private message). Room users must DM the bot. Admins can still use in room. (`camfrog_autodj/commands.py`, `camfrog_autodj/messages.py`)
-- **Autoplay Idle Timeout**: After 30 minutes (configurable `autoplay_idle_timeout`) with no user requests, bot switches to autoplay pool. New `!play` immediately exits autoplay mode. (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`)
-- **New Thai Aliases**: `!ขอเพลง` (request song), `!เล่นเพลง` (play song). (`camfrog_autodj/commands.py`, `camfrog_autodj/messages.py`)
-- **Auto-Reply**: Every 60 seconds from `ads-list.json` (configurable `auto_reply_interval`). (`camfrog_autodj/engine.py`, `config.toml`)
-- **REA Reverse Engineering Evidence**: Documented Camfrog font logic (GDI imports: `CreateFontIndirectW`, `EnumFontFamiliesExW`, `ChooseFontW`; chat/IM font settings; HTML rendering for display only; no rich text send capability). (`docs/protocols/camfrog-font-logic.md`)
-- **Mic Mute/Unmute**: Admin commands `!mute` / `!unmute` to mute/unmute the mic (config-gated: `admin_mute_mic`, `admin_unmute_mic`). (`camfrog_autodj/commands.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
-- **Block/Unblock Bot**: Admin commands `!blockbot` / `!unblockbot` to block/unblock bots (config-gated: `admin_block_bot`, `admin_unblock_bot`). (`camfrog_autodj/commands.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
-- **Kick/Ban/Unban User**: Admin commands `!kick` / `!ban` / `!unban` (config-gated: `admin_kick_user`, `admin_ban_user`, `admin_unban_user`). (`camfrog_autodj/commands.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
-- **Punish User/Bot**: Admin commands `!punish` / `!punishbot` (config-gated: `admin_punish_user`, `admin_punish_bot`). (`camfrog_autodj/commands.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
-- **Delete Message**: Admin command `!delete <msg id>` to delete a message by ID (config-gated: `admin_delete_message_enabled`). (`camfrog_autodj/commands.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
-- **Welcome Message**: Welcome message feature with configurable text (config-gated: `welcome_message_enabled`). (`camfrog_autodj/commands.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
-- **Camfrog Gift Detection**: Detect virtual-gift messages in room chat (`GIFT_RECEIVED`, `room_gift_message`, `camfrog://gift`, etc.) and announce them. Config-gated: `gift_announce_enabled`. (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
-- **Camfrog Avatar Change Detection**: Detect avatar change messages in room chat (`updateAvatarMessage`) and announce them. Config-gated: `avatar_change_enabled`. (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
-- **Camfrog Status Indicators**: Detect user status changes in room chat (online/away/busy/invisible/admin/moderator/owner) and announce them. Config-gated: `status_indicator_enabled`. (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
-- **Camfrog Upgrade/Payment Alerts**: Detect upgrade/payment-required status text and alert admin. Config-gated: `status_alert_enabled`. (`camfrog_autodj/engine.py`, `camfrog_autodj/config.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/messages.py`)
-- **Camfrog Name Color Tracking**: Read nickname color (`color: #RRGGBB`) from incoming chat HTML for GUI preview (read-only; AutoDJ cannot set name color). (`camfrog_autodj/engine.py`)
-- **Documentation**: `docs/camfrog-re/autodj-commands.en.md` / `.th.md`, `docs/camfrog-re/user-manual.en.md` / `.th.md`, `docs/camfrog-re/admin-manual.en.md` / `.th.md`. README and CHANGELOG updated.
-
-### Fixed
-- **Chat send retry loop**: Fixed `UnboundLocalError` in `uia.py:_appeared()` where `norm_l` was referenced outside the loop. (Already in 0.2.8 HEAD)
-- **Queue logic**: Pool tracks retry on failure (up to 3x); user requests advance immediately on failure. (`camfrog_autodj/engine.py`)
-- **IM command handling**: Fixed rate limiting and cooldown for IM commands. (`camfrog_autodj/commands.py`)
-
-### Changed
-- **Autoplay idle timeout**: Default changed from 1800s (30 min) to 30 seconds. When no user requests arrive within this time, AutoDJ switches to the autoplay pool. (`camfrog_autodj/engine.py`, `config.toml`)
-- **Requested songs play immediately**: `!play` inserts at the front of the queue (`position=0`) so the requested song plays next. (`camfrog_autodj/commands.py`)
-- **Default font settings**: `font_size = 14`, `font_color = "#FF0000"` (red) for better visibility in preview.
-- **Play commands**: Now IM-only (room users must DM the bot). Admins can still use in room.
-- **Auto-reply interval**: Default 60 seconds (was 300).
-
-## 0.2.8 (Initial)
+## 0.2.7
 2026-11-07
 
 - **Fix: GUI hangs when clicking Load Folder** — `library.scan_folder()` now skips symlinks (avoids cycle/reparse-point hangs on Windows) and caps returned tracks via a `limit` argument; `gui.load_folder()` disables the folder button while scanning, guards against reentrant clicks, and shows loaded/failed status. (`camfrog_autodj/library.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)
 - **Fix: chat-log race condition between engine and GUI poller** — `Engine.chat_log`/`chat_seq` are now guarded by `_chat_lock`; GUI reads via thread-safe `chat_snapshot()`. (`camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)
-- **Fix: `save_settings()` could leave a half-written `config.toml` on crash** — writes atomically via temp file + `os.replace()` with a `.bak` backup, with `%APPDATA%\\CamfrogAutoDJ\\` relocation fallback. (`camfrog_autodj/gui.py`)
+- **Fix: `save_settings()` could leave a half-written `config.toml` on crash** — writes atomically via temp file + `os.replace()` with a `.bak` backup, with `%APPDATA%\\Camfrog AutoDJ\\` relocation fallback. (`camfrog_autodj/gui.py`)
 - **Fix: `MpvPlayer.play_file()` could block forever on a bad WAV** — 30s subprocess timeout. (`camfrog_autodj/player.py`)
 - **Fix: folder scans in autoplay sources and `!load` could scan forever** — capped at 500 tracks. (`camfrog_autodj/engine.py`)
 - **Fix: `Add files` button lacked busy state** — now shows resolving state with a pending counter, matching `Add`. (`camfrog_autodj/gui.py`)
@@ -141,15 +31,15 @@
 - **Workflow Hardening & Persistent Artifact Retention**: Integrated `actions/upload-artifact@v4` in `.github/workflows/release.yml` for persistent operational retention of release build artifacts.
 - **SHA256 Manifest Generation**: Automated generation of `SHA256SUMS.txt` for all release assets.
 - **YouTube Playlist Support**: Auto-detects YouTube playlist URLs (`youtube.com/playlist?list=...`, `watch?v=...&list=...`) and plays all videos in sequence.
-- **Per-User Installation**: Installs to `%APPDATA%\CamfrogAutoDJ` (no admin rights required).
+- **Per-User Installation**: Installs to `%APPDATA%\Camfrog AutoDJ` (no admin rights required).
 - **Settings Tab**: New ⚙️ Settings button in the GUI header to edit all settings live and save to `config.toml`.
-- **Auto-Config Relocation**: If `config.toml` is in a protected location (e.g. Program Files), AutoDJ automatically copies it to `%APPDATA%\CamfrogAutoDJ\config.toml`.
+- **Auto-Config Relocation**: If `config.toml` is in a protected location (e.g. Program Files), AutoDJ automatically copies it to `%APPDATA%\Camfrog AutoDJ\config.toml`.
 - **Log Directory Auto-Creation**: Log directory is created automatically on first run.
 - **Settings Button**: New ⚙️ gear icon in the header bar opens the Settings tab.
-- **Relative Config Paths**: `config.example.toml` uses `%APPDATA%\CamfrogAutoDJ\mpv\...` paths for portability.
+- **Relative Config Paths**: `config.example.toml` uses `%APPDATA%\Camfrog AutoDJ\mpv\...` paths for portability.
 - **YouTube Playlist Support**: Auto-detects YouTube playlist URLs (`youtube.com/playlist?list=...`, `watch?v=...&list=...`) and plays all videos in sequence.
-- **Installer**: Per-user installation to `%APPDATA%\CamfrogAutoDJ` (no admin required).
-- **NSIS Installer**: Per-user install to `%APPDATA%\CamfrogAutoDJ`, HKCU registry, no admin required.
+- **Installer**: Per-user installation to `%APPDATA%\Camfrog AutoDJ` (no admin required).
+- **NSIS Installer**: Per-user install to `%APPDATA%\Camfrog AutoDJ`, HKCU registry, no admin required.
 
 ### Fixed
 - **GUI ไม่ขึ้น (GUI won't open)**: `camfrog_autodj/__main__.py` — auto-discovery (`discover.apply()`) crashed with `ImportError` on `pywinauto.Desktop` before `App(eng).mainloop()` was reached, so the Tk window never appeared. Auto-discovery is now wrapped in `try/except` and logs a warning instead of crashing; `build_adapter()` failures fall back to `NullAdapter` so the GUI still opens without chat (user can run `--check`/`--discover` from inside it).
