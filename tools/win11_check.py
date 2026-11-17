@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Windows 11 prerequisite checks for Makefile."""
 
+
 def run_ps(cmd):
     """Run a PowerShell command and return (success, output)."""
     try:
@@ -168,4 +169,5 @@ def main():
 
 if __name__ == "__main__":
     import sys
+
     main()

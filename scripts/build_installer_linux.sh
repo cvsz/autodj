@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-VERSION="${1:-0.2.7}"
+VERSION="${1:-$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")}"
 SRCDIR="${2:-dist}"
 OUTDIR="${3:-dist}"
 NSIS_PATH="${NSIS_PATH:-$HOME/.wine/drive_c/NSIS/makensis.exe}"

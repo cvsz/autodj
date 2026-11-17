@@ -231,9 +231,16 @@ class MpvPlayer:
         with self._lock:
             p = self.proc
             self._pos_cache = None
+            self._ipc = None  # Clear IPC so no further commands target dead process
             if p and p.poll() is None:
                 self.skipped = True
                 p.terminate()
+                try:
+                    _ = p.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    log.warning("mpv did not exit after terminate; killing")
+                    p.kill()
+                    _ = p.wait()
 
     def _cmd(self, *cmd) -> bool:
         """Send a command to mpv via IPC (fire-and-forget). Returns True if sent."""

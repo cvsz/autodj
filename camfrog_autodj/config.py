@@ -1,15 +1,71 @@
-class MessageStyle:
-    """Style for message display (GUI preview only; Camfrog sends plain text)."""
+"""Configuration loading, validation, and defaults for CamfrogAutoDJ.
+
+The :class:`Config` dataclass holds all runtime settings.  :meth:`Config.load`
+parses ``config.toml`` with ``tomllib`` and validates values with exact line
+and column markers so operators can fix problems by hand.
+"""
+
+from __future__ import annotations
 
 import difflib
 import re
 import tomllib
 from dataclasses import dataclass, field, fields
 from pathlib import Path
+from typing import ClassVar
+
+from .exceptions import ConfigError
 
 
-class ConfigError(Exception):
-    """config.toml is unreadable or has a bad value. The message is written for the person editing the file."""
+@dataclass
+class MessageStyle:
+    """Style for message display (GUI preview only; Camfrog sends plain text)."""
+
+    font_family: str = "Consolas"
+    font_size: int = 14
+    font_color: str = "#000000"
+    bold: bool = False
+    italic: bool = False
+    underline: bool = False
+
+    _HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+    def validate(self) -> None:
+        """Validate all fields; raises ValueError on any invalid field."""
+        if not self.font_family or not self.font_family.strip():
+            raise ValueError("font_family must not be empty")
+        if not (8 <= self.font_size <= 72):
+            raise ValueError("font_size must be between 8 and 72")
+        if not self._HEX_RE.match(self.font_color or ""):
+            raise ValueError("font_color must be a valid hex color")
+
+    def to_toml_dict(self) -> dict:
+        """Return a plain dict suitable for writing back to a TOML file."""
+        return {
+            "font_family": self.font_family,
+            "font_size": self.font_size,
+            "font_color": self.font_color,
+            "bold": self.bold,
+            "italic": self.italic,
+            "underline": self.underline,
+        }
+
+    @classmethod
+    def from_toml_dict(cls, data: dict) -> "MessageStyle":
+        """Build a MessageStyle from a TOML table dict; missing keys keep defaults."""
+        return cls(
+            font_family=data.get("font_family", cls.font_family),
+            font_size=data.get("font_size", cls.font_size),
+            font_color=data.get("font_color", cls.font_color),
+            bold=data.get("bold", cls.bold),
+            italic=data.get("italic", cls.italic),
+            underline=data.get("underline", cls.underline),
+        )
+
+
+# ConfigError is re-exported from exceptions so that config.py and
+# tests using `from camfrog_autodj.exceptions import ConfigError` refer
+# to the same class.
 
 
 @dataclass
@@ -34,8 +90,10 @@ class Config:
     )
     web_view_title: str = "wb-log-room-data"  # substring of the chat-history pane title
     web_input_title: str = "wb-edit-data"  # substring of the message-box pane title
-    send_mode: str = "auto"  # background (no focus steal) | foreground (focus + paste) | auto (background, verify, else foreground)
-    send_verify: bool = True  # auto mode: confirm the line appeared in the room before accepting the background send
+    send_mode: str = "auto"  # background | foreground | auto (background, verify, fallback)
+    send_verify: bool = (
+        True  # auto mode: confirm line appeared in room before accepting background send
+    )
     web_strict_body: bool = (
         True  # drop plain text that directly follows a message body (date headers / system lines)
     )
@@ -43,8 +101,8 @@ class Config:
     view_index: int = 0
     input_type: str = "Edit"
     input_index: int = -1
-    log_path: str = ""
-    log_encoding: str = "utf-8"
+    log_path: str = ""  # Also write chat log to this file (rotating, 1 MB x 3)
+    log_encoding: str = "utf-8"  # Log file encoding
     line_regex: str = (
         r"^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$"
     )
@@ -74,9 +132,7 @@ class Config:
     camfrog_exe: str = ""
     client_title_re: str = ".*"
     room: str = ""
-    join_uri_template: str = (
-        ""  # e.g. "<scheme>://...{room}": must match what your Camfrog build accepts
-    )
+    join_uri_template: str = ""  # e.g. "<scheme>://...{room}"
     launch_timeout: int = 60
     blocked_users: list[str] = field(
         default_factory=list
@@ -117,13 +173,128 @@ class Config:
     voteskip_dynamic_pct: int = 30  # percentage of participants required to skip
     user_request_limit: int = 5  # max song requests allowed per user within rate_limit_window
     rate_limit_window: float = 300.0  # rolling time window for per-user request limit (seconds)
+    voteskip_cooldown: float = 10.0  # seconds between voteskips from same user
+    admin_block_user: bool = False  # Enable !block user command (admin can block a user)
+    admin_unblock_user: bool = False  # Enable !unblock user command (admin can unblock a user)
+    admin_block_bot: bool = True  # Enable !block-bot command
+    admin_unblock_bot: bool = True  # Enable !unblock-bot command
+    admin_kick_user: bool = True  # Enable !kick command
+    admin_ban_user: bool = True  # Enable !ban command
+    admin_unban_user: bool = True  # Enable !unban command
+    admin_punish_user: bool = True  # Enable !punish command
+    admin_punish_bot: bool = True  # Enable !punish-bot command
+    admin_delete_message_enabled: bool = True  # Enable !delete <msg id> command
     # Auto-reply: scheduled messages sent to the room from ads-list.json
     auto_reply_enabled: bool = False  # enable scheduled auto-reply messages
     auto_reply_interval: float = 300.0  # seconds between auto-reply messages (5 minutes)
     auto_reply_file: str = "ads-list.json"  # JSON file with messages to rotate through
 
+    # IM Auto-reply: automatic reply to private/instant messages
+    im_auto_reply_enabled: bool = True  # enable auto-reply to private/instant messages
+    im_auto_reply_message: str = (
+        "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
+    )
+    im_auto_reply_cooldown: float = 60.0  # seconds between auto-replies to the same user
+
+    # IM Security: require user to be in room to use IM commands
+    im_require_room_presence: bool = True  # only users seen in room chat can DM the bot
+    allow_play_in_room: bool = False  # when true, !play works in room chat for all users
+
+    # Autoplay: switch to autoplay pool after idle timeout
+    autoplay_idle_timeout: float = 30.0  # seconds before autoplay starts when no user requests
+
+    # Admin Greeting
+    admin_greeting_enabled: bool = True  # enable admin greeting on first message
+    admin_greeting_message: str = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"
+    admin_greeting_cooldown: float = 3600.0  # seconds between greetings for same admin (1 hour)
+
+    # IM Viewer
+    im_viewer_enabled: bool = True  # show the IM / private message viewer tab in the GUI
+
+    # Font/Style Customization (GUI Preview Only)
+    message_style: MessageStyle = field(default_factory=MessageStyle)
+
+    # Admin Mic Mute/Unmute
+    admin_mute_mic: bool = True  # enable !mute command
+    admin_unmute_mic: bool = True  # enable !unmute command
+    mute_enabled: bool = False  # mic muted state (persisted)
+
+    # Welcome Message
+    welcome_message_enabled: bool = True  # enable welcome message
+    welcome_message_message: str = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"
+    welcome_message_cooldown: float = 3600.0  # seconds between welcome messages (1 hour)
+
+    # Camfrog RE Integrations (Gift / Avatar / Status / Status Alert)
+    gift_announce_enabled: bool = True  # announce virtual-gift messages sent to the room
+    avatar_change_enabled: bool = True  # announce avatar change messages sent to the room
+    status_indicator_enabled: bool = True  # announce user status changes in room chat
+    status_alert_enabled: bool = True  # alert when Camfrog shows upgrade/payment-required status
+
+    # Webhook / API Integration
+    webhook_enabled: bool = False  # enable HTTP webhook server for external control
+    webhook_host: str = "127.0.0.1"  # host to bind webhook server
+    webhook_port: int = 8080  # port for webhook server
+    webhook_secret: str = ""  # HMAC secret for webhook signature verification
+    webhook_rate_limit_per_ip: int = 60  # max requests per IP per minute
+    webhook_cors_origins: list[str] = field(default_factory=lambda: ["*"])  # CORS allowed origins
+
+    # Config Hot Reload
+    config_hot_reload: bool = False  # enable hot reload of config.toml
+
+    # Plugin System
+    plugins: list[str] = field(
+        default_factory=lambda: ["builtin.stats", "builtin.help"]
+    )  # plugin modules to load
+
+    # JSON structured logging
+    log_json: bool = False  # enable JSON structured logging output
+    log_json_fields: list[str] = field(
+        default_factory=lambda: [
+            "request_id",
+            "delivery_id",
+            "user",
+            "track_id",
+            "generation",
+            "attempt_id",
+            "category",
+            "stage",
+            "state",
+        ]
+    )  # extra fields to include in JSON logs
+
+    # Reload callbacks (class-level, shared across all instances)
+    _reload_callbacks: ClassVar[list] = []
+
     @classmethod
-    def load(cls, path: str | None) -> Config:
+    def register_reload_callback(cls, callback) -> None:
+        """Register a callback to be invoked on Config.reload()."""
+        Config._reload_callbacks.append(callback)
+
+    @classmethod
+    def unregister_reload_callback(cls, callback) -> None:
+        """Remove a previously registered reload callback."""
+        try:
+            cls._reload_callbacks.remove(callback)
+        except ValueError:
+            pass
+
+    @classmethod
+    def _fire_reload_callbacks(cls, cfg: "Config") -> None:
+        for cb in list(cls._reload_callbacks):
+            try:
+                cb(cfg)
+            except Exception:  # pragma: no cover - callback exceptions must not break reload  # noqa: S110
+                pass
+
+    @classmethod
+    def reload(cls, path: str | None) -> "Config":
+        """Reload config from *path*, re-validating and firing callbacks."""
+        cfg = cls.load(path)
+        cls._fire_reload_callbacks(cfg)
+        return cfg
+
+    @classmethod
+    def load(cls, path: str | None) -> "Config":
         p = Path(path) if path else None
         data: dict = {}
         if p and p.exists():
@@ -139,6 +310,15 @@ class Config:
                 data = tomllib.loads(text)
             except tomllib.TOMLDecodeError as ex:
                 raise ConfigError(_syntax_message(p, text, ex)) from None
+        # Convert an inline TOML table for message_style into a MessageStyle instance
+        # so the dataclass field receives the right type (tomllib yields plain dicts).
+        if "message_style" in data and isinstance(data["message_style"], dict):
+            try:
+                style = MessageStyle(**data["message_style"])
+                style.validate()  # reject invalid font values early
+            except (TypeError, ValueError) as ex:
+                raise ConfigError(f"{p or 'config'}: invalid message_style table: {ex}") from None
+            data["message_style"] = style
         names = {f.name for f in fields(cls)}
         bad = sorted(set(data) - names)
         if bad:

@@ -827,7 +827,7 @@ class App(tk.Tk):
         self.v_volpct = tk.Label(ctl, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e")
         self.v_volpct.pack(side="right")
         self.vol = VolSlider(
-            vol_row,
+            ctl,
             command=self._vol_release,
             on_change=self._vol_live,
             bg=SURFACE,
@@ -907,7 +907,7 @@ class App(tk.Tk):
             self.tabs[key] = b
         pages = tk.Frame(panel, bg=SURFACE)
         pages.pack(fill="both", expand=True, padx=px(14), pady=(0, px(14)))
-        self.pages = {k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat")}
+        self.pages = {k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat", "im")}
 
         qp = self.pages["queue"]
         qb = tk.Frame(qp, bg=SURFACE)
@@ -1114,7 +1114,34 @@ class App(tk.Tk):
         # audio_device
         self.s_audio_device = self._entry(sp_inner)
         self.s_audio_device.insert(0, self.e.cfg.audio_device)
-        _setting_row("g_settings_audio_device", self.s_audio_device, "g_settings_bot_nick")
+        _setting_row(
+            "g_settings_audio_device", self.s_audio_device, "g_settings_youtube_cookies_file"
+        )
+
+        # youtube_cookies_file
+        self.s_youtube_cookies_file = self._entry(sp_inner)
+        self.s_youtube_cookies_file.insert(0, self.e.cfg.youtube_cookies_file)
+        _setting_row(
+            "g_settings_youtube_cookies_file",
+            self.s_youtube_cookies_file,
+            "g_settings_youtube_cookies_browser",
+        )
+
+        # youtube_cookies_browser
+        self.s_youtube_cookies_browser = self._entry(sp_inner)
+        self.s_youtube_cookies_browser.insert(0, self.e.cfg.youtube_cookies_browser)
+        _setting_row(
+            "g_settings_youtube_cookies_browser",
+            self.s_youtube_cookies_browser,
+            "g_settings_youtube_ca_bundle",
+        )
+
+        # youtube_ca_bundle
+        self.s_youtube_ca_bundle = self._entry(sp_inner)
+        self.s_youtube_ca_bundle.insert(0, self.e.cfg.youtube_ca_bundle)
+        _setting_row(
+            "g_settings_youtube_ca_bundle", self.s_youtube_ca_bundle, "g_settings_bot_nick"
+        )
 
         # bot_nick
         self.s_bot_nick = self._entry(sp_inner)
@@ -1169,7 +1196,12 @@ class App(tk.Tk):
         # max_duration
         self.s_max_duration = self._entry(sp_inner)
         self.s_max_duration.insert(0, str(self.e.cfg.max_duration))
-        _setting_row("g_settings_max_duration", self.s_max_duration, "g_settings_cooldown")
+        _setting_row("g_settings_max_duration", self.s_max_duration, "g_settings_allowed_hosts")
+
+        # allowed_hosts
+        self.s_allowed_hosts = self._entry(sp_inner)
+        self.s_allowed_hosts.insert(0, ", ".join(self.e.cfg.allowed_hosts))
+        _setting_row("g_settings_allowed_hosts", self.s_allowed_hosts, "g_settings_cooldown")
 
         # cooldown
         self.s_cooldown = self._entry(sp_inner)
@@ -3095,8 +3127,7 @@ class App(tk.Tk):
             # Semantic validation with the same rules Config.load() applies
             # (ranges, choices, regexes) so invalid values are rejected before
             # anything is written to disk.
-            from .config import Config, ConfigError
-            from .config import _validate as _cfg_validate
+            from .config import Config
 
             _candidate_data = tomllib.loads(new_text)
             # Convert message_style dict to MessageStyle for validation
@@ -3193,6 +3224,13 @@ class App(tk.Tk):
             if not self._closing:
                 self._ref = self.after(500, self.refresh)
 
+    def _refresh(self):
+        """Poll the engine snapshot and refresh all GUI sections."""
+        s = self.e.snapshot()
+        self._refresh_now_playing(s)
+        self._refresh_next_and_volume(s)
+        self._refresh_im()
+
     def _refresh_im(self):
         """Poll new IM / private messages from the engine and append them to the IM tab."""
         im_seq, im_version, im_entries = self.e.im_snapshot()
@@ -3261,7 +3299,7 @@ class App(tk.Tk):
             self._h_cache = hist
             self.hist.delete(0, "end")
             self.hist.insert("end", *hist)
-        seq, log_entries = self.e.chat_snapshot()
+        seq, _chat_version, log_entries = self.e.chat_snapshot()
         new = min(seq - self._seen, len(log_entries))
         if new > 0:
             self.chat.configure(state="normal")

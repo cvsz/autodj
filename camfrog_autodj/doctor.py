@@ -17,6 +17,30 @@ Result = tuple[str, str]
 JS_RUNTIMES = ("deno", "node", "bun")
 
 
+def _count_media_files(folder: Path) -> int:
+    """Count media files under *folder*, never following symlinks.
+
+    Symlinked files and symlinked directories are skipped to avoid counting
+    files outside the library and to prevent symlink-cycle hangs.
+    """
+    count = 0
+    try:
+        entries = list(os.scandir(folder))
+    except (OSError, PermissionError):
+        return 0
+    for entry in entries:
+        try:
+            if entry.is_symlink():
+                continue  # never follow symlinks
+            if entry.is_dir(follow_symlinks=False):
+                count += _count_media_files(Path(entry.path))
+            elif entry.is_file(follow_symlinks=False) and Path(entry).suffix.lower() in MEDIA:
+                count += 1
+        except (OSError, PermissionError):
+            continue
+    return count
+
+
 def _have(module: str) -> bool:
     try:
         return importlib.util.find_spec(module) is not None
@@ -119,7 +143,7 @@ def _check_music_dirs(cfg, out: list[Result]) -> None:
     for d in cfg.music_dirs:
         p = Path(d)
         if p.is_dir():
-            n = sum(1 for f in p.rglob("*") if f.suffix.lower() in MEDIA and f.is_file())
+            n = _count_media_files(p)
             _add(out, "OK", f"music_dirs: {d}: {n} media file(s)")
         else:
             _add(out, "WARN", f"music_dirs: folder not found: {d}")

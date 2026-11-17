@@ -34,13 +34,11 @@ from .library import (
     scan_folder,
 )
 from .messages import tr
-from .models import Track, UserError, YtdlpMissingError
+from .models import Track
 from .player import MpvPlayer
 from .playlist import PlaylistStore, load_playlist
 from .playqueue import PlayQueue
-from .renderer import RenderedMessage, get_renderer
 from .textutil import clean_text, norm
-from .webhook import WebhookConfig, WebhookServer
 
 log = logging.getLogger("autodj")
 
@@ -90,12 +88,21 @@ class Engine:
         self.started_at = 0.0
         self._paused_at: float | None = None
         self._paused_total = 0.0
+        self._active_room_users: set[str] = set()
+        self._participant_count = 0
+        self._autoplay_mode = False
+        self._voteskip_cooldown_lock = threading.Lock()
+        self._voteskip_cooldowns: dict[str, float] = {}
+        self._last_user_request_time = 0.0
         self.outbox: queue.Queue[str] = queue.Queue()
         self.chat_log: deque[tuple[str, str]] = deque(maxlen=300)
         self.chat_seq = 0
         self._chat_version = (
             0  # bumped on every chat_log mutation; GUI can skip refresh when unchanged
         )
+        self.im_seq = 0  # IM message sequence counter; GUI polls im_snapshot()
+        self._im_version = 0  # bumped on every im_log mutation; GUI can skip refresh when unchanged
+        self.im_log: list[tuple[str, str]] = []  # IM chat log
         self.chat_done = threading.Event()
         self.wake = threading.Event()
         self.exec = ThreadPoolExecutor(
@@ -106,9 +113,15 @@ class Engine:
         self.fail_delay = lambda n: min(
             MAX_BACKOFF, 2.0 ** (n - 1)
         )  # n = consecutive failures so far
+        self._backoff_until = 0.0  # monotonic time until playback may resume after failures
         self._sent: deque[tuple[float, str]] = deque(maxlen=64)
         self._sent_lock = threading.Lock()
         self._chat_lock = threading.Lock()  # guards chat_log + chat_seq (GUI polls them)
+        self._chat_rate_lock = threading.Lock()  # guards _chat_rate_limit state
+        self._chat_rate_window: dict[
+            str, deque
+        ] = {}  # nick -> deque of timestamps for rate limiting
+        self._plugin_manager = None  # set up later if plugins enabled
         self._speak_lock = (
             threading.Lock()
         )  # one TTS clip at a time: overlapping jobs would un-duck the music early
@@ -120,6 +133,21 @@ class Engine:
         self._delivery_counter = itertools.count()  # per-engine delivery attempt ID counter
         self._active_requests: dict[str, dict] = {}  # request_id -> {user, arg, start, state}
         self._delivery_attempts: dict[int, dict] = {}  # attempt_id -> {text, stage, confirmed}
+        # ---- Camfrog RE / greeting / welcome cooldowns ------------------------
+        self._admin_greeting_cooldowns: dict[str, float] = {}
+        self._welcome_cooldowns: dict[str, float] = {}
+        self._name_colors: dict[str, str] = {}
+        self._im_reply_cooldowns: dict[str, float] = {}
+        # ---- Circuit breaker --------------------------------------------------
+        self._circuit_breaker_lock = threading.Lock()
+        self._circuit_breaker_failures = 0
+        self._circuit_breaker_open_until = 0.0
+        # ---- Chat send failure tracking ---------------------------------------
+        self._send_failure_lock = threading.Lock()
+        self._send_failure_count = 0
+        # ---- Optional subsystems ----------------------------------------------
+        self._config_watcher = None  # set up by the GUI if hot reload is enabled
+        self._webhook_server = None  # set up by the GUI if webhook is enabled
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -237,15 +265,11 @@ class Engine:
         with self._chat_lock:
             self.chat_log.append((who, text))
             self.chat_seq += 1
+            self._chat_version += 1  # bump version so GUI refreshes on poll
         # Also to the logger (so --log-file / console keeps a trail of every line the bot sent and every
         # line it acted on, even with the GUI closed -- the in-memory chat_log above is lost on restart
         # and was never enough on its own to reconstruct what happened after the fact).
         log.info("chat %s %s: %s", ">>" if who == self.cfg.bot_nick else "<<", who, text)
-
-    def chat_snapshot(self) -> tuple[int, list[tuple[str, str]]]:
-        """Thread-safe snapshot of (chat_seq, chat_log) for the GUI poller."""
-        with self._chat_lock:
-            return self.chat_seq, list(self.chat_log)
 
     def chat_snapshot(self) -> tuple[int, int, list[tuple[str, str]]]:
         """Thread-safe snapshot of (chat_seq, chat_version, chat_log) for the GUI poller.
@@ -273,7 +297,7 @@ class Engine:
         """
         text = clean_text(text)
         if not text:
-            return
+            return False
         self.log_chat(self.cfg.bot_nick, text)
         for i, chunk in enumerate(textwrap.wrap(text, self.cfg.max_msg_len, break_long_words=True)):
             if i and chunk.startswith(self.cfg.prefix):
@@ -692,7 +716,7 @@ class Engine:
 
     def _resolve_local_file(self, arg: str, user: str, admin: bool) -> list[Track]:
         p = Path(arg)
-        if not admin and not self.index.contains(p):
+        if not self.index.contains(p):
             raise UserError(self.t("file_not_in_lib"))
         if p.is_dir():
             if not admin:
@@ -926,63 +950,6 @@ class Engine:
         except Exception:
             log.exception("playlist dir scan failed: %s", self.cfg.playlist_dir)
 
-    def _load_library(self):
-        try:
-            self.index.scan()
-            self.queue.add_pool(self.index.tracks)
-        except Exception:
-            log.exception("library scan failed")
-
-    def _load_autoplay_sources(self):
-        for s in self.cfg.autoplay_sources:
-            try:
-                self.queue.add_pool(self.load_source(s, limit=500))
-            except Exception:
-                log.exception("autoplay source failed: %s", s)
-
-    def _load_playlist(self):
-        # Add playlist tracks to the request queue so they are visible in the
-        # GUI list box and play before the autoplay pool (requests first).
-        # Dedupe against existing requests and recently played history so a
-        # restart does not re-queue the same tracks.
-        if not self.playlist:
-            return
-        try:
-            loaded = self.playlist.load()
-            with self.queue.lock:
-                queued_sources = {r.source for r in self.queue.requests}
-                played_sources = {t.source for t in self.history}
-                for t in loaded:
-                    if t.source not in queued_sources and t.source not in played_sources:
-                        self.queue.add_request(t)
-                        queued_sources.add(t.source)
-        except Exception:
-            log.exception("playlist load failed")
-
-    def _load_playlist_dir(self):
-        # Auto-load all *.json playlist files from playlist_dir (e.g. playlist/thai_pop.json)
-        if not self.cfg.playlist_dir:
-            return
-        try:
-            pl_dir = Path(self.cfg.playlist_dir)
-            if not pl_dir.is_dir():
-                return
-            for pl_file in sorted(pl_dir.glob("*.json")):
-                try:
-                    dir_tracks = load_playlist(str(pl_file))
-                    with self.queue.lock:
-                        queued_sources = {r.source for r in self.queue.requests}
-                        played_sources = {t.source for t in self.history}
-                        for t in dir_tracks:
-                            if t.source not in queued_sources and t.source not in played_sources:
-                                self.queue.add_request(t)
-                                queued_sources.add(t.source)
-                    log.info("playlist dir: loaded %d track(s) from %s", len(dir_tracks), pl_file)
-                except Exception:
-                    log.exception("failed to load playlist dir file: %s", pl_file)
-        except Exception:
-            log.exception("playlist dir scan failed: %s", self.cfg.playlist_dir)
-
     # ---- playback loop --------------------------------------------------
     def _announce(self, t: Track):
         self.say(self.fmt_now(t))
@@ -1045,8 +1012,15 @@ class Engine:
                 self.stop_evt.wait(30.0)  # wait 30s before checking again
                 continue
 
+            # Honor back-off after consecutive failures: do not start the next
+            # track until _backoff_until has passed.
             now = time.monotonic()
-            has_requests = bool(self.queue.requests)
+            if self._backoff_until > now:
+                remaining = self._backoff_until - now
+                if self.stop_evt.wait(min(remaining, 1.0)):
+                    break
+                continue
+
             self._check_autoplay_mode(now, idle_timeout)  # updates self._autoplay_mode state
             t = self._pop_next_track()
             if t is None:
@@ -1083,12 +1057,23 @@ class Engine:
             )
 
     def _track_failed(self, t: Track, fails: int) -> None:
-        """Mark *t* failed, announce per the back-off policy, then back off."""
+        """Mark *t* failed, announce per the back-off policy, then back off.
+
+        Non-blocking: sets ``_backoff_until`` so the player loop pauses before
+        the next attempt instead of sleeping here.
+        """
         t.state = "FAILED"
         self._log_track(t, "FAILED")
         self.current = None
         self._announce_playback_failure(t, fails)
-        self.stop_evt.wait(self.fail_delay(fails))  # back off: never spin on a broken setup
+        delay = self.fail_delay(fails)
+        self._backoff_until = time.monotonic() + delay
+        log.info(
+            "track failed (%s); backing off %.0fs (fail %d)",
+            t.source,
+            delay,
+            fails,
+        )
 
     def _try_play(self, t: Track) -> bool:
         try:

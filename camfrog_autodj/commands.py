@@ -75,7 +75,7 @@ class Router:
         else:
             log.info(
                 "command %s%s (%s) from %s%s",
-                prefix,
+                p,
                 name,
                 arg,
                 msg.user,
