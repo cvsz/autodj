@@ -719,6 +719,8 @@ class Engine:
     def _resolve_local_file(self, arg: str, user: str, admin: bool) -> list[Track]:
         p = Path(arg)
         if not self.index.contains(p):
+            if admin:
+                raise UserError(self.t("folders_admin"))
             raise UserError(self.t("file_not_in_lib"))
         if p.is_dir():
             if not admin:

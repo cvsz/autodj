@@ -119,7 +119,19 @@ fi
 # ------------------------------------------------------------------
 log "Check 5: Credential store availability"
 CRED_HELPER=$(git config --get credential.helper 2>/dev/null || echo "(none)")
-if [ -f ~/.git-credentials ] || [ "$CRED_HELPER" = "cache --timeout=3600" ] || [ "$CRED_HELPER" = "store" ]; then
+# Accept Unix ~/.git-credentials, cache/store helpers, or Windows D/./.git-credentials
+CRED_OK=false
+if [ -f ~/.git-credentials ]; then
+  CRED_OK=true
+elif [ "$CRED_HELPER" = "cache --timeout=3600" ] || [ "$CRED_HELPER" = "store" ]; then
+  CRED_OK=true
+elif [ "$CRED_HELPER" = "store --file=D/.git-credentials" ] || [ "$CRED_HELPER" = "store --file=D:\\.git-credentials" ]; then
+  CRED_OK=true
+elif [ -f "D/.git-credentials" ]; then
+  # Path may be relative to repo root or CWD; check existence
+  CRED_OK=true
+fi
+if $CRED_OK; then
   pass "Credential helper configured: $CRED_HELPER"
 else
   fail "No credential helper configured"

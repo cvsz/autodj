@@ -261,8 +261,13 @@ def test_admin_can_run_admin_command():
     """Admin users can run admin commands without denial."""
     e = make()
     e.admins = {"boss"}
+    # Mock player.play and player.set_pause
     e.player.play = lambda s, v, d=None: True
     e.current = Track("s", "now", 90, "boss")  # a track must be "playing" for pause to act
+    # e.player is the MpvPlayer instance; set return values via the real object
+    import types
+
+    e.player.set_pause = types.MethodType(lambda self, v: True, e.player)
     e.router.handle(ChatMessage("boss", "!pause"))
     out(e)  # consume any output
     assert e.paused is True
@@ -524,7 +529,7 @@ def test_remote_tracks_clear_error_when_nothing_available(monkeypatch):
     import builtins
 
     from camfrog_autodj import library
-    from camfrog_autodj.exceptions import UserError
+    from camfrog_autodj.models import UserError
 
     real_import = builtins.__import__
     monkeypatch.setattr(

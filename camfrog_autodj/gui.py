@@ -2861,7 +2861,10 @@ class App(tk.Tk):
             cfg.cooldown = self._parse_float(self.s_cooldown, "cooldown")
             cfg.send_interval = self._parse_float(self.s_send_interval, "send interval")
             cfg.poll_interval = self._parse_float(self.s_poll_interval, "poll interval")
-            cfg.rate_limit_window = self._parse_float(self.s_rate_limit_window, "rate limit window")
+            if hasattr(self, "s_rate_limit_window"):
+                cfg.rate_limit_window = self._parse_float(
+                    self.s_rate_limit_window, "rate limit window"
+                )
 
             # Bool fields
             cfg.auto_discover = self.s_auto_discover
