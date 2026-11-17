@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 
+
 def run_ps(cmd):
     """Run a PowerShell command and return (success, output)."""
     try:
