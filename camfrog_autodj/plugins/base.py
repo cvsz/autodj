@@ -6,6 +6,9 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from camfrog_autodj.config import Config
+
+if TYPE_CHECKING:
     from camfrog_autodj.adapters.base import ChatMessage
     from camfrog_autodj.engine import Engine
     from camfrog_autodj.models import Track
@@ -56,7 +59,7 @@ class PluginInterface:
 class ConfigView:
     """Read-only view of safe configuration settings for plugins."""
 
-    def __init__(self, config: Any):
+    def __init__(self, config: "Config"):
         self._config = config
         self._safe_keys = {
             "volume",
