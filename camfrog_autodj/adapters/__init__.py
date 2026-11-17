@@ -4,9 +4,12 @@ import logging
 import threading
 import time
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, Iterator, Optional
 
 from .base import ChatAdapter, ChatMessage
+
+if TYPE_CHECKING:
+    from .config import Config
 
 log = logging.getLogger(__name__)
 
@@ -106,19 +109,19 @@ class Composite(ChatAdapter):
     def __init__(self, reader: ChatAdapter, sender: ChatAdapter):
         self.reader, self.sender = reader, sender
 
-    def messages(self):
+    def messages(self) -> Iterator[ChatMessage]:
         return self.reader.messages()
 
-    def send(self, text):
+    def send(self, text: str) -> None:
         self.sender.send(text)
 
-    def close(self):
+    def close(self) -> None:
         self.reader.close()
         if self.sender is not self.reader:
             self.sender.close()
 
 
-def _make(kind: str, cfg) -> ChatAdapter:
+def _make(kind: str, cfg: "Config") -> ChatAdapter:
     if kind == "console":
         from .console import ConsoleAdapter
 
@@ -136,7 +139,7 @@ def _make(kind: str, cfg) -> ChatAdapter:
     raise ValueError(f"unknown chat adapter: {kind}")
 
 
-def build_adapter_with_fallback(cfg, *, use_fallback: bool = True) -> ChatAdapter:
+def build_adapter_with_fallback(cfg: "Config", *, use_fallback: bool = True) -> ChatAdapter:
     """Build chat adapter with automatic fallback chain.
 
     Fallback chain: uia -> logtail -> console -> null
@@ -240,7 +243,7 @@ def _test_adapter(adapter: ChatAdapter) -> None:
         adapter.resolve()
 
 
-def build_adapter(cfg) -> ChatAdapter:
+def build_adapter(cfg: "Config") -> ChatAdapter:
     reader = _make(cfg.chat_reader, cfg)
     sender = reader if cfg.chat_sender == cfg.chat_reader else _make(cfg.chat_sender, cfg)
     return Composite(reader, sender)
@@ -251,7 +254,7 @@ class NullAdapter(ChatAdapter):
     window open, ...). The GUI still opens; chat simply does nothing until Camfrog
     is available and discovery is re-run."""
 
-    def messages(self):  # no chat lines ever
+    def messages(self) -> Iterator[ChatMessage]:  # no chat lines ever
         return iter(())
 
     def send(self, text: str) -> None:

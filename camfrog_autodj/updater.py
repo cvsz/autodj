@@ -25,10 +25,15 @@ import logging
 import threading
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from .exceptions import AutoDJError
+
+if TYPE_CHECKING:
+    from .config import Config
+    from .engine import Engine
 
 log = logging.getLogger("autodj")
 
@@ -51,7 +56,7 @@ class Updater:
     :meth:`apply_update` and the generated ``autodj_update.bat``).
     """
 
-    def __init__(self, cfg, engine=None):
+    def __init__(self, cfg: "Config", engine: "Engine | None" = None):
         self.cfg = cfg
         self.engine = engine
         self.repo: str = getattr(cfg, "auto_update_repo", DEFAULT_REPO)

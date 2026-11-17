@@ -9,15 +9,19 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .adapters.base import ChatMessage
+    from .config import Config
     from .engine import Engine
 
 from .exceptions import UserError
+
+if TYPE_CHECKING:
+    from .models import Track
 
 log = logging.getLogger("autodj")
 COMMANDS: dict[str, tuple] = {}
 
 
-def command(*names, admin=False):
+def command(*names: str, admin: bool = False):
     def deco(fn):
         for n in names:
             if n in COMMANDS:  # a silent overwrite would make one command unreachable
@@ -29,7 +33,7 @@ def command(*names, admin=False):
 
 
 class Router:
-    def __init__(self, engine):
+    def __init__(self, engine: "Engine"):
         self.e = engine
         self.last: dict[str, float] = {}
         self.user_requests: dict[str, list[float]] = {}
@@ -37,7 +41,7 @@ class Router:
             threading.Lock()
         )  # guards last + user_requests (TOCTOU protection)
 
-    def is_admin(self, msg) -> bool:
+    def is_admin(self, msg: "ChatMessage") -> bool:
         # NOTE: Nickname-based authorization is spoofable — any user can adopt an
         # operator's nick and gain admin privileges. Prefer immutable authenticated
         # account identifiers where the chat protocol supports them.
@@ -49,7 +53,7 @@ class Router:
             return False
         return msg.user.lower() in self.e.admins
 
-    def handle(self, msg):
+    def handle(self, msg: "ChatMessage") -> None:
         e = self.e
         p = e.cfg.prefix
         # Fail-closed: empty prefix means no commands are recognized;
@@ -117,7 +121,7 @@ class Router:
         name, _, arg = text[len(p) :].partition(" ")
         return name, arg
 
-    def _within_limits(self, msg, name: str, now: float, is_im: bool) -> bool:
+    def _within_limits(self, msg: "ChatMessage", name: str, now: float, is_im: bool) -> bool:
         """Cooldown + per-user sliding-window request limit.
 
         Returns False when the command must be dropped (a reply is sent for rate limits).
@@ -168,7 +172,7 @@ class Router:
                     del self.user_requests[user]
 
 
-def _line(t) -> str:
+def _line(t: "Track") -> str:
     return f"{t.title} [{t.dur}] ({t.requester})"
 
 
@@ -321,7 +325,7 @@ def _play(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
         e.say(e.t("queued_many", n=len(tracks), user=m.user))
 
 
-def _assert_queue_capacity(e, user: str) -> None:
+def _assert_queue_capacity(e: "Engine", user: str) -> None:
     c = e.cfg
     if len(e.queue.requests) >= c.max_queue:
         raise UserError(e.t("queue_full"))
@@ -329,7 +333,7 @@ def _assert_queue_capacity(e, user: str) -> None:
         raise UserError(e.t("max_requests", n=c.max_requests_per_user))
 
 
-def _validate_non_admin_track(e, c, tracks: list) -> list:
+def _validate_non_admin_track(e: "Engine", c: "Config", tracks: list["Track"]) -> list["Track"]:
     tracks = tracks[:1]
     t = tracks[0]
     if t.duration is None and t.source.startswith("http"):
@@ -339,7 +343,7 @@ def _validate_non_admin_track(e, c, tracks: list) -> list:
     return tracks
 
 
-def _assert_not_already_queued(e, t) -> None:
+def _assert_not_already_queued(e: "Engine", t: "Track") -> None:
     # e.current is read under the queue lock to avoid a data race with _player_loop
     src = t.source
     current_source = e.current.source if e.current else None

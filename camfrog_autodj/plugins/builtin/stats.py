@@ -6,8 +6,12 @@ import json
 import logging
 from collections import Counter
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from ..base import Plugin
+from ..base import Plugin, PluginInterface
+
+if TYPE_CHECKING:
+    from camfrog_autodj.models import Track
 
 log = logging.getLogger("autodj.plugins.stats")
 
@@ -48,7 +52,7 @@ class StatsPlugin(Plugin):
         except Exception:
             log.exception("Failed to save stats")
 
-    def on_load(self, interface) -> None:
+    def on_load(self, interface: PluginInterface) -> None:
         super().on_load(interface)
         log.info("Stats plugin loaded")
 
@@ -56,7 +60,7 @@ class StatsPlugin(Plugin):
         self._save()
         log.info("Stats plugin unloaded")
 
-    def on_track_start(self, track) -> None:
+    def on_track_start(self, track: "Track") -> None:
         title = getattr(track, "title", str(track))
         requester = getattr(track, "requester", "Unknown")
         self.track_counts[title] += 1

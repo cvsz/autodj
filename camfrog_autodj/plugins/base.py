@@ -56,7 +56,7 @@ class PluginInterface:
 class ConfigView:
     """Read-only view of safe configuration settings for plugins."""
 
-    def __init__(self, config):
+    def __init__(self, config: Any):
         self._config = config
         self._safe_keys = {
             "volume",
