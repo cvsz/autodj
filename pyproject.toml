@@ -40,6 +40,10 @@ filterwarnings = [
 # ignored so the release typecheck gate validates AutoDJ's own code
 # instead of failing on unstubbed dependencies.
 ignore_missing_imports = true
+# Check the bodies of untyped functions too, so missing annotations and latent
+# attribute/method errors (e.g. gui.py, engine.py) surface here instead of at
+# runtime. Enabled per the type-safety audit in this PR.
+check_untyped_defs = true
 
 [tool.ruff]
 # Ruff configuration for AutoDJ source code.

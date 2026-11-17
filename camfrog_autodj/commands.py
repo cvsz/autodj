@@ -153,6 +153,20 @@ class Router:
         self.last[who] = now
         return True
 
+    def cleanup_expired_entries(self, now: float) -> None:
+        """Evict stale rate-limit records so the tracking dicts do not grow
+        unboundedly over long sessions. Called periodically by the engine."""
+        window = float(getattr(self.e.cfg, "rate_limit_window", 300.0))
+        cutoff = now - window
+        with self._lock:
+            self.last = {u: t for u, t in self.last.items() if t >= cutoff}
+            for user in list(self.user_requests):
+                kept = [t for t in self.user_requests[user] if t >= cutoff]
+                if kept:
+                    self.user_requests[user] = kept
+                else:
+                    del self.user_requests[user]
+
 
 def _line(t) -> str:
     return f"{t.title} [{t.dur}] ({t.requester})"

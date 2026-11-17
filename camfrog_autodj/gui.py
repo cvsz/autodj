@@ -107,7 +107,10 @@ def install_clipboard(root: tk.Misc, lang=lambda: "en"):
             ("paste", "Paste", "วาง"),
             ("all", "Select all", "เลือกทั้งหมด"),
         ):
-            m.add_command(label=thai if th else en, command=lambda a=act: _do_clip(w, a))
+            # tkinter's add_command callback type is untyped (stubs missing), so mypy
+            # cannot infer this lambda's type. Kept consistent with the bind_class
+            # ignores above; the default-arg capture avoids the late-binding loop bug.
+            m.add_command(label=thai if th else en, command=lambda a=act: _do_clip(w, a))  # type: ignore[misc]
         m.tk_popup(e.x_root, e.y_root)
         return "break"
 
@@ -462,6 +465,8 @@ class App(tk.Tk):
         self._anim_err = False
         self._settings_win: tk.Toplevel | None = None
         self._folder_scan_deadline: str | None = None
+        self._stage_wh: tuple[int, int] | None = None
+        self.v_voteskip: tk.Label | None = None
         self._particles = make_particles(26, seed=1)
         self._confetti: list[
             tuple[float, dict, int]
@@ -998,9 +1003,11 @@ class App(tk.Tk):
     def open_settings(self):
         """Open the settings dialog as a standalone (non-modal) window."""
         # Bring existing settings window to front if already open
-        if getattr(self, "_settings_win", None) is not None and self._settings_win.winfo_exists():
-            self._settings_win.lift()
-            self._settings_win.focus_set()
+        win: tk.Toplevel | None = getattr(self, "_settings_win", None)
+        if win is not None:
+            win.winfo_exists()
+            win.lift()
+            win.focus_set()
             return
 
         sp = tk.Toplevel(self)
@@ -2220,11 +2227,8 @@ class App(tk.Tk):
         if w < 60 or h < 60:
             return
         # Only rebuild if size changed significantly (avoid redundant recreation)
-        if (
-            hasattr(self, "_stage_wh")
-            and abs(w - self._stage_wh[0]) < 2
-            and abs(h - self._stage_wh[1]) < 2
-        ):
+        prev = self._stage_wh
+        if prev is not None and abs(w - prev[0]) < 2 and abs(h - prev[1]) < 2:
             return
         self._stage_wh = (w, h)
         c.delete("all")
@@ -2500,13 +2504,14 @@ class App(tk.Tk):
     def _on_voteskip(self):
         """Cast a voteskip from the GUI operator and update the progress label."""
         passed, msg = self.e.voteskip("operator")
-        self.v_voteskip.configure(
-            text=self.e.t(
-                "g_voteskip_progress",
-                n=len(self.e.votes),
-                need=self.e.cfg.voteskip_threshold,
+        if self.v_voteskip is not None:
+            self.v_voteskip.configure(
+                text=self.e.t(
+                    "g_voteskip_progress",
+                    n=len(self.e.votes),
+                    need=self.e.cfg.voteskip_threshold,
+                )
             )
-        )
         if passed:
             self._set_hint(
                 self.e.t(
