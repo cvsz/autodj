@@ -8,6 +8,7 @@ Wine or the Windows Python is unusable.
 
 from __future__ import annotations
 
+import os
 import stat
 from pathlib import Path
 

@@ -198,3 +198,26 @@ def _check_windows_uia(cfg, out: list[Result], check_window: bool) -> None:
                 )
         except (OSError, RuntimeError) as ex:
             _add(out, "WARN", f"could not look for the Camfrog window: {ex}")
+
+
+def _count_media_files(folder: str | Path) -> int:
+    """Count media files in *folder*, skipping symlinks.
+
+    This mirrors the symlink logic in :func:`scan_folder` so that the doctor
+    check and the library scan are consistent about not following symlinks.
+    """
+    root = Path(folder)
+    if not root.is_dir():
+        return 0
+    count = 0
+    MEDIA_SUFFIXES = {".mp3", ".mp4", ".flac", ".m4a", ".ogg", ".wav"}
+    try:
+        entries = list(root.iterdir())
+    except (OSError, PermissionError):
+        return 0
+    for entry in entries:
+        if entry.is_symlink():
+            continue  # never follow symlinks: avoids cycles and slow reparse points
+        if entry.is_file() and entry.suffix.lower() in MEDIA_SUFFIXES:
+            count += 1
+    return count
