@@ -39,6 +39,7 @@ from .player import MpvPlayer
 from .playlist import PlaylistStore, load_playlist
 from .playqueue import PlayQueue
 from .textutil import clean_text, norm
+from .updater import Updater
 
 log = logging.getLogger("autodj")
 
@@ -148,6 +149,7 @@ class Engine:
         # ---- Optional subsystems ----------------------------------------------
         self._config_watcher = None  # set up by the GUI if hot reload is enabled
         self._webhook_server = None  # set up by the GUI if webhook is enabled
+        self.updater = Updater(self.cfg, engine=self)  # auto-update checker/downloader
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -1433,6 +1435,9 @@ class Engine:
             self._threads.append(t)
             t.start()
 
+        # Start auto-update checker (owns its thread; no GUI needed)
+        self.updater.start()
+
     def _auto_reply_loop(self):
         """Send scheduled auto-reply messages from ads-list.json to the room.
 
@@ -1880,6 +1885,8 @@ class Engine:
         from .library import shutdown_library_caches
 
         shutdown_library_caches()
+        # Stop auto-update checker
+        self.updater.stop()
         # Join daemon threads with a timeout so shutdown does not hang forever.
         for t in self._threads:
             if t.is_alive():

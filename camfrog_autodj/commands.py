@@ -682,6 +682,39 @@ def _welcome_message(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None
     e.say(e.t("welcome_enabled") if e.cfg.welcome_message_enabled else e.t("welcome_disabled"))
 
 
+# ---- Auto-update (GitHub releases) ------------------------------------------
+
+
+@command("update", "อัปเดต", admin=True)
+def _update_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """Check GitHub for a newer AutoDJ version.
+
+    Usage: !update           — check for updates
+           !update apply    — download and stage AutoDJ.exe.next (admin only)
+    """
+    from camfrog_autodj import __version__ as _version
+
+    arg = a.strip().lower()
+    if arg == "apply":
+        ok = e.updater.apply_update()
+        if not ok:
+            e.say(e.t("update_no_release"))
+        return
+    # Plain check
+    release = e.updater.check_for_update()
+    if release is None:
+        e.say(e.t("update_up_to_date", version=_version))
+    else:
+        e.say(
+            e.t(
+                "update_available",
+                version=release["tag"],
+                current=_version,
+                url=release["html_url"],
+            )
+        )
+
+
 # ---- Room owner/operator commands -------------------------------------------
 
 

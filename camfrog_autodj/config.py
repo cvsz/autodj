@@ -262,6 +262,12 @@ class Config:
         ]
     )  # extra fields to include in JSON logs
 
+    # Auto-update: check GitHub releases for newer AutoDJ.exe
+    auto_update_enabled: bool = False  # enable automatic update checks
+    auto_update_repo: str = "cvsz/autodj"  # GitHub repo (owner/name) for release checks
+    auto_update_check_interval: float = 21600.0  # seconds between checks (default 6h)
+    auto_update_asset: str = "AutoDJ.exe"  # release asset filename to download
+
     # Reload callbacks (class-level, shared across all instances)
     _reload_callbacks: ClassVar[list] = []
 
