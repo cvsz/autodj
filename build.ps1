@@ -93,8 +93,10 @@ if (Test-Path "dist") {
 }
 # Copy mpv/ directory to dist/mpv/ so mpv.exe and yt-dlp.exe are available at runtime
 if (Test-Path mpv) {
-    # Copy the CONTENTS: `Copy-Item mpv dist\mpv -Recurse` nests to dist\mpv\mpv when dist\mpv already exists (any rebuild without -Clean).
-    if (-not (Test-Path "dist\mpv")) { New-Item -ItemType Directory -Path "dist\mpv" | Out-Null }
+    # Always rebuild dist\mpv from scratch to avoid nesting (dist\mpv\mpv)
+    # on rebuilds without -Clean.
+    if (Test-Path "dist\mpv") { Remove-Item -Recurse -Force "dist\mpv" }
+    New-Item -ItemType Directory -Path "dist\mpv" | Out-Null
     Copy-Item "mpv\*" "dist\mpv\" -Recurse -Force
     "copied mpv/ -> dist\mpv\" | Write-Host
 } else {
@@ -151,7 +153,7 @@ Step "smoke test"
 if ($LASTEXITCODE -ne 0) { throw "the built exe does not start (see the error above)" }
 "tip: run  $exe --check  to verify mpv, yt-dlp, folders and the Camfrog window."
 # Give the OS time to release the file handle after the smoke test process exits
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 8
 # Ensure no lingering processes hold the file
 Get-Process -Name $Name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
@@ -160,7 +162,7 @@ $handleLocked = $true
 $attempts = 0
 # .NET resolves relative paths against the process directory, not PowerShell's Set-Location, so use a full path.
 $exeFull = (Resolve-Path $exe).Path
-while ($handleLocked -and $attempts -lt 10) {
+while ($handleLocked -and $attempts -lt 30) {
     try {
         $stream = [System.IO.File]::Open($exeFull, 'Open', 'ReadWrite', 'None')
         $stream.Close()
@@ -173,7 +175,7 @@ while ($handleLocked -and $attempts -lt 10) {
 if ($handleLocked) {
     Write-Warning "File $exe may still be locked after $attempts attempts"
     # Try one more time with a longer wait
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 10
 }
 
 # ---------- 2. certificate + sign -------------------------------------------------------------------

@@ -96,9 +96,14 @@ function Test-InstallerBuild {
     }
     try {
         Ensure-Dir "$OutputDir\build"
-        & make build-all SKIP_CHECKS=1
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -Clean
         if ($LASTEXITCODE -ne 0) {
-            Write-Result "installer_build" "FAIL" "make build-all failed"
+            Write-Result "installer_build" "FAIL" "build.ps1 failed"
+            return
+        }
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_installer.ps1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Result "installer_build" "FAIL" "build_installer.ps1 failed"
             return
         }
         $exePath = "$PSScriptRoot\..\dist\AutoDJ.exe"

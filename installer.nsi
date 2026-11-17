@@ -132,7 +132,7 @@ SectionEnd
 Section /o "mpv + yt-dlp" SEC_MPV
     SetOutPath "$INSTDIR\mpv"
     File "dist\mpv\mpv.exe"
-    File "dist\mpv\mpv.com"
+    File /nonfatal "dist\mpv\mpv.com"
     File "dist\mpv\yt-dlp.exe"
     File /nonfatal "dist\mpv\mpv-register.bat"
     File /nonfatal "dist\mpv\mpv-unregister.bat"
@@ -140,7 +140,10 @@ Section /o "mpv + yt-dlp" SEC_MPV
     File /r "dist\mpv\_internal\*.*"
     ; Register mpv file associations and protocols (optional, requires admin)
     ; Run hidden so user doesn't see command window flash
+    IfFileExists "$INSTDIR\mpv\mpv-register.bat" do_register skip_register
+do_register:
     ExecWait '"$INSTDIR\mpv\mpv-register.bat"'
+skip_register:
 SectionEnd
 
 ; VB-CABLE is not bundled. install.ps1 retains the existing Driver Pack 43 download/setup workflow.

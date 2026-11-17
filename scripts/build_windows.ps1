@@ -104,7 +104,7 @@ $ScriptDir = $PSScriptRoot
 $RepoRoot = Join-Path $PSScriptRoot ".."
 $RepoRoot = Resolve-Path $RepoRoot
 $RepoUrl = "git@github.com:cvsz/autodj.git"
-$RequiredVersion = "0.2.6"
+$RequiredVersion = "0.3.0"
 
 # Output setup
 $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -447,37 +447,13 @@ function Build-PyInstaller {
     Step "Cleaning previous build artifacts"
     Remove-Item -Recurse -Force (Join-Path $WorktreeDir "build"), (Join-Path $WorktreeDir "dist"), (Join-Path $WorktreeDir "$Name.spec") -ErrorAction SilentlyContinue
 
+    Step "Generate spec (single source of truth: tools/generate_spec.py)"
+    & python tools\generate_spec.py --name $Name
+    if ($LASTEXITCODE -ne 0) { throw "spec generation failed" }
+
     Step "Running PyInstaller"
-    $pyiArgs = @(
-        "--noconfirm",
-        "--onefile",
-        "--noupx",
-        "--windowed",
-        "--name", $Name,
-        "--icon", "app.ico",
-        "--version-file", "version_info.txt",
-        "--add-data", "app.ico;.",
-        "--collect-submodules", "camfrog_autodj",
-        "--collect-submodules", "pywinauto",
-        "--collect-submodules", "pyttsx3",
-        "--collect-all", "yt_dlp",
-        "--hidden-import", "comtypes",
-        "--hidden-import", "pyperclip",
-        "--hidden-import", "mutagen",
-        "run_autodj.py"
-    )
-    $cmdLine = "python -m PyInstaller " + ($pyiArgs -join " ")
-    Write-Log "Running: $cmdLine" "INFO" "BUILD"
-
-    $buildLog = Join-Path $BuildDir "pyinstaller-build.log"
-    $result = & python -m PyInstaller @pyiArgs 2>&1 | Tee-Object -Variable buildOutput
-    $exitCode = $LASTEXITCODE
-
-    $buildOutput | Out-File $buildLog -Encoding utf8
-
-    if ($exitCode -ne 0 -or -not (Test-Path (Join-Path $WorktreeDir "dist\$Name.exe"))) {
-        throw "PyInstaller build failed with exit code $exitCode"
-    }
+    & python -m PyInstaller --noconfirm "$Name.spec"
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $WorktreeDir "dist\$Name.exe"))) { throw "PyInstaller failed" }
     Write-Log "PyInstaller build completed" "SUCCESS" "BUILD"
 
     Step "Post-build artifact processing"
@@ -898,7 +874,7 @@ try {
     # Create evidence directories FIRST (before any logging)
     New-EvidenceDirs
 
-    Write-Log "=== AUTO DJ 0.2.6 WINDOWS 11 REPRODUCIBLE BUILD STARTED ===" "INFO" "MAIN"
+    Write-Log "=== AUTO DJ 0.3.0 WINDOWS 11 REPRODUCIBLE BUILD STARTED ===" "INFO" "MAIN"
     Write-Log "Build ID: $BuildId" "INFO" "MAIN"
     Write-Log "Approved SHA: $ApprovedSha" "INFO" "MAIN"
     Write-Log "Output Root: $OutputRoot" "INFO" "MAIN"

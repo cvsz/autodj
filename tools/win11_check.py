@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Windows 11 prerequisite checks for Makefile."""
 
+import os
+import subprocess
+import sys
 
 def run_ps(cmd):
     """Run a PowerShell command and return (success, output)."""
@@ -142,8 +145,6 @@ def main():
     pip_cmd = os.environ.get("PIP", f"{sys.executable} -m pip")
     log_dir = os.environ.get("BUILD_LOG_DIR", "logs")
     log_ts = os.environ.get("BUILD_LOG_TS", "unknown")
-
-    import os
 
     os.makedirs(log_dir, exist_ok=True)
 

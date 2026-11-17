@@ -1,0 +1,87 @@
+name: Windows Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -e .[dev,build,webhook,hotreload] "pytest==8.3.3" ruff mypy
+
+      - name: Lint (ruff)
+        run: |
+          ruff check camfrog_autodj tests tools
+          ruff format --check camfrog_autodj tests tools
+
+      - name: Typecheck (mypy)
+        run: mypy camfrog_autodj
+
+      - name: Install NSIS
+        run: |
+          choco install nsis --yes
+          echo "C:\\Program Files (x86)\\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install mpv via Chocolatey
+        run: |
+          choco install mpv --version=2024.01.01 --yes
+          if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue)) {
+            Write-Error "mpv.exe not found on PATH after Chocolatey install"
+            exit 1
+          }
+
+      - name: Build AutoDJ.exe
+        shell: pwsh
+        run: |
+          $signArgs = @("-Clean", "-NoSign")
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 @signArgs
+          if (-not (Test-Path "dist\AutoDJ.exe")) {
+            Write-Error "dist\AutoDJ.exe not found after build"
+            exit 1
+          }
+
+      - name: Build NSIS installer
+        shell: pwsh
+        run: |
+          $version = (python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])").Trim()
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_installer.ps1 -Version $version
+          if (-not (Test-Path "dist\Camfrog-AutoDJ-Setup-$version.exe")) {
+            Write-Error "Installer not found after build"
+            exit 1
+          }
+
+      - name: Run Windows unit tests
+        run: python -m pytest -q -p no:faulthandler -p no:cacheprovider
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: autodj-windows-${{ matrix.python }}
+          path: |
+            dist/AutoDJ.exe
+            dist/Camfrog-AutoDJ-Setup-*.exe
+          retention-days: 30
