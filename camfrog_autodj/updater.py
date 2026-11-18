@@ -135,6 +135,8 @@ class Updater:
         if not self.enabled:
             log.debug("auto-update disabled; updater thread not started")
             return
+        if self._thread is not None and self._thread.is_alive():
+            return  # already running (e.g. re-enabled by a config reload)
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, daemon=True, name="autodj-updater")
         self._thread.start()
@@ -152,6 +154,10 @@ class Updater:
 
     def _loop(self) -> None:
         while not self._stop.is_set():
+            if not self.enabled:
+                # Disabled by a config reload: no GitHub traffic until re-enabled.
+                time.sleep(1.0)
+                continue
             try:
                 release = self.check_for_update()
                 if release and release.get("tag") != self._announced_tag:

@@ -281,6 +281,8 @@ class Engine:
         # edited keys (api key, base URL, enable flags) actually take effect.
         self.refresh_ai()
         self.updater.cfg = new_cfg
+        if self.updater.on_available is not None:  # services already started
+            self.updater.start()  # no-op unless newly enabled and not yet running
         log.info("Config reload applied successfully")
 
     def _start_auto_reply_loop(self) -> None:

@@ -84,8 +84,13 @@ class Router:
         )
         if not entry:
             # Not a built-in: let plugins handle it (e.g. !stats, !plugins)
-            if not (msg.user.lower() in e.blocked and not admin):
-                e.plugin_command(name.lower(), msg.user, arg.strip(), admin)
+            if not admin:
+                if msg.user.lower() in e.blocked:
+                    return
+                # Same channel rules as built-ins (IM room-presence check).
+                if not self._channel_allowed(msg, name.lower(), is_im):
+                    return
+            e.plugin_command(name.lower(), msg.user, arg.strip(), admin)
             return
         fn, need_admin = entry
         if not admin and not self._admit(msg, name, need_admin, is_im):

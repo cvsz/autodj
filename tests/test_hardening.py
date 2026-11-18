@@ -874,3 +874,45 @@ def test_tts_raises_clear_error_when_pyttsx3_missing(monkeypatch, tmp_path):
     cfg = type("Cfg", (), {"tts_voice": "", "tts_rate": 170})()
     with pytest.raises(ModuleNotFoundError, match="pyttsx3"):
         tts.synth("hello world", str(wav), cfg)
+
+
+def test_plugin_command_over_im_requires_room_presence():
+    """Regression: unknown (plugin) commands skipped the IM room-presence rule."""
+    e = make()
+    e.cfg.im_require_room_presence = True
+    e._active_room_users = {"inroom"}
+    calls = []
+    e.plugin_command = lambda name, user, arg, admin: calls.append((name, user))
+    e.router.handle(ChatMessage("stranger", "!stats", is_im=True))
+    assert calls == []
+    e.router.handle(ChatMessage("inroom", "!stats", is_im=True))
+    assert calls == [("stats", "inroom")]
+
+
+def test_updater_loop_honours_disable_on_reload():
+    """Regression: auto_update_enabled=false in a reload left the loop calling GitHub,
+    and re-enabling must not spawn a second loop."""
+    from types import SimpleNamespace
+
+    from camfrog_autodj.updater import Updater
+
+    u = Updater(SimpleNamespace(auto_update_enabled=True, auto_update_check_interval=300))
+    checks: list[int] = []
+    u.check_for_update = lambda: checks.append(1)  # type: ignore[method-assign]
+    u.cfg = SimpleNamespace(auto_update_enabled=False, auto_update_check_interval=300)
+    loop = threading.Thread(target=u._loop, daemon=True)
+    loop.start()
+    time.sleep(1.5)
+    u._stop.set()
+    loop.join(timeout=3)
+    assert checks == []  # disabled by reload: no update check
+
+    u._stop.clear()
+    u.cfg = SimpleNamespace(auto_update_enabled=True, auto_update_check_interval=300)
+    u.start()
+    try:
+        first = u._thread
+        u.start()  # already running: must be a no-op
+        assert u._thread is first
+    finally:
+        u.stop()

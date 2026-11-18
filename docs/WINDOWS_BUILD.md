@@ -184,6 +184,7 @@ The script is designed for use in Windows CI runners:
 
 - Never commit certificates or passwords to repository
 - Use environment variables (`AUTODJ_PFX`, `AUTODJ_PFX_PASSWORD`, `AUTODJ_CERT_THUMBPRINT`) for secrets
+- Tagged releases (`.github/workflows/release.yml`) read repository secrets `AUTODJ_PFX_BASE64` (create with `[Convert]::ToBase64String([IO.File]::ReadAllBytes('cert.pfx'))`) + `AUTODJ_PFX_PASSWORD`, or `AUTODJ_CERT_THUMBPRINT`; a `v*` tag without them fails the signing gate
 - Self-signed certificates are only trusted on the build machine
 - For production distribution, use a real code-signing certificate (OV/EV)
 - Never disable TLS verification in application code

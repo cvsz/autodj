@@ -40,6 +40,9 @@
 - **CI: Windows Build / release could not install mpv** — `choco install mpv --version=2024.01.01` does not exist on the Chocolatey feed. Pinned to the published `2024.9.26` and the step now adds the install directory to `PATH` when the package ships no shim. (Also failed on `main`.)
 - **CI: real-Tk GUI tests skip when the runner's Tcl runtime is broken** — hosted Windows/Python 3.13 runners intermittently fail to bootstrap Tcl (`init.tcl` unreadable, `tcl_findLibrary` missing) when creating the App's interpreter; that environment fault now skips instead of failing the run.
 - **Fix: config hot-reload fired twice for one save on Windows** — the polling watcher can see one write as two stat changes (size, then mtime) more than a debounce window apart, so the engine reloaded the same config twice. `ConfigWatcher` now skips a reload when the file's SHA-256 matches the last loaded content. (`camfrog_autodj/config_watcher.py`)
+- **Fix: tagged releases could never be signed** — `release.yml` required `AUTODJ_PFX`/`AUTODJ_PFX_PASSWORD` or `AUTODJ_CERT_THUMBPRINT` but never mapped any secret into the step, so every `v*` tag failed the signing gate. The step now reads repository secrets `AUTODJ_PFX_BASE64` (decoded to a runner-temp `.pfx`), `AUTODJ_PFX_PASSWORD` and `AUTODJ_CERT_THUMBPRINT`.
+- **Fix: `auto_update_enabled` hot-reload** — turning it off in a reload left the running loop calling GitHub; turning it on never started the loop. The loop now re-reads the flag every iteration and the reload starts it when newly enabled.
+- **Security: IM room-presence check for plugin commands** — unknown commands went straight to plugins with only the block-list check, bypassing `im_require_room_presence`. Plugin commands now use the same channel rules as built-ins.
 
 ## 0.3.1
 2026-11-17 (tag `v0.3.1`; package metadata still read 0.3.0 — fixed in 0.3.2)

@@ -113,7 +113,18 @@ jobs:
           "mpv installed via Chocolatey: $(mpv.exe --version | Select-Object -First 1)"
 
       - name: Build AutoDJ.exe
+        env:
+          # Repository secrets: AUTODJ_PFX_BASE64 (base64 of the .pfx) + AUTODJ_PFX_PASSWORD,
+          # or AUTODJ_CERT_THUMBPRINT for a certificate already in the runner's store.
+          AUTODJ_PFX_BASE64: ${{ secrets.AUTODJ_PFX_BASE64 }}
+          AUTODJ_PFX_PASSWORD: ${{ secrets.AUTODJ_PFX_PASSWORD }}
+          AUTODJ_CERT_THUMBPRINT: ${{ secrets.AUTODJ_CERT_THUMBPRINT }}
         run: |
+          if ($env:AUTODJ_PFX_BASE64) {
+            $pfxPath = Join-Path $env:RUNNER_TEMP "autodj-signing.pfx"
+            [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:AUTODJ_PFX_BASE64))
+            $env:AUTODJ_PFX = $pfxPath
+          }
           $signArgs = @("-Clean", "-NoSign")
           if ($env:GITHUB_REF -like "refs/tags/*" -and -not (($env:AUTODJ_PFX -and $env:AUTODJ_PFX_PASSWORD) -or $env:AUTODJ_CERT_THUMBPRINT)) {
             Write-Error "Tagged releases must be Authenticode-signed: set AUTODJ_PFX/AUTODJ_PFX_PASSWORD or AUTODJ_CERT_THUMBPRINT secrets."
