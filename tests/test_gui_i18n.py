@@ -96,6 +96,23 @@ def test_launcher_requires_template(monkeypatch):
     launcher.ensure_room(Config(room="x"))
 
 
+def _make_app(app_cls, engine):
+    """Create the real Tk App, skipping when the runner's Tcl install is unusable.
+
+    Hosted Windows runners intermittently fail to read ``init.tcl`` when a second
+    interpreter is created ("couldn't read file ... init.tcl: No error"). That is an
+    environment fault, not a GUI regression.
+    """
+    import tkinter as tk
+
+    try:
+        return app_cls(engine)
+    except tk.TclError as exc:
+        if "init.tcl" in str(exc):
+            pytest.skip(f"Tcl runtime unavailable on this runner: {exc}")
+        raise
+
+
 def test_gui_smoke():
     tk = pytest.importorskip("tkinter")
     try:
@@ -112,7 +129,7 @@ def test_gui_smoke():
     e.started_at = __import__("time").monotonic() - 60
     e.queue.add_request(Track("q", "Queued song", 100, "amy"))
     e.say("hello")
-    app = App(e)
+    app = _make_app(App, e)
     try:
         app.update()
         assert app.v_title.cget("text") == "Midnight City"
@@ -149,7 +166,7 @@ def test_settings_dialog_visible_saves_and_reopens(tmp_path):
     e = make()
     e.cfg_path = str(cfg_file)
     e.player.cfg = e.cfg
-    app = App(e)
+    app = _make_app(App, e)
     try:
         app.open_settings()
         app.update()

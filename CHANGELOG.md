@@ -38,6 +38,7 @@
 - Tests: `tests/test_updater_ai_hardening.py` (new) and webhook replay/stale/cross-endpoint/weak-secret/429 cases.
 - **CI: Linux test run aborted partway (`Aborted (core dumped)`)** — Tk widgets still referenced when a GUI test returned were finalised by a webhook TestClient worker thread, and Tcl aborts when its interpreter is torn down off the creating thread. New `tests/conftest.py` collects garbage on the main thread after every test. (Also failed on `main`.)
 - **CI: Windows Build / release could not install mpv** — `choco install mpv --version=2024.01.01` does not exist on the Chocolatey feed. Pinned to the published `2024.9.26` and the step now adds the install directory to `PATH` when the package ships no shim. (Also failed on `main`.)
+- **CI: real-Tk GUI tests skip when the runner's Tcl runtime is broken** — hosted Windows/Python 3.13 runners intermittently fail to read `init.tcl` when creating the App's interpreter; that environment fault now skips instead of failing the run.
 
 ## 0.3.1
 2026-11-17 (tag `v0.3.1`; package metadata still read 0.3.0 — fixed in 0.3.2)
