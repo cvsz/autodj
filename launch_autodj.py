@@ -14,7 +14,7 @@ CamfrogAutoDJ - Launcher
 from __future__ import annotations
 
 import argparse
-import subprocess
+import subprocess  # nosec B404 B603 - fixed argv list (sys.executable -m camfrog_autodj), no shell
 import sys
 from pathlib import Path
 
@@ -82,7 +82,7 @@ def main() -> None:
     print("-" * 60)
 
     try:
-        subprocess.run(cmd, check=False)
+        subprocess.run(cmd, check=False)  # nosec B404 B603 - fixed argv list (sys.executable -m camfrog_autodj), no shell
     except KeyboardInterrupt:
         print("\n[AUTO DJ] ผู้ใช้หยุดการทำงาน")
     except Exception as exc:  # noqa: BLE001

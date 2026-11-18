@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import time
 from unittest.mock import Mock
 
 import pytest
@@ -12,6 +13,15 @@ from fastapi.testclient import TestClient
 
 from camfrog_autodj.webhook.models import WebhookConfig
 from camfrog_autodj.webhook.server import WebhookServer, create_webhook_app
+
+
+def _signed(
+    method: str, path: str, body: bytes = b"", secret: bytes = b"test-secret-key-12345"
+) -> dict:
+    """Headers for the timestamped HMAC scheme (see webhook.auth.signing_payload)."""
+    ts = str(int(time.time()))
+    msg = f"{ts}.{method}.{path}.".encode() + body
+    return {"X-Timestamp": ts, "X-Signature": hmac.new(secret, msg, hashlib.sha256).hexdigest()}
 
 
 class TestWebhookConfig:
@@ -54,8 +64,8 @@ class TestWebhookServer:
         config = WebhookConfig(enabled=True, secret="test-secret-key-12345")  # noqa: S106
         client = self._make_client(config)
         # Compute HMAC signature for GET request (empty body)
-        sig = hmac.new(b"test-secret-key-12345", b"", hashlib.sha256).hexdigest()
-        response = client.get("/webhook/health", headers={"X-Signature": sig})
+        hdr = _signed("GET", "/webhook/health", b"")
+        response = client.get("/webhook/health", headers=hdr)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
@@ -75,11 +85,9 @@ class TestWebhookServer:
         # TestClient sends JSON but FastAPI re-serializes to compact form (separators=(',', ':'))
         # Compute signature on the compact form that FastAPI actually receives
         payload = json.dumps({"query": "test song"}, separators=(",", ":")).encode()
-        sig = hmac.new(b"test-secret-key-12345", payload, hashlib.sha256).hexdigest()
+        hdr = _signed("POST", "/webhook/play", payload)
 
-        response = client.post(
-            "/webhook/play", json={"query": "test song"}, headers={"X-Signature": sig}
-        )
+        response = client.post("/webhook/play", json={"query": "test song"}, headers=hdr)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "queued"
@@ -103,9 +111,9 @@ class TestWebhookServer:
         client = self._make_client(config, engine)
 
         payload = json.dumps({}, separators=(",", ":")).encode()
-        sig = hmac.new(b"test-secret-key-12345", payload, hashlib.sha256).hexdigest()
+        hdr = _signed("POST", "/webhook/play", payload)
 
-        response = client.post("/webhook/play", json={}, headers={"X-Signature": sig})
+        response = client.post("/webhook/play", json={}, headers=hdr)
         # FastAPI returns 422 for validation errors (missing required field)
         assert response.status_code == 422
         data = response.json()
@@ -117,9 +125,9 @@ class TestWebhookServer:
         client = self._make_client(config, engine)
 
         payload = json.dumps({}, separators=(",", ":")).encode()
-        sig = hmac.new(b"test-secret-key-12345", payload, hashlib.sha256).hexdigest()
+        hdr = _signed("POST", "/webhook/skip", payload)
 
-        response = client.post("/webhook/skip", json={}, headers={"X-Signature": sig})
+        response = client.post("/webhook/skip", json={}, headers=hdr)
         assert response.status_code == 200
         engine.skip.assert_called_once()
 
@@ -129,9 +137,9 @@ class TestWebhookServer:
         client = self._make_client(config, engine)
 
         payload = json.dumps({"volume": 75}, separators=(",", ":")).encode()
-        sig = hmac.new(b"test-secret-key-12345", payload, hashlib.sha256).hexdigest()
+        hdr = _signed("POST", "/webhook/volume", payload)
 
-        response = client.post("/webhook/volume", json={"volume": 75}, headers={"X-Signature": sig})
+        response = client.post("/webhook/volume", json={"volume": 75}, headers=hdr)
         assert response.status_code == 200
         engine.set_volume.assert_called_once_with(75)
 
@@ -152,9 +160,9 @@ class TestWebhookServer:
 
         # GET request with empty body
         payload = b""
-        sig = hmac.new(b"test-secret-key-12345", payload, hashlib.sha256).hexdigest()
+        hdr = _signed("GET", "/webhook/status", payload)
 
-        response = client.get("/webhook/status", headers={"X-Signature": sig})
+        response = client.get("/webhook/status", headers=hdr)
         assert response.status_code == 200
         data = response.json()
         assert data["current"] == "Test Song"
@@ -186,9 +194,9 @@ class TestWebhookServer:
 
         # GET request with empty body
         payload = b""
-        sig = hmac.new(b"test-secret-key-12345", payload, hashlib.sha256).hexdigest()
+        hdr = _signed("GET", "/webhook/queue", payload)
 
-        response = client.get("/webhook/queue", headers={"X-Signature": sig})
+        response = client.get("/webhook/queue", headers=hdr)
         assert response.status_code == 200
         data = response.json()
         assert len(data["queue"]) == 2
@@ -215,3 +223,42 @@ class TestWebhookServer:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestWebhookSignatureHardening:
+    """Replay / cross-endpoint / weak-secret protections."""
+
+    SECRET = "test-secret-key-12345"  # noqa: S105
+
+    def _client(self, engine=None, **kw):
+        cfg = WebhookConfig(enabled=True, secret=kw.pop("secret", self.SECRET), **kw)
+        return TestClient(create_webhook_app(cfg, engine))
+
+    def test_replayed_signature_rejected(self):
+        client = self._client(Mock())
+        hdr = _signed("POST", "/webhook/skip", b"")
+        assert client.post("/webhook/skip", headers=hdr).status_code == 200
+        assert client.post("/webhook/skip", headers=hdr).status_code == 401
+
+    def test_signature_not_valid_for_other_endpoint(self):
+        client = self._client(Mock())
+        hdr = _signed("GET", "/webhook/health", b"")
+        assert client.post("/webhook/skip", headers=hdr).status_code == 401
+
+    def test_stale_timestamp_rejected(self):
+        client = self._client(Mock())
+        ts = str(int(time.time()) - 3600)
+        msg = f"{ts}.GET./webhook/health.".encode()
+        sig = hmac.new(self.SECRET.encode(), msg, hashlib.sha256).hexdigest()
+        r = client.get("/webhook/health", headers={"X-Timestamp": ts, "X-Signature": sig})
+        assert r.status_code == 401
+
+    def test_empty_secret_fails_closed(self):
+        client = self._client(Mock(), secret="")
+        hdr = _signed("GET", "/webhook/health", b"", secret=b"")
+        assert client.get("/webhook/health", headers=hdr).status_code == 503
+
+    def test_rate_limit_returns_429_not_500(self):
+        client = self._client(Mock(), rate_limit_per_ip=2)
+        codes = [client.get("/webhook/health").status_code for _ in range(3)]
+        assert codes[-1] == 429

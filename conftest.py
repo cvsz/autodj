@@ -58,10 +58,12 @@ if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
                 os.name = previous_os_name
 
         _pytest.nodes.Node._repr_failure_py = patched_repr_failure_py
-    except Exception:  # noqa: BLE001, S110
+    except Exception as exc:  # noqa: BLE001
         # Best-effort import-time monkey-patch: keep pytest usable even if
         # patching fails on an unsupported pytest release.
-        pass
+        import warnings
+
+        warnings.warn(f"conftest repr patch skipped: {exc}", stacklevel=1)
 
 
 def pytest_sessionfinish(session, exitstatus):

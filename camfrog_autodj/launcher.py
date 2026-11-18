@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 import os
-import subprocess
+import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
 import sys
 from urllib.parse import quote
 
@@ -26,12 +26,12 @@ def find_window(pattern: str, timeout: float) -> bool:
 
 def _open_uri(uri: str):
     _require_windows()
-    os.startfile(uri)  # type: ignore[attr-defined]  # Windows only  # noqa: S606 -- os.startfile is the idiomatic Windows-only URI launcher; not a shell spawn
+    os.startfile(uri)  # type: ignore[attr-defined]  # Windows only  # noqa: S606 -- os.startfile is the idiomatic Windows-only URI launcher; not a shell spawn  # nosec B606 - os.startfile on a fixed Camfrog URI/exe path, no shell
 
 
 def _start(exe: str):
     _require_windows()
-    subprocess.Popen([exe])
+    subprocess.Popen([exe])  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
 
 
 def ensure_room(cfg) -> None:

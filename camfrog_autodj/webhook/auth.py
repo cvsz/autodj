@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import time
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 if TYPE_CHECKING:
     from camfrog_autodj.webhook.models import WebhookConfig
@@ -64,19 +65,51 @@ class RawBodyMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+# Signed requests older/newer than this many seconds are rejected.
+SIGNATURE_TOLERANCE_S = 300
+
+
+def signing_payload(timestamp: str, method: str, path: str, body: bytes) -> bytes:
+    """Canonical bytes covered by ``X-Signature``.
+
+    Binding the timestamp, HTTP method and path into the MAC means a captured
+    signature cannot be replayed later or against another endpoint (with the
+    old body-only scheme every empty-body request — health, skip, pause,
+    resume — shared one identical, never-expiring signature).
+    """
+    return f"{timestamp}.{method.upper()}.{path}.".encode() + body
+
+
+def _check_fresh(timestamp: str, now: float) -> None:
+    """Reject non-numeric or out-of-window ``X-Timestamp`` values."""
+    try:
+        ts = int(timestamp)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid timestamp") from None
+    if abs(now - ts) > SIGNATURE_TOLERANCE_S:
+        raise HTTPException(status_code=401, detail="Stale signature")
+
+
+def _remember_once(state: object, signature: str, now: float) -> None:
+    """Replay cache: accept each valid signature only once within the window."""
+    seen: dict[str, float] = state.__dict__.setdefault("_seen_signatures", {})
+    for sig, exp in list(seen.items()):
+        if exp < now:
+            seen.pop(sig, None)
+    if signature in seen:
+        raise HTTPException(status_code=401, detail="Replayed signature")
+    seen[signature] = now + 2 * SIGNATURE_TOLERANCE_S
+
+
 async def verify_webhook_signature(request: Request) -> bool:
     """Verify HMAC signature on webhook request.
 
-    Gets config from request.app.state.webhook_state.
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        True if signature is valid
+    Clients send ``X-Timestamp`` (unix seconds) and
+    ``X-Signature = hex(HMAC-SHA256(secret, signing_payload(...)))``.
 
     Raises:
-        HTTPException: If signature is missing or invalid
+        HTTPException: If the webhook is unconfigured, or the signature is
+            missing, stale, replayed or invalid.
     """
     state = getattr(request.app.state, "webhook_state", None)
     if state is None:
@@ -85,23 +118,30 @@ async def verify_webhook_signature(request: Request) -> bool:
     config = state.config
     if not config.enabled:
         raise HTTPException(status_code=404, detail="Webhook disabled")
+    if not config.secret or len(config.secret) < 16:
+        # An empty/short key makes HMAC trivially forgeable — fail closed.
+        raise HTTPException(status_code=503, detail="Webhook secret not configured")
 
     signature = request.headers.get("X-Signature")
-    if not signature:
+    timestamp = request.headers.get("X-Timestamp")
+    if not signature or not timestamp:
         raise HTTPException(status_code=401, detail="Missing signature")
+    now = time.time()
+    _check_fresh(timestamp, now)
 
     # Get raw body captured by RawBodyMiddleware
     body = getattr(request.state, _RAW_BODY_KEY, None)
     if body is None:
-        # Fallback: try cached body (may be re-serialized by FastAPI)
         body = getattr(request, "_body", None)
     if body is None:
         body = await request.body()
 
-    expected = hmac.new(config.secret.encode(), body, hashlib.sha256).hexdigest()
-
-    if not hmac.compare_digest(signature, expected):
+    payload = signing_payload(timestamp, request.method, request.url.path, body)
+    expected = hmac.new(config.secret.encode(), payload, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(signature.lower(), expected):
         raise HTTPException(status_code=401, detail="Invalid signature")
+
+    _remember_once(state, expected, now)
 
     return True
 
@@ -114,28 +154,36 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.config = config
         self._requests: dict[str, list[float]] = {}
         self._cleanup_interval = 60.0  # seconds
+        self._last_cleanup = 0.0
 
     async def dispatch(self, request: Request, call_next):
         if not self.config.enabled:
             return await call_next(request)
 
-        import time
-
         client_ip = request.client.host if request.client else "unknown"
         now = time.time()
-
-        # Clean old entries
         cutoff = now - 60.0  # 1 minute window
-        if client_ip in self._requests:
-            self._requests[client_ip] = [t for t in self._requests[client_ip] if t > cutoff]
-        else:
-            self._requests[client_ip] = []
 
-        # Check rate limit
-        if len(self._requests[client_ip]) >= self.config.rate_limit_per_ip:
-            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        # Periodically drop idle IPs so the table cannot grow without bound.
+        if now - self._last_cleanup > self._cleanup_interval:
+            self._requests = {
+                ip: [t for t in ts if t > cutoff]
+                for ip, ts in self._requests.items()
+                if ts and ts[-1] > cutoff
+            }
+            self._last_cleanup = now
 
-        self._requests[client_ip].append(now)
+        hits = [t for t in self._requests.get(client_ip, []) if t > cutoff]
+        if len(hits) >= self.config.rate_limit_per_ip:
+            self._requests[client_ip] = hits
+            # HTTPException raised inside BaseHTTPMiddleware bypasses FastAPI's
+            # exception handlers (it surfaces as a 500); return the 429 directly.
+            return JSONResponse(
+                status_code=429,
+                content={"error": "Rate limit exceeded", "status_code": 429},
+            )
+        hits.append(now)
+        self._requests[client_ip] = hits
         return await call_next(request)
 
 

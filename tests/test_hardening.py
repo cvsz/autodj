@@ -131,19 +131,19 @@ def test_remove_command_survives_queue_shift():
     e.router.handle(ChatMessage("amy", "play a", is_im=True))
     e.router.handle(ChatMessage("bob", "play b", is_im=True))
     out(e)
-    # With position=0 insertion, last request plays first: bob's "b" is at position 1
-    victim = e.queue.get(1)  # bob's track "b"
+    # FIFO queue: amy's "a" is #1, bob's "b" is #2
+    victim = e.queue.get(2)  # bob's track "b"
     real_get = e.queue.get
 
     def shifting_get(n):  # a different request vanishes right after get()
         t = real_get(n)
-        # Remove a different track (not the victim) to simulate queue shift
+        # Remove a different track (amy's, ahead of the victim) to simulate a queue shift
         if len(e.queue.requests) > 1:
-            e.queue.remove_track(e.queue.requests[1])
+            e.queue.remove_track(e.queue.requests[0])
         return t
 
     e.queue.get = shifting_get
-    e.router.handle(ChatMessage("bob", "!remove 1"))
+    e.router.handle(ChatMessage("bob", "!remove 2"))
     assert victim not in e.queue.requests
     assert out(e) == ["Removed: b"]
 

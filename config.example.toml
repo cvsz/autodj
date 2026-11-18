@@ -90,8 +90,15 @@ send_interval = 1.5                 # Seconds between chat lines sent by bot (fl
 max_msg_len = 180                   # Max message length sent to chat (20-2000)
 announce_next = true                # Announce up-next track in chat
 
+# Answer "what song is this?" in the room without a command (reply = !np text + progress)
+np_question_reply = true
+np_question_keywords = ["เพลงอะไร", "เพลงไร", "เพลงชื่อ", "ชื่อเพลง", "เพลงนี้ชื่อ", "what song", "whats playing", "what's playing", "song name"]
+np_question_cooldown = 20.0         # Room-wide seconds between auto-answers (0-3600)
+
 # Now-playing / up-next message templates (leave empty to use built-in text for `lang`)
-# Fields available: {title}, {duration}, {requester}
+# Fields available: {title}, {duration}, {requester},
+#   {elapsed} / {remaining} (progress of the current song),
+#   {eta} (msg_next only: time until that song starts, e.g. "เพลงต่อไป อีก {eta}")
 msg_now = ""                        # Override built-in now-playing text
 msg_next = ""                       # Override built-in up-next text
 
@@ -160,7 +167,11 @@ im_auto_reply_message = "Thanks for your message! I'm a bot and will respond whe
 im_auto_reply_cooldown = 60.0       # Seconds between auto-replies to the same user (avoid spam, 10-3600)
 
 # --- Autoplay: Switch to Autoplay Pool After Idle Timeout --------------------
-autoplay_idle_timeout = 30.0        # Seconds before autoplay starts when no user requests (30-86400)
+# Default song: plays at startup, and again when the request queue is empty and nobody
+# has requested for autoplay_idle_timeout seconds (repeats until the next request).
+# A request always cuts it; a *requested* song is never cut (later requests queue FIFO).
+default_track = ""                  # e.g. "https://www.youtube.com/watch?v=HhVVVgYsBYw"; "" = autoplay pool only
+autoplay_idle_timeout = 30.0        # Seconds with no requests (queue empty) before the default song / autoplay (0-86400)
 
 # --- Admin Greeting ----------------------------------------------------------
 admin_greeting_enabled = true       # Enable admin greeting on first message
@@ -225,7 +236,7 @@ status_alert_enabled = true         # Alert when Camfrog shows upgrade/payment-r
 webhook_enabled = false             # Enable HTTP webhook server for external control
 webhook_host = "127.0.0.1"          # Host to bind webhook server (use 0.0.0.0 for external access)
 webhook_port = 8080                 # Port for webhook server (1-65535)
-webhook_secret = ""                 # HMAC secret for webhook signature verification (empty = no verification)
+webhook_secret = ""                 # HMAC secret, >=16 chars (empty = every request rejected). Clients sign "<ts>.<METHOD>.<path>.<body>" + send X-Timestamp/X-Signature
 webhook_rate_limit_per_ip = 60      # Max requests per IP per minute (1-10000)
 webhook_cors_origins = ["*"]        # CORS allowed origins (e.g. ["https://example.com"]; default ["*"] = all)
 
@@ -234,3 +245,20 @@ config_hot_reload = false           # Enable hot reload of config.toml (requires
 
 # --- Plugin System -----------------------------------------------------------
 plugins = ["builtin.stats", "builtin.help"]  # List of plugin modules to load (e.g. "builtin.stats", "myplugin")
+
+# ---- Auto-update (GitHub releases) — opt-in; no network traffic when false -------------
+auto_update_enabled = false
+auto_update_repo = "cvsz/autodj"         # owner/name only
+auto_update_check_interval = 21600.0     # seconds between background checks (min 300)
+auto_update_asset = "AutoDJ.exe"         # release asset; must have a published SHA-256 digest
+
+# ---- AI chat replies (OpenAI-compatible API) — off by default ----------------------------
+# Answers non-command room lines (never private IMs). https required except for localhost.
+ai_enabled = false
+ai_api_key = ""                          # keep this file private (it is git-ignored)
+ai_base_url = "https://api.openai.com/v1"
+ai_model = "gpt-3.5-turbo"
+ai_system_prompt = "You are AutoDJ, a music bot in a Camfrog room. Keep replies short, friendly, and on-topic. Do not claim to play music unless asked."
+ai_max_chars = 200                       # reply length cap (Camfrog line limit)
+ai_user_cooldown = 30.0                  # seconds between AI replies to the same user
+

@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import re
-import subprocess
+import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -599,7 +599,7 @@ def _extract_exe(
     # Custom CA bundle support is handled by the yt_dlp Python module path
     # (see _extract_module) which can patch certifi.where().
     try:
-        r = subprocess.run(cmd, check=False, **kw)
+        r = subprocess.run(cmd, check=False, **kw)  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
     except subprocess.TimeoutExpired:
         raise RuntimeError("yt-dlp timed out") from None
     if r.returncode != 0:

@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from test_core import make, out
 
@@ -19,10 +21,11 @@ def test_thai_replies_and_aliases():
     e.router.handle(ChatMessage("amy", "เล่น เพลงหนึ่ง", is_im=True))
     assert out(e) == ["เข้าคิวที่ 1: เพลงหนึ่ง [2:00] ขอโดย amy"]
     e.current = Track("s", "now", 90, "bob")
+    e.started_at = time.monotonic()
     e.router.handle(ChatMessage("amy", "!เพลงนี้"))
     e.router.handle(ChatMessage("amy", "!ถัดไป"))
     assert out(e) == [
-        "กำลังเล่น: now [1:30] - ขอโดย bob",
+        "กำลังเล่น: now [1:30] - ขอโดย bob (0:00/1:30)",
         "เพลงถัดไป: เพลงหนึ่ง [2:00] (amy)",
     ]
     e.router.handle(ChatMessage("amy", "!ข้าม"))
@@ -122,6 +125,70 @@ def test_gui_smoke():
         app.close()
         del app
         # Release the Tcl interpreter on the same thread that created it.
+        import gc
+
+        gc.collect()
+
+
+def test_settings_dialog_visible_saves_and_reopens(tmp_path):
+    """Regression: the settings dialog rendered empty (entries hidden behind their
+    row frames, labels without text), reported save results into the chat room,
+    and could not be reopened after its window was destroyed."""
+    tk = pytest.importorskip("tkinter")
+    try:
+        probe = tk.Tk()
+        probe.destroy()
+        del probe
+    except tk.TclError:
+        pytest.skip("no display")
+
+    from camfrog_autodj.gui import App
+
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text('bot_nick = "AutoDJ"\n', encoding="utf-8")
+    e = make()
+    e.cfg_path = str(cfg_file)
+    e.player.cfg = e.cfg
+    app = App(e)
+    try:
+        app.open_settings()
+        app.update()
+        win = app._settings_win
+        win.geometry("900x900")
+        app.update()
+        assert app.s_mpv_path.winfo_viewable()  # entry not hidden behind its row frame
+        assert any(
+            isinstance(w, tk.Label) and w.cget("text") == e.t("g_settings_mpv_path")
+            for w, _k in app._labels
+        )
+        app.s_default_track.delete(0, "end")
+        app.s_default_track.insert(0, "https://www.youtube.com/watch?v=HhVVVgYsBYw")
+        app.s_autoplay_idle_timeout.delete(0, "end")
+        app.s_autoplay_idle_timeout.insert(0, "45")
+        out(e)
+        app.save_settings()
+        app.update()
+        saved = Config.load(str(cfg_file))
+        assert saved.default_track.endswith("HhVVVgYsBYw")
+        assert saved.autoplay_idle_timeout == 45.0
+        assert e.cfg.autoplay_idle_timeout == 45.0  # applied to the running engine
+        assert out(e) == []  # nothing posted into the room
+        assert app._settings_status.cget("text")  # result shown in the dialog
+
+        app.s_autoplay_idle_timeout.delete(0, "end")
+        app.s_autoplay_idle_timeout.insert(0, "not-a-number")
+        app.save_settings()
+        assert e.cfg.autoplay_idle_timeout == 45.0  # invalid input leaves engine untouched
+
+        win.destroy()  # destroyed by something other than the Close button
+        app.update()
+        app.set_lang("th")  # relabel must skip the dead widgets
+        app.open_settings()
+        app.update()
+        assert app._settings_win is not None and app._settings_win.winfo_exists()
+    finally:
+        app.close()
+        del app
         import gc
 
         gc.collect()

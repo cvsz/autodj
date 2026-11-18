@@ -21,8 +21,13 @@ REQUIRED_FILES = [
     "pyproject.toml",
 ]
 
-REQUIRED_DIRS = [
+# mpv/ is a vendored runtime bundle (git-ignored) and SEC_MPV is an optional
+# installer section whose files are /nonfatal, so its absence is only a warning.
+OPTIONAL_DIRS = [
     "mpv/_internal",
+]
+
+REQUIRED_DIRS = [
     "docs",
     "tools",
     "playlist",
@@ -75,6 +80,9 @@ def validate_required_files() -> list[str]:
 
 
 def validate_required_dirs() -> list[str]:
+    for rel in OPTIONAL_DIRS:
+        if not (ROOT / rel).is_dir():
+            print(f"WARN: optional directory missing: {rel} (installer ships without bundled mpv)")
     return [
         f"missing required source directory: {rel}"
         for rel in REQUIRED_DIRS

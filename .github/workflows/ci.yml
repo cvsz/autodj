@@ -47,4 +47,4 @@ jobs:
       - name: Typecheck (mypy)
         run: |
           python -m pip install mypy
-          python -m mypy camfrog_autodj || echo "NOTE: pre-existing mypy issues (missing stubs)"
+          python -m mypy camfrog_autodj

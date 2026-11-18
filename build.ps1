@@ -93,12 +93,15 @@ if (Test-Path "dist") {
 }
 # Copy mpv/ directory to dist/mpv/ so mpv.exe and yt-dlp.exe are available at runtime
 if (Test-Path mpv) {
-    # Always rebuild dist\mpv from scratch to avoid nesting (dist\mpv\mpv)
-    # on rebuilds without -Clean.
-    if (Test-Path "dist\mpv") { Remove-Item -Recurse -Force "dist\mpv" }
-    New-Item -ItemType Directory -Path "dist\mpv" | Out-Null
-    Copy-Item "mpv\*" "dist\mpv\" -Recurse -Force
-    "copied mpv/ -> dist\mpv\" | Write-Host
+    # robocopy mirrors the folder *contents* (no dist\mpv\mpv nesting) and copies only
+    # changed files, so an unchanged mpv.exe that is in use (the live DJ bot, or an
+    # elevated mpv the lock check above cannot see) no longer aborts the build with
+    # "Access to the path 'mpv.exe' is denied" (the old Remove-Item -Recurse did).
+    robocopy mpv dist\mpv /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+    $rc = $LASTEXITCODE
+    $global:LASTEXITCODE = 0   # robocopy: 0-7 = success, >= 8 = failure
+    if ($rc -ge 8) { throw "copying mpv/ -> dist\mpv\ failed (robocopy exit $rc): close any running mpv/AutoDJ and retry" }
+    "copied mpv/ -> dist\mpv\ (robocopy exit $rc)" | Write-Host
 } else {
     # mpv/ not present (e.g. cloned repo, gitignored). Try to find mpv.exe on the system.
     $mpvSearchPaths = @(

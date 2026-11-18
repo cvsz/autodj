@@ -4,14 +4,14 @@
 import glob
 import py_compile
 import shutil
-import subprocess
+import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
 import sys
 
 
 def has_module(module_name):
     """Check if a Python module is importable."""
     try:
-        subprocess.run(
+        subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
             [sys.executable, "-c", f"import {module_name}"], check=True, capture_output=True
         )
         return True
@@ -26,7 +26,7 @@ def has_command(cmd):
 
 def run_cmd(cmd, **kwargs):
     """Run a command and return the result."""
-    return subprocess.run(cmd, **kwargs)
+    return subprocess.run(cmd, **kwargs)  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
 
 
 def lint():

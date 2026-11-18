@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import time
 from pathlib import Path
@@ -25,17 +26,34 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("autodj")
 
+# One lock per favorites file, shared by every FavoritesStore instance.  Commands
+# create a new store per call, so a per-instance lock (plus a snapshot loaded at
+# construction) let concurrent saves overwrite each other and lose entries.
+_PATH_LOCKS: dict[str, threading.Lock] = {}
+_REGISTRY_LOCK = threading.Lock()
+
+
+def _lock_for(path: Path) -> threading.Lock:
+    key = str(path.resolve())
+    with _REGISTRY_LOCK:
+        return _PATH_LOCKS.setdefault(key, threading.Lock())
+
 
 class FavoritesStore:
-    """ร้านค้าเพลงโปรดต่อผู้ใช้ — thread-safe, เก็บเป็นไฟล์ JSON เดียว."""
+    """ร้านค้าเพลงโปรดต่อผู้ใช้ — thread-safe, เก็บเป็นไฟล์ JSON เดียว.
+
+    Every operation re-reads the file under a process-wide per-file lock, so
+    instances never work from a stale snapshot.
+    """
 
     def __init__(self, cfg_path: str | None = None):
-        self._lock = threading.Lock()
         if cfg_path:
             self._path = Path(cfg_path).parent / "favorites.json"
         else:
             self._path = Path("favorites.json")
-        self._data: dict[str, list[dict]] = self._load()
+        self._lock = _lock_for(self._path)
+        with self._lock:
+            self._data: dict[str, list[dict]] = self._load()
 
     def _load(self) -> dict[str, list[dict]]:
         try:
@@ -51,7 +69,10 @@ class FavoritesStore:
 
     def _save(self) -> None:
         try:
-            tmp = self._path.with_suffix(".json.tmp")
+            # unique temp name: two writers must never share one .tmp file
+            tmp = self._path.with_name(
+                f".{self._path.name}.{os.getpid()}.{threading.get_ident()}.tmp"
+            )
             tmp.write_text(
                 json.dumps({"users": self._data}, ensure_ascii=False, indent=2),
                 encoding="utf-8",
@@ -64,6 +85,7 @@ class FavoritesStore:
         """เพิ่มเพลงเข้าเพลงโปรดของผู้ใช้ (กันซ้ำโดยใช้ source เป็นคีย์)."""
         key = user.lower()
         with self._lock:
+            self._data = self._load()  # fresh copy: other instances may have saved
             entries = self._data.setdefault(key, [])
             for entry in entries:
                 if entry.get("source") == track.source:
@@ -81,11 +103,13 @@ class FavoritesStore:
     def list_for(self, user: str) -> list[dict]:
         """คืนรายการเพลงโปรดของผู้ใช้."""
         with self._lock:
+            self._data = self._load()  # fresh copy: other instances may have saved
             return list(self._data.get(user.lower(), []))
 
     def get(self, user: str, index: int) -> dict | None:
         """คืนเพลงโปรดลำดับที่ index (เริ่มที่ 1) ของผู้ใช้."""
         with self._lock:
+            self._data = self._load()  # fresh copy: other instances may have saved
             entries = self._data.get(user.lower(), [])
             if 1 <= index <= len(entries):
                 return entries[index - 1]
@@ -94,6 +118,7 @@ class FavoritesStore:
     def remove(self, user: str, index: int) -> bool:
         """ลบเพลงโปรดลำดับที่ index ของผู้ใช้."""
         with self._lock:
+            self._data = self._load()  # fresh copy: other instances may have saved
             entries = self._data.get(user.lower(), [])
             if 1 <= index <= len(entries):
                 entries.pop(index - 1)
@@ -104,6 +129,7 @@ class FavoritesStore:
     def clear(self, user: str) -> int:
         """ลบเพลงโปรดทั้งหมดของผู้ใช้ คืนจำนวนที่ลบ."""
         with self._lock:
+            self._data = self._load()  # fresh copy: other instances may have saved
             key = user.lower()
             count = len(self._data.pop(key, []))
             if count:

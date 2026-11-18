@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# setup-git-credential-helper.sh — Configure git credential helper to use D:/.git-credentials
+# setup-git-credential-helper.sh — Configure git credential helper (plaintext store outside the repo)
 # and run gh auth setup-git for the Four-Eyes Git & PR Workflow.
 #
 # This script:
-#   1. Sets the global credential helper to store credentials in D/./.git-credentials
+#   1. Sets the global credential helper to store credentials in $GIT_CRED_FILE (default ~/.git-credentials)
+#      Prefer Git Credential Manager (credential.helper=manager) on Windows where available.
 #   2. Runs gh auth setup-git to initialise git config for GitHub CLI
 #   3. Verifies the configuration
 
@@ -14,9 +15,15 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   exit 1
 }
 
-# 1. Set credential helper to store in D:/.git-credentials
-#    Use forward-slash style path; git on Windows accepts either.
-CRED_HELPER="store --file=D/.git-credentials"
+# 1. Set credential helper (plaintext store) to a file outside the repository.
+# Absolute path: the old relative "D/.git-credentials" resolved against the
+# current directory, scattering plaintext token files into whatever repo the
+# command ran in (and into this repo's working tree).
+CRED_FILE="${GIT_CRED_FILE:-$HOME/.git-credentials}"
+case "$CRED_FILE" in
+  "$REPO_ROOT"/*) echo "error: refusing to store credentials inside the repository ($CRED_FILE)" >&2; exit 1 ;;
+esac
+CRED_HELPER="store --file=$CRED_FILE"
 echo "Setting credential.helper to: $CRED_HELPER"
 git config --global credential.helper "$CRED_HELPER"
 
@@ -33,10 +40,11 @@ fi
 CRED_CONFIG=$(git config --get credential.helper 2>/dev/null || echo "(none)")
 echo "Credential helper now configured: $CRED_CONFIG"
 
-if [ -f "D/.git-credentials" ]; then
-  echo "PASS: D/.git-credentials file exists with permissions $(stat -c '%a' 'D/.git-credentials' 2>/dev/null || echo 'unknown')."
+if [ -f "$CRED_FILE" ]; then
+  chmod 600 "$CRED_FILE" 2>/dev/null || true
+  echo "PASS: $CRED_FILE exists with permissions $(stat -c '%a' "$CRED_FILE" 2>/dev/null || echo 'unknown')."
 else
-  echo "WARN: D/.git-credentials file not found immediately; git may create on first credential request."
+  echo "WARN: $CRED_FILE not found yet; git creates it on first credential request."
 fi
 
 echo "Done. You can now proceed with the Four-Eyes Git & PR Workflow."

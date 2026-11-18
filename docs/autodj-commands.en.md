@@ -22,7 +22,7 @@
 |---------|---------|-------------|-------|
 | `help` | `commands` | Show all available commands | `!help` |
 | `play` | `request`, `req`, `p` | Request a song by YouTube URL, search term, or local file name | `!play <url\|name>` |
-| `np` | `nowplaying` | Show currently playing track | `!np` |
+| `np` | `nowplaying` | Show currently playing track with live progress `(elapsed/total)` | `!np` |
 | `next` | `upnext` | Show next track in queue | `!next` |
 | `queue` | `q` | Show current request queue (first 5) | `!queue` |
 | `history` | `recent` | Show recently played tracks (last 5) | `!history` |
@@ -87,6 +87,8 @@
 | `speak` | `tts` | Speak text via TTS (music ducks) | `!speak <text>` |
 | `block` | — | Block a user from using commands | `!block <nick>` |
 | `unblock` | — | Unblock a user | `!unblock <nick>` |
+| `ai` | `เอไอ` | AI replies: `on`, `off`, `status`, `model <id>`, `prompt <text>` (applies immediately) | `!ai status` |
+| `update` | `อัปเดต` | Check GitHub for a strictly newer release; `apply` downloads and stages it (SHA-256 verified) | `!update` / `!update apply` |
 
 ### Examples
 
@@ -110,6 +112,9 @@
 !speak Welcome to the room
 !block spammer123
 !unblock spammer123
+!ai status
+!ai model gpt-4o-mini
+!update
 ```
 
 ---
@@ -139,7 +144,7 @@ Play a favorite song by its position number (1-based) from your favorites list. 
 
 ### /nowp (alias: /เพลงนี้)
 
-Show the currently playing track and who requested it.
+Show the currently playing track, who requested it and live progress, e.g. `Now playing: X [3:20] - requested by bob (1:05/3:20)`.
 
 **Example:**
 ```
@@ -303,6 +308,13 @@ Show the full command guide (both pages). Sent as IM to the bot.
 - When no user requests for the timeout period, bot switches to autoplay pool
 - New user request immediately exits autoplay mode
 - Autoplay pool populated from: `music_dirs`, `autoplay_sources`, `playlist.json`
+- The pool loops forever (it is not drained after one pass). With `shuffle = true` it uses a shuffle bag: no song repeats until every song in the pool has played
+- The announced "Up next" track is always the one that actually plays next
+- "Now playing" is announced once per track, even with `!repeat one`
+
+## "What song is this?" auto-reply
+
+No command needed: when someone in the room writes a line containing one of `np_question_keywords` (case-insensitive substring, e.g. "เพลงอะไร", "เพลงชื่ออะไร", "ชื่อเพลง", "what song", "what's playing"), the bot replies with the same text as `!np`. Lines starting with the command prefix are ignored. A room-wide cooldown (`np_question_cooldown`, default 20 s) prevents flooding when several people ask at once. Disable with `np_question_reply = false` or in the GUI Settings dialog.
 
 ---
 
@@ -346,6 +358,14 @@ playlist_file = "playlist.json"
 search_limit = 1
 mpv_timeout = 30
 
+# Announcements
+announce_next = true
+np_question_reply = true            # answer "what song?" lines without a command
+np_question_keywords = ["เพลงอะไร", "เพลงไร", "เพลงชื่อ", "ชื่อเพลง", "เพลงนี้ชื่อ", "what song", "whats playing", "what's playing", "song name"]
+np_question_cooldown = 20.0         # room-wide seconds (0-3600)
+msg_now = ""                        # "" = built-in text; fields {title} {duration} {requester} {elapsed} {remaining} {eta}
+msg_next = ""                       # e.g. "Up next in {eta}: {title} requested by {requester}"
+
 # New in 0.2.8
 autoplay_idle_timeout = 30.0
 admin_greeting_enabled = false
@@ -367,3 +387,18 @@ message_style = { font_family = "Consolas", font_size = 14, font_color = "#FF000
 - **Rate limiting:** Sliding window prevents spam; cooldown prevents rapid commands
 - **Duplicate protection:** Same song won't be queued twice
 - **Admin fail-closed:** Empty admin list = no admin access via nickname
+
+## Request rules and the default song
+
+- **Default song** (`default_track` in config.toml or Settings) starts when the program starts.
+- The **first request** cuts the default/autoplay song and plays **immediately**.
+- **Later requests** are queued first come, first served; a *requested* song is **never cut** and always plays to the end.
+- When the queue is empty and **nobody has requested for `autoplay_idle_timeout` (default 30 s)**, the default song plays again (repeating until the next request).
+- If the default link cannot be played, the autoplay pool is used for 10 minutes.
+
+### Requesting from the room or by IM
+
+- `allow_play_in_room = true` → `!play` works in room chat; `false` → song requests by IM only (the bot tells room users to send an IM)
+- `im_require_room_presence = true` → IM commands are accepted only from users already seen in the room chat
+- IM commands work with or without the prefix (`np` or `!np`)
+- The per-user request limit (`user_request_limit` per `rate_limit_window`) applies to every request alias (play, เล่น, ขอเพลง, เล่นเพลง, เปิดเพลง, aplay, addm, hbdp)

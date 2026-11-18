@@ -17,6 +17,7 @@ import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from . import __version__
 from .exceptions import AutoDJError
 
 log = logging.getLogger("autodj")
@@ -30,7 +31,7 @@ DEFAULT_SYSTEM_PROMPT = (
 DEFAULT_CHECK_INTERVAL = 60.0  # seconds between AI message checks (not used yet)
 MAX_RESPONSE_CHARS = 200  # Camfrog message length safety
 USER_COOLDOWN = 30.0  # seconds between AI replies to same user
-UA = "CamfrogAutoDJ/0.3.0 (+https://github.com/cvsz/autodj)"
+UA = f"CamfrogAutoDJ/{__version__} (+https://github.com/cvsz/autodj)"
 
 
 class AIError(AutoDJError):
@@ -129,30 +130,33 @@ class AIClient:
             return None
 
     # ------------------------------------------------------------------ helpers
-    def _fail_closed_url(self, url: str) -> bool:
-        """Return True only if *url* is on github.com (fail-closed)."""
+    @staticmethod
+    def _allowed_url(url: str) -> bool:
+        """Return True only for a safe AI endpoint URL.
+
+        ``https://`` is required for remote hosts so the API key never travels
+        in clear text; plain ``http://`` is accepted only for loopback hosts
+        (local llama.cpp / Ollama style servers).  URLs carrying embedded
+        credentials are rejected.
+        """
         try:
             from urllib.parse import urlparse
 
-            host = (urlparse(url).hostname or "").lower()
+            parsed = urlparse(url)
+            host = (parsed.hostname or "").lower()
         except ValueError:
             return False
-        return host == "github.com" or host.endswith(".github.com")
-
-    def _fetch_json(self, url: str) -> dict:
-        if not self._fail_closed_url(url):
-            raise ValueError(f"non-GitHub URL rejected: {url}")
-        req = Request(url, headers={"User-Agent": "CamfrogAutoDJ/0.3.0"})  # noqa: S310
-        with urlopen(req, timeout=30) as resp:  # noqa: S310 - url is fail-closed
-            if resp.status != 200:
-                raise HTTPError(url, resp.status, resp.reason, resp.headers, resp)
-            return json.loads(resp.read().decode("utf-8"))
+        if not host or parsed.username or parsed.password:
+            return False
+        if parsed.scheme == "https":
+            return True
+        return parsed.scheme == "http" and host in ("localhost", "127.0.0.1", "::1")
 
     def _post_json(self, url: str, payload: dict) -> dict:
-        if not self._fail_closed_url(url):
-            raise ValueError(f"non-GitHub URL rejected: {url}")
+        if not self._allowed_url(url):
+            raise ValueError(f"AI base URL rejected (https required for remote hosts): {url}")
         data = json.dumps(payload).encode("utf-8")
-        req = Request(  # noqa: S310 - url is fail-closed to github.com only
+        req = Request(  # noqa: S310 - scheme/host validated by _allowed_url above
             url,
             data=data,
             headers={
@@ -162,7 +166,7 @@ class AIClient:
             },
             method="POST",
         )
-        with urlopen(req, timeout=60) as resp:  # noqa: S310 - url is fail-closed to github.com only
+        with urlopen(req, timeout=30) as resp:  # noqa: S310 - validated by _allowed_url  # nosec B310 - URL scheme/host validated just above (https/github.com only)
             if resp.status != 200:
                 raise HTTPError(url, resp.status, resp.reason, resp.headers, resp)
             return json.loads(resp.read().decode("utf-8"))

@@ -35,7 +35,7 @@ from .library import (
     scan_folder,
 )
 from .messages import tr
-from .models import Track
+from .models import Track, fmt_time
 from .player import MpvPlayer
 from .playlist import PlaylistStore, load_playlist
 from .playqueue import PlayQueue
@@ -123,7 +123,11 @@ class Engine:
         self._chat_rate_window: dict[
             str, deque
         ] = {}  # nick -> deque of timestamps for rate limiting
-        self._plugin_manager = None  # set up later if plugins enabled
+        self._plugin_manager = None  # built from cfg.plugins below; loaded in start()
+        if getattr(cfg, "plugins", None):
+            from .plugins.manager import PluginManager
+
+            self._plugin_manager = PluginManager(self, list(cfg.plugins))
         self._speak_lock = (
             threading.Lock()
         )  # one TTS clip at a time: overlapping jobs would un-duck the music early
@@ -152,38 +156,77 @@ class Engine:
         self._webhook_server = None  # set up by the GUI if webhook is enabled
         self.updater = Updater(self.cfg, engine=self)  # auto-update checker/downloader
         self.ai = AIClient(self.cfg)  # AI chat client (disabled by default)
+        self._np_question_last = float("-inf")  # last "what song?" auto-answer (monotonic)
+        # Default song (config ``default_track``): plays at startup and again
+        # whenever the request queue is empty and nobody has requested anything
+        # for ``autoplay_idle_timeout`` seconds.  It is never a request, so a new
+        # request cuts it immediately (see preempt_unrequested).
+        self._default_meta: Track | None = None  # cached title/duration lookup
+        self._default_failed_until = 0.0  # after a failed play, use the pool for a while
+        self._default_lookup_retry_at = 0.0  # after a failed metadata lookup
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
         return tr(self.lang, key, **kw)
 
-    def fmt_now(self, t: Track) -> str:
+    def _time_fields(self, t: Track) -> dict:
+        """Template fields beyond Track.fields(): progress of the current song and
+        when the next one starts.  Usable in msg_now / msg_next as
+        {elapsed} {remaining} {eta}; unknown values render as "?"."""
+        cur = self.current
+        elapsed = remaining = None
+        if cur is not None:
+            try:
+                elapsed = self.position()
+            except Exception:  # IPC hiccup must never break an announcement
+                elapsed = None
+            if elapsed is not None:
+                elapsed = float(round(elapsed))  # whole seconds, so totals add up in chat
+            if cur.duration and elapsed is not None:
+                elapsed = min(elapsed, cur.duration)
+                remaining = max(0.0, cur.duration - elapsed)
+        if t is cur:
+            return {
+                "elapsed": fmt_time(elapsed) if elapsed else "0:00",
+                "remaining": fmt_time(remaining),
+                "eta": "0:00",
+            }
+        # Up-next: starts when the current song ends (plus any requests ahead of it).
+        eta = remaining if cur is not None else 0.0
+        if eta is not None:
+            with self.queue.lock:
+                ahead = list(self.queue.requests)
+            for q in ahead:
+                if q is t:
+                    break
+                if not q.duration:
+                    eta = None
+                    break
+                eta += q.duration
+        return {"elapsed": "0:00", "remaining": t.dur, "eta": fmt_time(eta) if eta else "0:00"}
+
+    def _render(self, template: str, key: str, t: Track) -> str:
+        fields = {**t.fields(), **self._time_fields(t)}
         try:
-            return (
-                self.cfg.msg_now.format(**t.fields())
-                if self.cfg.msg_now
-                else self.t("now_playing", **t.fields())
-            )
-        except Exception:  # a typo in msg_now must not take down the player-loop thread
-            log.exception(
-                "bad msg_now template %r: falling back to the built-in text",
-                self.cfg.msg_now,
-            )
-            return self.t("now_playing", **t.fields())
+            return template.format(**fields) if template else self.t(key, **fields)
+        except Exception:  # a typo in a template must not take down the player-loop thread
+            log.exception("bad %s template %r: falling back to the built-in text", key, template)
+            return self.t(key, **fields)
+
+    def fmt_now(self, t: Track) -> str:
+        return self._render(self.cfg.msg_now, "now_playing", t)
 
     def fmt_next(self, t: Track) -> str:
-        try:
-            return (
-                self.cfg.msg_next.format(**t.fields())
-                if self.cfg.msg_next
-                else self.t("up_next", **t.fields())
-            )
-        except Exception:
-            log.exception(
-                "bad msg_next template %r: falling back to the built-in text",
-                self.cfg.msg_next,
-            )
-            return self.t("up_next", **t.fields())
+        return self._render(self.cfg.msg_next, "up_next", t)
+
+    def now_playing_text(self) -> str:
+        """Room reply for !np / "what song is this?": template plus live progress."""
+        t = self.current
+        if t is None:
+            return self.t("nothing_playing").capitalize()
+        f = self._time_fields(t)
+        progress = f"{f['elapsed']}/{t.dur}" if t.duration else f["elapsed"]
+        return f"{self.fmt_now(t)} ({progress})"
 
     def _is_youtube_playlist(self, url: str) -> bool:
         """Check if the URL is a YouTube playlist URL."""
@@ -232,6 +275,12 @@ class Engine:
             # If disabled, the loop will exit on its next iteration
         # Update other dynamic settings
         self.volume = new_cfg.volume
+        if hasattr(self.player, "cfg"):
+            self.player.cfg = new_cfg  # mpv/yt-dlp paths, audio device, timeouts
+        # AI / updater clients snapshot config at construction; rebuild them so
+        # edited keys (api key, base URL, enable flags) actually take effect.
+        self.refresh_ai()
+        self.updater.cfg = new_cfg
         log.info("Config reload applied successfully")
 
     def _start_auto_reply_loop(self) -> None:
@@ -467,6 +516,39 @@ class Engine:
     def skip(self) -> None:
         self.player.stop()
 
+    def note_request(self) -> None:
+        """Record that a user/DJ request just arrived (drives the idle timer)."""
+        self._last_user_request_time = time.monotonic()
+        if self._autoplay_mode:
+            self._autoplay_mode = False
+            log.info("Autoplay mode deactivated: new user request received")
+
+    def preempt_unrequested(self) -> bool:
+        """Cut the current song only if nobody requested it.
+
+        Request rule: a new request starts *now* when the startup song or an
+        autoplay-pool song is playing, but when a requested song is playing it
+        waits in the queue (FIFO) until that song ends.  Returns True if cut.
+        """
+        # A non-requested song that is picked but not yet started is caught by
+        # the pre-play check in _play_one_track; the delayed re-check covers a
+        # request landing in the few ms between that check and mpv starting.
+        self.exec.submit(self._recheck_preempt)
+        cur = self.current
+        if cur is None or cur.is_request:
+            return False
+        log.info("request received: cutting non-requested track %r", cur.title)
+        self.skip()
+        return True
+
+    def _recheck_preempt(self, delay: float = 1.5) -> None:
+        if self.stop_evt.wait(delay):
+            return
+        cur = self.current
+        if cur is not None and not cur.is_request and self.queue.requests:
+            log.info("request still waiting behind %r: cutting it", cur.title)
+            self.skip()
+
     def pause(self) -> None:
         if self.current and not self.paused:
             if not self.player.set_pause(True):
@@ -495,7 +577,9 @@ class Engine:
         now = time.monotonic()
         who = user.lower()
         with self._voteskip_cooldown_lock:
-            last_voteskip = self._voteskip_cooldowns.get(who, 0.0)
+            last_voteskip = self._voteskip_cooldowns.get(
+                who, float("-inf")
+            )  # never: monotonic starts at boot
             cooldown = getattr(self.cfg, "voteskip_cooldown", 10.0)
             if now - last_voteskip < cooldown:
                 remaining = cooldown - (now - last_voteskip)
@@ -759,6 +843,8 @@ class Engine:
                     pos = self.queue.add_request(t)
                     self._log_track(t, "QUEUED", req_id)
                 self.wake.set()
+                self.note_request()
+                self.preempt_unrequested()
                 if self.playlist:
                     self.playlist.add(tracks)
                 if on_success:
@@ -845,6 +931,10 @@ class Engine:
             if resolved:
                 res = resolved[0]
                 res.state = "READY"
+                # Keep who asked and whether it was a request: losing is_request let
+                # the next request cut (or silently drop) a resolved, requested song.
+                res.requester = t.requester
+                res.is_request = t.is_request
                 if self.playlist:
                     self.playlist.update_source(orig_src, res)
                 return res
@@ -959,9 +1049,22 @@ class Engine:
     # ---- playback loop --------------------------------------------------
     def _announce(self, t: Track):
         self.say(self.fmt_now(t))
-        nxt = self.queue.peek()
+        nxt = self._true_next()
         if self.cfg.announce_next and nxt:
             self.say(self.fmt_next(nxt))
+
+    def _true_next(self) -> Track | None:
+        """The track that will really play next (for "up next" lines).
+
+        With a default song configured, an empty request queue means the default
+        song (or silence until the idle timeout) comes next, not a pool track.
+        """
+        with self.queue.lock:
+            if self.queue.requests:
+                return self.queue.requests[0]
+        if (getattr(self.cfg, "default_track", "") or "").strip():
+            return None
+        return self.queue.peek()
 
     def _announce_if_playing(self, t: Track, wait: float = 3.0):
         """During a failure streak: announce only if the track is still playing after a few seconds."""
@@ -991,22 +1094,78 @@ class Engine:
 
         return self._autoplay_mode
 
-    def _pop_next_track(self) -> Track | None:
+    def _pop_next_track(self, now: float | None = None) -> Track | None:
         """Pop the next track to play.
 
-        User requests always take priority over the autoplay pool. When no user
-        requests are pending, fall back to the autoplay pool (e.g. the YouTube
-        autoplay source) so music keeps playing without user input.
+        Order: user requests (FIFO) -> the default song -> the autoplay pool.
+
+        * With ``default_track`` set, the default song plays at startup and,
+          once the request queue is empty, as soon as nobody has requested
+          anything for ``autoplay_idle_timeout`` seconds (then it repeats until
+          the next request).  Until that timeout passes the player waits.
+        * If the default song recently failed to play, the autoplay pool is
+          used instead so the room never stays silent on a dead link.
+        * Without ``default_track`` the autoplay pool plays as before.
         """
         if self.queue.requests:
             return self.queue.pop()  # user request: play now
+        now = time.monotonic() if now is None else now
+        src = (getattr(self.cfg, "default_track", "") or "").strip()
+        if src and now >= self._default_failed_until:
+            if self._default_due(now):
+                return self._default_track_for_play(src)
+            return None  # idle timer still running: wait for a request or the timeout
         if self.queue.pool:
             return self.queue.pop_pool()  # autoplay pool: no user request
         return None
 
+    def _is_default_track(self, t: Track) -> bool:
+        src = (getattr(self.cfg, "default_track", "") or "").strip()
+        meta = self._default_meta
+        return bool(src) and (t.source == src or (meta is not None and t.source == meta.source))
+
+    def _default_due(self, now: float) -> bool:
+        """True at startup (no request yet) or after the idle timeout."""
+        last = self._last_user_request_time
+        if last <= 0:
+            return True
+        idle = float(getattr(self.cfg, "autoplay_idle_timeout", 30.0))
+        return now - last >= idle
+
+    def _default_track_for_play(self, src: str) -> Track:
+        """A fresh, non-request Track for the default song.
+
+        * Local file -> played directly (never turned into a YouTube search).
+        * URL -> title/duration looked up once and cached.  A failed lookup is
+          cached too (retried after 10 min) so the player thread does not block on
+          yt-dlp every time the default song repeats; the raw URL is played
+          meanwhile (mpv's yt-dlp hook resolves it).
+        """
+        if not is_url(src) and Path(src).is_file():
+            t = local_track(Path(src), "AutoDJ")
+            t.is_request = False
+            return t
+        now = time.monotonic()
+        meta = self._default_meta
+        if meta is None or meta.source != src:
+            meta = None
+            if now >= self._default_lookup_retry_at:
+                try:
+                    found = self._remote(src, user="AutoDJ", playlist=False)
+                    if found:
+                        meta = found[0]
+                except Exception as ex:  # noqa: BLE001 - must never crash the player loop
+                    log.warning("default track lookup failed (%s); playing the URL directly", ex)
+                if meta is None:
+                    self._default_lookup_retry_at = now + 600.0
+                else:
+                    self._default_meta = meta
+        if meta is None:
+            return Track(src, src, None, "AutoDJ")
+        return Track(meta.source, meta.title, meta.duration, "AutoDJ")
+
     def _player_loop(self):
         fails = 0  # consecutive tracks that failed to play
-        idle_timeout = getattr(self.cfg, "autoplay_idle_timeout", 30.0)
         while not self.stop_evt.is_set():
             if not self._mpv_available():
                 if fails == 0:
@@ -1027,8 +1186,10 @@ class Engine:
                     break
                 continue
 
-            self._check_autoplay_mode(now, idle_timeout)  # updates self._autoplay_mode state
-            t = self._pop_next_track()
+            if not (getattr(self.cfg, "default_track", "") or "").strip():
+                idle_timeout = float(getattr(self.cfg, "autoplay_idle_timeout", 30.0))
+                self._check_autoplay_mode(now, idle_timeout)  # pool-only autoplay notice
+            t = self._pop_next_track(now)
             if t is None:
                 self.wake.wait(2)
                 self.wake.clear()
@@ -1071,6 +1232,11 @@ class Engine:
         t.state = "FAILED"
         self._log_track(t, "FAILED")
         self.current = None
+        self._emit("track_failed", t, "playback failed")
+        if not t.is_request and self._is_default_track(t):
+            # Dead/blocked default link: fall back to the autoplay pool for 10 min
+            self._default_failed_until = time.monotonic() + 600.0
+            log.warning("default track failed to play; using the autoplay pool for 10 minutes")
         self._announce_playback_failure(t, fails)
         delay = self.fail_delay(fails)
         self._backoff_until = time.monotonic() + delay
@@ -1097,18 +1263,27 @@ class Engine:
         Returns the updated consecutive-failure count.
         """
         recorded = False
+        announced = False  # repeat-one must not re-post "now playing" every loop
         while not self.stop_evt.is_set():
+            if not t.is_request and self.queue.requests:
+                # A request arrived while this autoplay/startup song was being
+                # picked: requests go first, so don't start it at all.
+                log.info("not starting %r: a request is waiting", t.title)
+                break
             self.current = t
             t.state = "PLAYING"
             self._log_track(t, "PLAYING")
             self.votes.clear()
             self.paused, self._paused_at, self._paused_total = False, None, 0.0
             self.started_at = time.monotonic()
-            if fails < MAX_FAIL_ANNOUNCE:
-                self._announce(t)
-            else:
-                self.exec.submit(self._announce_if_playing, t)
+            if not announced:
+                announced = True
+                if fails < MAX_FAIL_ANNOUNCE:
+                    self._announce(t)
+                else:
+                    self.exec.submit(self._announce_if_playing, t)
             log.info("playing %s", t.source)
+            self._emit("track_start", t)
             if not self._try_play(t):
                 fails += 1
                 self._track_failed(t, fails)
@@ -1119,6 +1294,7 @@ class Engine:
                 self._log_track(t, "COMPLETED")
                 self.history.appendleft(t)
                 recorded = True
+                self._emit("track_end", t)
             if self.queue.repeat != "one" or getattr(self.player, "skipped", False):
                 break
         self.current = None
@@ -1168,14 +1344,13 @@ class Engine:
         self._ai_handle_im(msg)
 
     def _ai_handle_im(self, msg: ChatMessage) -> None:
-        """Reply to non-command IM messages via AI (if enabled)."""
-        if not self.ai.is_enabled():
-            return
-        if msg.text.strip().startswith(("/", self.cfg.prefix)):
-            return  # command-like: let the router handle it
-        reply = self.ai.chat(msg.text)
-        if reply:
-            self.say(reply)
+        """AI replies to private messages are intentionally disabled.
+
+        The chat adapter can only post to the public room, so answering an IM
+        would broadcast content derived from a private conversation.  Until a
+        real ``send_im()`` exists, IMs are never forwarded to the AI provider.
+        """
+        return
 
     def _handle_room_message(self, msg: ChatMessage) -> None:
         """Handle a room message (non-IM)."""
@@ -1200,8 +1375,33 @@ class Engine:
 
         # Update last user request time for !play commands (tracked in router)
         self.exec.submit(self.router.handle, msg)
+        # "เพลงอะไร / what song is this?" -> answer with the current song
+        if self._answer_np_question(msg):
+            return
         # AI: reply to non-command room messages
         self._ai_handle_room(msg)
+
+    def _answer_np_question(self, msg: ChatMessage) -> bool:
+        """Answer room questions about the current song without a command.
+
+        Matches ``np_question_keywords`` (case-insensitive substring) in
+        non-command lines; a room-wide cooldown stops several people asking at
+        once from flooding the chat.  Returns True when the message was handled.
+        """
+        if not getattr(self.cfg, "np_question_reply", False):
+            return False
+        text = msg.text.strip()
+        if not text or text.startswith(self.cfg.prefix):
+            return False
+        low = text.lower()
+        if not any(k and k.lower() in low for k in self.cfg.np_question_keywords):
+            return False
+        now = time.monotonic()
+        if now - self._np_question_last < self.cfg.np_question_cooldown:
+            return True  # recently answered: swallow, don't send it to the AI either
+        self._np_question_last = now
+        self.say(self.now_playing_text())
+        return True
 
     def _ai_handle_room(self, msg: ChatMessage) -> None:
         """Reply to non-command room messages via AI (if enabled)."""
@@ -1209,9 +1409,19 @@ class Engine:
             return
         if msg.text.strip().startswith(self.cfg.prefix):
             return  # command: let the router handle it
-        reply = self.ai.chat(msg.text)
+        if not self.ai.can_reply(msg.user):
+            return  # per-user cooldown (also bounds API spend)
+        # Network call (up to 30s) must never block the chat-reading loop.
+        self.exec.submit(self._ai_reply, msg.text)
+
+    def _ai_reply(self, text: str) -> None:
+        reply = self.ai.chat(text)
         if reply:
             self.say(reply)
+
+    def refresh_ai(self) -> None:
+        """Rebuild the AI client from the current config (after !ai or reload)."""
+        self.ai = AIClient(self.cfg)
 
     @property
     def participant_count(self) -> int:
@@ -1236,7 +1446,7 @@ class Engine:
         if msg.user.lower() not in self.admins:
             return
         now = time.monotonic()
-        last_greeting = self._admin_greeting_cooldowns.get(msg.user.lower(), 0.0)
+        last_greeting = self._admin_greeting_cooldowns.get(msg.user.lower(), float("-inf"))
         if now - last_greeting < self.cfg.admin_greeting_cooldown:
             return
         greeting = self.cfg.admin_greeting_message.format(admin=msg.user)
@@ -1412,7 +1622,7 @@ class Engine:
         should_send = False
         welcome_text = ""
         with self._chat_lock:
-            last_welcome = self._welcome_cooldowns.get(key, 0.0)
+            last_welcome = self._welcome_cooldowns.get(key, float("-inf"))  # never sent
             if now - last_welcome >= cooldown:
                 welcome_text = self.cfg.welcome_message_message
                 # Replace {room} placeholder if present
@@ -1423,6 +1633,62 @@ class Engine:
         if should_send:
             self.say(welcome_text)
             log.info("Sent welcome message to %s", msg.user)
+
+    def _emit(self, event: str, *args) -> None:
+        """Forward an engine event to loaded plugins (never raises)."""
+        if self._plugin_manager:
+            self._plugin_manager.emit(event, *args)
+
+    def plugin_command(self, name: str, user: str, args: str, admin: bool) -> bool:
+        """Offer a command no built-in handles to the plugins; True if one did."""
+        if not self._plugin_manager:
+            return False
+        for pname, plugin in list(self._plugin_manager.plugins.items()):
+            try:
+                if plugin.on_command(name, user, args, admin):
+                    return True
+            except Exception:
+                log.exception("plugin %s failed on command %s", pname, name)
+        return False
+
+    def _start_optional_services(self) -> None:
+        """Config hot reload and the webhook server, when enabled in config."""
+        if (
+            getattr(self.cfg, "config_hot_reload", False)
+            and self.cfg_path
+            and not self._config_watcher
+        ):
+            try:
+                from .config_watcher import ConfigWatcher
+
+                watcher = ConfigWatcher(str(self.cfg_path))
+                watcher.on_change(self._on_config_reload)
+                watcher.start(initial_config=self.cfg)
+                self._config_watcher = watcher
+            except Exception as ex:  # noqa: BLE001 - optional feature must not stop the bot
+                log.warning("config hot reload unavailable: %s", ex)
+        if getattr(self.cfg, "webhook_enabled", False) and not self._webhook_server:
+            secret = getattr(self.cfg, "webhook_secret", "") or ""
+            if len(secret) < 16:
+                log.error(
+                    "webhook_enabled but webhook_secret is shorter than 16 chars: not started"
+                )
+                return
+            try:
+                from .webhook.models import WebhookConfig
+                from .webhook.server import WebhookServer
+            except ImportError as ex:
+                log.error("webhook needs the 'webhook' extra (fastapi, uvicorn): %s", ex)
+                return
+            wcfg = WebhookConfig(
+                enabled=True,
+                port=int(self.cfg.webhook_port),
+                secret=secret,
+                host=self.cfg.webhook_host,
+                rate_limit_per_ip=int(self.cfg.webhook_rate_limit_per_ip),
+                cors_origins=list(self.cfg.webhook_cors_origins),
+            )
+            self._webhook_server = WebhookServer(wcfg, self)
 
     def start(self):
         """Non-blocking: used by the GUI."""
@@ -1435,18 +1701,16 @@ class Engine:
         # Load plugins
         if self._plugin_manager:
             self._plugin_manager.load_plugins()
+        self._start_optional_services()
         # Start webhook server if enabled
         if self._webhook_server:
-            import asyncio
-
             webhook_server = self._webhook_server
 
-            def run_webhook():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(webhook_server.start())
-
-            t = threading.Thread(target=run_webhook, daemon=True, name="autodj-webhook")
+            # serve_blocking() runs uvicorn to completion on its own event loop
+            # (the old start() only created a task and the loop exited at once).
+            t = threading.Thread(
+                target=webhook_server.serve_blocking, daemon=True, name="autodj-webhook"
+            )
             self._threads.append(t)
             t.start()
 
@@ -1463,23 +1727,31 @@ class Engine:
             self._threads.append(t)
             t.start()
 
-        # Start auto-update checker (owns its thread; no GUI needed)
+        # Start auto-update checker (owns its thread; opt-in via
+        # auto_update_enabled — no network traffic to GitHub otherwise).
+        self.updater.on_available = self._announce_update
         self.updater.start()
-        # One-time check at startup (non-blocking)
-        self.exec.submit(self._auto_update_check)
 
     def _auto_update_check(self) -> None:
-        """Periodic auto-update check (runs in updater thread)."""
+        """One-shot update check + room announcement (opt-in only)."""
+        if not self.updater.enabled:
+            return
         try:
             release = self.updater.check_for_update()
+            if release:
+                self._announce_update(release)
+        except Exception:  # noqa: BLE001 - auto-update must never crash
+            log.exception("auto-update check failed")
+
+    def _announce_update(self, release: dict) -> None:
+        """Announce a newly available release in the room."""
+        try:
             if release:
                 self.say(
                     self.t(
                         "update_available",
                         version=release["tag"],
-                        current=__import__(
-                            "camfrog_autodj", fromlist=["__version__"]
-                        ).__version__,
+                        current=__import__("camfrog_autodj", fromlist=["__version__"]).__version__,
                         url=release["html_url"],
                     )
                 )
@@ -1624,7 +1896,7 @@ class Engine:
         user = msg.user.lower()
         now = time.monotonic()
         with self._chat_lock:  # protect _im_reply_cooldowns across chat loop and cleanup loop
-            last_reply = self._im_reply_cooldowns.get(user, 0.0)
+            last_reply = self._im_reply_cooldowns.get(user, float("-inf"))  # never replied
             if now - last_reply < self.cfg.im_auto_reply_cooldown:
                 log.debug("IM auto-reply on cooldown for %s", user)
                 return
@@ -1632,8 +1904,9 @@ class Engine:
             reply_text = self.cfg.im_auto_reply_message
             if reply_text:
                 try:
-                    # TODO: When ChatAdapter supports send_im(), use that instead.
-                    # For now, post to room with IM prefix as notification.
+                    # Design limit: ChatAdapter has no private send channel, so the
+                    # fixed (operator-written) reply is posted to the room. Only the
+                    # canned text is sent — never the content of the user's IM.
                     self.say(f"[IM auto-reply to {msg.user}] {reply_text}")
                     self._im_reply_cooldowns[user] = time.monotonic()
                     log.info("Sent IM auto-reply notification to room for %s", msg.user)
@@ -1908,19 +2181,10 @@ class Engine:
         # Unload plugins
         if self._plugin_manager:
             self._plugin_manager.unload_plugins()
-        # Stop webhook server
+        # Stop webhook server (thread-safe flag; uvicorn exits its own loop)
         if self._webhook_server:
-            import asyncio
-
-            webhook_server = self._webhook_server
             try:
-                # Try to get the running event loop; if none, create one
-                try:
-                    loop = asyncio.get_running_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                loop.run_until_complete(webhook_server.stop())
+                self._webhook_server.request_stop()
             except Exception:
                 log.exception("Failed to stop webhook server")
         self.adapter.close()

@@ -52,6 +52,18 @@ jobs:
             exit 1
           fi
 
+      - name: Tag, package version and CHANGELOG agree
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if [ "$tag" != "$pkg" ]; then
+            echo "Tag v$tag does not match pyproject.toml version $pkg"; exit 1
+          fi
+          grep -Eq "^##[[:space:]]+\[?v?${pkg//./\\.}([^0-9.]|$)" CHANGELOG.md || { echo "CHANGELOG.md has no ## $pkg section"; exit 1; }
+
       - name: Decide whether release may proceed
         id: checks
         run: |
@@ -95,6 +107,10 @@ jobs:
       - name: Build AutoDJ.exe
         run: |
           $signArgs = @("-Clean", "-NoSign")
+          if ($env:GITHUB_REF -like "refs/tags/*" -and -not (($env:AUTODJ_PFX -and $env:AUTODJ_PFX_PASSWORD) -or $env:AUTODJ_CERT_THUMBPRINT)) {
+            Write-Error "Tagged releases must be Authenticode-signed: set AUTODJ_PFX/AUTODJ_PFX_PASSWORD or AUTODJ_CERT_THUMBPRINT secrets."
+            exit 1
+          }
           if ($env:AUTODJ_PFX -and $env:AUTODJ_PFX_PASSWORD) {
             $signArgs = @("-Clean", "-Pfx", $env:AUTODJ_PFX, "-Password", $env:AUTODJ_PFX_PASSWORD)
           } elseif ($env:AUTODJ_CERT_THUMBPRINT) {

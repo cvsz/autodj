@@ -5,7 +5,8 @@
 # make from Git-Bash (bash must be on PATH); cmd.exe alone is not sufficient.
 
 # Variables
-PY ?= python3
+# PY: python3 on Linux/macOS; "python" on Windows (where "python3" is only the
+# Microsoft Store alias). Override with: make PY=py  (the Windows py launcher)
 BUILD_DIR ?= build
 DIST_DIR ?= dist
 LOG_DIR ?= logs
@@ -68,15 +69,18 @@ logs:  ## Create the build log directory
 win11-check: logs  ## Verify Windows 11 (build 22000+) and NSIS/mpv/PyInstaller availability
 ifeq ($(OS),Windows_NT)
 	@echo "=== Windows 11 Prerequisite Check ($(BUILD_LOG_TS)) ==="
-	@ifeq ($(SKIP_CHECKS),1)
+ifeq ($(SKIP_CHECKS),1)
 	@echo "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)" | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"
-	@echo "  SKIP: prerequisite checks disabled (SKIP_CHECKS=1)"
 else
 	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/win11-check.ps1 -MinBuild $(WIN11_MIN_BUILD) >>"$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: Windows 11 check failed (details in the log below). Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" && exit 1)
 	@echo "  OK: Windows 11 detected" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
 	@powershell.exe -NoProfile -Command "if (Get-Command makensis -ErrorAction SilentlyContinue) { echo '  OK: NSIS (makensis) in PATH' } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files (x86)\NSIS\makensis.exe' } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files\NSIS\makensis.exe' } else { echo 'ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis) or set SKIP_CHECKS=1 to bypass.'; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found. Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" && exit 1)
 	@powershell.exe -NoProfile -Command "if (Get-Command mpv.exe -ErrorAction SilentlyContinue) { echo '  OK: mpv.exe in PATH' } elseif (Test-Path 'C:\Program Files\mpv\mpv.exe') { echo '  OK: mpv found at C:\Program Files\mpv\mpv.exe' } else { echo 'WARN: mpv.exe not found in PATH. Install: choco install mpv --version=2024.01.01 --yes' }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
 	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed"; else echo "WARN: PyInstaller not installed. Run: $(PIP) install pyinstaller" | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"; fi
+endif
+else
+	@echo "win11-check is Windows-only"
+	@exit 1
 endif
 	@echo "Logs: $(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"
 
@@ -206,8 +210,8 @@ coverage:  ## Run tests under coverage.py (requires: pip install coverage) and p
 	fi
 
 mutation-smoke:  ## Re-run the mutation checks that back the hardening tests (see tools/mutate.sh)
-	@test -x tools/mutate.sh || (echo "tools/mutate.sh not found -- see AUDIT.md for how it was used"; exit 1)
-	tools/mutate.sh
+	@test -f tools/mutate.sh || (echo "tools/mutate.sh not found"; exit 1)
+	bash tools/mutate.sh
 
 ## ---- code quality -------------------------------------------------------------
 lint:  ## Lint with ruff if installed, else a basic py_compile pass
@@ -224,8 +228,8 @@ fmt:  ## Format with ruff/black if installed (no-op if none installed)
 	else echo "no formatter installed (pip install ruff or black)"; fi
 
 typecheck:  ## Type-check with mypy if installed
-	@if $(PY) -c "import mypy" 2>/dev/null; then $(PY) -m mypy $(PROJECT) || echo "NOTE: pre-existing mypy issues (missing stubs)"; \
-	else echo "mypy not installed (pip install mypy)"; fi
+	@if $(PY) -c "import mypy" 2>/dev/null; then $(PY) -m mypy $(PROJECT); \
+	else echo "ERROR: mypy not installed (pip install mypy)"; exit 1; fi
 
 ## ---- playlist validation -------------------------------------------------------
 validate-playlists:  ## Validate all playlist/*.json source URLs (URLs, ytsearchN:, local paths)
@@ -283,7 +287,8 @@ endif
 
 sign:  ## Sign existing AutoDJ.exe (Windows)
 ifeq ($(OS),Windows_NT)
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -NoSign=false $(BUILD_ARGS)
+	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found. Run 'make build' first."; exit 1; fi
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/sign_exe.ps1 -File dist\AutoDJ.exe $(SIGN_ARGS)
 else
 	@echo "sign requires Windows."
 	@exit 1
@@ -297,7 +302,7 @@ ifeq ($(OS),Windows_NT)
 	$(MAKE) pyinstaller-check SKIP_CHECKS=$(SKIP_CHECKS)
 	@echo "=== Step 1/2: Building AutoDJ.exe (PyInstaller) ==="
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
-	@if not exist dist\AutoDJ.exe (echo "ERROR: dist\AutoDJ.exe not found after build." && exit 1)
+	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found after build."; exit 1; fi
 	@echo ""
 	@echo "=== Step 2/2: Building NSIS Installer ==="
 	$(MAKE) nsiswindows11 SKIP_CHECKS=$(SKIP_CHECKS)
@@ -325,6 +330,7 @@ endif
 
 build-all-hybrid:  ## Hybrid workflow: Windows (build + NSIS) -> WSL post-processing (run from PowerShell)
 ifeq ($(OS),Windows_NT)
+	@if [ ! -f scripts/build-all-hybrid.ps1 ]; then echo "scripts/build-all-hybrid.ps1 is a local helper (not in git); use 'make build-all' instead."; exit 1; fi
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-all-hybrid.ps1 $(HYBRID_ARGS)
 else
 	@echo "build-all-hybrid must be run from Windows PowerShell"
@@ -333,10 +339,23 @@ endif
 
 nsiswindows11:  ## Build NSIS installer for Windows 11 (requires NSIS + AutoDJ.exe in dist/)
 ifeq ($(OS),Windows_NT)
-	@if not exist dist\AutoDJ.exe (echo "ERROR: dist\AutoDJ.exe not found. Run 'make build' first." && exit 1)
+	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found. Run 'make build' first."; exit 1; fi
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_installer.ps1 -Version $(VERSION) -Sign
 else
 	@echo "nsiswindows11 requires Windows 11 with NSIS installed"
+	@exit 1
+endif
+
+validate-installer:  ## Static checks of installer.nsi / build scripts (no Windows needed)
+	$(PY) tools/validate_installer.py
+
+validate-windows: win11-validate  ## Alias of win11-validate
+
+validate-windows-bat:  ## Run scripts/validate-windows.bat (Windows cmd)
+ifeq ($(OS),Windows_NT)
+	cmd.exe /c scripts\\validate-windows.bat
+else
+	@echo "validate-windows-bat requires Windows"
 	@exit 1
 endif
 

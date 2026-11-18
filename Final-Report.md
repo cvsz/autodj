@@ -1,175 +1,132 @@
-# CamfrogAutoDJ — Final Report
+# Final Report — CamfrogAutoDJ 0.3.0 audit, fixes and hardening (2026-11-18)
 
-**Project:** CamfrogAutoDJ (AutoDJ)  
-**Repository:** https://github.com/cvsz/autodj  
-**Version:** 0.3.0 (Python 3.11+)  
-**Date:** 2026-11-16  
-**Status:** Enterprise-ready — all validation gates green, 528 tests passed, zero issues
+## 1. Executive summary
 
----
+A full audit (code, config, scripts, CI, packaging, security) found and fixed **6 security/privacy defects, 11 functional bugs** and the complete bandit/shellcheck backlog. Every local gate is green: **pytest 554 passed / 0 failed, ruff 0, ruff-format 0 (Python), mypy 0 (47 files), shellcheck 0 (12 scripts), bandit 0 (all severities and confidence levels)**, and the wheel/sdist build plus a dependency check also pass.
 
-## Executive Summary
+Evidence classification (per `ZEAZ-INTRODUCTION.md`):
 
-CamfrogAutoDJ has been brought to full enterprise readiness. All critical
-blockers that prevented the application from starting have been eliminated,
-every missing command handler referenced in the bilingual help guide has been
-implemented, the autoplay subsystem has been corrected so the YouTube autoplay
-source actually plays when no user requests are pending, and all security
-findings from the independent audit have been remediated.
+| Area | State |
+|---|---|
+| Python code, tests, lint, types, security scan, packaging | **VERIFIED** (Linux, Python 3.12, commands in §5) |
+| Windows exe / NSIS installer build | **BLOCKED**: needs the Windows 11 build host (not run in this session) |
+| Live Camfrog room + mpv playback | **BLOCKED**: needs an authorized Camfrog test room |
+| Signed commit → PR → independent review → merge (step 5) | **BLOCKED**: see §7 |
 
-The system is verified to compile cleanly, pass `ruff check` and `ruff
-format --check`, pass `mypy` with no issues, and pass the complete automated
-test suite (528 tests, 3 subtests) with zero failures and zero warnings
-(other than a pre-existing pywinauto COM-threading notice unrelated to code
-quality).
+Everything is enterprise-ready to the level the local evidence supports; the two runtime items above must be confirmed on the Windows host before release.
 
----
+## 2. Functional changes — now-playing in the room
 
-## Changes Made
+| Change | Files |
+|---|---|
+| **"What song is this?" auto-answer**: room lines containing `np_question_keywords` (เพลงอะไร, เพลงไร, เพลงชื่อ, ชื่อเพลง, เพลงนี้ชื่อ, what song, what's playing, song name) get the now-playing reply without a command; room-wide `np_question_cooldown` (20 s); toggle `np_question_reply` (also in GUI Settings) | engine, config, gui, messages |
+| `!np` / `!เพลงนี้` adds live progress `(1:05/3:20)` | engine, commands |
+| Templates gain `{elapsed}`, `{remaining}`, `{eta}`; `msg_next` "อีก {eta}" = real wait until that song starts | engine, config.example.toml |
+| **Bug:** "Up next" announced song A but played song B (`pop_pool` ignored the `peek()` result) | playqueue |
+| **Bug:** autoplay pool drained after one pass (tracks were removed) → now loops forever with a shuffle bag (no repeats until every song has played) | playqueue |
+| **Bug:** repeat-one re-posted "Now playing" every loop → announced once | engine |
+| **Bug:** "Now playing" elapsed time could exceed the song length → clamped and rounded | engine |
 
-### 1. Critical blocker fixes (application could not start)
+## 3. Security, privacy and reliability fixes
 
-| # | Issue | File | Fix |
-|---|-------|------|-----|
-| 1 | `commands.py` failed to import: `aplay`/`addm` and `play` shared aliases (`req`, `p`, `ขอเพลง`, `เล่นเพลง`, `เปิดเพลง`) → `ValueError: command name 'req' is registered twice`. Engine imports `Router` from `commands`, so the app could not start. | `camfrog_autodj/commands.py` | Split aliases: `aplay` keeps `aplay`, `addm`; `play` keeps `play`, `request`, `req`, `p`, `เล่น`, `ขอเพลง`, `เล่นเพลง`, `เปิดเพลง`. |
-| 2 | `last` registered twice (`_last` and `_lastp` both used alias `last`). | `camfrog_autodj/commands.py` | Removed `last` from `_lastp`; kept `lastp` only. |
-| 3 | `np` registered twice (`_np` and `_nowp` both used alias `np`). | `camfrog_autodj/commands.py` | Removed `np` from `_nowp`; kept `nowp` only. |
-| 4 | Thai alias `ขอล่าสุด` registered twice (`_last` and `_lastp`). | `camfrog_autodj/commands.py` | Removed `ขอล่าสุด` from `_lastp`. |
-| 5 | Thai alias `เพลงนี้` registered twice (`_np` and `_nowp`). | `camfrog_autodj/commands.py` | Removed `เพลงนี้` from `_nowp`. |
+| # | Severity | Finding → Fix |
+|---|---|---|
+| S1 | High | Auto-update downloaded `AutoDJ.exe` with **no integrity check** → SHA-256 required (GitHub asset `digest` or `.sha256`/`SHA256SUMS`); a mismatch or missing digest is refused and the partial file deleted |
+| S2 | High | Webhook HMAC covered only the body: every empty-body call (health/skip/pause/resume) shared **one permanent signature** → signs `ts.METHOD.path.body`, 300 s window, one-time replay cache |
+| S3 | High | Empty webhook secret meant HMAC with an empty key (forgeable) → secrets shorter than 16 chars fail closed (503) |
+| S4 | Medium | AI answered **private IMs in the public room** (leaked them) → IMs are never sent to the AI |
+| S5 | Medium | `.dockerignore` let `.config/` (gh token store), `cert/` and `docs/rea/` (malware samples) into the image → excluded |
+| S6 | Medium | `setup-git-credential-helper.sh` wrote a plaintext token store to the relative path `D/.git-credentials` → now `$HOME/.git-credentials`, refuses paths inside the repo, `chmod 600` |
+| P1 | Privacy | GitHub was contacted at startup even with `auto_update_enabled = false` → only when enabled |
+| B1 | Bug | AI never worked: the URL guard only allowed github.com → https any host (http for localhost only), no embedded credentials |
+| B2 | Bug | AI blocked the chat-reading thread (up to 60 s) and ignored its cooldown → runs on the executor and is cooldown-gated |
+| B3 | Bug | `!ai on/off/model/prompt` and config reload had no effect; prompt/model text was lowercased → client rebuilt, case kept |
+| B4 | Bug | Updater offered **downgrades**, matched `AutoDJ.exe.sha256` as the exe, used the wrong exe path in PyInstaller builds, and its swap script deleted the old exe even after a failed rename → all fixed (rollback added) |
+| B5 | Bug | GUI "Save settings" silently reset `ai_*`, `auto_update_*`, `webhook_secret`, `voteskip_cooldown`, `log_json*` → every key persisted |
+| B6 | Bug | `pip install` crashed: `plugins/` and `webhook/` packages missing → `packages.find` |
+| B7 | Bug | Webhook rate limiter answered 500 instead of 429; the IP table grew unbounded → fixed and pruned |
+| B8 | Bug | A sender adapter that failed its self-test was kept → falls back to `NullAdapter` |
+| B9 | Bug | `post-review-comment.sh` was missing `fi` (the CI step always failed) |
+| H1 | Hardening | Runtime `assert`s (stripped by `python -O`) → explicit checks; swallowed exceptions → logged; `gh`/`powershell` → absolute paths |
 
-### 2. Missing command handlers implemented (referenced in `/hadj` help guide)
+## 4. Performance and scalability
 
-| # | Command | Handler | File | Notes |
-|---|---------|---------|------|-------|
-| 6 | `/aplay` (alias `/addm`) | `_aplay` | `camfrog_autodj/commands.py` | Requests a song; supports `/aplay fav <n>` to play a favorite. |
-| 7 | `/nowp` (alias `/np`) | `_nowp` | `camfrog_autodj/commands.py` | Shows current song and requester. |
-| 8 | `/skipp` | `_skipp` | `camfrog_autodj/commands.py` | Skips current song (requester/admin). |
-| 9 | `/lastp` (alias `/last`) | `_lastp` | `camfrog_autodj/commands.py` | Shows last played song. |
-| 10 | `/hbdp` (alias `/hbdm`) | `_hbdp` | `camfrog_autodj/commands.py` | Birthday wish + plays birthday song. |
-| 11 | `/topp` (alias `/topm`) | `_topp` | `camfrog_autodj/commands.py` | Top requested songs today/week. |
-| 12 | `/favp` (alias `/favm`) | `_favp` | `camfrog_autodj/commands.py` | Saves current song to favorites. |
-| 13 | `/myfavp` (alias `/myfavm`) | `_myfavp` | `camfrog_autodj/commands.py` | Lists user's favorites. |
-| 14 | `/hadj` | `_hadj` | `camfrog_autodj/commands.py` | Sends full bilingual help guide (page 1 + page 2 + next page). |
+- The chat-reading loop no longer blocks on network calls (AI moved to the thread pool), so command latency is independent of AI provider latency.
+- Webhook state is bounded: the rate-limit table is pruned every 60 s, and the replay cache expires after 600 s.
+- The autoplay pool is O(n) per pick with no rebuilds, and it loops indefinitely, so an unattended room never goes silent.
+- The updater's check interval is floored at 300 s, so it never hammers the GitHub API.
 
-### 3. New subsystems
+## 5. Validation matrix
 
-| # | Subsystem | File | Description |
-|---|-----------|------|-------------|
-| 15 | Favorites store | `camfrog_autodj/favorites.py` (new) | Thread-safe JSON store (`favorites.json`) next to config.toml. Stores favorite tracks per user with deduplication by source. |
-| 16 | Top-requests statistics | `camfrog_autodj/engine.py` | `top_requests(period, limit)` and `record_request(source, title)` backed by `top_requests.json` (30-day rolling window). |
+| Gate | Command | Result |
+|---|---|---|
+| Syntax | `python -m compileall -q camfrog_autodj tests tools` | ✅ OK |
+| Unit + integration tests | `python -m pytest -q -p no:faulthandler -p no:cacheprovider -W error::DeprecationWarning` | ✅ **554 passed**, 1 skipped (Linux-only display check), 0 warnings |
+| New tests | `tests/test_now_playing.py` (9), `tests/test_updater_ai_hardening.py` (12), webhook hardening (5) | ✅ |
+| Lint | `ruff check .` | ✅ 0 |
+| Format | `ruff format --check camfrog_autodj tests tools scripts` | ✅ 0 (only Python snippets inside 7 Markdown docs are flagged) |
+| Types | `mypy camfrog_autodj` | ✅ 0 issues / 47 files |
+| Shell | `shellcheck` on all 12 tracked `*.sh` | ✅ 0 |
+| Build | `uv build` → wheel + sdist; clean venv install `[webhook,hotreload]` | ✅ imports `plugins.builtin`, `webhook.server`, `engine` |
+| Missing deps | `uv pip check` | ✅ all 22 packages compatible |
+| Secrets in git | `git grep` / `git log -G` for token patterns | ✅ none tracked, none in history |
+| Security scan | `bandit -c pyproject.toml -r .` | ✅ see below |
 
-### 4. Autoplay logic fix
+```
+Run metrics (bandit 1.9.4, 14,463 LOC):
+  Total issues (by severity):   Undefined: 0  Low: 0  Medium: 0  High: 0
+  Total issues (by confidence): Undefined: 0  Low: 0  Medium: 0  High: 0
+```
 
-| # | Issue | File | Fix |
-|---|-------|------|-----|
-| 17 | `_pop_next_track()` never returned autoplay pool tracks when autoplay mode was active (the `is_request` flag blocked the pool branch). | `camfrog_autodj/engine.py` | Simplified to always check requests first, then pool. Removed the broken `is_request` parameter. |
-| 18 | `_player_loop` passed the autoplay-inflated flag to `_play_one_track`, giving pool tracks wrong retry semantics. | `camfrog_autodj/engine.py` | Now passes `has_requests` (real request presence) so pool tracks get proper retry behavior. |
+The baseline was 49 issues (46 in the package/scripts/tools, plus 3 in root helpers; Low 45, Medium 4). Fixed in code: 6 runtime `assert` sites, 5 swallowed-exception sites and 2 partial-path executable calls. Suppressed after review: 37, by bandit's own count, each written as `# nosec <id> - <reason>`. These are subprocess calls with a fixed argv and no shell, `urlopen` after scheme/host validation, UI label text and shuffle randomness. `tests/` is excluded in `[tool.bandit]`, because pytest asserts and fixture values are intentional there.
 
-### 5. Configuration changes
+## 6. Documentation updated
 
-| # | Setting | Old default | New default | File |
-|---|---------|-------------|-------------|------|
-| 19 | `auto_reply_interval` | `300.0` (5 min) | `60.0` (1 min) | `camfrog_autodj/config.py`, `config.example.toml`, `install-full-auto.ps1` |
-| 20 | `playlist_dir` | `"playlist"` | `""` (disabled) | `camfrog_autodj/config.py`, `config.example.toml`, `install-full-auto.ps1` |
-| 21 | `autoplay_sources` | `[]` | `["https://www.youtube.com/watch?v=HhVVVgYsBYw&t"]` | `camfrog_autodj/config.py`, `config.example.toml` |
+`CHANGELOG.md`, `README.md`, `config.example.toml`, `docs/admin-manual.{en,th}.md`, `docs/autodj-commands.{en,th}.md`, `docs/user-manual.{en,th}.md` and `docs/architecture.md` now cover the new keys, the webhook signing scheme (with a Python example), AI/update behaviour and the autoplay semantics. The user's local `config.toml` changed `msg_next` from `{duration}` to `{eta}`.
 
-### 6. `install-full-auto.ps1` — complete config.toml generation
+## 6b. Update — request rules, default song, Settings dialog
 
-Replaced the minimal (~58 line) generated config with a complete config matching all sections of `config.example.toml` (bot identity, chat I/O, media playback, audio engineering, library/TTS, request/queue limits, auto-launch, moderation/security, logging, playlist persistence, YouTube search, mpv hang detection, dynamic moderation, auto-reply, IM auto-reply, autoplay idle timeout, admin greeting, IM viewer, message style, admin mic/block/kick/ban/punish/delete, welcome message, Camfrog RE integrations, webhook, hot reload, plugins).
+| Change | Evidence |
+|---|---|
+| `default_track` = `https://www.youtube.com/watch?v=HhVVVgYsBYw`: plays at startup, and again when the queue is empty and nobody has requested for 30 s (`autoplay_idle_timeout`); a dead link falls back to the pool for 10 min | `tests/test_now_playing.py` (8 request-rule tests) |
+| First request cuts the default/autoplay song immediately; a **requested** song is never cut; later requests are queued **FIFO**. Root causes: `_cut_current()` always skipped, and requests were inserted at the front of the queue (LIFO) | same tests, plus the FIFO update in `test_hardening.py` |
+| Settings dialog: inputs hidden behind their row frames, labels blank, stray duplicate titles, 30 unlabelled toggles, Save/Close buried → all rows visible, toggles labelled, Save/Close pinned at the bottom | real-Tk test `test_settings_dialog_visible_saves_and_reopens` (Xvfb) and a before/after screenshot check |
+| Settings save: result/errors went into the room, the live config was mutated before validation, the language was reverted, and the dialog could not be reopened → in-dialog status, validate-then-apply via `_on_config_reload`, `<Destroy>` handling | same test |
 
-### 7. Message translations (`messages.py`)
+Re-validated after this update: compileall OK · **pytest 564 passed, 0 skipped** (GUI tests run under Xvfb) · ruff 0 · ruff-format 0 · mypy 0 · shellcheck 0 · bandit 0/0/0/0 (severity) and 0/0/0/0 (confidence).
 
-Added bilingual (`en`/`th`) keys for all new IM commands: `hbdp_usage`, `hbdp_wish`, `hbdp_playing`, `hbdp_no_song`, `topp_none`, `topp_list`, `favp_saved`, `myfavp_empty`, `myfavp_list`, `aplay_fav_usage`, `aplay_fav_not_found`, `usage`, plus the existing `queue_empty_im`, `help_im_page1`, `help_im_page2`, `help_im_next_page`, `request_limit_rule`. All `{USER}` placeholders escaped as `{{USER}}`.
+## 6c. Update: deep review of code, logic, options and Makefile (0.3.2)
 
-### 8. Security remediations
+Three parallel reviews (engine/player, commands/options, Makefile/build/CI) found **29 defects**. Each one was reproduced before it was fixed. All are fixed, and the 29 regression tests are in `tests/test_now_playing.py`, plus updates to the existing tests.
 
-| # | Severity | Issue | File | Fix |
-|---|----------|-------|------|-----|
-| M1 | Medium | Webhook CORS `allow_credentials=True` with `allow_origins=["*"]` (browsers reject credentials with wildcard origin). | `camfrog_autodj/webhook/server.py` | `allow_credentials=config.cors_origins != ["*"]` |
-| M2 | Medium | Webhook secret defaults to empty string when webhook enabled. | `camfrog_autodj/config.py` | `ConfigError` if `webhook_enabled=true` and `webhook_secret` is empty. |
-| M5 | Medium | Rate-limit cleanup not auto-scheduled (dicts grow unboundedly). | `camfrog_autodj/engine.py` | Already present via `_rate_limit_cleanup_loop` (runs every 60s, started in `start()`). Verified present. |
-| L1 | Low | `config.toml` written without restrictive permissions (may contain `webhook_secret`). | `camfrog_autodj/gui.py` | `os.chmod(path, 0o600)` after atomic write in both the primary path and the APPDATA relocation path. |
+| Area | Most important fixes |
+|---|---|
+| Request rules | A searched request lost `is_request` after resolution, so it could be cut or dropped. A local `default_track` was searched on YouTube. A failed default-song lookup blocked the player thread every repeat. "Up next" was wrong when the default song comes next. |
+| Timers | Welcome, greeting, IM auto-reply and voteskip treated `0.0` as "never" against boot-relative `monotonic()`, so the first greeting was skipped on PCs up for less than an hour. |
+| Player | TTS never ducked the music. `stop()` blocked the GUI for up to 10 s. mpv could keep playing after AutoDJ exited. |
+| Options | `allow_play_in_room`, `im_require_room_presence`, `config_hot_reload`, `webhook_*` and `plugins` were all dead. They are now enforced or wired up (`!stats` and `!plugins` work). |
+| Commands | The rate limit skipped 5 play aliases. `!hbdp` and `!aplay fav` bypassed the queue rules. `!punishbot` could target admins. Fixes also cover IM `!np`, the `!load` relative-path check, the localized `!ai`/`!topm` replies, and a Router lock race. |
+| Build/CI | Fixed `win11-check`/`build-all` on Windows. `typecheck` is now a real gate. `make package` no longer leaks `.env` or user data. The installer compiles without vendored mpv and keeps user playlists. The release requires tag == version, a CHANGELOG section and a signed exe. The version is now **0.3.2** everywhere (tag v0.3.1 had shipped with 0.3.0 metadata). |
 
----
+Validation (clean tree copy):
 
-## Performance & Scalability Results
+| Gate | Result |
+|---|---|
+| compileall | ✅ |
+| pytest (`-W error::DeprecationWarning`, Xvfb) | ✅ **580 passed**, 0 skipped |
+| ruff / ruff format (Python) | ✅ 0 / 0 |
+| mypy (47 files) | ✅ 0 |
+| shellcheck (12 scripts) | ✅ 0 |
+| bandit, severity Undefined/Low/Medium/High | ✅ 0/0/0/0 |
+| bandit, confidence Undefined/Low/Medium/High | ✅ 0/0/0/0 |
+| `make lint typecheck changelog-check config-check validate-playlists validate-installer security-check version` | ✅ all exit 0 |
+| `make -n` for win11-check, build-all, nsiswindows11, sign, release, package, validate-windows* | ✅ parse |
+| Release gate dry-run | ✅ v0.3.2 passes; v0.3.1 is rejected (version mismatch) |
+| Windows exe/installer build, live Camfrog | **BLOCKED**: needs the Windows host |
 
-- **Player loop:** One mpv process per track; no shared state between tracks. IPC for control (pause/resume/seek/volume). Graceful timeout (duration + mpv_timeout, never a hard cap). Hang detection polls at 0.5s; terminate → kill after grace period. Resource cleanup (IPC log files removed, `proc` reference cleared).
-- **GUI concurrency:** Tkinter mainloop owns the window; no blocking I/O on main thread. Cross-thread updates via `tk.after(0, ...)`. Reentrancy guards on buttons during async operations. Cancellation via `stop_evt` + `ThreadPoolExecutor.shutdown(cancel_futures=True)`. Timer cleanup with `after_cancel` on window close.
-- **Library scanning:** Never follows symlinks. Bounded recursion (`max_dirs` cap). Bounded results (`limit` cap). Permission resilience per-entry. Metadata fallback to filename.
-- **Configuration:** Fail-closed validation (type → choices → ranges → regexes → semantic). Atomic writes (temp file + `os.replace()` + `.bak` backup). Auto-relocation to `%APPDATA%\CamfrogAutoDJ\` when not writable.
-- **Thread safety:** All shared state guarded by locks (queue, circuit breaker, send failures, chat rate, IM cooldowns, admin greetings, welcome cooldowns). `Router._within_limits` and `cleanup_expired_entries` use a dedicated lock to prevent TOCTOU races.
-- **Test coverage:** 528 tests passed across 39 test files, covering play/queue/skip/voteskip, playlist persistence, config hot-reload, GUI logic/i18n, hardening, security, library scan safety, concurrency, webhook, migration, discovery, and more.
+## 7. Known limits and open items (not hidden)
 
----
-
-## Validation Results Summary
-
-| Dimension | Tool | Result | Details |
-|-----------|------|--------|---------|
-| Compilation | `python -m compileall -q` | PASS | All Python files compile cleanly |
-| Lint | `ruff check camfrog_autodj tests tools` | PASS | All checks passed, zero errors |
-| Format | `ruff format --check camfrog_autodj tests tools` | PASS | 99 files already formatted |
-| Types | `mypy camfrog_autodj` | PASS | No issues found in 45 source files |
-| Unit tests | `pytest -q -p no:faulthandler -p no:cacheprovider` | PASS | 528 passed, 3 subtests, 0 failures |
-| Security audit | Independent review | PASS | All Medium/Low findings remediated (M1, M2, L1 fixed; M5 already present) |
-| Secrets scan | `git ls-files` grep | PASS | No committed secrets (`.env`, `id_rsa`, `.pem`, `.key`) |
-
----
-
-## Metrics Summary
-
-### Total issues (by severity)
-
-| Severity | Count |
-|----------|-------|
-| Undefined | 0 |
-| Low | 0 |
-| Medium | 0 |
-| High | 0 |
-
-### Total issues (by confidence)
-
-| Confidence | Count |
-|------------|-------|
-| Undefined | 0 |
-| Low | 0 |
-| Medium | 0 |
-| High | 0 |
-
-All issues have been remediated to zero across both severity and confidence dimensions.
-
----
-
-## Documentation Updated
-
-| File | Change |
-|------|--------|
-| `docs/admin-manual.en.md` | `playlist_dir` → `""` (disabled); `auto_reply_interval` → `60.0` |
-| `docs/admin-manual.th.md` | `playlist_dir` → `""` (disabled); `auto_reply_interval` → `60.0` |
-| `docs/AUTOMATED-INSTALLER-SPEC-v2.md` | `playlist_dir` → `""`; `auto_reply_interval` → `60.0` |
-| `docs/autodj-blueprint.md` | `playlist_dir` → `""` (3 occurrences); `auto_reply_interval` → `60.0` |
-| `docs/superpowers/plans/2026-11-12-final-production-readiness.md` | `auto_reply_interval` note updated to reflect 60s now matches config |
-
----
-
-## Rollback Plan
-
-All changes are additive or corrective within existing files. No new folders were created. The only new file is `camfrog_autodj/favorites.py` (within the existing package) and this `Final-Report.md` (at repository root). If a rollback is required:
-
-1. Revert `camfrog_autodj/commands.py` to remove new command handlers.
-2. Revert `camfrog_autodj/engine.py` `_pop_next_track` and `_player_loop` changes.
-3. Delete `camfrog_autodj/favorites.py`.
-4. Revert `camfrog_autodj/config.py` defaults (`auto_reply_interval` → `300.0`, `playlist_dir` → `"playlist"`, `autoplay_sources` → `[]`).
-5. Revert `config.example.toml` and `install-full-auto.ps1`.
-6. Revert `messages.py` new keys.
-7. Revert `gui.py` `os.chmod` additions and `webhook/server.py` CORS change.
-8. Revert docs changes.
-
-No database migrations or data format changes are required; `favorites.json` and `top_requests.json` are created at runtime only when features are used.
-
----
-
-## Conclusion
-
-CamfrogAutoDJ is verified as enterprise-ready. All critical blockers resolved, all missing functionality implemented, all security findings remediated, and the complete validation suite passes with zero issues. The system is ready for production deployment.
+- **Webhook server is not started by the engine**: the code is hardened and tested, but `webhook_enabled` has no runtime effect yet (documented).
+- **IM auto-reply** posts the operator's fixed text to the room, because the adapter has no private send channel; IM content is never echoed.
+- **Step 5 (signed commit, PR, independent review, merge): BLOCKED in this session.** The session machine has no `gh` CLI, no `/home/cvsz` credential store, no GPG secret key (`commit.gpgsign=true` is required) and no SSH egress for `git@github.com`. In addition, `CLAUDE.md` forbids self-approval; the approval must come from the policedbc reviewer, not from the author's session. Run Phase A–C from `CLAUDE.md` on the cvsz workstation: `feat/autodj-np-room-and-hardening`, `git add` of the 44 modified and 2 new files listed by `git status`, then `git commit -S`.
+- Local hygiene, recommended: rotate the tokens in `.git-credentials` and `.config/gh/.git-credentials` (git-ignored, never committed), and move `docs/rea/` malware samples off the dev tree.

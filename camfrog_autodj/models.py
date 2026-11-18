@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 class UserError(Exception):
@@ -28,6 +28,10 @@ class Track:
     requester: str = "AutoDJ"
     added: str = ""
     state: str = "QUEUED"  # QUEUED, RESOLVING, READY, PLAYING, COMPLETED, FAILED, CANCELLED
+    # True once the track entered the request queue (a user/DJ asked for it).
+    # Requested songs always play to the end; only non-requested ones (startup
+    # song, autoplay pool) may be cut short by a new request.
+    is_request: bool = field(default=False, compare=False, repr=False)
 
     @property
     def dur(self) -> str:

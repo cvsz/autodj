@@ -51,9 +51,8 @@ def choose_view(ctls: list[Ctl], rx: re.Pattern) -> tuple[Ctl | None, int]:
         key = (matched, len(c.text), c.area, c.ctype == "Document")
         if best_key is None or key > best_key:
             best, best_key = c, key
-    if best is None:
+    if best is None or best_key is None:
         return None, 0
-    assert best_key is not None
     if best_key[0] == 0 and best.ctype != "Document":
         # No chat-like lines matched: not a chat view.
         return None, 0

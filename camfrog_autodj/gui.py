@@ -6,6 +6,8 @@ The equaliser is decorative: it moves while a track plays and settles when pause
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import json
 import logging
 import math
@@ -58,6 +60,38 @@ def mmss(sec: float) -> str:
     straight from 0:00 to 0:01 on the next poll — avoids the countdown 'skip' effect."""
     s = round(sec)
     return f"{s // 60}:{s % 60:02d}"
+
+
+def _toml_value(v: object) -> str | None:
+    """TOML literal for a simple config value (None = not representable)."""
+    if isinstance(v, bool):
+        return str(v).lower()
+    if isinstance(v, (int, float)):
+        return repr(v)
+    if isinstance(v, str):
+        return _toml_str(v)
+    if isinstance(v, (list, tuple)):
+        items = [_toml_value(x) for x in v]
+        if any(i is None for i in items):
+            return None
+        return "[" + ", ".join(i for i in items if i is not None) + "]"
+    return None
+
+
+def _append_remaining_keys(lines: list[str], cfg: object) -> None:
+    """Append ``key = value`` for every Config field not already in *lines*.
+
+    The settings writer lists keys by hand and had drifted: saving settings
+    silently reset ai_*, auto_update_*, webhook_secret, voteskip_cooldown and
+    log_json* to their defaults.  This keeps the file complete.
+    """
+    emitted = {ln.split(" =", 1)[0] for ln in lines if " = " in ln}
+    for f in dataclasses.fields(cfg):  # type: ignore[arg-type]
+        if f.name in emitted or f.name == "message_style":
+            continue
+        val = _toml_value(getattr(cfg, f.name))
+        if val is not None:
+            lines.append(f"{f.name} = {val}")
 
 
 def _toml_str(s: str) -> str:
@@ -1005,10 +1039,15 @@ class App(tk.Tk):
         # Bring existing settings window to front if already open
         win: tk.Toplevel | None = getattr(self, "_settings_win", None)
         if win is not None:
-            win.winfo_exists()
-            win.lift()
-            win.focus_set()
-            return
+            try:
+                if win.winfo_exists():
+                    win.deiconify()
+                    win.lift()
+                    win.focus_set()
+                    return
+            except tk.TclError:
+                pass
+            self._settings_win = None  # stale: the window was destroyed another way
 
         sp = tk.Toplevel(self)
         sp.title(self.e.t("g_settings"))
@@ -1077,17 +1116,22 @@ class App(tk.Tk):
                 pady=(self.px(6), self.px(2)),
                 padx=padx,
             )
-            lbl = tk.Label(lf, bg=SURFACE, fg=TEXT, font=self.f_body, anchor="w")
+            lbl = tk.Label(
+                lf, bg=SURFACE, fg=TEXT, font=self.f_body, anchor="w", text=self.e.t(label_key)
+            )
             lbl.pack(in_=lf, side="left")
             self._labels.append((lbl, label_key))
             widget.pack(in_=lf, side="right", fill="x", expand=True, padx=(self.px(10), 0))
-            if note_key:
-                note = tk.Label(sp_inner, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w")
-                note.grid(row=row + 1, column=0, columnspan=2, sticky="w", padx=padx)
-                self._labels.append((note, note_key))
-                row += 2
-            else:
-                row += 1
+            # The entry was created before `lf`, so Tk stacks `lf` above it and the
+            # entry is invisible unless raised.  (Root cause of the "empty" dialog.)
+            # (Canvas-based widgets such as PillButton override lift(): call Tk directly.)
+            tk_interp = getattr(widget, "tk", None)
+            if tk_interp is not None:
+                tk_interp.call("raise", str(widget), str(lf))
+            # note_key is accepted for call-site compatibility but not rendered: every
+            # caller passed the *next* row's label, which printed duplicate titles.
+            del note_key
+            row += 1
             return widget
 
         # Language (handled by header pills, shown for reference)
@@ -1243,7 +1287,7 @@ class App(tk.Tk):
         self.s_auto_reply_enabled = self.e.cfg.auto_reply_enabled
         cb_auto_reply: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_auto_reply_enabled",
             lambda: self._toggle_bool("s_auto_reply_enabled", cb_auto_reply),
             "chip",
             icon="✓" if self.e.cfg.auto_reply_enabled else "",
@@ -1276,6 +1320,11 @@ class App(tk.Tk):
         self.s_auto_reply_file.insert(0, self.e.cfg.auto_reply_file)
         _setting_row("g_settings_auto_reply_file", self.s_auto_reply_file, "g_settings_tts_voice")
 
+        # default_track (startup + idle song)
+        self.s_default_track = self._entry(sp_inner)
+        self.s_default_track.insert(0, self.e.cfg.default_track)
+        _setting_row("g_settings_default_track", self.s_default_track)
+
         # autoplay_idle_timeout
         self.s_autoplay_idle_timeout = self._entry(sp_inner)
         self.s_autoplay_idle_timeout.insert(0, str(self.e.cfg.autoplay_idle_timeout))
@@ -1289,7 +1338,7 @@ class App(tk.Tk):
         self.s_admin_greeting_enabled = self.e.cfg.admin_greeting_enabled
         cb_admin_greeting: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_greeting_enabled",
             lambda: self._toggle_bool("s_admin_greeting_enabled", cb_admin_greeting),
             "chip",
             icon="✓" if self.e.cfg.admin_greeting_enabled else "",
@@ -1330,7 +1379,7 @@ class App(tk.Tk):
         self.s_gift_announce_enabled = self.e.cfg.gift_announce_enabled
         cb_gift_announce: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_gift_announce_enabled",
             lambda: self._toggle_bool("s_gift_announce_enabled", cb_gift_announce),
             "chip",
             icon="✓" if self.e.cfg.gift_announce_enabled else "",
@@ -1353,7 +1402,7 @@ class App(tk.Tk):
         self.s_avatar_change_enabled = self.e.cfg.avatar_change_enabled
         cb_avatar_change: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_avatar_change_enabled",
             lambda: self._toggle_bool("s_avatar_change_enabled", cb_avatar_change),
             "chip",
             icon="✓" if self.e.cfg.avatar_change_enabled else "",
@@ -1376,7 +1425,7 @@ class App(tk.Tk):
         self.s_status_indicator_enabled = self.e.cfg.status_indicator_enabled
         cb_status_indicator: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_status_indicator_enabled",
             lambda: self._toggle_bool("s_status_indicator_enabled", cb_status_indicator),
             "chip",
             icon="✓" if self.e.cfg.status_indicator_enabled else "",
@@ -1399,7 +1448,7 @@ class App(tk.Tk):
         self.s_status_alert_enabled = self.e.cfg.status_alert_enabled
         cb_status_alert: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_status_alert_enabled",
             lambda: self._toggle_bool("s_status_alert_enabled", cb_status_alert),
             "chip",
             icon="✓" if self.e.cfg.status_alert_enabled else "",
@@ -1422,7 +1471,7 @@ class App(tk.Tk):
         self.s_im_viewer_enabled = self.e.cfg.im_viewer_enabled
         cb_im_viewer: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_im_viewer_enabled",
             lambda: self._toggle_bool("s_im_viewer_enabled", cb_im_viewer),
             "chip",
             icon="✓" if self.e.cfg.im_viewer_enabled else "",
@@ -1445,7 +1494,7 @@ class App(tk.Tk):
         self.s_im_auto_reply_enabled = self.e.cfg.im_auto_reply_enabled
         cb_im_auto_reply: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_im_auto_reply_enabled",
             lambda: self._toggle_bool("s_im_auto_reply_enabled", cb_im_auto_reply),
             "chip",
             icon="✓" if self.e.cfg.im_auto_reply_enabled else "",
@@ -1486,7 +1535,7 @@ class App(tk.Tk):
         self.s_im_require_room_presence = self.e.cfg.im_require_room_presence
         cb_im_require: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_im_require_room_presence",
             lambda: self._toggle_bool("s_im_require_room_presence", cb_im_require),
             "chip",
             icon="✓" if self.e.cfg.im_require_room_presence else "",
@@ -1509,7 +1558,7 @@ class App(tk.Tk):
         self.s_allow_play_in_room = self.e.cfg.allow_play_in_room
         cb_allow_play: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_allow_play_in_room",
             lambda: self._toggle_bool("s_allow_play_in_room", cb_allow_play),
             "chip",
             icon="✓" if self.e.cfg.allow_play_in_room else "",
@@ -1559,7 +1608,7 @@ class App(tk.Tk):
         self.s_msg_bold = self.e.cfg.message_style.bold
         cb_msg_bold: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_message_style_bold",
             lambda: self._toggle_bool("s_msg_bold", cb_msg_bold),
             "chip",
             icon="✓" if self.e.cfg.message_style.bold else "",
@@ -1582,7 +1631,7 @@ class App(tk.Tk):
         self.s_msg_italic = self.e.cfg.message_style.italic
         cb_msg_italic: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_message_style_italic",
             lambda: self._toggle_bool("s_msg_italic", cb_msg_italic),
             "chip",
             icon="✓" if self.e.cfg.message_style.italic else "",
@@ -1605,7 +1654,7 @@ class App(tk.Tk):
         self.s_msg_underline = self.e.cfg.message_style.underline
         cb_msg_underline: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_message_style_underline",
             lambda: self._toggle_bool("s_msg_underline", cb_msg_underline),
             "chip",
             icon="✓" if self.e.cfg.message_style.underline else "",
@@ -1628,7 +1677,7 @@ class App(tk.Tk):
         self.s_mute_enabled = self.e.cfg.mute_enabled
         cb_mute_enabled: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_mute_enabled",
             lambda: self._toggle_bool("s_mute_enabled", cb_mute_enabled),
             "chip",
             icon="✓" if self.e.cfg.mute_enabled else "",
@@ -1643,7 +1692,7 @@ class App(tk.Tk):
         self.s_admin_mute_mic = self.e.cfg.admin_mute_mic
         cb_admin_mute_mic: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_mute_mic",
             lambda: self._toggle_bool("s_admin_mute_mic", cb_admin_mute_mic),
             "chip",
             icon="✓" if self.e.cfg.admin_mute_mic else "",
@@ -1666,7 +1715,7 @@ class App(tk.Tk):
         self.s_admin_unmute_mic = self.e.cfg.admin_unmute_mic
         cb_admin_unmute_mic: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_unmute_mic",
             lambda: self._toggle_bool("s_admin_unmute_mic", cb_admin_unmute_mic),
             "chip",
             icon="✓" if self.e.cfg.admin_unmute_mic else "",
@@ -1689,7 +1738,7 @@ class App(tk.Tk):
         self.s_admin_block_user = self.e.cfg.admin_block_user
         cb_admin_block_user: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_block_user",
             lambda: self._toggle_bool("s_admin_block_user", cb_admin_block_user),
             "chip",
             icon="✓" if self.e.cfg.admin_block_user else "",
@@ -1712,7 +1761,7 @@ class App(tk.Tk):
         self.s_admin_unblock_user = self.e.cfg.admin_unblock_user
         cb_admin_unblock_user: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_unblock_user",
             lambda: self._toggle_bool("s_admin_unblock_user", cb_admin_unblock_user),
             "chip",
             icon="✓" if self.e.cfg.admin_unblock_user else "",
@@ -1735,7 +1784,7 @@ class App(tk.Tk):
         self.s_admin_block_bot = self.e.cfg.admin_block_bot
         cb_admin_block_bot: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_block_bot",
             lambda: self._toggle_bool("s_admin_block_bot", cb_admin_block_bot),
             "chip",
             icon="✓" if self.e.cfg.admin_block_bot else "",
@@ -1758,7 +1807,7 @@ class App(tk.Tk):
         self.s_admin_unblock_bot = self.e.cfg.admin_unblock_bot
         cb_admin_unblock_bot: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_unblock_bot",
             lambda: self._toggle_bool("s_admin_unblock_bot", cb_admin_unblock_bot),
             "chip",
             icon="✓" if self.e.cfg.admin_unblock_bot else "",
@@ -1781,7 +1830,7 @@ class App(tk.Tk):
         self.s_admin_kick_user = self.e.cfg.admin_kick_user
         cb_admin_kick_user: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_kick_user",
             lambda: self._toggle_bool("s_admin_kick_user", cb_admin_kick_user),
             "chip",
             icon="✓" if self.e.cfg.admin_kick_user else "",
@@ -1804,7 +1853,7 @@ class App(tk.Tk):
         self.s_admin_ban_user = self.e.cfg.admin_ban_user
         cb_admin_ban_user: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_ban_user",
             lambda: self._toggle_bool("s_admin_ban_user", cb_admin_ban_user),
             "chip",
             icon="✓" if self.e.cfg.admin_ban_user else "",
@@ -1827,7 +1876,7 @@ class App(tk.Tk):
         self.s_admin_unban_user = self.e.cfg.admin_unban_user
         cb_admin_unban_user: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_unban_user",
             lambda: self._toggle_bool("s_admin_unban_user", cb_admin_unban_user),
             "chip",
             icon="✓" if self.e.cfg.admin_unban_user else "",
@@ -1850,7 +1899,7 @@ class App(tk.Tk):
         self.s_admin_punish_user = self.e.cfg.admin_punish_user
         cb_admin_punish_user: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_punish_user",
             lambda: self._toggle_bool("s_admin_punish_user", cb_admin_punish_user),
             "chip",
             icon="✓" if self.e.cfg.admin_punish_user else "",
@@ -1873,7 +1922,7 @@ class App(tk.Tk):
         self.s_admin_punish_bot = self.e.cfg.admin_punish_bot
         cb_admin_punish_bot: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_punish_bot",
             lambda: self._toggle_bool("s_admin_punish_bot", cb_admin_punish_bot),
             "chip",
             icon="✓" if self.e.cfg.admin_punish_bot else "",
@@ -1892,11 +1941,34 @@ class App(tk.Tk):
         )
         row += 1
 
+        # np_question_reply toggle ("เพลงอะไร" -> reply with the current song)
+        self.s_np_question_reply = self.e.cfg.np_question_reply
+        cb_np_question_reply: PillButton = self._btn(
+            sp_inner,
+            "g_settings_np_question_reply",
+            lambda: self._toggle_bool("s_np_question_reply", cb_np_question_reply),
+            "chip",
+            icon="✓" if self.e.cfg.np_question_reply else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_np_question_reply.set_active(self.e.cfg.np_question_reply)
+        cb_np_question_reply.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+
         # welcome_message_enabled toggle
         self.s_welcome_message_enabled = self.e.cfg.welcome_message_enabled
         cb_welcome_message_enabled: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_welcome_message_enabled",
             lambda: self._toggle_bool("s_welcome_message_enabled", cb_welcome_message_enabled),
             "chip",
             icon="✓" if self.e.cfg.welcome_message_enabled else "",
@@ -1937,7 +2009,7 @@ class App(tk.Tk):
         self.s_admin_delete_message_enabled = self.e.cfg.admin_delete_message_enabled
         cb_admin_delete_message_enabled: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_admin_delete_message_enabled",
             lambda: self._toggle_bool(
                 "s_admin_delete_message_enabled", cb_admin_delete_message_enabled
             ),
@@ -1987,7 +2059,7 @@ class App(tk.Tk):
         self.s_auto_discover = self.e.cfg.auto_discover
         cb_auto_discover: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_auto_discover",
             lambda: self._toggle_bool("s_auto_discover", cb_auto_discover),
             "chip",
             icon="✓" if self.e.cfg.auto_discover else "",
@@ -2010,7 +2082,7 @@ class App(tk.Tk):
         self.s_auto_launch = self.e.cfg.auto_launch
         cb_auto_launch: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_auto_launch",
             lambda: self._toggle_bool("s_auto_launch", cb_auto_launch),
             "chip",
             icon="✓" if self.e.cfg.auto_launch else "",
@@ -2067,7 +2139,7 @@ class App(tk.Tk):
         self.s_config_hot_reload = self.e.cfg.config_hot_reload
         cb_config_hot_reload: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_config_hot_reload",
             lambda: self._toggle_bool("s_config_hot_reload", cb_config_hot_reload),
             "chip",
             icon="✓" if self.e.cfg.config_hot_reload else "",
@@ -2090,7 +2162,7 @@ class App(tk.Tk):
         self.s_webhook_enabled = self.e.cfg.webhook_enabled
         cb_webhook_enabled: PillButton = self._btn(
             sp_inner,
-            "",
+            "g_settings_webhook_enabled",
             lambda: self._toggle_bool("s_webhook_enabled", cb_webhook_enabled),
             "chip",
             icon="✓" if self.e.cfg.webhook_enabled else "",
@@ -2149,14 +2221,16 @@ class App(tk.Tk):
         self.s_plugins.insert(0, ", ".join(self.e.cfg.plugins))
         _setting_row("g_settings_plugins", self.s_plugins, "g_settings_save")
 
-        # Save / Cancel buttons
-        btn_row = tk.Frame(sp_inner, bg=SURFACE)
-        btn_row.grid(
-            row=row,
-            column=0,
-            columnspan=2,
-            pady=(self.px(18), self.px(14)),
-            padx=(self.px(14), self.px(14)),
+        # Save / Close bar: pinned to the bottom of the window so it is always
+        # reachable (it used to sit after ~120 rows of scrolling), plus a status line
+        # that reports the save result *in the dialog* (it used to go to the room).
+        btn_row = tk.Frame(sp, bg=SURFACE)
+        btn_row.pack(
+            side="bottom",
+            fill="x",
+            before=container,
+            padx=self.px(14),
+            pady=(0, self.px(12)),
         )
         save_btn = self._btn(
             btn_row,
@@ -2171,7 +2245,7 @@ class App(tk.Tk):
         save_btn.pack(side="left")
         cancel_btn = self._btn(
             btn_row,
-            "Close",
+            "g_settings_close",
             lambda: self._settings_close(),
             "ghost",
             icon="✕",
@@ -2180,6 +2254,10 @@ class App(tk.Tk):
             minw=100,
         )
         cancel_btn.pack(side="left", padx=(self.px(8), 0))
+        self._settings_status = tk.Label(
+            btn_row, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w", justify="left"
+        )
+        self._settings_status.pack(side="left", fill="x", expand=True, padx=(self.px(12), 0))
 
         # Place inner frame inside the canvas so it becomes visible.
         # Store the canvas window item ID for the resize binding.
@@ -2195,8 +2273,13 @@ class App(tk.Tk):
         # Protocol handler for window close
         sp.protocol("WM_DELETE_WINDOW", self._settings_close)
 
-        # Store reference
+        # Store reference; drop it whenever the window goes away, however that happens
         self._settings_win = sp
+        sp.bind(
+            "<Destroy>",
+            lambda ev: setattr(self, "_settings_win", None) if ev.widget is sp else None,
+        )
+        self.relabel()  # fill every label/chip text in the current language now
 
         # Focus the first entry
         self.s_mpv_path.focus_set()
@@ -2482,9 +2565,18 @@ class App(tk.Tk):
     _cur_dur = 0
 
     def relabel(self):
+        alive = []
         for w, k in self._labels:
-            if k:  # skip empty keys (e.g., toggle buttons with dynamic text)
-                w.configure(text=self.e.t(k))
+            try:
+                exists = getattr(w, "winfo_exists", None)
+                if exists is not None and not exists():
+                    continue  # widget of a closed window: forget it
+                if k:  # skip empty keys (e.g., toggle buttons with dynamic text)
+                    w.configure(text=self.e.t(k))
+            except tk.TclError:
+                continue
+            alive.append((w, k))
+        self._labels = alive
         self.v_hint.configure(text=self.e.t("g_add_hint"))
         for code, b in self.b_lang.items():
             b.set_active(code == self.e.lang)
@@ -2751,11 +2843,11 @@ class App(tk.Tk):
 
     def do_discover(self):
         """Run auto-discovery to find the Camfrog room window and chat controls."""
-        import subprocess
+        import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
         import sys
 
         try:
-            subprocess.run(
+            subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
                 [
                     sys.executable,
                     "-m",
@@ -2771,11 +2863,11 @@ class App(tk.Tk):
 
     def do_check(self):
         """Run setup diagnostic: mpv, yt-dlp, folders, Camfrog window."""
-        import subprocess
+        import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
         import sys
 
         try:
-            subprocess.run(
+            subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
                 [
                     sys.executable,
                     "-m",
@@ -2818,9 +2910,15 @@ class App(tk.Tk):
             raise ValueError(f"{field} must be a number, got {raw!r}") from err
 
     def save_settings(self):
-        """Save settings from the settings tab back to config.toml."""
+        """Save settings from the settings tab back to config.toml.
+
+        Works on a copy of the live config, so an invalid field never leaves the
+        running engine half-updated; the result is shown in the dialog (it used
+        to be posted into the Camfrog room via say()).
+        """
         try:
-            cfg = self.e.cfg
+            cfg = copy.deepcopy(self.e.cfg)
+            cfg.lang = self.e.lang  # the header language pills change e.lang only
 
             # String fields
             cfg.mpv_path = self.s_mpv_path.get().strip()
@@ -2900,7 +2998,8 @@ class App(tk.Tk):
             )
             cfg.auto_reply_file = self.s_auto_reply_file.get().strip()
 
-            # Autoplay idle timeout
+            # Default song + autoplay idle timeout
+            cfg.default_track = self.s_default_track.get().strip()
             cfg.autoplay_idle_timeout = self._parse_float(
                 self.s_autoplay_idle_timeout, "autoplay idle timeout"
             )
@@ -3097,6 +3196,10 @@ class App(tk.Tk):
             lines.append(f"admin_punish_user = {str(cfg.admin_punish_user).lower()}")
             lines.append(f"admin_punish_bot = {str(cfg.admin_punish_bot).lower()}")
 
+            # "What song is this?" auto-answer
+            cfg.np_question_reply = self.s_np_question_reply
+            lines.append(f"np_question_reply = {str(cfg.np_question_reply).lower()}")
+
             # Welcome message
             cfg.welcome_message_enabled = self.s_welcome_message_enabled
             cfg.welcome_message_message = self.s_welcome_message_message.get().strip()
@@ -3114,9 +3217,8 @@ class App(tk.Tk):
             lines.append(f"webhook_enabled = {str(cfg.webhook_enabled).lower()}")
             lines.append(f"webhook_host = {_toml_str(cfg.webhook_host)}")
             lines.append(f"webhook_port = {cfg.webhook_port}")
-            # webhook_secret is not written to config.toml; it is read from
-            # the WEBHOOK_SECRET environment variable at runtime to avoid
-            # storing secrets in plain text on disk.
+            # webhook_secret (like ai_api_key) is persisted by the generic
+            # remaining-keys loop below; config.toml is git-ignored local data.
             lines.append(f"webhook_rate_limit_per_ip = {cfg.webhook_rate_limit_per_ip}")
             lines.append(f"webhook_cors_origins = {cfg.webhook_cors_origins!r}")
 
@@ -3126,6 +3228,11 @@ class App(tk.Tk):
             lines.append(
                 f"message_style = {{ font_family = {_toml_str(cfg.message_style.font_family)}, font_size = {cfg.message_style.font_size}, font_color = {_toml_str(cfg.message_style.font_color)}, bold = {str(cfg.message_style.bold).lower()}, italic = {str(cfg.message_style.italic).lower()}, underline = {str(cfg.message_style.underline).lower()} }}"
             )
+
+            # Persist every remaining Config key too. The list above is hand-written
+            # and had drifted: saving settings silently dropped ai_*, auto_update_*,
+            # webhook_secret, voteskip_cooldown and log_json* back to defaults.
+            _append_remaining_keys(lines, cfg)
 
             new_text = "\n".join(lines) + "\n"
 
@@ -3176,29 +3283,31 @@ class App(tk.Tk):
                     p,
                 )
 
-            # Re-read config to apply
+            # Re-read the file and apply it exactly like a hot reload does (admins,
+            # blocked users, volume, AI/updater clients, player paths, ...).
             from .config import Config
 
             new_cfg = Config.load(str(p))
-            self.e.cfg = new_cfg
-            self.e.lang = new_cfg.lang
-            self.e.volume = new_cfg.volume
-            self.e.queue.shuffle = new_cfg.shuffle
-            self.e.admins = {a.lower() for a in new_cfg.admins}
-            self.e.blocked = {b.lower() for b in new_cfg.blocked_users}
-
-            # Show save confirmation via say
-            try:
-                self.e.say(self.e.t("g_settings_saved"))
-            except Exception:
-                log.debug("say() failed for settings_saved", exc_info=True)
+            self.e._on_config_reload(new_cfg)
+            self.e.queue.set_shuffle(new_cfg.shuffle)
+            self._settings_feedback(self.e.t("g_settings_saved"), ok=True)
+            self.relabel()  # language may have changed
 
         except Exception as ex:
             log.exception("save settings failed")
-            try:
-                self.e.say(self.e.t("g_settings_save_failed", err=str(ex)))
-            except Exception:
-                log.debug("say() failed for settings_save_failed", exc_info=True)
+            self._settings_feedback(self.e.t("g_settings_save_failed", err=str(ex)), ok=False)
+
+    def _settings_feedback(self, text: str, ok: bool) -> None:
+        """Show the save result in the settings dialog (never in the chat room)."""
+        lbl = getattr(self, "_settings_status", None)
+        try:
+            exists = getattr(lbl, "winfo_exists", None)
+            if lbl is not None and (exists is None or exists()):
+                lbl.configure(text=text, fg=MUTED if ok else "#ff6b6b")
+                return
+        except tk.TclError:
+            pass
+        (log.info if ok else log.warning)("settings: %s", text)
 
     def show_settings(self):
         """Open the settings popup window."""

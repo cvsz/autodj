@@ -8,6 +8,7 @@ and column markers so operators can fix problems by hand.
 from __future__ import annotations
 
 import difflib
+import logging
 import re
 import tomllib
 from dataclasses import dataclass, field, fields
@@ -15,6 +16,8 @@ from pathlib import Path
 from typing import ClassVar
 
 from .exceptions import ConfigError
+
+log = logging.getLogger("autodj")
 
 
 @dataclass
@@ -123,6 +126,22 @@ class Config:
     send_interval: float = 1.5
     max_msg_len: int = 180
     announce_next: bool = True
+    # Answer "what song is this?" lines in the room (no command needed)
+    np_question_reply: bool = True
+    np_question_keywords: list[str] = field(
+        default_factory=lambda: [
+            "เพลงอะไร",
+            "เพลงไร",
+            "เพลงชื่อ",
+            "ชื่อเพลง",
+            "เพลงนี้ชื่อ",
+            "what song",
+            "whats playing",
+            "what's playing",
+            "song name",
+        ]
+    )
+    np_question_cooldown: float = 20.0  # seconds; room-wide, prevents flooding
     msg_now: str = ""  # empty = built-in text for `lang`
     msg_next: str = ""
     tts_voice: str = ""
@@ -201,6 +220,9 @@ class Config:
     allow_play_in_room: bool = False  # when true, !play works in room chat for all users
 
     # Autoplay: switch to autoplay pool after idle timeout
+    # Default song: plays at startup and whenever the request queue is empty and
+    # nobody requested for autoplay_idle_timeout seconds; a request cuts it.
+    default_track: str = ""
     autoplay_idle_timeout: float = 30.0  # seconds before autoplay starts when no user requests
 
     # Admin Greeting
@@ -301,8 +323,8 @@ class Config:
         for cb in list(cls._reload_callbacks):
             try:
                 cb(cfg)
-            except Exception:  # pragma: no cover - callback exceptions must not break reload  # noqa: S110
-                pass
+            except Exception:  # a reload callback must never break reload
+                log.exception("config reload callback %r failed", cb)
 
     @classmethod
     def reload(cls, path: str | None) -> "Config":
@@ -385,6 +407,8 @@ _RANGES = {
     "user_request_limit": (1, 1000),
     "rate_limit_window": (10.0, 86400.0),
     "auto_reply_interval": (60.0, 86400.0),
+    "np_question_cooldown": (0.0, 3600.0),
+    "autoplay_idle_timeout": (0.0, 86400.0),
 }
 
 
