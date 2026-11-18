@@ -532,6 +532,23 @@ class Engine:
     def skip(self) -> None:
         self.player.stop()
 
+    def prev(self) -> None:
+        """Go to the previously played track (from history) and play it now.
+
+        Puts the last completed track back at the front of the request queue
+        and stops the current player so the next loop iteration picks it up.
+        Safe to call when idle: it just re-queues the last track.
+        """
+        prev_track = None
+        for t in self.history:
+            if t is not self.current:
+                prev_track = t
+                break
+        if prev_track is not None:
+            # Re-queue at front so it plays next
+            self.queue.add_request(prev_track, position=0)
+        self.player.stop()
+
     def note_request(self) -> None:
         """Record that a user/DJ request just arrived (drives the idle timer)."""
         self._last_user_request_time = time.monotonic()
@@ -1664,7 +1681,10 @@ class Engine:
 
         Only for non-IM messages. Rate-limited per user using welcome_message_cooldown
         to avoid spam. Thread-safe per-user cooldown tracking. ``{user}`` and ``{room}``
-        in the text are filled in. Returns True if the welcome was sent.
+        in the text are filled in. Returns True if the welcome was sent (or scheduled).
+
+        If ``welcome_message_delay`` is greater than 0, the welcome is scheduled on
+        ``self.exec`` and sent after the delay instead of immediately.
         """
         if not self.cfg.welcome_message_enabled or msg.is_im:
             return False
@@ -1682,9 +1702,28 @@ class Engine:
                 should_send = True
                 self._welcome_cooldowns[key] = now
         if should_send:
-            self.say(welcome_text)
-            log.info("Sent welcome message to %s", msg.user)
+            delay = getattr(self.cfg, "welcome_message_delay", 0.0)
+            if delay and delay > 0:
+                try:
+                    self.exec.submit(self._send_welcome_after_delay, welcome_text, delay)
+                except RuntimeError:  # pool shut down (engine stopping)
+                    log.warning("cannot schedule delayed welcome; engine is stopping")
+            else:
+                self.say(welcome_text)
+                log.info("Sent welcome message to %s", msg.user)
         return should_send
+
+    def _send_welcome_after_delay(self, text: str, delay: float) -> None:
+        """Send a delayed welcome message (runs on ``self.exec`` thread pool)."""
+        try:
+            time.sleep(delay)
+        except Exception:
+            return
+        try:
+            self.say(text)
+            log.info("Sent delayed welcome message (delay=%.1fs)", delay)
+        except Exception:  # engine shutting down / send failure must not crash the pool thread
+            log.exception("failed to send delayed welcome message")
 
     def _emit(self, event: str, *args) -> None:
         """Forward an engine event to loaded plugins (never raises)."""

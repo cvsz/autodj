@@ -152,5 +152,5 @@ class TestLinuxInstallerBuilder:
         script = INSTALLER_SH.read_text(encoding="utf-8")
         assert "tomllib" in script  # default comes from pyproject, never a literal
         assert "pyproject.toml" in script
-        for stale in ["${1:-0.3.0}", "${1:-0.2.3}"]:
+        for stale in ["${1:-0.3.5}", "${1:-0.2.3}"]:
             assert stale not in script, f"hard-coded default version {stale}"

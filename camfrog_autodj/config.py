@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from .exceptions import ConfigError
+from .theme import THEMES
 
 log = logging.getLogger("autodj")
 
@@ -144,6 +145,7 @@ class Config:
     np_question_cooldown: float = 20.0  # seconds; room-wide, prevents flooding
     msg_now: str = ""  # empty = built-in text for `lang`
     msg_next: str = ""
+    ui_theme: str = "zplayer-dark"  # GUI theme: zplayer-dark | zplayer-neon | zplayer-light
     tts_voice: str = ""
     tts_rate: int = 170
     tts_duck: int = 25
@@ -244,6 +246,7 @@ class Config:
     # Welcome Message
     welcome_message_enabled: bool = True  # greet every (non-admin) user who enters the room
     welcome_message_message: str = "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"  # {user} {room}
+    welcome_message_delay: float = 0.0  # seconds to wait before sending the welcome (0 = instant)
     # Room notice for someone entering, with a (?P<user>...) group; "" disables join detection
     # (users are then greeted on their first message). Check the exact wording your Camfrog
     # client shows and adjust if needed.
@@ -388,6 +391,7 @@ _CHOICES = {
     "chat_sender": ("uia", "logtail", "console"),
     "view_kind": ("auto", "web", "text"),
     "send_mode": ("auto", "background", "foreground"),
+    "ui_theme": tuple(THEMES.keys()),
 }
 _REGEXES = (
     "window_title_re",
@@ -420,6 +424,7 @@ _RANGES = {
     "autoplay_idle_timeout": (0.0, 86400.0),
     "ai_user_cooldown": (0.0, 86400.0),
     "ai_max_chars": (1, 2000),
+    "welcome_message_delay": (0.0, 3600.0),
 }
 
 

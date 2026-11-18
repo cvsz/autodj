@@ -39,6 +39,11 @@ a = Analysis(
     datas=[("app.ico", "."), *yt_dlp_datas],
     binaries=yt_dlp_binaries,
     hiddenimports=[
+        # gui is imported lazily in __main__.py (only when --gui is passed),
+        # so PyInstaller's bytecode scan won't see it. Name it explicitly in
+        # addition to collect_submodules("camfrog_autodj") so frozen builds
+        # can never ship without it.
+        "camfrog_autodj.gui",
         "comtypes",
         "pyperclip",
         "mutagen",

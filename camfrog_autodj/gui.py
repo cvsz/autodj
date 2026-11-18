@@ -20,6 +20,7 @@ from tkinter import font as tkfont
 
 from .clipkeys import clip_action
 from .library import MEDIA
+from .theme import Theme, apply_theme
 from .visuals import (
     aurora_offset,
     bar_heights,
@@ -36,7 +37,14 @@ from .visuals import (
 
 log = logging.getLogger("autodj")
 
-# palette
+# ---- theme ---------------------------------------------------------------
+# Default dashboard theme (zPlayer-dark, inspired by TkinterEP ttkthemes:
+# adapta / arc / yaru).  These module-level colours are the defaults used by
+# PillButton / GlowBar / VolSlider class bodies; App.__init__ may override
+# them from config.ui_theme for a live theme switch.
+_DEFAULT_THEME_NAME = "zplayer-dark"
+
+# palette (zPlayer-dark defaults)
 BG, SURFACE, SURFACE2, BORDER = "#0a0b12", "#161a26", "#1e2436", "#2d364a"
 AURORA = [
     "#1a0a2e",
@@ -53,6 +61,35 @@ ON_AIR = "#ff4da6"  # live/playing state
 IDLE = "#8b93a6"  # idle/stopped state
 WARN = "#fbbf24"  # attention/warning
 FPS_MS = 33
+
+
+def _apply_palette_to_module(palette) -> None:
+    """Rebind the classic-widget colour globals to *palette*.
+
+    Almost every tk widget in this module resolves ``BG``/``SURFACE``/etc.
+    from the module namespace at construction time, so rebinding the names
+    before ``_build()`` makes the whole dashboard follow the selected theme.
+    The frozen default arguments of PillButton/GlowBar/VolSlider are passed
+    explicitly by their callers, which use these same globals.
+    """
+    global BG, SURFACE, SURFACE2, BORDER, TEXT, MUTED
+    global PINK, VIOLET, CYAN, GREEN, RED, ON_AIR, IDLE, WARN, AURORA
+    BG, SURFACE, SURFACE2, BORDER = (
+        palette.bg,
+        palette.surface,
+        palette.surface2,
+        palette.border,
+    )
+    TEXT, MUTED = palette.text, palette.muted
+    PINK, VIOLET, CYAN, GREEN, RED = (
+        palette.on_air,
+        palette.primary,
+        palette.cyan,
+        palette.success,
+        palette.danger,
+    )
+    ON_AIR, IDLE, WARN = palette.on_air, palette.idle, palette.warning
+    AURORA = [palette.bg, palette.surface, palette.surface2, palette.surface, palette.bg]
 
 
 def mmss(sec: float) -> str:
@@ -463,9 +500,10 @@ class VolSlider(tk.Canvas):
 
 class App(tk.Tk):
     def __init__(self, engine):
-        self._enable_dpi()
+        # Tk must own the interpreter before any widget/theme helper runs.
         super().__init__()
         self.e = engine
+        self._enable_dpi()
         self.k = max(
             1.0, self.winfo_fpixels("1i") / 96.0
         )  # display scaling: sizes below are for 96 dpi
@@ -473,7 +511,14 @@ class App(tk.Tk):
         self._set_icon()
         self.geometry(f"{self.px(1200)}x{self.px(780)}")
         self.minsize(self.px(1020), self.px(700))
+
+        # ---- theme (TkinterEP-inspired) ----------------------------------
+        theme_name = getattr(self.e.cfg, "ui_theme", _DEFAULT_THEME_NAME) or _DEFAULT_THEME_NAME
+        self.theme = Theme.from_name(theme_name)
+        _apply_palette_to_module(self.theme.palette)
         self.configure(bg=BG)
+        apply_theme(self, self.theme)
+
         self._labels: list[tuple] = []
         self._q_tracks: list = []  # the Track objects behind the queue list box, in display order
         self._drag = False
@@ -577,17 +622,21 @@ class App(tk.Tk):
 
     # ---- construction ----------------------------------------------------
     def _fonts(self):
-        def mk(size, weight="normal", fam=FAMILY):
-            return tkfont.Font(root=self, family=fam, size=size, weight=weight)
+        t = self.theme
+
+        def mk(size, weight="normal", fam=None):
+            return tkfont.Font(root=self, family=fam or t.font_family, size=size, weight=weight)
 
         self.f_body, self.f_bold, self.f_small = mk(10), mk(10, "bold"), mk(9)
-        self.f_list, self.f_title, self.f_brand = mk(11), mk(21, "bold"), mk(21, "bold")
-        self.f_h2, self.f_icon = mk(11, "bold"), mk(11, "normal", "Segoe UI Symbol")
-        self.f_big_icon = mk(14, "normal", "Segoe UI Symbol")
+        self.f_list, self.f_title, self.f_brand = mk(11), mk(24, "bold"), mk(24, "bold")
+        self.f_h2, self.f_icon = mk(11, "bold"), mk(11, "normal", t.icon_font_family)
+        self.f_big_icon = mk(16, "normal", t.icon_font_family)
         self.f_caption = mk(8, "normal")
         self.f_section = mk(10, "bold")
 
     def _style(self):
+        t = self.theme
+        p = t.palette
         s = ttk.Style(self)
         try:
             s.theme_use("clam")
@@ -595,42 +644,41 @@ class App(tk.Tk):
             pass
         s.configure(
             "Vertical.TScrollbar",
-            background=SURFACE2,
-            troughcolor=SURFACE,
-            bordercolor=BORDER,
-            arrowcolor=MUTED,
-            lightcolor=SURFACE2,
-            darkcolor=SURFACE2,
+            background=p.surface2,
+            troughcolor=p.bg,
+            bordercolor=p.border,
+            arrowcolor=p.muted,
+            lightcolor=p.surface2,
+            darkcolor=p.surface2,
             relief="flat",
-            width=self.px(12),
+            width=self.px(10),
         )
-        s.map("Vertical.TScrollbar", background=[("active", BORDER)])
+        s.map("Vertical.TScrollbar", background=[("active", p.border_focus)])
         s.configure(
             "Horizontal.TScrollbar",
-            background=SURFACE2,
-            troughcolor=SURFACE,
-            bordercolor=BORDER,
-            arrowcolor=MUTED,
-            lightcolor=SURFACE2,
-            darkcolor=SURFACE2,
+            background=p.surface2,
+            troughcolor=p.bg,
+            bordercolor=p.border,
+            arrowcolor=p.muted,
+            lightcolor=p.surface2,
+            darkcolor=p.surface2,
             relief="flat",
         )
-        # Combobox/Spinbox used in settings: keep them on-theme
         s.configure(
             "TCombobox",
-            fieldbackground=SURFACE2,
-            background=SURFACE2,
-            foreground=TEXT,
-            arrowcolor=MUTED,
-            bordercolor=BORDER,
-            lightcolor=SURFACE2,
-            darkcolor=SURFACE2,
+            fieldbackground=p.surface2,
+            background=p.surface2,
+            foreground=p.text,
+            arrowcolor=p.muted,
+            bordercolor=p.border,
+            lightcolor=p.surface2,
+            darkcolor=p.surface2,
         )
         s.map(
             "TCombobox",
-            fieldbackground=[("readonly", SURFACE2)],
-            selectbackground=[("readonly", VIOLET)],
-            selectforeground=[("readonly", "#ffffff")],
+            fieldbackground=[("readonly", p.surface2)],
+            selectbackground=[("readonly", p.primary)],
+            selectforeground=[("readonly", p.inverse)],
         )
 
     def _card(self, parent, pad: int = 0):
@@ -809,31 +857,37 @@ class App(tk.Tk):
         right = tk.Frame(body, bg=BG)
         right.grid(row=0, column=1, sticky="nsew")
 
-        # ---- now-playing card
-        card = self._card(left)
-        card.pack(fill="x")
-        self.stage = tk.Canvas(card, height=px(230), bg=SURFACE, highlightthickness=0, bd=0)
-        self.stage.pack(fill="x")
+        # ---- now-playing card (zPlayer dashboard)
+        card = self._card(left, pad=1)
+        card.pack(fill="x", pady=(0, px(10)))
+        # Vinyl / stage visualization: spinning record + animated border glow
+        self.stage = tk.Canvas(card, height=px(260), bg=SURFACE, highlightthickness=0, bd=0)
+        self.stage.pack(fill="x", padx=px(2), pady=px(2))
         self.stage.bind("<Configure>", self._layout_stage)
-        info = tk.Frame(card, bg=SURFACE)
-        info.pack(fill="x", padx=px(16), pady=(px(8), px(12)))
+        # Inner info panel: title, artist, progress, controls
+        info = tk.Frame(card, bg=SURFACE2)
+        info.pack(fill="x", padx=px(18), pady=(px(10), px(14)))
+        # Track title (large, prominent)
         self.v_title = tk.Label(
             info,
-            bg=SURFACE,
+            bg=SURFACE2,
             fg=TEXT,
             font=self.f_title,
             anchor="w",
             justify="left",
-            wraplength=px(560),
+            wraplength=px(620),
         )
-        self.v_title.pack(fill="x")
-        self.v_sub = tk.Label(info, bg=SURFACE, fg=CYAN, font=self.f_body, anchor="w")
-        self.v_sub.pack(fill="x", pady=(px(2), px(10)))
-        self.bar = GlowBar(info, height=px(22), bg=SURFACE, command=self._on_seek)
-        self.bar.pack(fill="x")
-        self.v_time = tk.Label(info, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w")
-        self.v_time.pack(fill="x", pady=(0, px(10)))
-        ctl = tk.Frame(info, bg=SURFACE)
+        self.v_title.pack(fill="x", pady=(0, px(2)))
+        # Subtitle: artist / requester / source
+        self.v_sub = tk.Label(info, bg=SURFACE2, fg=MUTED, font=self.f_body, anchor="w")
+        self.v_sub.pack(fill="x", pady=(0, px(10)))
+        # Progress bar + time
+        self.bar = GlowBar(info, height=px(20), bg=SURFACE2, command=self._on_seek)
+        self.bar.pack(fill="x", pady=(0, px(2)))
+        self.v_time = tk.Label(info, bg=SURFACE2, fg=MUTED, font=self.f_small, anchor="w")
+        self.v_time.pack(fill="x", pady=(0, px(12)))
+        # Controls row
+        ctl = tk.Frame(info, bg=SURFACE2)
         ctl.pack(fill="x")
         self.b_pause = PillButton(
             ctl,
@@ -842,43 +896,46 @@ class App(tk.Tk):
             icon="❚❚",
             font=self.f_bold,
             icon_font=self.f_big_icon,
-            bg=SURFACE,
-            height=px(44),
-            minw=px(150),
-            padx=px(20),
+            bg=SURFACE2,
+            height=px(46),
+            minw=px(156),
+            padx=px(24),
         )
         self.b_pause.pack(side="left")
-        skip = self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=44, minw=110)
+        skip = self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=46, minw=114)
         skip.pack(side="left", padx=(px(10), 0))
-        discover = self._btn(ctl, "g_discover", self.do_discover, icon="🔍", height=44, minw=130)
+        prev = self._btn(ctl, "g_prev", self.e.prev, icon="◀◀", height=46, minw=114)
+        prev.pack(side="left", padx=(px(10), 0))
+        discover = self._btn(ctl, "g_discover", self.do_discover, icon="🔍", height=46, minw=134)
         discover.pack(side="left", padx=(px(10), 0))
-        check = self._btn(ctl, "g_check", self.do_check, icon="✓", height=44, minw=110)
+        check = self._btn(ctl, "g_check", self.do_check, icon="✓", height=46, minw=114)
         check.pack(side="left", padx=(px(10), 0))
-        self.v_volpct = tk.Label(ctl, bg=SURFACE, fg=TEXT, font=self.f_bold, width=5, anchor="e")
+        # Volume + percentage on the right
+        self.v_volpct = tk.Label(ctl, bg=SURFACE2, fg=TEXT, font=self.f_bold, width=5, anchor="e")
         self.v_volpct.pack(side="right")
         self.vol = VolSlider(
             ctl,
             command=self._vol_release,
             on_change=self._vol_live,
-            bg=SURFACE,
-            height=px(28),
+            bg=SURFACE2,
+            height=px(26),
         )
         self.vol.pack(side="right", fill="x", expand=True, padx=(px(24), px(6)))
-
+        # Up-next preview
         self.v_next = tk.Label(
             info,
-            bg=SURFACE,
-            fg=MUTED,
+            bg=SURFACE2,
+            fg=CYAN,
             font=self.f_small,
             anchor="w",
             justify="left",
-            wraplength=px(560),
+            wraplength=px(620),
         )
-        self.v_next.pack(fill="x", pady=(px(12), 0))
+        self.v_next.pack(fill="x", pady=(px(10), 0))
         card.bind(
             "<Configure>",
             lambda e: [
-                w.configure(wraplength=max(200, e.width - px(48)))
+                w.configure(wraplength=max(200, e.width - px(72)))
                 for w in (self.v_title, self.v_next)
             ],
         )
@@ -1997,6 +2054,15 @@ class App(tk.Tk):
         _setting_row(
             "g_settings_welcome_message_cooldown",
             self.s_welcome_message_cooldown,
+            "g_settings_welcome_message_delay",
+        )
+
+        # welcome_message_delay: seconds to wait before sending the welcome
+        self.s_welcome_message_delay = self._entry(sp_inner)
+        self.s_welcome_message_delay.insert(0, str(self.e.cfg.welcome_message_delay))
+        _setting_row(
+            "g_settings_welcome_message_delay",
+            self.s_welcome_message_delay,
             "g_settings_join_line_regex",
         )
 
@@ -2057,7 +2123,12 @@ class App(tk.Tk):
         # msg_next
         self.s_msg_next = self._entry(sp_inner)
         self.s_msg_next.insert(0, self.e.cfg.msg_next)
-        _setting_row("g_settings_msg_next", self.s_msg_next, "g_settings_auto_discover")
+        _setting_row("g_settings_msg_next", self.s_msg_next, "g_settings_ui_theme")
+
+        # ui_theme
+        self.s_ui_theme = self._entry(sp_inner)
+        self.s_ui_theme.insert(0, self.e.cfg.ui_theme)
+        _setting_row("g_settings_ui_theme", self.s_ui_theme, "g_settings_auto_discover")
 
         # auto_discover toggle
         self.s_auto_discover = self.e.cfg.auto_discover
@@ -2996,6 +3067,7 @@ class App(tk.Tk):
             # msg_now / msg_next templates
             cfg.msg_now = self.s_msg_now.get().strip()
             cfg.msg_next = self.s_msg_next.get().strip()
+            cfg.ui_theme = self.s_ui_theme.get().strip() or "zplayer-dark"
 
             # Validate prefix not empty
             if not cfg.prefix.strip():
@@ -3039,6 +3111,11 @@ class App(tk.Tk):
             # Welcome message cooldown
             cfg.welcome_message_cooldown = self._parse_float(
                 self.s_welcome_message_cooldown, "welcome message cooldown"
+            )
+
+            # Welcome message delay
+            cfg.welcome_message_delay = self._parse_float(
+                self.s_welcome_message_delay, "welcome message delay"
             )
 
             # Webhook settings
@@ -3127,6 +3204,7 @@ class App(tk.Tk):
             lines.append(f"announce_next = {str(cfg.announce_next).lower()}")
             lines.append(f"msg_now = {_toml_str(cfg.msg_now)}")
             lines.append(f"msg_next = {_toml_str(cfg.msg_next)}")
+            lines.append(f"ui_theme = {_toml_str(cfg.ui_theme)}")
             lines.append("")
             lines.append(f"tts_voice = {_toml_str(cfg.tts_voice)}")
             lines.append(f"tts_rate = {cfg.tts_rate}")
@@ -3221,6 +3299,7 @@ class App(tk.Tk):
             lines.append(f"welcome_message_enabled = {str(cfg.welcome_message_enabled).lower()}")
             lines.append(f"welcome_message_message = {_toml_str(cfg.welcome_message_message)}")
             lines.append(f"welcome_message_cooldown = {cfg.welcome_message_cooldown}")
+            lines.append(f"welcome_message_delay = {cfg.welcome_message_delay}")
             cfg.join_line_regex = self.s_join_line_regex.get().strip()
             lines.append(f"join_line_regex = {_toml_str(cfg.join_line_regex)}")
 
