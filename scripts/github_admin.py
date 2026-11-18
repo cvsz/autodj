@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
+import shutil
+import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
 import sys
 from typing import Any
 
@@ -24,7 +25,7 @@ REQUIRED_CHECKS = (
 
 def gh_api(method: str, endpoint: str, payload: dict[str, Any] | None = None) -> Any:
     cmd = [
-        "gh",
+        _gh(),
         "api",
         "--method",
         method,
@@ -34,7 +35,7 @@ def gh_api(method: str, endpoint: str, payload: dict[str, Any] | None = None) ->
     ]
     if payload is not None:
         cmd += ["--input", "-"]
-    proc = subprocess.run(
+    proc = subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
         cmd,
         input=json.dumps(payload) if payload is not None else None,
         text=True,
@@ -48,9 +49,17 @@ def gh_api(method: str, endpoint: str, payload: dict[str, Any] | None = None) ->
     return json.loads(proc.stdout)
 
 
+def _gh() -> str:
+    """Absolute path of the GitHub CLI (never rely on a partial executable path)."""
+    path = shutil.which("gh")
+    if not path:
+        raise SystemExit("error: GitHub CLI 'gh' not found on PATH")
+    return path
+
+
 def require_gh() -> None:
-    proc = subprocess.run(
-        ["gh", "auth", "status"],
+    proc = subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+        [_gh(), "auth", "status"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,

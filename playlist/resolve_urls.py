@@ -15,7 +15,7 @@ import os
 import re
 import shutil
 import ssl
-import subprocess
+import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
 import sys
 import time
 from datetime import UTC, datetime
@@ -197,7 +197,7 @@ def search(
 
     for attempt in range(retries + 1):
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
                 cmd,
                 capture_output=True,
                 text=True,

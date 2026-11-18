@@ -16,9 +16,41 @@ SKIP_DIRS = {
     "dist",
     "build",
     "htmlcov",
+    # runtime data, vendored binaries, evidence and forensic samples are not source
+    "logs",
+    "mpv",
+    "evidence",
+    "artifacts",
+    "cert",
+    "rea",
 }
-SKIP_FILES = {"config.toml", "config.toml.bak", "config.toml.tmp"}
-SKIP_SUFFIXES = (".pyc", ".pfx", ".cer")
+# Secrets and per-installation user data must never ship (dot-files are skipped too).
+SKIP_FILES = {
+    "config.toml",
+    "config.toml.bak",
+    "config.toml.tmp",
+    "playlist.json",
+    "playlist.json.bak",
+    "playlist.json.tmp",
+    "top_requests.json",
+    "favorites.json",
+    "plugin_stats.json",
+    "AutoDJ.spec",
+}
+SKIP_SUFFIXES = (
+    ".pyc",
+    ".pfx",
+    ".cer",
+    ".pem",
+    ".key",
+    ".log",
+    ".exe",
+    ".dll",
+    ".zip",
+    ".pcap",
+    ".dmp",
+    ".spec",
+)
 
 
 def build(out_path: str, root: str = ".") -> str:
@@ -26,9 +58,10 @@ def build(out_path: str, root: str = ".") -> str:
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as z:
         for r, dirs, files in os.walk(root):
             dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
+            dirs[:] = [d for d in dirs if not d.startswith("runtime")]
             for f in sorted(files):
-                if f in SKIP_FILES or f.endswith(SKIP_SUFFIXES):
-                    continue
+                if f.startswith(".") or f in SKIP_FILES or f.endswith(SKIP_SUFFIXES):
+                    continue  # .env, .git-credentials, ... and user data
                 path = os.path.join(r, f)
                 z.write(path, os.path.relpath(path, root))
     return out_path

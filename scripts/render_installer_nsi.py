@@ -40,9 +40,7 @@ def render(template: str, version: str) -> str:
         template,
     )
     if count != 1:
-        raise ValueError(
-            f"expected exactly one APP_VERSION define in installer.nsi, found {count}"
-        )
+        raise ValueError(f"expected exactly one APP_VERSION define in installer.nsi, found {count}")
     return rendered
 
 

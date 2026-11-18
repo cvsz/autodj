@@ -358,7 +358,9 @@ def _add_shuffle_endpoint(app: "FastAPI"):
         except json.JSONDecodeError:
             raise HTTPException(status_code=400, detail="Invalid JSON") from None
 
-        enabled = data.get("enabled", True)
+        enabled = data.get("enabled", True) if isinstance(data, dict) else None
+        if not isinstance(enabled, bool):
+            raise HTTPException(status_code=400, detail="'enabled' must be a boolean")
         state.engine.queue.set_shuffle(enabled)
         return {"status": "ok", "shuffle": enabled}
 
@@ -381,7 +383,7 @@ def _add_repeat_endpoint(app: "FastAPI"):
         except json.JSONDecodeError:
             raise HTTPException(status_code=400, detail="Invalid JSON") from None
 
-        mode = data.get("mode", "off")
+        mode = data.get("mode", "off") if isinstance(data, dict) else None
         if mode not in ("off", "one"):
             raise HTTPException(status_code=400, detail="Mode must be 'off' or 'one'")
 
@@ -407,7 +409,8 @@ def _add_chat_endpoints(app: "FastAPI"):
         except json.JSONDecodeError:
             raise HTTPException(status_code=400, detail="Invalid JSON") from None
 
-        text = data.get("text", "").strip()
+        text = data.get("text", "") if isinstance(data, dict) else ""
+        text = text.strip() if isinstance(text, str) else ""
         if not text:
             raise HTTPException(status_code=400, detail="Missing text parameter")
 
@@ -501,6 +504,30 @@ class WebhookServer:
             await self._task
             self._task = None
         self._server = None
+
+    def serve_blocking(self) -> None:
+        """Run the server until request_stop() (call from a dedicated thread)."""
+        if not self.config.enabled:
+            return
+        import uvicorn
+
+        config = uvicorn.Config(
+            self._app,
+            host=self.config.host,
+            port=self.config.port,
+            log_level="info",
+            access_log=False,
+        )
+        self._server = uvicorn.Server(config)
+        try:
+            self._server.run()
+        except Exception:
+            log.exception("webhook server stopped with an error")
+
+    def request_stop(self) -> None:
+        """Ask a server started by serve_blocking() to exit (thread-safe)."""
+        if self._server is not None:
+            self._server.should_exit = True
 
     @property
     def is_running(self) -> bool:

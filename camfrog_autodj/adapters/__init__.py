@@ -200,20 +200,25 @@ def build_adapter_with_fallback(cfg: "Config", *, use_fallback: bool = True) -> 
         sender_adapter = reader_adapter
     else:
         sender_fallback_chain = _get_fallback_chain(sender_kind)
-        sender_adapter = None
-        for kind in sender_fallback_chain:
-            try:
-                sender_adapter = _make(kind, cfg)
-                _test_adapter(sender_adapter)
-                break
-            except Exception as e:
-                log.warning("Sender adapter %s failed: %s, trying next", kind, e)
-                continue
-        if sender_adapter is None:
-            sender_adapter = NullAdapter()
-    assert sender_adapter is not None
+        sender_adapter = _first_working_sender(sender_fallback_chain, cfg)
 
     return Composite(reader_adapter, sender_adapter)
+
+
+def _first_working_sender(chain: list[str], cfg: "Config") -> ChatAdapter:
+    """First sender in *chain* that builds and passes its self-test, else NullAdapter.
+
+    A candidate that is created but fails ``_test_adapter`` is discarded (it used
+    to be kept as the sender when every candidate failed).
+    """
+    for kind in chain:
+        try:
+            cand = _make(kind, cfg)
+            _test_adapter(cand)
+            return cand
+        except Exception as e:
+            log.warning("Sender adapter %s failed: %s, trying next", kind, e)
+    return NullAdapter()
 
 
 def _get_fallback_chain(primary: str) -> list[str]:

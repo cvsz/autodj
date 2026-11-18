@@ -67,12 +67,19 @@
 | `block` | `บล็อก` | บล็อกผู้ใช้ไม่ให้ใช้คำสั่ง | `!บล็อก spammer` |
 | `unblock` | `เลิกบล็อก` | ยกเลิกการบล็อก | `!เลิกบล็อก spammer` |
 
+### AI และการอัปเดต
+
+| คำสั่ง | อัลลิแอส | คำอธิบาย | ตัวอย่าง |
+|---------|----------|------------|---------|
+| `ai` | `เอไอ` | `on` / `off` / `status` / `model <id>` / `prompt <ข้อความ>` — มีผลทันที (เฉพาะขณะรัน ถ้าต้องการให้ถาวรให้แก้ config.toml) | `!เอไอ status` |
+| `update` | `อัปเดต` | ตรวจสอบเวอร์ชันที่ใหม่กว่าบน GitHub; `apply` = ดาวน์โหลด (ตรวจ SHA-256) แล้วเตรียม `AutoDJ.next.exe` + `autodj_update.bat` | `!อัปเดต` / `!อัปเดต apply` |
+
 ### ข้อมูล
 
 | คำสั่ง | อัลลิแอส | คำอธิบาย | ตัวอย่าง |
 |---------|----------|------------|---------|
 | `help` | `commands`, `ช่วยเหลือ` | แสดงคำสั่งทั้งหมด (รวมแอดมิน) | `!ช่วยเหลือ` |
-| `np` | `nowplaying`, `เพลงนี้` | ข้อมูลเพลงปัจจุบัน | `!เพลงนี้` |
+| `np` | `nowplaying`, `เพลงนี้` | ข้อมูลเพลงปัจจุบัน พร้อมเวลาที่เล่นไป `(เล่นไป/ความยาว)` | `!เพลงนี้` |
 | `next` | `upnext`, `ถัดไป` | เพลงถัดไป | `!ถัดไป` |
 | `queue` | `q`, `คิว` | คิวทั้งหมด | `!คิว` |
 | `voteskip` | `vs`, `โหวตข้าม` | โหวตข้าม (แอดมินใช้ได้) | `!โหวตข้าม` |
@@ -173,7 +180,7 @@ autoplay_sources = [
     "D:/Music/Autoplay"
 ]
 
-# สุ่มสระเพลงอัตโนมัติ
+# สุ่มสระเพลงอัตโนมัติ (แบบถุงสุ่ม: ไม่ซ้ำจนกว่าจะเล่นครบทุกเพลง; สระเพลงวนเล่นไม่รู้จบ)
 shuffle = true
 ```
 
@@ -204,6 +211,25 @@ send_interval = 1.5            # วินาทีระหว่างข้�
 max_msg_len = 200              # ความยาวข้อความสูงสุด
 ```
 
+### การประกาศเพลงและตอบ "เพลงอะไร"
+
+```toml
+announce_next = true                # ประกาศเพลงถัดไปในแชท
+
+# ตอบข้อความในห้องเช่น "เพลงอะไร" / "what song" โดยไม่ต้องใช้คำสั่ง (ข้อความเดียวกับ !เพลงนี้)
+np_question_reply = true
+np_question_keywords = ["เพลงอะไร", "เพลงไร", "เพลงชื่อ", "ชื่อเพลง", "เพลงนี้ชื่อ", "what song", "whats playing", "what's playing", "song name"]
+np_question_cooldown = 20.0         # วินาทีระหว่างการตอบแต่ละครั้ง ใช้ร่วมทั้งห้อง (0-3600)
+
+# เทมเพลตข้อความ ("" = ใช้ข้อความในตัวตาม `lang`)
+msg_now = ""
+msg_next = "เพลงต่อไป อีก {eta} เพลง {title} ขอโดย {requester}"
+```
+
+- ฟิลด์ในเทมเพลต: `{title}`, `{duration}`, `{requester}` และใหม่ `{elapsed}` / `{remaining}` (เวลาที่เล่นไป/เหลือของเพลงปัจจุบัน) กับ `{eta}` (ใน `msg_next`: อีกนานเท่าไรเพลงนั้นจะเริ่ม) ค่าที่ไม่ทราบจะแสดงเป็น `?` ถ้าเทมเพลตผิดจะกลับไปใช้ข้อความในตัว
+- `!np` / `!nowplaying` / `!เพลงนี้` ตอบเป็นข้อความเพลงที่กำลังเล่นพร้อม `(เล่นไป/ความยาว)` เช่น `กำลังเล่น: X [3:20] - ขอโดย bob (1:05/3:20)`
+- คีย์เวิร์ดจับแบบหาคำย่อยในข้อความ ไม่สนตัวพิมพ์เล็ก/ใหญ่ ข้อความที่ขึ้นต้นด้วย prefix คำสั่งจะไม่นับ เปิด/ปิดได้ในหน้าตั้งค่าของ GUI ด้วย
+
 ### การเล่นอัตโนมัติและพฤติกรรมเวลาว่าง
 
 ```toml
@@ -218,6 +244,10 @@ search_limit = 1                   # ผลลัพธ์ค้นหา YouTub
 # หมดเวลา mpv (0 = ไม่มี timeout)
 mpv_timeout = 30                   # วินาทีรอหนึ่งเพลง mpv ก่อนถือว่า hang
 ```
+
+- สระเพลงอัตโนมัติวนเล่นไปเรื่อย ๆ ถ้า `shuffle = true` จะไม่เล่นเพลงซ้ำจนกว่าจะเล่นครบทุกเพลงในสระ
+- เพลงที่ประกาศว่า "เพลงถัดไป" คือเพลงที่จะเล่นต่อจริงเสมอ
+- ประกาศ "กำลังเล่น" ครั้งเดียวต่อเพลง แม้ใช้ `!วนซ้ำ one`
 
 ### ทักทายแอดมิน
 
@@ -374,16 +404,59 @@ log_json_fields = [                    # extra fields to include in JSON logs
 ]
 ```
 
+### AI ตอบแชท
+
+```toml
+ai_enabled = false
+ai_api_key = ""
+ai_base_url = "https://api.openai.com/v1"   # endpoint ที่รองรับ OpenAI API; ต้องเป็น https (http ใช้ได้เฉพาะ localhost/127.0.0.1/::1)
+ai_model = "gpt-3.5-turbo"
+ai_system_prompt = "..."
+ai_max_chars = 200                 # ความยาวคำตอบ AI สูงสุด (ตัวอักษร)
+ai_user_cooldown = 30.0            # วินาทีระหว่างคำตอบ AI ถึงผู้ใช้คนเดิม
+```
+
+- AI ตอบเฉพาะข้อความในห้องที่ไม่ใช่คำสั่ง และ**ไม่ตอบ IM ส่วนตัวเด็ดขาด** (บอทโพสต์ได้แค่ในห้องสาธารณะ ถ้าตอบจะทำให้ข้อความส่วนตัวหลุดออกไป)
+- URL ที่ฝังชื่อผู้ใช้/รหัสผ่านจะถูกปฏิเสธ คูลดาวน์ต่อผู้ใช้บังคับใช้จริง และช่วยจำกัดค่าใช้จ่าย API ด้วย
+- `!ai on|off|status|model <id>|prompt <ข้อความ>` (แอดมิน) มีผลทันที ส่วนการแก้ config มีผลเมื่อโหลดใหม่
+
+### อัปเดตอัตโนมัติ
+
+```toml
+auto_update_enabled = false        # ต้องเปิดเอง; ถ้าปิดจะไม่มีการเชื่อมต่อ GitHub เบื้องหลังเลย
+auto_update_repo = "cvsz/autodj"
+auto_update_check_interval = 21600.0   # วินาที (ขั้นต่ำ 300)
+auto_update_asset = "AutoDJ.exe"
+```
+
+- เสนอเฉพาะเวอร์ชันที่ใหม่กว่าจริงเท่านั้น เวอร์ชันที่อ่านไม่ออกจะไม่ถือว่าใหม่กว่า
+- `!อัปเดต` (แอดมิน) ตรวจสอบทันที; `!อัปเดต apply` ดาวน์โหลดไฟล์และเก็บไว้เฉพาะเมื่อ SHA-256 ตรงกับ `digest` ของ asset บน GitHub หรือไฟล์ `<asset>.sha256` / `SHA256SUMS` ใน release **ผู้ดูแล release ต้องเผยแพร่ค่านี้** มิฉะนั้นจะปฏิเสธการดาวน์โหลด
+- ไฟล์ที่ตรวจแล้วจะวางไว้ข้าง exe พร้อม `autodj_update.bat` ให้รันสคริปต์นี้เพื่อสลับไฟล์และเริ่มโปรแกรมใหม่
+
 ### Webhook / API Integration
 
 ```toml
 webhook_enabled = false                # enable HTTP webhook server for external control
 webhook_host = "127.0.0.1"             # host to bind webhook server (use 0.0.0.0 for external access)
 webhook_port = 8080                    # port for webhook server
-webhook_secret = ""                    # HMAC secret for webhook signature verification (empty = no verification)
+webhook_secret = ""                    # คีย์ HMAC ยาวอย่างน้อย 16 ตัวอักษร; ว่าง/สั้นเกินไป = ทุกคำขอถูกปฏิเสธด้วย 503
 webhook_rate_limit_per_ip = 60         # max requests per IP per minute
 webhook_cors_origins = ["http://127.0.0.1:8080"]           # CORS allowed origins (e.g. ["https://example.com"]; default ["http://127.0.0.1:8080"])
 ```
+
+การลงลายเซ็นคำขอ (ทุกคำขอ):
+
+- `X-Timestamp`: เวลา unix (วินาที) ต้องต่างจากนาฬิกาเซิร์ฟเวอร์ไม่เกิน 300 วินาที
+- `X-Signature`: ค่า hex ของ `HMAC-SHA256(webhook_secret, f"{timestamp}.{METHOD}.{path}." + raw_body)`
+- ลายเซ็นแต่ละอันใช้ได้ครั้งเดียว (ส่งซ้ำได้ 401) ไม่มี/หมดอายุ/ไม่ถูกต้อง = 401; เกิน `webhook_rate_limit_per_ip` = 429
+
+```python
+import hashlib, hmac, time
+ts = str(int(time.time()))
+sig = hmac.new(secret.encode(), f"{ts}.POST./webhook/skip.".encode() + body, hashlib.sha256).hexdigest()
+```
+
+> **หมายเหตุ:** มีโค้ดเซิร์ฟเวอร์ webhook แล้ว แต่ engine ยังไม่ได้สั่งเริ่มเซิร์ฟเวอร์ตอนรันจริง ตอนนี้ตั้ง `webhook_enabled = true` จึงยังไม่มีผล
 
 ### Config Hot Reload
 
@@ -429,6 +502,8 @@ plugins = ["builtin.stats", "builtin.help"]  # list of plugin modules to load (e
 เข้าถึงผ่านปุ่ม **⚙️ Settings** ทุกการตั้งค่าใน config.toml แก้ไขได้ พร้อม:
 - ตรวจสอบค่าที่ป้อน (ช่วงค่า, regex, ตัวเลือก)
 - บันทึกแบบ atomic พร้อม backup `.bak`
+- ตอนบันทึกจะคงค่าที่หน้าตั้งค่าไม่ได้แสดงไว้ (`ai_*`, `auto_update_*`, `webhook_secret`, `voteskip_cooldown`, `log_json*`) ไม่รีเซ็ตเป็นค่าเริ่มต้นแล้ว
+- ปุ่มเปิด/ปิดการตอบคำถาม "เพลงอะไร" ในห้อง (`np_question_reply`)
 - ย้ายไป `%APPDATA%\CamfrogAutoDJ\` อัตโนมัติถ้าโฟลเดอร์ติดตั้งเขียนไม่ได้
 - สลับภาษา label แบบเรียลไทม์
 

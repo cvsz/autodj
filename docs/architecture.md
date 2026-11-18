@@ -15,7 +15,7 @@ AutoDJ.exe (frozen PyInstaller binary)
 ├── camfrog_autodj/player.py     — MpvPlayer: one mpv process per track, IPC control, fade in/out
 ├── camfrog_autodj/library.py    — Library: yt-dlp lookups (exe or module), local file scanning, URL parsing
 ├── camfrog_autodj/playlist.py   — PlaylistStore: persistent playlist.json (atomic write, dedup by source)
-├── camfrog_autodj/playqueue.py  — PlayQueue: requests-first queue + autoplay pool, shuffle/repeat
+├── camfrog_autodj/playqueue.py  — PlayQueue: requests-first queue + looping autoplay pool (shuffle bag), shuffle/repeat
 ├── camfrog_autodj/discover.py   — Auto-discover: finds Camfrog room window and chat controls
 ├── camfrog_autodj/adapters/     — Chat adapters: uia (UI Automation), webchat (embedded web panes), console
 ├── camfrog_autodj/gui.py        — GUI: Tk-based studio window with queue/history/chat/TTS
@@ -57,8 +57,12 @@ Commands are registered with `@command(names, admin=False)`. The `Router`:
 - Authorizes admins by display nick (case-insensitive) — see security notes below
 - Enforces per-user cooldowns and sliding-window request limits (non-admin only)
 - Blocks listed users silently (no room reply)
-- Admin commands: pause, resume, vol, shuffle, repeat, clear, load, say, speak, block, unblock
+- Admin commands: pause, resume, vol, shuffle, repeat, clear, load, say, speak, block, unblock, ai, update
 - User commands: play, np, next, queue, history, voteskip, remove, help
+- `np` replies via `Engine.now_playing_text()` (template + live `(elapsed/total)`); non-command room lines matching `np_question_keywords` get the same reply, rate-limited room-wide by `np_question_cooldown`
+- Announcements: "now playing" once per track (also with repeat-one); "up next" is the track `PlayQueue.peek()` promised, which is the one that actually plays. `msg_now`/`msg_next` templates get `{elapsed}` `{remaining}` `{eta}` in addition to `{title}` `{duration}` `{requester}`
+- AI replies (`ai.py`) only for non-command room messages, never for IMs; per-user cooldown; the client is rebuilt on `!ai` changes and config reload
+- Auto-update (`updater.py`) is opt-in (`auto_update_enabled`); downloads are kept only when the SHA-256 matches the release `digest` or a `.sha256`/`SHA256SUMS` asset
 
 ### 4. Playback (`player.py`, `library.py`)
 

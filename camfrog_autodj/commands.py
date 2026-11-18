@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import threading
 import time
 from pathlib import Path
@@ -19,14 +18,20 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("autodj")
 COMMANDS: dict[str, tuple] = {}
+# Names of every command that queues a song (all aliases).  Used for the per-user
+# request limit and allow_play_in_room — a hard-coded name tuple used to miss
+# aliases such as aplay/addm/ขอเพลง/เล่นเพลง/เปิดเพลง.
+REQUEST_COMMANDS: set[str] = set()
 
 
-def command(*names: str, admin: bool = False):
+def command(*names: str, admin: bool = False, request: bool = False):
     def deco(fn):
         for n in names:
             if n in COMMANDS:  # a silent overwrite would make one command unreachable
                 raise ValueError(f"command name {n!r} is registered twice")
             COMMANDS[n] = (fn, admin)
+            if request:
+                REQUEST_COMMANDS.add(n.lower())
         return fn
 
     return deco
@@ -68,38 +73,27 @@ class Router:
         name, arg = parsed
         entry = COMMANDS.get(name.lower())
         admin = self.is_admin(msg)
-        if is_im:
-            log.info(
-                "im command %s (%s) from %s%s",
-                name,
-                arg,
-                msg.user,
-                ", admin" if admin else "",
-            )
-        else:
-            log.info(
-                "command %s%s (%s) from %s%s",
-                p,
-                name,
-                arg,
-                msg.user,
-                ", admin" if admin else "",
-            )
+        log.info(
+            "%s %s%s (%s) from %s%s",
+            "im command" if is_im else "command",
+            "" if is_im else p,
+            name,
+            arg,
+            msg.user,
+            ", admin" if admin else "",
+        )
         if not entry:
+            # Not a built-in: let plugins handle it (e.g. !stats, !plugins)
+            if not admin:
+                if msg.user.lower() in e.blocked:
+                    return
+                # Same channel rules as built-ins (IM room-presence check).
+                if not self._channel_allowed(msg, name.lower(), is_im):
+                    return
+            e.plugin_command(name.lower(), msg.user, arg.strip(), admin)
             return
         fn, need_admin = entry
-        if not admin and msg.user.lower() in e.blocked:
-            log.info(
-                "blocked: ignoring %s's command from %s",
-                msg.user,
-                "IM" if is_im else "room",
-            )
-            return  # blocked users get no reply at all
-        if need_admin and not admin:
-            e.say(f"{msg.user}: {e.t('admin_only')}")
-            return
-        now = time.monotonic()
-        if not admin and not self._within_limits(msg, name, now, is_im):
+        if not admin and not self._admit(msg, name, need_admin, is_im):
             return
         try:
             fn(e, msg, arg.strip(), admin)
@@ -109,10 +103,50 @@ class Router:
             log.exception("command failed: %s", text)
             e.say(f"{msg.user}: {e.t('error')}")
 
+    def _admit(self, msg: "ChatMessage", name: str, need_admin: bool, is_im: bool) -> bool:
+        """Gate a non-admin command: block list, admin-only, channel rules, limits."""
+        e = self.e
+        if msg.user.lower() in e.blocked:
+            log.info(
+                "blocked: ignoring %s's command from %s",
+                msg.user,
+                "IM" if is_im else "room",
+            )
+            return False  # blocked users get no reply at all
+        if need_admin:
+            e.say(f"{msg.user}: {e.t('admin_only')}")
+            return False
+        if not self._channel_allowed(msg, name.lower(), is_im):
+            return False
+        with self._lock:  # executor threads run handle() concurrently
+            return self._within_limits(msg, name, time.monotonic(), is_im)
+
+    def _channel_allowed(self, msg: "ChatMessage", name: str, is_im: bool) -> bool:
+        """Enforce allow_play_in_room / im_require_room_presence for non-admins."""
+        e = self.e
+        if is_im:
+            present = getattr(e, "_active_room_users", None)
+            if (
+                getattr(e.cfg, "im_require_room_presence", False)
+                and present is not None
+                and msg.user.lower() not in present
+            ):
+                # No reply: the bot can only post to the room, not back to the IM.
+                log.info("IM from %s ignored: not seen in the room", msg.user)
+                return False
+            return True
+        if name in REQUEST_COMMANDS and not getattr(e.cfg, "allow_play_in_room", True):
+            e.say(f"{msg.user}: {e.t('im_only_command')}")
+            return False
+        return True
+
     def _parse_command(self, text: str, p: str, is_im: bool) -> tuple[str, str] | None:
         """Return (name, arg) when *text* is a command, else None."""
         if is_im:
-            # IM / private message: no prefix required, but still subject to cooldown/limits
+            # IM / private message: no prefix required (an optional prefix such as
+            # "!np" is accepted too), still subject to cooldown/limits
+            if text.startswith(p):
+                text = text[len(p) :]
             name, _, arg = text.partition(" ")
             return name, arg
         # Room message: must start with the command prefix
@@ -139,7 +173,7 @@ class Router:
             )
             return False
         # Sliding window request limit per user
-        if name.lower() in ("play", "request", "req", "p", "เล่น"):
+        if name.lower() in REQUEST_COMMANDS:
             limit = getattr(e.cfg, "user_request_limit", 5)
             window = getattr(e.cfg, "rate_limit_window", 300.0)
             reqs = [t for t in self.user_requests.get(who, []) if now - t < window]
@@ -162,8 +196,10 @@ class Router:
         unboundedly over long sessions. Called periodically by the engine."""
         window = float(getattr(self.e.cfg, "rate_limit_window", 300.0))
         cutoff = now - window
+        # Cooldown entries must outlive the cooldown itself (cooldown may exceed window)
+        last_cutoff = now - max(window, float(getattr(self.e.cfg, "cooldown", 0.0)))
         with self._lock:
-            self.last = {u: t for u, t in self.last.items() if t >= cutoff}
+            self.last = {u: t for u, t in self.last.items() if t >= last_cutoff}
             for user in list(self.user_requests):
                 kept = [t for t in self.user_requests[user] if t >= cutoff]
                 if kept:
@@ -177,13 +213,14 @@ def _line(t: "Track") -> str:
 
 
 def _cut_current(e: "Engine") -> None:
-    """Stop the current track so the next queued request plays immediately.
+    """Apply the request rule after queueing a request.
 
-    Used by ``!play`` so a new request cuts in now instead of making the user
-    wait for the current track to finish. Safe to call when nothing is playing.
+    The default/startup song or an autoplay-pool song is cut so the request
+    plays now; a *requested* song is never cut: later requests wait in the
+    queue (first come, first served).  Safe to call when nothing is playing.
     """
-    if e.current:
-        e.skip()
+    e.note_request()
+    e.preempt_unrequested()
 
 
 @command("help", "commands", "ช่วยเหลือ")
@@ -213,7 +250,7 @@ def _hadj(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     e.say(full)
 
 
-@command("skipp", "ข้ามเพลง", admin=True)
+@command("skipp", "ข้ามเพลง")  # _skip enforces requester-or-admin
 def _skipp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     """ข้ามเพลงปัจจุบัน — ผู้ขอหรือ Main Owner เท่านั้น (alias ของ /skip)."""
     _skip(e, m, a, admin)
@@ -231,7 +268,7 @@ def _lastp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     _last(e, m, a, admin)
 
 
-@command("aplay", "addm")
+@command("aplay", "addm", request=True)
 def _aplay(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     """ขอเพลงผ่าน IM (alias ของ /play) รองรับการมอบเพลงด้วย @{USER} เช่น /aplay ครับพี่ @user"""
     stripped = a.strip()
@@ -258,6 +295,8 @@ def _aplay_fav(e: "Engine", m: "ChatMessage", stripped: str, admin: bool) -> Non
     if not tracks:
         raise UserError(e.t("nothing_found"))
     if not admin:
+        # same rules as !play: one track, no live streams, max_duration
+        tracks = _validate_non_admin_track(e, e.cfg, tracks)
         _assert_queue_capacity(e, m.user)  # Fast pre-check
         for t in tracks:
             _assert_not_already_queued(e, t)  # Prevent duplicate favorite requests
@@ -267,14 +306,11 @@ def _aplay_fav(e: "Engine", m: "ChatMessage", stripped: str, admin: bool) -> Non
             _assert_queue_capacity(e, m.user)
             _assert_not_already_queued(e, tracks[0])
         for t in tracks:
-            pos = e.queue.add_request(t, position=0)
-            e.record_request(t.source, t.title)
+            pos = e.queue.add_request(t)  # FIFO: first requester plays first
+    for t in tracks:  # stats file I/O outside the queue lock
+        e.record_request(t.source, t.title)
     e.wake.set()
     _cut_current(e)
-    e._last_user_request_time = time.monotonic()
-    if e._autoplay_mode:
-        e._autoplay_mode = False
-        log.info("Autoplay mode deactivated: new user request received")
     if len(tracks) == 1:
         e.say(
             e.t(
@@ -289,7 +325,7 @@ def _aplay_fav(e: "Engine", m: "ChatMessage", stripped: str, admin: bool) -> Non
         e.say(e.t("queued_many", n=len(tracks), user=m.user))
 
 
-@command("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง", "เปิดเพลง")
+@command("play", "request", "req", "p", "เล่น", "ขอเพลง", "เล่นเพลง", "เปิดเพลง", request=True)
 def _play(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     c, p = e.cfg, e.cfg.prefix
     if not a:
@@ -307,16 +343,11 @@ def _play(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
             _assert_queue_capacity(e, m.user)
             _assert_not_already_queued(e, tracks[0])
         for t in tracks:
-            pos = e.queue.add_request(t, position=0)  # insert at front: play next immediately
-            e.record_request(t.source, t.title)  # บันทึกสถิติสำหรับ /topm
+            pos = e.queue.add_request(t)  # FIFO: requests play in the order they arrive
+    for t in tracks:  # บันทึกสถิติสำหรับ /topm (file I/O outside the queue lock)
+        e.record_request(t.source, t.title)
     e.wake.set()
     _cut_current(e)
-    # Update last user request time for autoplay idle timeout
-    e._last_user_request_time = time.monotonic()
-    # Exit autoplay mode immediately when user makes a request
-    if e._autoplay_mode:
-        e._autoplay_mode = False
-        log.info("Autoplay mode deactivated: new user request received")
     if e.playlist:  # promised by the playlist docs / config: chat requests are saved too (feeds !last and the pool)
         e.playlist.add(tracks)
     if len(tracks) == 1:
@@ -361,8 +392,7 @@ def _last(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("np", "nowplaying", "เพลงนี้")
 def _np(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    t = e.current
-    e.say(e.fmt_now(t) if t else e.t("nothing_playing").capitalize())
+    e.say(e.now_playing_text())
 
 
 @command("next", "upnext", "ถัดไป")
@@ -477,9 +507,9 @@ def _deletehistory(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
         if n <= 0:
             raise UserError(e.t("delete_history_usage", p=e.cfg.prefix))
 
-        # Delete last N entries (oldest first, since history is newest first)
+        # Delete the N most recent entries (history is newest-first)
         with e.queue.lock:
-            to_delete = list(e.history)[-n:]  # oldest N entries
+            to_delete = list(e.history)[:n]
             for t in to_delete:
                 try:
                     e.history.remove(t)
@@ -493,8 +523,11 @@ def _load(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not a:
         raise UserError(e.t("load_usage", p=e.cfg.prefix))
     src = a.strip('"')
-    # Reject obviously dangerous paths (absolute system paths outside music dirs)
-    if os.path.isabs(src):
+    from .library import SEARCH_PREFIX, is_url
+
+    # Any local path (absolute *or* relative, e.g. "..\\..\\Windows") must
+    # resolve inside music_dirs; only URLs and "ytsearchN:" sources skip this.
+    if not is_url(src) and not SEARCH_PREFIX.match(src):
         p = Path(src)
         try:
             p = p.resolve()
@@ -667,6 +700,8 @@ def _punish_bot(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
         raise UserError(e.t("punish_bot_usage", p=e.cfg.prefix))
     if nick.lower() == e.cfg.bot_nick.lower():
         raise UserError(e.t("cannot_block_bot_admin"))
+    if nick.lower() in e.admins:
+        raise UserError(e.t("cannot_block_admin"))
     e.punish_bot(nick)
     e.say(e.t("punished_bot", nick=nick))
 
@@ -698,6 +733,47 @@ def _welcome_message(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None
     # toggle or set welcome message
     e.set_welcome_message(a.strip())
     e.say(e.t("welcome_enabled") if e.cfg.welcome_message_enabled else e.t("welcome_disabled"))
+
+
+# ---- AI (OpenAI-compatible chat) -------------------------------------------
+
+
+@command("ai", "เอไอ", admin=True)
+def _ai_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """Configure or check AI auto-reply.
+
+    Usage: !ai on|off           — enable/disable AI replies
+           !ai status           — show current AI settings
+           !ai model <name>     — set AI model
+           !ai prompt <text>    — set system prompt
+    """
+    raw = a.strip()
+    arg = raw.lower()
+    if not arg:
+        raise UserError(e.t("usage", p=e.cfg.prefix))
+
+    if arg == "on":
+        e.cfg.ai_enabled = True
+        e.refresh_ai()
+        e.say(e.t("ai_enabled"))
+    elif arg == "off":
+        e.cfg.ai_enabled = False
+        e.refresh_ai()
+        e.say(e.t("ai_disabled"))
+    elif arg == "status":
+        state = e.t("ai_enabled") if e.ai.is_enabled() else e.t("ai_disabled")
+        e.say(e.t("ai_status", state=state, model=e.cfg.ai_model, url=e.cfg.ai_base_url))
+    elif arg.startswith("model "):
+        # keep original case: model ids are case-sensitive on some providers
+        e.cfg.ai_model = raw[len("model ") :].strip()
+        e.refresh_ai()
+        e.say(e.t("ai_model_set", model=e.cfg.ai_model))
+    elif arg.startswith("prompt "):
+        e.cfg.ai_system_prompt = raw[len("prompt ") :].strip()
+        e.refresh_ai()
+        e.say(e.t("ai_prompt_set"))
+    else:
+        raise UserError(e.t("usage", p=e.cfg.prefix))
 
 
 # ---- Auto-update (GitHub releases) ------------------------------------------
@@ -765,7 +841,7 @@ def _remove_operator(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None
 # ============================================================================
 
 
-@command("hbdp", "hbdm", "อวยพรวันเกิด", admin=False)
+@command("hbdp", "hbdm", "อวยพรวันเกิด", admin=False, request=True)
 def _hbdp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     """อวยพรวันเกิดหน้าห้อง + เปิดเพลงวันเกิด"""
     if not a:
@@ -779,9 +855,14 @@ def _hbdp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
         # fallback: ค้นหาเป็นภาษาอังกฤษ
         tracks = e.resolve("happy birthday", "AutoDJ", True)
     if tracks:
+        tracks = tracks[:1]  # one birthday song per wish
         with e.queue.lock:
+            if not admin:  # same queue rules as !play: capacity, no duplicates
+                _assert_queue_capacity(e, m.user)
+                _assert_not_already_queued(e, tracks[0])
             for t in tracks:
-                e.queue.add_request(t, position=0)
+                t.requester = m.user
+                e.queue.add_request(t)  # waits its turn like any request
         e.wake.set()
         _cut_current(e)
         e.say(e.t("hbdp_playing", title=tracks[0].title, name=name))
@@ -799,7 +880,9 @@ def _topp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not top:
         e.say(e.t("topp_none", period=period))
         return
-    lines = " | ".join(f"{i + 1}) {t['title']} ({t['count']} ครั้ง)" for i, t in enumerate(top))
+    lines = " | ".join(
+        f"{i + 1}) {t['title']} ({e.t('topp_count', n=t['count'])})" for i, t in enumerate(top)
+    )
     e.say(e.t("topp_list", period=period, list=lines))
 
 

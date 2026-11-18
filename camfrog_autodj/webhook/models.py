@@ -12,7 +12,7 @@ class WebhookConfig:
 
     enabled: bool = False
     port: int = 8080
-    secret: str = ""  # HMAC secret for signature verification
+    secret: str = ""  # HMAC secret (>=16 chars); empty = all requests rejected (503)
     host: str = "127.0.0.1"
     rate_limit_per_ip: int = 60  # requests per minute
     cors_origins: List[str] = field(default_factory=lambda: ["*"])

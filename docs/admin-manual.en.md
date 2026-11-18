@@ -67,12 +67,19 @@ This manual covers administrative features, configuration, and operational proce
 | `block` | `บล็อก` | Block user from commands | `!block spammer` |
 | `unblock` | `เลิกบล็อก` | Unblock user | `!unblock spammer` |
 
+### AI & Updates
+
+| Command | Aliases | Description | Example |
+|---------|---------|-------------|---------|
+| `ai` | `เอไอ` | `on` / `off` / `status` / `model <id>` / `prompt <text>` — takes effect immediately (runtime only; edit config.toml to persist) | `!ai status` |
+| `update` | `อัปเดต` | Check GitHub for a strictly newer release; `apply` downloads it (SHA-256 verified) and stages `AutoDJ.next.exe` + `autodj_update.bat` | `!update` / `!update apply` |
+
 ### Information
 
 | Command | Aliases | Description | Example |
 |---------|---------|-------------|---------|
 | `help` | `commands`, `ช่วยเหลือ` | Show all commands (includes admin) | `!help` |
-| `np` | `nowplaying`, `เพลงนี้` | Current track info | `!np` |
+| `np` | `nowplaying`, `เพลงนี้` | Current track + live progress `(elapsed/total)` | `!np` |
 | `next` | `upnext`, `ถัดไป` | Next track | `!next` |
 | `queue` | `q`, `คิว` | Full queue | `!queue` |
 | `voteskip` | `vs`, `โหวตข้าม` | Vote skip (admin can also use) | `!voteskip` |
@@ -173,7 +180,7 @@ autoplay_sources = [
     "D:/Music/Autoplay"
 ]
 
-# Shuffle autoplay pool
+# Shuffle autoplay pool (shuffle bag: no repeat until every song has played; the pool loops forever)
 shuffle = true
 ```
 
@@ -204,6 +211,25 @@ send_interval = 1.5            # Seconds between chat messages
 max_msg_len = 200              # Max message length
 ```
 
+### Announcements & "What song?" Replies
+
+```toml
+announce_next = true                # announce the up-next track in chat
+
+# Answer room lines like "เพลงอะไร" / "what song" without a command (same text as !np)
+np_question_reply = true
+np_question_keywords = ["เพลงอะไร", "เพลงไร", "เพลงชื่อ", "ชื่อเพลง", "เพลงนี้ชื่อ", "what song", "whats playing", "what's playing", "song name"]
+np_question_cooldown = 20.0         # room-wide seconds between auto-answers (0-3600)
+
+# Templates ("" = built-in text for `lang`)
+msg_now = ""
+msg_next = ""                       # e.g. "Up next in {eta}: {title} requested by {requester}"
+```
+
+- Template fields: `{title}`, `{duration}`, `{requester}`, plus `{elapsed}` / `{remaining}` (progress of the current song) and `{eta}` (in `msg_next`: time until that song starts). Unknown values render as `?`; a broken template falls back to the built-in text.
+- `!np` / `!nowplaying` / `!เพลงนี้` reply with the now-playing text plus `(elapsed/total)`, e.g. `กำลังเล่น: X [3:20] - ขอโดย bob (1:05/3:20)`.
+- Keywords match as case-insensitive substrings; lines starting with the command prefix are ignored. The toggle is also in the GUI Settings dialog.
+
 ### Autoplay & Idle Behavior
 
 ```toml
@@ -218,6 +244,10 @@ search_limit = 1                   # YouTube search results per non-admin !play 
 # mpv timeout (0 = never timeout)
 mpv_timeout = 30                   # seconds to wait for one mpv track before treating it as hung
 ```
+
+- The autoplay pool loops forever; with `shuffle = true` no song repeats until every song in the pool has played.
+- The "Up next" announcement always names the track that actually plays next.
+- "Now playing" is announced once per track, also with `!repeat one`.
 
 ### Admin Greeting
 
@@ -374,16 +404,59 @@ log_json_fields = [                    # extra fields to include in JSON logs
 ]
 ```
 
+### AI Chat Replies
+
+```toml
+ai_enabled = false
+ai_api_key = ""
+ai_base_url = "https://api.openai.com/v1"   # any OpenAI-compatible endpoint; https required (http only for localhost/127.0.0.1/::1)
+ai_model = "gpt-3.5-turbo"
+ai_system_prompt = "..."
+ai_max_chars = 200                 # max characters in an AI reply
+ai_user_cooldown = 30.0            # seconds between AI replies to the same user
+```
+
+- AI answers non-command room messages only. It **never** answers private IMs (the bot can only post to the public room, so that would leak the IM).
+- URLs with embedded credentials are rejected. The per-user cooldown is enforced and also bounds API spend.
+- `!ai on|off|status|model <id>|prompt <text>` (admin) take effect immediately; config edits apply on reload.
+
+### Auto-Update
+
+```toml
+auto_update_enabled = false        # opt-in; when false there are no background requests to GitHub
+auto_update_repo = "cvsz/autodj"
+auto_update_check_interval = 21600.0   # seconds (min 300)
+auto_update_asset = "AutoDJ.exe"
+```
+
+- Only a strictly newer version is offered; unparsable versions are never treated as newer.
+- `!update` (admin) checks on demand; `!update apply` downloads the asset and keeps it only if its SHA-256 matches the GitHub asset `digest` or a `<asset>.sha256` / `SHA256SUMS` release asset. **Release maintainers must publish one of these**, otherwise the download is refused.
+- The verified file is staged next to the exe with `autodj_update.bat`; run that script to swap and restart.
+
 ### Webhook / API Integration
 
 ```toml
 webhook_enabled = false                # enable HTTP webhook server for external control
 webhook_host = "127.0.0.1"             # host to bind webhook server (use 0.0.0.0 for external access)
 webhook_port = 8080                    # port for webhook server
-webhook_secret = ""                    # HMAC secret for webhook signature verification (empty = no verification)
+webhook_secret = ""                    # HMAC secret, >= 16 chars; empty/short = every request rejected with 503
 webhook_rate_limit_per_ip = 60         # max requests per IP per minute
 webhook_cors_origins = ["http://127.0.0.1:8080"]           # CORS allowed origins (e.g. ["https://example.com"]; default ["http://127.0.0.1:8080"])
 ```
+
+Request signing (every request):
+
+- `X-Timestamp`: unix time in seconds; must be within 300 s of the server clock.
+- `X-Signature`: hex `HMAC-SHA256(webhook_secret, f"{timestamp}.{METHOD}.{path}." + raw_body)`.
+- Each signature is accepted once (replays get 401). Missing/stale/invalid signature = 401; over `webhook_rate_limit_per_ip` = 429.
+
+```python
+import hashlib, hmac, time
+ts = str(int(time.time()))
+sig = hmac.new(secret.encode(), f"{ts}.POST./webhook/skip.".encode() + body, hashlib.sha256).hexdigest()
+```
+
+> **Note:** the webhook server code exists, but the engine does not start it at runtime yet; `webhook_enabled = true` currently has no effect.
 
 ### Config Hot Reload
 
@@ -429,6 +502,8 @@ plugins = ["builtin.stats", "builtin.help"]  # list of plugin modules to load (e
 Access via **⚙️ Settings** button. All config.toml settings editable with:
 - Input validation (ranges, regex, choices)
 - Atomic save with `.bak` backup
+- Saving keeps keys the dialog does not show (`ai_*`, `auto_update_*`, `webhook_secret`, `voteskip_cooldown`, `log_json*`) instead of resetting them
+- Toggle for answering "what song?" questions in the room (`np_question_reply`)
 - Auto-relocation to `%APPDATA%\CamfrogAutoDJ\` if install dir not writable
 - Live language switch for labels
 

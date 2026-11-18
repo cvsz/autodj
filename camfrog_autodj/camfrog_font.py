@@ -147,8 +147,8 @@ def _open_camfrog_key(writable: bool = False):
             return key, path
         except (FileNotFoundError, OSError):
             continue
-        except Exception:  # noqa: BLE001, S112 - never crash on registry access
-            continue
+        except Exception:  # noqa: BLE001 - never crash on registry access
+            log.debug("registry font lookup failed for %s", path, exc_info=True)
     return None, None
 
 
@@ -225,8 +225,8 @@ def read_camfrog_font_settings() -> CamfrogFontSettings:
     finally:
         try:
             key.Close()
-        except Exception:  # noqa: BLE001, S110
-            pass
+        except Exception:  # noqa: BLE001 - closing a registry handle must not mask the result
+            log.debug("registry key close failed", exc_info=True)
 
 
 def write_camfrog_font_settings(settings: CamfrogFontSettings) -> bool:
@@ -252,8 +252,8 @@ def write_camfrog_font_settings(settings: CamfrogFontSettings) -> bool:
     finally:
         try:
             key.Close()
-        except Exception:  # noqa: BLE001, S110
-            pass
+        except Exception:  # noqa: BLE001 - closing a registry handle must not mask the result
+            log.debug("registry key close failed", exc_info=True)
 
 
 def sync_message_style_to_camfrog(style: "MessageStyle") -> bool:

@@ -4,7 +4,7 @@ import itertools
 import json
 import logging
 import os
-import subprocess
+import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
 import tempfile
 import threading
 import time
@@ -134,11 +134,15 @@ class MpvPlayer:
         if _is_windows():
             kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW: no console flash in GUI mode
         with self._lock:
+            if self.stop_evt is not None and self.stop_evt.is_set():
+                # Shutdown raced with the player loop: never start an mpv that
+                # nobody will stop (it kept playing after AutoDJ exited).
+                return True
             self.skipped = False
             self._paused_since, self._paused_total = None, 0.0
             self._ipc = ipc
             self._pos_cache = None
-            self.proc = p = subprocess.Popen(cmd, **kw)
+            self.proc = p = subprocess.Popen(cmd, **kw)  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
         if fade_in:
             threading.Thread(
                 target=self._fade_volume,
@@ -173,7 +177,8 @@ class MpvPlayer:
             self._ipc = None
             if not hung:
                 ok = rc == 0 or self.skipped
-        assert rc is not None
+        if rc is None:  # defensive: never pass None to _report (asserts vanish under -O)
+            rc = -1
         self._report(ok, rc, source, logf)
         return ok
 
@@ -232,15 +237,19 @@ class MpvPlayer:
             p = self.proc
             self._pos_cache = None
             self._ipc = None  # Clear IPC so no further commands target dead process
-            if p and p.poll() is None:
+            running = p is not None and p.poll() is None
+            if p is not None and running:
                 self.skipped = True
                 p.terminate()
-                try:
-                    _ = p.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    log.warning("mpv did not exit after terminate; killing")
-                    p.kill()
-                    _ = p.wait()
+        # Wait *outside* the lock: holding it here blocked the GUI's 500 ms
+        # position poll (get_time_pos) for up to 10 s on a stuck mpv.
+        if p is not None and running:
+            try:
+                p.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                log.warning("mpv did not exit after terminate; killing")
+                p.kill()
+                p.wait()
 
     def _cmd(self, *cmd) -> bool:
         """Send a command to mpv via IPC (fire-and-forget). Returns True if sent."""
@@ -393,12 +402,22 @@ class MpvPlayer:
             timeout: Maximum time in seconds to wait for playback to complete.
                 Default 120s to accommodate TTS synthesis (up to 60s) + playback.
         """
-        # Set up IPC so set_volume() (ducking) works during TTS playback
-        n = next(_ids)
-        ipc, logf = self._ipc_log_paths(n)
         kw: dict = {}
         if _is_windows():
             kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
-        # Timeout so a corrupted or unplayable WAV cannot block the caller forever.
-        kw["timeout"] = 30
-        subprocess.run(self._base() + ["--volume=100", "--", path], check=False, **kw)
+        # Duck the *music* mpv (its IPC stays live: the clip is a separate process),
+        # play the clip, then restore in `finally` — the duck/restore arguments used
+        # to be ignored, so TTS was spoken over full-volume music.
+        ducked = duck_volume is not None and self.set_volume(int(duck_volume))
+        try:
+            subprocess.run(  # nosec B603 - argv list without shell; resolved mpv path
+                self._base() + ["--volume=100", "--", path],
+                check=False,
+                timeout=max(1.0, float(timeout)),  # a broken WAV must not block forever
+                **kw,
+            )
+        except subprocess.TimeoutExpired:
+            log.warning("TTS clip did not finish within %.0fs: stopped", timeout)
+        finally:
+            if ducked and restore_volume is not None:
+                self.set_volume(int(restore_volume))  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path

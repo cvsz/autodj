@@ -45,3 +45,4 @@ Audit **FAILED**. Fix the errors above before review.
 Reviewed by: @policedbc (automated service account)"
 
   gh pr comment "${PR_NUMBER}" --body "$BODY" --repo "${REPO}"
+fi

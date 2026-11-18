@@ -2,15 +2,25 @@
 """Windows 11 prerequisite checks for Makefile."""
 
 import os
-import subprocess
+import shutil
+import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
 import sys
+
+
+def _powershell() -> str:
+    """Absolute path of Windows PowerShell (avoids partial-path executable lookup)."""
+    system_root = os.environ.get("SystemRoot", r"C:\Windows")
+    candidate = os.path.join(system_root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    if os.path.isfile(candidate):
+        return candidate
+    return shutil.which("powershell.exe") or shutil.which("pwsh") or candidate
 
 
 def run_ps(cmd):
     """Run a PowerShell command and return (success, output)."""
     try:
-        result = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-Command", cmd],
+        result = subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+            [_powershell(), "-NoProfile", "-Command", cmd],
             capture_output=True,
             text=True,
             check=False,
@@ -78,7 +88,7 @@ def check_mpv():
 def check_pyinstaller(pip_cmd):
     """Check if PyInstaller is installed."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
             [sys.executable, "-c", "import PyInstaller"], capture_output=True, check=False
         )
         if result.returncode == 0:

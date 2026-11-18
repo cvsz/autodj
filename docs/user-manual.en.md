@@ -48,7 +48,7 @@ request Bohemian Rhapsody
 | Command | Aliases | Description |
 |---------|---------|-------------|
 | `play` | `request`, `req`, `p`, `เล่น`, `ขอเพลง`, `เล่นเพลง` | Request a song |
-| `np` | `nowplaying`, `เพลงนี้` | Show currently playing song |
+| `np` | `nowplaying`, `เพลงนี้` | Show currently playing song with progress, e.g. `(1:05/3:20)` |
 | `next` | `upnext`, `ถัดไป` | Show next song in queue |
 | `queue` | `q`, `คิว` | Show request queue (first 5) |
 | `history` | `recent`, `ประวัติ` | Show recently played songs |
@@ -131,6 +131,14 @@ remove 2
 - Autoplay picks random songs from: your music folders, configured sources, playlist.json
 - **Any new request** immediately exits autoplay mode
 - Announcement: *"No user requests for 30 seconds. Switching to autoplay mode."*
+- Autoplay keeps looping; in shuffle mode no song repeats until every song has played
+- The "Up next" announcement always names the song that really plays next
+
+---
+
+## "What song is this?"
+
+Just ask in the room — e.g. "what song is this?", "what's playing", "เพลงอะไร", "ชื่อเพลง" — and the bot replies with the current song and its progress (same as `!np`), no command needed. To avoid spam it answers at most once every 20 seconds for the whole room (admins can change or disable this).
 
 ---
 
@@ -180,6 +188,7 @@ remove 2
 
 - **Nickname-based auth** — Admins identified by nickname (spoofable)
 - **No persistent storage** of private messages
+- **AI replies never answer private IMs** (only non-command room messages, when an admin enabled AI)
 - **Local music library** only accessible via configured folders
 - **Config file** stores settings only, no personal data
 

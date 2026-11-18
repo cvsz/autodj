@@ -10,6 +10,7 @@ and network filesystems where inotify may not be available).
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import threading
 import time
@@ -75,6 +76,9 @@ class ConfigWatcher:
         self._debounce_timer: Optional[threading.Timer] = None
         self._debounce_lock = threading.Lock()
         self._pending_reload = False
+        # SHA-256 of the file content last loaded successfully; a poll that sees the
+        # same bytes again (Windows can surface one write as two stat changes) is ignored.
+        self._last_digest: Optional[str] = None
         self._stopped = False
 
     def on_change(self, callback: Callable[[Config], None]) -> None:
@@ -107,6 +111,7 @@ class ConfigWatcher:
             log.warning("ConfigWatcher.start() called after stop(); ignoring")
             return
 
+        self._last_digest = self._file_digest()
         if initial_config is not None:
             with self._config_lock:
                 self._last_valid_config = initial_config
@@ -153,6 +158,11 @@ class ConfigWatcher:
         if self._stopped:
             return
 
+        digest = self._file_digest()
+        if digest is not None and digest == self._last_digest:
+            log.debug("ConfigWatcher: %s content unchanged; skipping reload", self.config_path)
+            return
+
         try:
             new_config = Config.load(str(self.config_path))
         except ConfigError as ex:
@@ -166,9 +176,17 @@ class ConfigWatcher:
 
         with self._config_lock:
             self._last_valid_config = new_config
+        self._last_digest = digest
 
         log.info("ConfigWatcher: config reloaded successfully from %s", self.config_path)
         self._notify_callbacks(new_config)
+
+    def _file_digest(self) -> Optional[str]:
+        """SHA-256 of the watched file's bytes, or None when it cannot be read."""
+        try:
+            return hashlib.sha256(self.config_path.read_bytes()).hexdigest()
+        except OSError:
+            return None
 
     def _notify_callbacks(self, config: Config) -> None:
         """Invoke all registered callbacks with the new config."""
@@ -202,6 +220,7 @@ class ConfigWatcher:
             return None
         with self._config_lock:
             self._last_valid_config = new_config
+        self._last_digest = self._file_digest()
         self._notify_callbacks(new_config)
         return new_config
 

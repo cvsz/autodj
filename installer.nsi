@@ -26,7 +26,7 @@
 ; Metadata (overridable from command line)
 ; -----------------------------------------------------------------------------
 !define /IfNDef APP_NAME "Camfrog AutoDJ"
-!define /IfNDef APP_VERSION "0.3.0"
+!define /IfNDef APP_VERSION "0.3.2"
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
 !define /IfNDef APP_EXE "AutoDJ.exe"
@@ -126,18 +126,23 @@ SectionEnd
 
 Section "Playlist Directory" SEC_PLAYLIST
     SetOutPath "$INSTDIR\playlist"
+    ; Never clobber playlists the user edited: only replace older copies on upgrade
+    SetOverwrite ifnewer
     File /r "dist\playlist\*.json"
+    SetOverwrite on
 SectionEnd
 
 Section /o "mpv + yt-dlp" SEC_MPV
     SetOutPath "$INSTDIR\mpv"
-    File "dist\mpv\mpv.exe"
+    ; /nonfatal: CI runners have no vendored mpv/ folder (it is not in git); a
+    ; missing binary must not abort the whole installer build (SEC_MPV is optional)
+    File /nonfatal "dist\mpv\mpv.exe"
     File /nonfatal "dist\mpv\mpv.com"
-    File "dist\mpv\yt-dlp.exe"
+    File /nonfatal "dist\mpv\yt-dlp.exe"
     File /nonfatal "dist\mpv\mpv-register.bat"
     File /nonfatal "dist\mpv\mpv-unregister.bat"
     SetOutPath "$INSTDIR\mpv\_internal"
-    File /r "dist\mpv\_internal\*.*"
+    File /nonfatal /r "dist\mpv\_internal\*.*"
     ; Register mpv file associations and protocols (optional, requires admin)
     ; Run hidden so user doesn't see command window flash
     IfFileExists "$INSTDIR\mpv\mpv-register.bat" do_register skip_register

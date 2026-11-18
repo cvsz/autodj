@@ -20,15 +20,20 @@ Config keys (``config.toml``):
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import re
+import sys
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from . import __version__
 from .exceptions import AutoDJError
 
 if TYPE_CHECKING:
@@ -40,11 +45,46 @@ log = logging.getLogger("autodj")
 GITHUB_API = "https://api.github.com"
 DEFAULT_REPO = "cvsz/autodj"
 DEFAULT_CHECK_INTERVAL = 6 * 60 * 60  # 6 hours
-UA = "CamfrogAutoDJ/0.3.0 (+https://github.com/cvsz/autodj)"
+UA = f"CamfrogAutoDJ/{__version__} (+https://github.com/cvsz/autodj)"
 
 
 class UpdateError(AutoDJError):
     """Auto-update related failure."""
+
+
+_VERSION_RE = re.compile(r"^v?(\d+(?:\.\d+)*)")
+
+
+def parse_version(text: str) -> tuple[int, ...] | None:
+    """Parse ``"v1.2.3"`` / ``"1.2.3-rc1"`` into ``(1, 2, 3)``; None if unparsable."""
+    m = _VERSION_RE.match((text or "").strip())
+    if not m:
+        return None
+    return tuple(int(p) for p in m.group(1).split("."))
+
+
+def is_newer(latest: str, current: str) -> bool:
+    """True only when *latest* is strictly newer than *current*.
+
+    Unparsable versions are never treated as newer (fail-closed: a malformed
+    or older tag must not trigger an update prompt / download).
+    """
+    lv, cv = parse_version(latest), parse_version(current)
+    if lv is None or cv is None:
+        return False
+    width = max(len(lv), len(cv))
+    return lv + (0,) * (width - len(lv)) > cv + (0,) * (width - len(cv))
+
+
+def default_exe_path() -> Path:
+    """Path of the running AutoDJ executable.
+
+    In a PyInstaller build ``__file__`` points into the temporary extraction
+    dir (``_MEIPASS``), so the real exe location is ``sys.executable``.
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve()
+    return Path(__file__).resolve().parent.parent / "AutoDJ.exe"
 
 
 class Updater:
@@ -59,18 +99,35 @@ class Updater:
     def __init__(self, cfg: "Config", engine: "Engine | None" = None):
         self.cfg = cfg
         self.engine = engine
-        self.repo: str = getattr(cfg, "auto_update_repo", DEFAULT_REPO)
-        self.enabled: bool = getattr(cfg, "auto_update_enabled", False)
-        self.check_interval: float = float(
-            getattr(cfg, "auto_update_check_interval", DEFAULT_CHECK_INTERVAL)
-        )
-        self.asset_name: str = getattr(cfg, "auto_update_asset", "AutoDJ.exe")
 
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._latest: dict | None = None
         self._last_check: float = 0.0
         self._lock = threading.Lock()
+        self._announced_tag: str | None = None
+        # Called (from the updater thread) once per newly seen release tag.
+        self.on_available: Callable[[dict], None] | None = None
+
+    # Settings are read live from ``self.cfg`` so a config reload takes effect.
+    @property
+    def repo(self) -> str:
+        repo = str(getattr(self.cfg, "auto_update_repo", DEFAULT_REPO) or DEFAULT_REPO)
+        # owner/name only — never let config smuggle a path/query into the API URL
+        return repo if re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo) else DEFAULT_REPO
+
+    @property
+    def enabled(self) -> bool:
+        return bool(getattr(self.cfg, "auto_update_enabled", False))
+
+    @property
+    def check_interval(self) -> float:
+        val = float(getattr(self.cfg, "auto_update_check_interval", DEFAULT_CHECK_INTERVAL))
+        return max(300.0, val)  # never hammer the GitHub API
+
+    @property
+    def asset_name(self) -> str:
+        return str(getattr(self.cfg, "auto_update_asset", "AutoDJ.exe") or "AutoDJ.exe")
 
     # ------------------------------------------------------------------ lifecycle
     def start(self) -> None:
@@ -78,6 +135,8 @@ class Updater:
         if not self.enabled:
             log.debug("auto-update disabled; updater thread not started")
             return
+        if self._thread is not None and self._thread.is_alive():
+            return  # already running (e.g. re-enabled by a config reload)
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, daemon=True, name="autodj-updater")
         self._thread.start()
@@ -95,8 +154,16 @@ class Updater:
 
     def _loop(self) -> None:
         while not self._stop.is_set():
+            if not self.enabled:
+                # Disabled by a config reload: no GitHub traffic until re-enabled.
+                time.sleep(1.0)
+                continue
             try:
-                self.check_for_update()
+                release = self.check_for_update()
+                if release and release.get("tag") != self._announced_tag:
+                    self._announced_tag = release.get("tag")
+                    if self.on_available is not None:
+                        self.on_available(release)
             except Exception:  # pragma: no cover - updater thread must never die
                 log.exception("auto-update check loop failed")
             # Sleep in 1s increments so stop() is responsive.
@@ -125,7 +192,7 @@ class Updater:
 
         with self._lock:
             self._last_check = time.monotonic()
-            if not latest or latest == current:
+            if not latest or not is_newer(latest, current):
                 log.info(
                     "auto-update: up to date (current=%s, latest=%s)",
                     current,
@@ -162,8 +229,14 @@ class Updater:
         if not release:
             return None
         needle = (name_substring or self.asset_name).lower()
-        for asset in release.get("assets", []) or []:
-            if needle in (asset.get("name", "") or "").lower():
+        assets = release.get("assets", []) or []
+        # Exact name first, so "AutoDJ.exe" never resolves to "AutoDJ.exe.sha256".
+        for asset in assets:
+            if (asset.get("name", "") or "").lower() == needle:
+                return asset
+        for asset in assets:
+            name = (asset.get("name", "") or "").lower()
+            if needle in name and not name.endswith((".sha256", ".sig", ".asc", ".txt")):
                 return asset
         return None
 
@@ -183,15 +256,51 @@ class Updater:
         if not self._fail_closed_url(url):
             raise ValueError(f"non-GitHub URL rejected: {url}")
         req = Request(url, headers={"User-Agent": UA, "Accept": "application/vnd.github+json"})  # noqa: S310
-        with urlopen(req, timeout=30) as resp:  # noqa: S310 - url is fail-closed to github.com above
+        with urlopen(req, timeout=30) as resp:  # noqa: S310 - url is fail-closed to github.com above  # nosec B310 - URL scheme/host validated just above (https/github.com only)
             if resp.status != 200:
                 raise HTTPError(url, resp.status, resp.reason, resp.headers, resp)
             return json.loads(resp.read().decode("utf-8"))
 
+    def expected_sha256(self, asset: dict) -> str | None:
+        """Return the expected SHA-256 hex digest for *asset*, or None.
+
+        Sources, in order: the ``digest`` field GitHub's releases API returns
+        for each asset (``"sha256:<hex>"``), then a sibling release asset named
+        ``<asset>.sha256`` / ``SHA256SUMS`` containing the hash.
+        """
+        digest = (asset.get("digest") or "").strip().lower()
+        if digest.startswith("sha256:") and re.fullmatch(r"[0-9a-f]{64}", digest[7:]):
+            return digest[7:]
+        name = asset.get("name", "") or ""
+        with self._lock:
+            assets = list((self._latest or {}).get("assets", []) or [])
+        for cand in assets:
+            cname = (cand.get("name", "") or "").lower()
+            if cname not in (f"{name.lower()}.sha256", "sha256sums", "sha256sums.txt"):
+                continue
+            url = cand.get("browser_download_url") or ""
+            if not self._fail_closed_url(url):
+                continue
+            try:
+                req = Request(url, headers={"User-Agent": UA})  # noqa: S310
+                with urlopen(req, timeout=30) as resp:  # noqa: S310 - github.com only  # nosec B310 - URL scheme/host validated just above (https/github.com only)
+                    text = resp.read(1 << 16).decode("utf-8", "replace")
+            except (URLError, HTTPError, OSError) as ex:
+                log.warning("auto-update: cannot fetch checksum file: %s", ex)
+                continue
+            for line in text.splitlines():
+                parts = line.strip().split()
+                if not parts or not re.fullmatch(r"[0-9a-fA-F]{64}", parts[0]):
+                    continue
+                if len(parts) == 1 or parts[-1].lstrip("*").lower() == name.lower():
+                    return parts[0].lower()
+        return None
+
     def download_asset(self, asset: dict, dest: Path) -> bool:
         """Download *asset* to *dest*.  Returns True on success.
 
-        Fail-closed: only github.com hosts are honoured.
+        Fail-closed: only github.com hosts are honoured, and the file is only
+        kept when its SHA-256 matches the digest published with the release.
         """
         url = asset.get("browser_download_url")
         if not url:
@@ -201,20 +310,39 @@ class Updater:
             log.error("auto-update: refusing non-GitHub URL: %s", url)
             return False
 
+        expected = self.expected_sha256(asset)
+        if not expected:
+            log.error(
+                "auto-update: no SHA-256 digest published for %s; refusing unverified download",
+                asset.get("name"),
+            )
+            return False
+
+        tmp = dest.with_suffix(dest.suffix + ".part")
         try:
             req = Request(url, headers={"User-Agent": UA, "Accept": "application/octet-stream"})  # noqa: S310
-            with urlopen(req, timeout=60) as resp:  # noqa: S310 - url is fail-closed to github.com above
+            with urlopen(req, timeout=60) as resp:  # noqa: S310 - url is fail-closed to github.com above  # nosec B310 - URL scheme/host validated just above (https/github.com only)
                 if resp.status != 200:
                     log.error("auto-update: download HTTP %s", resp.status)
                     return False
-                tmp = dest.with_suffix(dest.suffix + ".part")
+                h = hashlib.sha256()
                 with open(tmp, "wb") as f:
                     while True:
                         chunk = resp.read(65536)
                         if not chunk:
                             break
+                        h.update(chunk)
                         f.write(chunk)
-                tmp.replace(dest)
+            if h.hexdigest() != expected:
+                log.error(
+                    "auto-update: SHA-256 mismatch for %s (expected %s, got %s); discarded",
+                    url,
+                    expected,
+                    h.hexdigest(),
+                )
+                tmp.unlink(missing_ok=True)
+                return False
+            tmp.replace(dest)
             log.info(
                 "auto-update: downloaded %s -> %s (%d bytes)",
                 url,
@@ -224,6 +352,10 @@ class Updater:
             return True
         except (URLError, HTTPError, OSError) as ex:
             log.exception("auto-update: download failed: %s", ex)
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
             return False
 
     def apply_update(self, exe_path: str | Path | None = None) -> bool:
@@ -237,12 +369,12 @@ class Updater:
         if not self._latest:
             log.warning("auto-update: no release available to apply")
             return False
-        asset = self.find_asset("AutoDJ.exe")
+        asset = self.find_asset(self.asset_name)
         if not asset:
             log.warning("auto-update: no AutoDJ.exe asset in latest release")
             return False
 
-        exe = Path(exe_path) if exe_path else Path(__file__).resolve().parent.parent / "AutoDJ.exe"
+        exe = Path(exe_path) if exe_path else default_exe_path()
         if not exe.is_absolute():
             exe = Path.cwd() / exe
         dest = exe.with_name(exe.stem + ".next" + exe.suffix)
@@ -276,8 +408,9 @@ class Updater:
             'taskkill /f /im "%s" >nul 2>&1' % exe.name,
             "timeout /t 2 /nobreak >nul",
             'if exist "%s" del "%s"' % (old, old),
-            'ren "%s" "%s"' % (exe, old.name),
-            'ren "%s" "%s"' % (new_exe, exe.name),
+            'ren "%s" "%s" || (echo ERROR: cannot rename running exe & goto end)' % (exe, old.name),
+            'ren "%s" "%s" || (ren "%s" "%s" & echo ERROR: update failed, rolled back & goto end)'
+            % (new_exe, exe.name, old, exe.name),
             'del "%s"' % old,
             'start "" "%s"' % exe,
             ":end",

@@ -256,6 +256,9 @@ class Frame(Misc):
     def place_forget(self):
         pass
 
+    def lift(self, *a):
+        pass
+
     def winfo_exists(self):
         return True
 

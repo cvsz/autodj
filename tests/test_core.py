@@ -1,4 +1,5 @@
 import re
+import time
 
 from camfrog_autodj.adapters.base import (
     ChatAdapter,
@@ -140,10 +141,12 @@ def test_play_np_next_queue():
     e.router.handle(ChatMessage("amy", "play song one", is_im=True))
     assert out(e) == ["Queued #1: song one [2:00] for amy"]
     e.current = Track("s", "now", 90, "bob")
+    e.started_at = time.monotonic()
     e.router.handle(ChatMessage("amy", "!np"))
     e.router.handle(ChatMessage("amy", "!next"))
     assert out(e) == [
-        "Now playing: now [1:30] - requested by bob",
+        # !np now carries live progress: (elapsed/total)
+        "Now playing: now [1:30] - requested by bob (0:00/1:30)",
         "Up next: song one [2:00] (amy)",
     ]
     e.router.handle(ChatMessage("amy", "!queue"))

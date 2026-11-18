@@ -21,6 +21,9 @@ class PlayQueue:
         self._i = 0
         self._next_auto: Track | None = None
         self._last: str | None = None
+        # Shuffle bag: sources already played in the current pass through the
+        # pool, so autoplay does not repeat a song until every song has played.
+        self._played: set[str] = set()
         self._version = 0  # bumped on every mutation; consumers can skip refresh when unchanged
         self.lock = threading.RLock()
 
@@ -38,6 +41,7 @@ class PlayQueue:
         return self._version != version
 
     def add_request(self, t: Track, position: int | None = None) -> int:
+        t.is_request = True
         with self.lock:
             if position is not None:
                 # Clamp position to valid range and insert at the front of the requests list
@@ -72,8 +76,12 @@ class PlayQueue:
         if not self.pool:
             return None
         if self.shuffle:
-            c = [t for t in self.pool if t.source != self._last] or self.pool
-            return random.choice(c)  # noqa: S311  # music shuffle is not security-sensitive
+            fresh = [t for t in self.pool if t.source not in self._played]
+            if not fresh:  # whole pool played: start a new pass
+                self._played.clear()
+                fresh = self.pool
+            c = [t for t in fresh if t.source != self._last] or fresh
+            return random.choice(c)  # noqa: S311  # music shuffle is not security-sensitive  # nosec B311 - music shuffle order, not security-sensitive
         t = self.pool[self._i % len(self.pool)]
         self._i += 1
         return t
@@ -96,20 +104,28 @@ class PlayQueue:
                 self.requests.popleft()  # O(1) with deque
             else:
                 self._next_auto = None
+                self._played.add(t.source)
             self._last = t.source
             self._version += 1
             return t
 
     def pop_pool(self) -> Track | None:
-        """Pop a track from the autoplay pool only (ignores requests)."""
+        """Pop the next autoplay-pool track, ignoring pending requests.
+
+        Returns the track ``peek()`` already promised (so the "up next"
+        announcement is what actually plays) and leaves it in the pool: the
+        pool loops forever instead of draining after one pass.
+        """
         with self.lock:
             if not self.pool:
                 return None
-            t = self._pick_auto()
+            if self._next_auto is None:
+                self._next_auto = self._pick_auto()
+            t = self._next_auto
             if t is None:
                 return None
-            self.pool.remove(t)
             self._next_auto = None
+            self._played.add(t.source)
             self._last = t.source
             self._version += 1
             return t

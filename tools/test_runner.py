@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Test runner helper for Makefile - handles Windows pytest cleanup issue."""
 
-import subprocess
+import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
 import sys
 
 
 def run_tests(args):
     """Run pytest and handle Windows cleanup issue."""
     cmd = [sys.executable, "-m", "pytest"] + args
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True)  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
 
     # Check if failure is only due to Windows pytest cleanup issue
     if result.returncode != 0:

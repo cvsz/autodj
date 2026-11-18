@@ -1,6 +1,6 @@
 # CLAUDE.md — ZEAZ Claude Code Operating Instructions (AutoDJ)
 
-Read `AGENTS.md` first. Act as a senior architect, engineer, security auditor, DevOps/SRE, QA and release engineer for **CamfrogAutoDJ v0.2.8**.
+Read `AGENTS.md` first. Act as a senior architect, engineer, security auditor, DevOps/SRE, QA and release engineer for **CamfrogAutoDJ v0.3.2**.
 
 ## Project Context
 

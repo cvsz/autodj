@@ -52,6 +52,18 @@ jobs:
             exit 1
           fi
 
+      - name: Tag, package version and CHANGELOG agree
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if [ "$tag" != "$pkg" ]; then
+            echo "Tag v$tag does not match pyproject.toml version $pkg"; exit 1
+          fi
+          grep -Eq "^##[[:space:]]+\[?v?${pkg//./\\.}([^0-9.]|$)" CHANGELOG.md || { echo "CHANGELOG.md has no ## $pkg section"; exit 1; }
+
       - name: Decide whether release may proceed
         id: checks
         run: |
@@ -84,7 +96,15 @@ jobs:
       - name: Install mpv via Chocolatey (reliable, version-pinned)
         run: |
           # Use Chocolatey for reliable mpv installation (avoids mpv.io 404s on old builds)
-          choco install mpv --version=2024.01.01 --yes
+          choco install mpv --version=2024.9.26 --yes
+          if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue)) {
+            # Some package versions install to Program Files without a shim: locate it.
+            $found = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib", "C:\Program Files", "C:\Program Files (x86)" -Filter mpv.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+              $env:PATH = "$($found.DirectoryName);$env:PATH"
+              $found.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            }
+          }
           # Verify mpv.exe is on PATH
           if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue)) {
             Write-Error "mpv.exe not found on PATH after Chocolatey install"
@@ -93,8 +113,23 @@ jobs:
           "mpv installed via Chocolatey: $(mpv.exe --version | Select-Object -First 1)"
 
       - name: Build AutoDJ.exe
+        env:
+          # Repository secrets: AUTODJ_PFX_BASE64 (base64 of the .pfx) + AUTODJ_PFX_PASSWORD,
+          # or AUTODJ_CERT_THUMBPRINT for a certificate already in the runner's store.
+          AUTODJ_PFX_BASE64: ${{ secrets.AUTODJ_PFX_BASE64 }}
+          AUTODJ_PFX_PASSWORD: ${{ secrets.AUTODJ_PFX_PASSWORD }}
+          AUTODJ_CERT_THUMBPRINT: ${{ secrets.AUTODJ_CERT_THUMBPRINT }}
         run: |
+          if ($env:AUTODJ_PFX_BASE64) {
+            $pfxPath = Join-Path $env:RUNNER_TEMP "autodj-signing.pfx"
+            [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:AUTODJ_PFX_BASE64))
+            $env:AUTODJ_PFX = $pfxPath
+          }
           $signArgs = @("-Clean", "-NoSign")
+          if ($env:GITHUB_REF -like "refs/tags/*" -and -not (($env:AUTODJ_PFX -and $env:AUTODJ_PFX_PASSWORD) -or $env:AUTODJ_CERT_THUMBPRINT)) {
+            Write-Error "Tagged releases must be Authenticode-signed: set AUTODJ_PFX/AUTODJ_PFX_PASSWORD or AUTODJ_CERT_THUMBPRINT secrets."
+            exit 1
+          }
           if ($env:AUTODJ_PFX -and $env:AUTODJ_PFX_PASSWORD) {
             $signArgs = @("-Clean", "-Pfx", $env:AUTODJ_PFX, "-Password", $env:AUTODJ_PFX_PASSWORD)
           } elseif ($env:AUTODJ_CERT_THUMBPRINT) {
