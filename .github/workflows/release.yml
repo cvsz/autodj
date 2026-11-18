@@ -32,10 +32,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install -e . "pytest==8.3.3" ruff mypy
+          python -m pip install -e ".[webhook,hotreload]" "pytest==8.3.3" ruff mypy
+
+      - name: Install GUI test dependencies
+        run: sudo apt-get update -y && sudo apt-get install -y python3-tk xvfb
 
       - name: Run unit tests
-        run: python -m pytest -q -p no:faulthandler -p no:cacheprovider
+        # Same environment as tests.yml: optional extras (webhook/hotreload tests) + a display for Tk.
+        run: xvfb-run -a python -m pytest -q -p no:faulthandler -p no:cacheprovider
 
       - name: Lint (ruff)
         run: ruff check camfrog_autodj tests tools

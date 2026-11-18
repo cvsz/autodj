@@ -1,4 +1,4 @@
-## 0.3.2 (unreleased)
+## 0.3.2 — 2026-11-18
 
 - **Merge #226 (Settings in the menu bar)** — Settings now opens as a panel inside the main window from the menu bar, combined with the 0.3.2 dialog fixes (visible rows, labelled toggles, pinned Save + status). Fixed two #226 defects while merging: the scroll container was created twice (lower half of the panel empty) and closing only hid the panel (one hidden panel leaked per open). The panel is now rebuilt on open and destroyed on close; the menu is retitled on language switch.
 - **Fix: searched requests lost their "requested" status once resolved** (`_resolve_track_if_search` returned a fresh Track) — the next request could cut them, or they were silently dropped when another request waited. Requester and `is_request` are now preserved.
