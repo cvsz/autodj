@@ -497,7 +497,8 @@ class App(tk.Tk):
         self._tab = "queue"
         self._closing = False
         self._anim_err = False
-        self._settings_win: tk.Toplevel | None = None
+        self._settings_win: tk.Frame | None = None  # in-window settings panel (#226)
+        self._settings_visible: bool = False
         self._folder_scan_deadline: str | None = None
         self._stage_wh: tuple[int, int] | None = None
         self.v_voteskip: tk.Label | None = None
@@ -510,6 +511,7 @@ class App(tk.Tk):
         self._fonts()
         self._style()
         self._build()
+        self._build_menu()
         install_clipboard(self, lambda: self.e.lang)
         self.relabel()
         self.show_tab("queue")
@@ -774,18 +776,7 @@ class App(tk.Tk):
         self.led.pack(side="right", padx=(0, px(8)))
         self.v_onair = self._lbl(hdr, "g_on_air", font=self.f_bold, bg=BG)
         self.v_onair.pack(side="right", padx=(px(18), px(4)))
-        self.b_settings = PillButton(
-            hdr,
-            text="⚙️",
-            command=self.show_settings,
-            kind="tab",
-            font=self.f_bold,
-            bg=BG,
-            height=px(32),
-            minw=px(52),
-            padx=px(10),
-        )
-        self.b_settings.pack(side="right", padx=(px(6), 0))
+        # Settings moved to the menu bar (Settings item)
 
         # animated gradient line under the header
         self.line = tk.Canvas(root, height=3, bg=BG, highlightthickness=0, bd=0)
@@ -1033,36 +1024,29 @@ class App(tk.Tk):
         ihs.configure(command=self.im_chat.yview)
         self.im_chat.tag_configure("who", foreground=PINK, font=self.f_bold)
 
-    # ---- settings popup ------------------------------------------------------
+    # ---- settings panel ------------------------------------------------------
     def open_settings(self):
-        """Open the settings dialog as a standalone (non-modal) window."""
-        # Bring existing settings window to front if already open
-        win: tk.Toplevel | None = getattr(self, "_settings_win", None)
+        """Show the settings panel over the main window (opened from the menu bar).
+
+        The panel is rebuilt on every open (so it always shows the live config)
+        and destroyed on close (the #226 version only hid it, leaking one hidden
+        panel per open).
+        """
+        win: tk.Frame | None = getattr(self, "_settings_win", None)
         if win is not None:
             try:
                 if win.winfo_exists():
-                    win.deiconify()
+                    win.place(relx=0, rely=0, relwidth=1, relheight=1)
                     win.lift()
-                    win.focus_set()
+                    self._settings_visible = True
                     return
             except tk.TclError:
                 pass
-            self._settings_win = None  # stale: the window was destroyed another way
+            self._settings_win = None  # stale: the panel was destroyed another way
 
-        sp = tk.Toplevel(self)
-        sp.title(self.e.t("g_settings"))
-        sp.configure(bg=BG)
-        # Standalone window: no transient, no grab_set (non-modal)
-        # Optional: mark as tool window on Windows to not show in taskbar separately
-        if os.name == "nt":
-            try:
-                sp.attributes("-toolwindow", True)
-            except (tk.TclError, AttributeError):
-                pass
-
-        # Make it a decent size and center-ish
-        sp.geometry(f"{self.px(700)}x{self.px(620)}")
-        sp.minsize(self.px(560), self.px(480))
+        sp = tk.Frame(self, bg=SURFACE)
+        sp.place(relx=0, rely=0, relwidth=1, relheight=1)
+        sp.lift()
 
         # header bar
         hdr = tk.Frame(sp, bg=SURFACE)
@@ -1081,6 +1065,17 @@ class App(tk.Tk):
             font=self.f_small,
             text=self.e.t("g_settings_lang") + " (use header pills to switch)",
         ).pack(side="right")
+        back_btn = self._btn(
+            hdr,
+            "g_settings_close",
+            lambda: self._settings_close(),
+            "ghost",
+            icon="✕",
+            bg=SURFACE,
+            height=32,
+            minw=80,
+        )
+        back_btn.pack(side="right", padx=(self.px(8), 0))
 
         # scrollable content
         container = tk.Frame(sp, bg=SURFACE)
@@ -2221,7 +2216,7 @@ class App(tk.Tk):
         self.s_plugins.insert(0, ", ".join(self.e.cfg.plugins))
         _setting_row("g_settings_plugins", self.s_plugins, "g_settings_save")
 
-        # Save / Close bar: pinned to the bottom of the window so it is always
+        # Save bar (Close is in the header): pinned to the bottom so it is always
         # reachable (it used to sit after ~120 rows of scrolling), plus a status line
         # that reports the save result *in the dialog* (it used to go to the room).
         btn_row = tk.Frame(sp, bg=SURFACE)
@@ -2243,17 +2238,6 @@ class App(tk.Tk):
             minw=120,
         )
         save_btn.pack(side="left")
-        cancel_btn = self._btn(
-            btn_row,
-            "g_settings_close",
-            lambda: self._settings_close(),
-            "ghost",
-            icon="✕",
-            bg=SURFACE,
-            height=40,
-            minw=100,
-        )
-        cancel_btn.pack(side="left", padx=(self.px(8), 0))
         self._settings_status = tk.Label(
             btn_row, bg=SURFACE, fg=MUTED, font=self.f_small, anchor="w", justify="left"
         )
@@ -2270,11 +2254,9 @@ class App(tk.Tk):
             lambda e: sp_canvas.itemconfigure(sp_window_id, width=e.width),
         )
 
-        # Protocol handler for window close
-        sp.protocol("WM_DELETE_WINDOW", self._settings_close)
-
-        # Store reference; drop it whenever the window goes away, however that happens
+        # Store reference; drop it whenever the panel goes away, however that happens
         self._settings_win = sp
+        self._settings_visible = True
         sp.bind(
             "<Destroy>",
             lambda ev: setattr(self, "_settings_win", None) if ev.widget is sp else None,
@@ -2285,11 +2267,16 @@ class App(tk.Tk):
         self.s_mpv_path.focus_set()
 
     def _settings_close(self):
-        """Close the settings popup."""
+        """Close the settings panel and return to the main view."""
         win = self._settings_win
-        if win is not None and win.winfo_exists():
-            win.destroy()
-            self._settings_win = None
+        self._settings_win = None
+        self._settings_visible = False
+        if win is not None:
+            try:
+                if win.winfo_exists():
+                    win.destroy()
+            except tk.TclError:
+                pass
 
     # ---- animated scenery ---------------------------------------------------
     def _layout_line(self, _e=None):
@@ -2558,9 +2545,28 @@ class App(tk.Tk):
         for k, b in self.tabs.items():
             b.set_active(k == name)
 
+    def _build_menu(self):
+        """Top menu bar with a Settings entry (#226)."""
+        menu_bar = tk.Menu(self)
+        self.config(menu=menu_bar)
+        settings_menu = tk.Menu(menu_bar, tearoff=0)
+        settings_menu.add_command(label=self.e.t("g_settings"), command=self.show_settings)
+        menu_bar.add_cascade(label=self.e.t("g_settings"), menu=settings_menu)
+        self._menu_bar, self._settings_menu = menu_bar, settings_menu
+
+    def _relabel_menu(self) -> None:
+        """Menu entries are not widgets in _labels: retitle them on language change."""
+        for menu in (getattr(self, "_menu_bar", None), getattr(self, "_settings_menu", None)):
+            try:
+                if menu is not None and hasattr(menu, "entryconfigure"):
+                    menu.entryconfigure(0, label=self.e.t("g_settings"))
+            except tk.TclError:
+                pass
+
     def set_lang(self, code: str):
         self.e.lang = code
         self.relabel()
+        self._relabel_menu()
 
     _cur_dur = 0
 
@@ -3310,16 +3316,15 @@ class App(tk.Tk):
         (log.info if ok else log.warning)("settings: %s", text)
 
     def show_settings(self):
-        """Open the settings popup window."""
-        self.open_settings()
+        """Toggle the settings panel (menu bar: Settings)."""
+        if self._settings_visible and self._settings_win is not None:
+            self._settings_close()
+        else:
+            self.open_settings()
 
     def close(self):
         self._closing = True
-        # Close settings window if open
-        win = self._settings_win
-        if win is not None and win.winfo_exists():
-            win.destroy()
-            self._settings_win = None
+        self._settings_close()  # destroys the settings panel if open
         for attr in ("_anim", "_ref"):
             timer_id = getattr(self, attr, None)
             if timer_id:

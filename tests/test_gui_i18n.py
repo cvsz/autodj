@@ -153,9 +153,10 @@ def test_settings_dialog_visible_saves_and_reopens(tmp_path):
     try:
         app.open_settings()
         app.update()
-        win = app._settings_win
-        win.geometry("900x900")
+        app.geometry("900x900")
         app.update()
+        win = app._settings_win
+        assert win is not None and app._settings_visible
         assert app.s_mpv_path.winfo_viewable()  # entry not hidden behind its row frame
         assert any(
             isinstance(w, tk.Label) and w.cget("text") == e.t("g_settings_mpv_path")
@@ -182,10 +183,13 @@ def test_settings_dialog_visible_saves_and_reopens(tmp_path):
 
         win.destroy()  # destroyed by something other than the Close button
         app.update()
-        app.set_lang("th")  # relabel must skip the dead widgets
+        app.set_lang("th")  # relabel must skip the dead widgets (and retitle the menu)
         app.open_settings()
         app.update()
         assert app._settings_win is not None and app._settings_win.winfo_exists()
+        app.show_settings()  # menu toggle closes the panel and frees it
+        app.update()
+        assert app._settings_win is None and not app._settings_visible
     finally:
         app.close()
         del app
