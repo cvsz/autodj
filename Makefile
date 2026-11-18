@@ -1,8 +1,8 @@
 # CamfrogAutoDJ -- dev convenience targets.
 # Cross-platform (Linux/macOS/Windows PowerShell/Git-Bash).
-# Windows 11 ready: validates OS build >= 22000, NSIS 3.09+, mpv, PyInstaller.
-# NOTE: recipes use POSIX sh syntax ([ -f ], mkdir -p, ...), so on Windows run
-# make from Git-Bash (bash must be on PATH); cmd.exe alone is not sufficient.
+# Windows 11 ready: validates OS build >= 22000, NSIS 3.13+, mpv.exe, PyInstaller.
+# Recipes use POSIX sh syntax ([ -f ], mkdir -p, ...); on Windows SHELL is set
+# to Git Bash below, so `make build-all` works without extra flags.
 
 # Variables
 # PY: python3 on Linux/macOS; "python" on Windows (where "python3" is only the
@@ -15,6 +15,13 @@ BUILD_LOG_TS ?= $(shell date +%Y%m%d%H%M%S)
 
 ifeq ($(OS),Windows_NT)
 PY          ?= python
+# POSIX recipes need Git Bash on Windows. GNU Make only honours SHELL as a
+# Unix-style shell when it comes from the environment or command line, and
+# $(shell date) needs Git's usr/bin on PATH. From PowerShell:
+#   $env:PATH = "C:\Program Files\Git\usr\bin;$env:PATH"
+#   $env:SHELL = "C:/Program Files/Git/bin/bash.exe"
+#   make build-all
+MPV_BUNDLE_EXE ?= D:/data/autodj-installer/mpv.exe
 else
 PY          ?= $(shell command -v python3 >/dev/null 2>&1 && echo python3 || echo python)
 endif
@@ -60,7 +67,7 @@ help:  ## Show this help
 	@echo ""
 	@echo "Variables: PY=$(PY)  CONFIG=$(CONFIG)  VERSION=$(VERSION)"
 	@echo "build* works on both platforms: Windows 11 (PowerShell) and Linux/Wine."
-	@echo "Windows targets require: Windows 11 (build 22000+), NSIS 3.09+, mpv, PyInstaller"
+	@echo "Windows targets require: Windows 11 (build 22000+), NSIS 3.13+, mpv.exe, PyInstaller"
 
 # SKIP_CHECKS=1 bypasses all prerequisite checks (for air-gapped / pre-validated machines)
 logs:  ## Create the build log directory
@@ -75,7 +82,7 @@ else
 	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/win11-check.ps1 -MinBuild $(WIN11_MIN_BUILD) >>"$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: Windows 11 check failed (details in the log below). Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" && exit 1)
 	@echo "  OK: Windows 11 detected" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
 	@powershell.exe -NoProfile -Command "if (Get-Command makensis -ErrorAction SilentlyContinue) { echo '  OK: NSIS (makensis) in PATH' } elseif (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files (x86)\NSIS\makensis.exe' } elseif (Test-Path 'C:\Program Files\NSIS\makensis.exe') { echo '  OK: NSIS found at C:\Program Files\NSIS\makensis.exe' } else { echo 'ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis) or set SKIP_CHECKS=1 to bypass.'; exit 1 }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found. Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" && exit 1)
-	@powershell.exe -NoProfile -Command "if (Get-Command mpv.exe -ErrorAction SilentlyContinue) { echo '  OK: mpv.exe in PATH' } elseif (Test-Path 'C:\Program Files\mpv\mpv.exe') { echo '  OK: mpv found at C:\Program Files\mpv\mpv.exe' } else { echo 'WARN: mpv.exe not found in PATH. Install: choco install mpv --version=2024.01.01 --yes' }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
+	@powershell.exe -NoProfile -Command "if (Get-Command mpv.exe -ErrorAction SilentlyContinue) { echo '  OK: mpv.exe in PATH' } elseif (Test-Path 'C:\Program Files\mpv\mpv.exe') { echo '  OK: mpv found at C:\Program Files\mpv\mpv.exe' } elseif (Test-Path '$(MPV_BUNDLE_EXE)') { echo '  OK: mpv bundle at $(MPV_BUNDLE_EXE)' } else { echo 'WARN: mpv.exe not found. Install: choco install mpv --yes' }" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
 	@if $(PY) -c "import PyInstaller" 2>/dev/null; then echo "  OK: PyInstaller installed"; else echo "WARN: PyInstaller not installed. Run: $(PIP) install pyinstaller" | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log"; fi
 endif
 else
@@ -98,7 +105,7 @@ ifeq ($(SKIP_CHECKS),1)
 	@echo "  SKIP: mpv check disabled (SKIP_CHECKS=1)" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1
 	@echo "  SKIP: mpv check disabled (SKIP_CHECKS=1)"
 else
-	@powershell.exe -NoProfile -Command "if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\mpv\mpv.exe')) { Write-Error 'mpv.exe not found. Install: choco install mpv --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: mpv not found. Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" && exit 1)
+	@powershell.exe -NoProfile -Command "if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\mpv\mpv.exe') -and -not (Test-Path '$(MPV_BUNDLE_EXE)')) { Write-Error 'mpv.exe not found (also checked $(MPV_BUNDLE_EXE)). Install: choco install mpv --yes'; exit 1 }" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: mpv not found. Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" && exit 1)
 	@echo "  OK: mpv available" >> "$(BUILD_LOG_DIR)/mpv-check-$(BUILD_LOG_TS).log" 2>&1
 endif
 else

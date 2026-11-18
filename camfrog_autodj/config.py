@@ -300,6 +300,9 @@ class Config:
     auto_update_repo: str = "cvsz/autodj"  # GitHub repo (owner/name) for release checks
     auto_update_check_interval: float = 21600.0  # seconds between checks (default 6h)
     auto_update_asset: str = "AutoDJ.exe"  # release asset filename to download
+    # When auto_update_enabled, download the latest AutoDJ.exe on startup and
+    # replace this installation (via autodj_update.bat) before starting the bot.
+    auto_update_apply_on_start: bool = True
 
     # AI: optional chat-completion integration (disabled by default)
     ai_enabled: bool = False  # enable AI chat replies

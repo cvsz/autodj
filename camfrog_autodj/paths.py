@@ -28,12 +28,18 @@ def _expand_environment(value: str) -> str:
     return re.sub(r"%([^%]+)%", replace, expanded)
 
 
-def resolve_executable(configured: str | None, fallback: str = "") -> str:
+def resolve_executable(
+    configured: str | None, fallback: str = "", *, only_exe: bool = False
+) -> str:
     """Resolve an executable path or PATH command to an absolute file path.
 
     Explicit paths are authoritative: if they do not exist, return an empty string
     instead of silently selecting a different executable. Relative paths containing
     a separator are anchored to the application directory.
+
+    ``only_exe`` (used for mpv) never returns a ``.com`` shim: it prefers the
+    sibling ``.exe`` and asks PATH specifically for ``<name>.exe``, because on
+    Windows PATHEXT usually puts ``.COM`` before ``.EXE``.
     """
     raw = (configured or fallback or "").strip()
     if not raw:
@@ -48,13 +54,22 @@ def resolve_executable(configured: str | None, fallback: str = "") -> str:
 
     try:
         if candidate.is_file():
+            if only_exe and candidate.suffix.lower() == ".com":
+                sibling = candidate.with_suffix(".exe")
+                return str(sibling.resolve()) if sibling.is_file() else ""
             return str(candidate.resolve())
     except OSError:
         return ""
 
     if not has_separator:
+        if only_exe and os.name == "nt":
+            name = expanded if expanded.lower().endswith(".exe") else expanded + ".exe"
+            return shutil.which(name) or ""
         found = shutil.which(expanded)
         if found:
+            if only_exe and found.lower().endswith(".com"):
+                sibling = Path(found).with_suffix(".exe")
+                return str(sibling.resolve()) if sibling.is_file() else ""
             return found
 
     return ""

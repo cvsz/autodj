@@ -120,11 +120,24 @@ def _configure_logging(a, cfg, level):
         _setup_log_file(a, cfg, level)
 
 
-def _run(a, level):
-    if _handle_windows(a):
-        return
-    if _handle_dump(a):
-        return
+def _apply_startup_update(cfg) -> bool:
+    """Download and apply a newer AutoDJ.exe before the bot starts.
+
+    Returns True when the swap script was launched and startup must stop.
+    """
+    if not (cfg.auto_update_enabled and cfg.auto_update_apply_on_start):
+        return False
+    from .updater import Updater
+
+    updater = Updater(cfg)
+    if not (updater.check_for_update() and updater.apply_update()):
+        return False
+    log.info("auto-update: staged update, replacing the installed AutoDJ.exe")
+    return updater.launch_update_script()
+
+
+def _load_startup_config(a, level):
+    """Resolve, migrate, load and configure logging for the startup config."""
     _resolve_frozen_config_path(a)
     if os.path.exists(a.config):
         log.info("config: %s", os.path.abspath(a.config))
@@ -141,6 +154,15 @@ def _run(a, level):
         cfg.lang = a.lang
     if a.console:
         cfg.chat_reader = cfg.chat_sender = "console"
+    return cfg
+
+
+def _run(a, level):
+    if _handle_windows(a):
+        return
+    if _handle_dump(a):
+        return
+    cfg = _load_startup_config(a, level)
     if _run_check(a, cfg):
         return
     _auto_launch(cfg)
@@ -148,6 +170,8 @@ def _run(a, level):
         return
     if _run_say(a, cfg):
         return
+    if _apply_startup_update(cfg):
+        return  # the batch file relaunches the freshly installed exe
     adapter = _build_adapter(a, cfg)
     eng = Engine(cfg, adapter, cfg_path=a.config)
     if a.gui:

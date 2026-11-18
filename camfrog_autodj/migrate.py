@@ -35,7 +35,7 @@ PLACEHOLDER_TOKENS = (
 # Relative locations (from the config file's directory) where bundled
 # executables are typically installed by the NSIS installer.
 RELATIVE_EXECUTABLE_PATHS: dict[str, tuple[str, ...]] = {
-    "mpv_path": ("mpv/mpv.exe", "mpv/mpv.com"),
+    "mpv_path": ("mpv/mpv.exe",),
     "ytdlp_path": ("mpv/yt-dlp.exe", "yt-dlp.exe"),
 }
 

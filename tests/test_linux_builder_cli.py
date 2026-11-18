@@ -49,20 +49,23 @@ def test_wine_binary_can_be_overridden_for_tests():
     assert 'WINE_BIN="${WINE_BIN:-' in script
 
 
-@pytest.mark.skipif(
-    os.name == "nt",
-    reason="Linux/Wine builder integration test; run on Linux/WSL",
-)
 def test_missing_pyinstaller_fails_with_actionable_hint(tmp_path):
+    from conftest import posix_bash
+
+    bash = posix_bash()
+    if bash is None:
+        pytest.skip("Bash is unavailable on this runner")
+
     windows_python = tmp_path / "python.exe"
     windows_python.write_bytes(b"not really python")
 
     env = dict(os.environ)
-    env["WINE_BIN"] = str(_fake_wine(tmp_path))
-    env["WINE_PYTHON"] = str(windows_python)
+    # Git Bash needs forward-slash paths for WINE_BIN / WINE_PYTHON.
+    env["WINE_BIN"] = _fake_wine(tmp_path).as_posix()
+    env["WINE_PYTHON"] = windows_python.as_posix()
 
     result = subprocess.run(
-        ["bash", str(SCRIPT), "0.3.5"],
+        [bash, str(SCRIPT), "0.3.5"],
         cwd=ROOT,
         env=env,
         capture_output=True,

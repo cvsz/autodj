@@ -61,7 +61,6 @@ REQUIRED_STAGED_FILES = [
     "AutoDJ.exe",
     "app.ico",
     "config.toml",
-    "mpv/mpv.com",
     "mpv/yt-dlp.exe",
 ]
 
