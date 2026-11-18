@@ -43,7 +43,7 @@ A critical bug was discovered and fixed in the NSIS installer uninstaller: `RMDi
 | Section | Components | Status |
 |---------|-----------|--------|
 | SEC_MAIN | AutoDJ.exe, app.ico, README.md, CHANGELOG.md, LICENSE, config.toml (conditional), run_autodj.py | Defined |
-| SEC_MPV | mpv.exe, mpv.com, yt-dlp.exe, register/unregister bat, \_internal | Defined |
+| SEC_MPV | mpv.exe, yt-dlp.exe, register/unregister bat, \_internal | Defined |
 | SEC_VBCABLE | VBCABLE driver files | Optional |
 | SEC_DOCS | docs/*.md | Optional |
 | SEC_TOOLS | tools/*.py, *.ps1, *.sh | Optional |

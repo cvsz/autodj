@@ -506,7 +506,7 @@ def find_ytdlp(ytdlp_path: str = "", mpv_path: str = "") -> str:
     if ytdlp_path:
         return resolve_executable(ytdlp_path)
 
-    mpv_executable = resolve_executable(mpv_path)
+    mpv_executable = resolve_executable(mpv_path, only_exe=True)
     names = ("yt-dlp.exe", "yt-dlp") if os.name == "nt" else ("yt-dlp",)
     if mpv_executable:
         mpv_candidate = Path(mpv_executable)

@@ -23,7 +23,11 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
+
+# security review: subprocess only with fixed argv lists, never shell=True
+import subprocess  # nosec B404
 import sys
 import threading
 import time
@@ -363,6 +367,34 @@ class Updater:
             except OSError:
                 pass
             return False
+
+    def launch_update_script(self, exe_path: str | Path | None = None) -> bool:
+        """Run the staged ``autodj_update.bat`` to replace the installed exe.
+
+        Uses an argv list (never ``shell=True``) and an absolute cmd.exe path.
+        Returns False on a non-Windows host or when no script was staged.
+        """
+        if os.name != "nt":
+            log.info("auto-update: swapping the exe is Windows-only")
+            return False
+        exe = Path(exe_path) if exe_path else default_exe_path()
+        script = exe.with_name("autodj_update.bat")
+        if not script.is_file():
+            log.warning("auto-update: no staged update script at %s", script)
+            return False
+        cmd = os.environ.get("COMSPEC", r"C:\Windows\System32\cmd.exe")
+        try:
+            # security review: fixed argv list, absolute cmd.exe path from COMSPEC
+            subprocess.Popen(  # nosec B603
+                [cmd, "/c", str(script)],
+                cwd=str(exe.parent),
+                close_fds=True,
+            )
+        except OSError:
+            log.exception("auto-update: cannot launch %s", script)
+            return False
+        log.info("auto-update: launched %s", script)
+        return True
 
     def apply_update(self, exe_path: str | Path | None = None) -> bool:
         """Download the latest AutoDJ.exe and stage it as ``AutoDJ.exe.next``.

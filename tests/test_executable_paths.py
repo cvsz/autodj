@@ -33,6 +33,42 @@ def test_resolve_bare_command_from_path(monkeypatch, tmp_path):
     assert paths.resolve_executable("mpv") == str(executable.resolve())
 
 
+def test_only_exe_never_returns_mpv_com(monkeypatch, tmp_path):
+    # A .com shim exists but there is no .exe: fail closed instead of running it.
+    com = tmp_path / "mpv.com"
+    com.write_bytes(b"shim")
+    assert paths.resolve_executable(str(com), only_exe=True) == ""
+
+    # With both present, the sibling .exe is selected.
+    exe = tmp_path / "mpv.exe"
+    exe.write_bytes(b"binary")
+    assert paths.resolve_executable(str(com), only_exe=True) == str(exe.resolve())
+
+
+def test_only_exe_asks_path_for_exe(monkeypatch, tmp_path):
+    exe = tmp_path / "mpv.exe"
+    exe.write_bytes(b"binary")
+    calls = []
+
+    def fake_which(name):
+        calls.append(name)
+        return str(exe) if name == "mpv.exe" else str(tmp_path / "mpv.com")
+
+    monkeypatch.setattr(paths.shutil, "which", fake_which)
+    assert paths.resolve_executable("mpv", only_exe=True) == str(exe.resolve())
+    assert calls == ["mpv.exe"]
+
+
+def test_player_never_launches_mpv_com(monkeypatch):
+    from camfrog_autodj.config import Config
+    from camfrog_autodj.player import MpvPlayer
+
+    monkeypatch.setattr("camfrog_autodj.player.resolve_executable", lambda *_a, **_k: "")
+    player = MpvPlayer(Config(mpv_path="D:/tools/mpv.com"))
+    assert player._mpv_executable().lower().endswith("mpv.exe")
+    assert all(not arg.lower().endswith(".com") for arg in player._base())
+
+
 def test_invalid_explicit_path_does_not_fall_back(monkeypatch):
     monkeypatch.setattr(paths.shutil, "which", lambda _name: "/usr/bin/yt-dlp")
 

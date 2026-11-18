@@ -103,20 +103,35 @@ if (Test-Path mpv) {
     if ($rc -ge 8) { throw "copying mpv/ -> dist\mpv\ failed (robocopy exit $rc): close any running mpv/AutoDJ and retry" }
     "copied mpv/ -> dist\mpv\ (robocopy exit $rc)" | Write-Host
 } else {
-    # mpv/ not present (e.g. cloned repo, gitignored). Try to find mpv.exe on the system.
-    $mpvSearchPaths = @(
-        "C:\Program Files\mpv\mpv.exe",
-        "C:\Program Files (x86)\mpv\mpv.exe",
-        "$env:LOCALAPPDATA\Microsoft\WindowsApps\mpv.exe"
-    )
+    # mpv/ not present (e.g. cloned repo, gitignored). Prefer the complete local
+    # bundle directory (mpv.exe + yt-dlp.exe + register scripts +
+    # _internal); override it with $env:AUTODJ_MPV_BUNDLE on another machine.
+    $bundleSource = $env:AUTODJ_MPV_BUNDLE
+    if (-not $bundleSource) { $bundleSource = "D:\data\autodj-installer" }
     $found = $false
-    foreach ($mpvPath in $mpvSearchPaths) {
-        if (Test-Path $mpvPath) {
-            if (-not (Test-Path "dist\mpv")) { New-Item -ItemType Directory -Path "dist\mpv" | Out-Null }
-            Copy-Item $mpvPath "dist\mpv\mpv.exe" -Force
-            "copied mpv.exe from $mpvPath to dist\mpv\" | Write-Host
-            $found = $true
-            break
+    if (Test-Path (Join-Path $bundleSource "mpv.exe")) {
+        if (-not (Test-Path "dist\mpv")) { New-Item -ItemType Directory -Path "dist\mpv" | Out-Null }
+        robocopy $bundleSource dist\mpv /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+        $rc = $LASTEXITCODE
+        $global:LASTEXITCODE = 0   # robocopy: 0-7 = success, >= 8 = failure
+        if ($rc -ge 8) { throw "copying mpv bundle from $bundleSource failed (robocopy exit $rc)" }
+        "copied mpv bundle from $bundleSource -> dist\mpv\ (robocopy exit $rc)" | Write-Host
+        $found = $true
+    } else {
+        # No full bundle: try to find mpv.exe on the system.
+        $mpvSearchPaths = @(
+            "C:\Program Files\mpv\mpv.exe",
+            "C:\Program Files (x86)\mpv\mpv.exe",
+            "$env:LOCALAPPDATA\Microsoft\WindowsApps\mpv.exe"
+        )
+        foreach ($mpvPath in $mpvSearchPaths) {
+            if (Test-Path $mpvPath) {
+                if (-not (Test-Path "dist\mpv")) { New-Item -ItemType Directory -Path "dist\mpv" | Out-Null }
+                Copy-Item $mpvPath "dist\mpv\mpv.exe" -Force
+                "copied mpv.exe from $mpvPath to dist\mpv\" | Write-Host
+                $found = $true
+                break
+            }
         }
     }
     if (-not $found) {

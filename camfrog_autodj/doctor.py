@@ -92,7 +92,7 @@ def _add(out: list[Result], level: str, text: str) -> None:
 
 
 def _check_mpv(cfg, out: list[Result]) -> None:
-    mpv_executable = resolve_executable(cfg.mpv_path)
+    mpv_executable = resolve_executable(cfg.mpv_path, only_exe=True)
     if mpv_executable:
         _add(out, "OK", f"mpv: {mpv_executable}")
     else:

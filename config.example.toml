@@ -260,6 +260,7 @@ auto_update_enabled = false
 auto_update_repo = "cvsz/autodj"         # owner/name only
 auto_update_check_interval = 21600.0     # seconds between background checks (min 300)
 auto_update_asset = "AutoDJ.exe"         # release asset; must have a published SHA-256 digest
+auto_update_apply_on_start = true        # download latest AutoDJ.exe from GitHub on launch and replace this install
 
 # ---- AI chat replies (OpenAI-compatible API) — off by default ----------------------------
 # Answers non-command room lines (never private IMs). https required except for localhost.

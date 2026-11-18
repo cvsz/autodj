@@ -98,7 +98,7 @@ $ProgressPreference = "SilentlyContinue"
 $LOG_FILE = Join-Path $env:TEMP "autodj-install-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 $REPO_URL = "https://github.com/cvsz/autodj.git"
 $VBCABLE_URL = "https://vb-audio.com/Cable/"
-$VBCABLE_DOWNLOAD = "https://vb-audio.com/Cable/VB-CABLE_Driver_Pack43.zip"
+$VBCABLE_DOWNLOAD = "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack46.zip"
 
 # Colors
 $C_CYAN = [ConsoleColor]::Cyan
@@ -480,7 +480,7 @@ function Install-VBCable {
     }
 
     if (Confirm "Download and install VB-Cable Driver Pack? (Required to route audio to Camfrog mic)") {
-        $zipPath = Join-Path $env:TEMP "VB-CABLE_Driver_Pack43.zip"
+        $zipPath = Join-Path $env:TEMP "VBCABLE_Driver_Pack46.zip"
         $extractPath = Join-Path $env:TEMP "VBCABLE"
         try {
             SubStep "Downloading VB-Cable Driver Pack..."

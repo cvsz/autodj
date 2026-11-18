@@ -10,9 +10,7 @@
 
 from __future__ import annotations
 
-import os
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -75,10 +73,9 @@ class TestLinuxExeBuilder:
     def test_script_exists_and_parses(self):
         assert LINUX.exists(), f"missing {LINUX}"
 
-        if os.name == "nt":
-            pytest.skip("Linux shell syntax validation runs in Linux CI")
+        from conftest import posix_bash
 
-        bash = shutil.which("bash")
+        bash = posix_bash()
         if bash is None:
             pytest.skip("Bash is unavailable on this runner")
 

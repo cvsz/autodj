@@ -152,9 +152,21 @@ jobs:
         run: |
           cyclonedx-py environment --pyproject pyproject.toml -o Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
 
+      - name: Package Full Client Build
+        shell: pwsh
+        run: |
+          # A single archive clients can download instead of chasing individual
+          # assets: exe, installer, config example and the mpv bundle when staged.
+          $stage = Join-Path $env:RUNNER_TEMP "autodj-full"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item dist\AutoDJ.exe, config.example.toml, README.md, CHANGELOG.md $stage -Force
+          Copy-Item Camfrog-AutoDJ-Setup-*.exe $stage -Force
+          if (Test-Path dist\mpv) { Copy-Item dist\mpv (Join-Path $stage mpv) -Recurse -Force }
+          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath "Camfrog-AutoDJ-Full-${{ github.ref_name }}.zip" -Force
+
       - name: Generate SHA256 Checksums
         run: |
-          Get-FileHash -Algorithm SHA256 dist\\AutoDJ.exe, Camfrog-AutoDJ-Setup-*.exe, Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json | ForEach-Object { "$($_.Hash.ToLower())  $([System.IO.Path]::GetFileName($_.Path))" } | Out-File -FilePath SHA256SUMS.txt -Encoding ascii
+          Get-FileHash -Algorithm SHA256 dist\\AutoDJ.exe, Camfrog-AutoDJ-Setup-*.exe, Camfrog-AutoDJ-Full-${{ github.ref_name }}.zip, Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json | ForEach-Object { "$($_.Hash.ToLower())  $([System.IO.Path]::GetFileName($_.Path))" } | Out-File -FilePath SHA256SUMS.txt -Encoding ascii
           Get-Content SHA256SUMS.txt
 
       - name: Attest Build Artifacts
@@ -163,6 +175,7 @@ jobs:
           subject-path: |
             dist/AutoDJ.exe
             Camfrog-AutoDJ-Setup-*.exe
+            Camfrog-AutoDJ-Full-${{ github.ref_name }}.zip
             Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
             SHA256SUMS.txt
 
@@ -173,6 +186,7 @@ jobs:
           path: |
             dist/AutoDJ.exe
             Camfrog-AutoDJ-Setup-*.exe
+            Camfrog-AutoDJ-Full-${{ github.ref_name }}.zip
             Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
             SHA256SUMS.txt
           retention-days: 90
@@ -184,6 +198,7 @@ jobs:
           files: |
             dist/AutoDJ.exe
             Camfrog-AutoDJ-Setup-*.exe
+            Camfrog-AutoDJ-Full-${{ github.ref_name }}.zip
             Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
             SHA256SUMS.txt
           generate_release_notes: true

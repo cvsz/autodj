@@ -52,10 +52,24 @@ class MpvPlayer:
         self._pos_cache: tuple[float, float] | None = None  # (position, monotonic time)
 
     def available(self) -> bool:
-        return bool(resolve_executable(self.cfg.mpv_path))
+        return bool(resolve_executable(self.cfg.mpv_path, only_exe=True))
+
+    def _mpv_executable(self) -> str:
+        """Return the mpv binary to launch -- always ``mpv.exe``, never ``mpv.com``."""
+        resolved = resolve_executable(self.cfg.mpv_path, only_exe=True)
+        if resolved:
+            return resolved
+        # No file on disk: keep the historical fallback for diagnostics/tests,
+        # but still never hand a .com shim (or a bare Windows command) to mpv.
+        raw = (self.cfg.mpv_path or "mpv").strip()
+        if os.name != "nt":
+            return raw
+        if "/" in raw or "\\" in raw:
+            return raw[:-4] + ".exe" if raw.lower().endswith(".com") else raw
+        return raw if raw.lower().endswith(".exe") else raw + ".exe"
 
     def _base(self) -> list[str]:
-        mpv_executable = resolve_executable(self.cfg.mpv_path) or self.cfg.mpv_path
+        mpv_executable = self._mpv_executable()
         a = [
             mpv_executable,
             "--no-video",

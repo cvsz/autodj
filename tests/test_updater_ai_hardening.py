@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from camfrog_autodj.ai import AIClient
+from camfrog_autodj.config import Config
 from camfrog_autodj.updater import Updater, is_newer
 
 
@@ -29,6 +30,12 @@ class _Resp(io.BytesIO):
 
     def __exit__(self, *a):
         self.close()
+
+
+def test_startup_apply_setting_and_missing_script(tmp_path):
+    assert Config().auto_update_apply_on_start is True
+    updater = Updater(_cfg())
+    assert updater.launch_update_script(tmp_path / "AutoDJ.exe") is False
 
 
 def test_version_compare_only_strictly_newer():

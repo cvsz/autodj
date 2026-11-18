@@ -137,7 +137,6 @@ Section /o "mpv + yt-dlp" SEC_MPV
     ; /nonfatal: CI runners have no vendored mpv/ folder (it is not in git); a
     ; missing binary must not abort the whole installer build (SEC_MPV is optional)
     File /nonfatal "dist\mpv\mpv.exe"
-    File /nonfatal "dist\mpv\mpv.com"
     File /nonfatal "dist\mpv\yt-dlp.exe"
     File /nonfatal "dist\mpv\mpv-register.bat"
     File /nonfatal "dist\mpv\mpv-unregister.bat"
@@ -151,7 +150,8 @@ do_register:
 skip_register:
 SectionEnd
 
-; VB-CABLE is not bundled. install.ps1 retains the existing Driver Pack 43 download/setup workflow.
+; VB-CABLE is not bundled (donationware licence). install.ps1 downloads the
+; current Driver Pack 46 from vb-audio.com and runs its setup with admin rights.
 
 Section "Documentation" SEC_DOCS
     SetOutPath "$INSTDIR\docs"
