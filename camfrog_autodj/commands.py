@@ -58,6 +58,22 @@ class Router:
             return False
         return msg.user.lower() in self.e.admins
 
+    def _try_plugin_command(
+        self, msg: "ChatMessage", name: str, arg: str, admin: bool, is_im: bool
+    ) -> None:
+        """Route an unhandled command to plugins under the normal chat gates."""
+        e = self.e
+        if not admin:
+            if msg.user.lower() in e.blocked:
+                return
+            if not self._channel_allowed(msg, name, is_im):
+                return
+            # Plugin commands are still chat commands: apply the same
+            # per-user cooldown/rate-limit gate as built-ins.
+            if not self._admit(msg, name, False, is_im):
+                return
+        e.plugin_command(name, msg.user, arg.strip(), admin)
+
     def handle(self, msg: "ChatMessage") -> None:
         e = self.e
         p = e.cfg.prefix
@@ -84,13 +100,7 @@ class Router:
         )
         if not entry:
             # Not a built-in: let plugins handle it (e.g. !stats, !plugins)
-            if not admin:
-                if msg.user.lower() in e.blocked:
-                    return
-                # Same channel rules as built-ins (IM room-presence check).
-                if not self._channel_allowed(msg, name.lower(), is_im):
-                    return
-            e.plugin_command(name.lower(), msg.user, arg.strip(), admin)
+            self._try_plugin_command(msg, name.lower(), arg, admin, is_im)
             return
         fn, need_admin = entry
         if not admin and not self._admit(msg, name, need_admin, is_im):

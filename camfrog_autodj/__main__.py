@@ -79,12 +79,9 @@ def main():
     a = _parser().parse_args()
     level = logging.DEBUG if a.verbose else logging.INFO
 
-    # Configure logging: JSON or plain text
-    if a.log_json:
-        # JSON logging will be configured after config is loaded
-        logging.basicConfig(level=level, handlers=[])  # No default handler
-    else:
-        logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(message)s")
+    # Always install a console handler: no flag may silence startup logging.
+    # _configure_logging() switches the formatter to JSON once config is loaded.
+    logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(message)s")
 
     try:
         _run(a, level)
@@ -138,7 +135,7 @@ def _run(a, level):
         )
     _migrate_config(a.config)
     cfg = Config.load(a.config)
-    _setup_log_file(a, cfg, level)
+    _configure_logging(a, cfg, level)
     cfg = _relocate_config(a, cfg)
     if a.lang:
         cfg.lang = a.lang
@@ -154,12 +151,40 @@ def _run(a, level):
     adapter = _build_adapter(a, cfg)
     eng = Engine(cfg, adapter, cfg_path=a.config)
     if a.gui:
-        from .gui import App
-
-        eng.start()
-        App(eng).mainloop()
+        _run_gui(eng)
     else:
         eng.run()
+
+
+def _run_gui(eng) -> None:
+    """Start the engine and open the Tk desktop window.
+
+    ``camfrog_autodj.gui`` is imported lazily here (only under ``--gui``) so
+    headless / console runs never pull in tkinter.  The import is wrapped so a
+    shadowing/stale installed copy (older builds lack gui.py) yields an
+    actionable error instead of a bare ModuleNotFoundError.
+    """
+    try:
+        from .gui import App
+    except ImportError:
+        pkg = sys.modules.get("camfrog_autodj")
+        pkg_file = getattr(pkg, "__file__", "<unknown>")
+        print(
+            "\nCannot start GUI: 'camfrog_autodj.gui' could not be imported.\n"
+            f"  The 'camfrog_autodj' package was loaded from: {pkg_file}\n"
+            "  This usually means a stale pip-installed copy of camfrog-autodj\n"
+            "  (older builds do not ship gui.py) is shadowing this repo's source.\n"
+            "  Fix:\n"
+            "    pip uninstall camfrog-autodj -y\n"
+            "    python run_autodj.py --gui\n"
+            "  Or install this repo editable:\n"
+            "    pip install -e .\n",
+            file=sys.stderr,
+        )
+        raise
+
+    eng.start()
+    App(eng).mainloop()
 
 
 def _handle_windows(a) -> bool:

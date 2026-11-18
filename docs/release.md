@@ -6,9 +6,9 @@ This document describes how AutoDJ releases are built, validated, and published.
 
 ## Versioning
 
-AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.3.0`, declared in:
-- `pyproject.toml` (`version = "0.3.0"`)
-- `camfrog_autodj/__init__.py` (`__version__ = "0.3.0"`)
+AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.3.5`, declared in:
+- `pyproject.toml` (`version = "0.3.5"`)
+- `camfrog_autodj/__init__.py` (`__version__ = "0.3.5"`)
 - `version_info.txt` (Windows file version resource)
 - `CHANGELOG.md` (changelog entries)
 

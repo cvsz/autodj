@@ -4,7 +4,9 @@ import itertools
 import json
 import logging
 import os
-import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
+
+# security review: subprocess only with fixed argv lists, never shell=True
+import subprocess  # nosec B404
 import tempfile
 import threading
 import time
@@ -142,7 +144,8 @@ class MpvPlayer:
             self._paused_since, self._paused_total = None, 0.0
             self._ipc = ipc
             self._pos_cache = None
-            self.proc = p = subprocess.Popen(cmd, **kw)  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+            # security review: argv list without shell; executable is sys.executable or a resolved, configured tool path
+            self.proc = p = subprocess.Popen(cmd, **kw)  # nosec B603
         if fade_in:
             threading.Thread(
                 target=self._fade_volume,
@@ -410,7 +413,8 @@ class MpvPlayer:
         # to be ignored, so TTS was spoken over full-volume music.
         ducked = duck_volume is not None and self.set_volume(int(duck_volume))
         try:
-            subprocess.run(  # nosec B603 - argv list without shell; resolved mpv path
+            # security review: argv list without shell; resolved mpv path
+            subprocess.run(  # nosec B603
                 self._base() + ["--volume=100", "--", path],
                 check=False,
                 timeout=max(1.0, float(timeout)),  # a broken WAV must not block forever
@@ -420,4 +424,5 @@ class MpvPlayer:
             log.warning("TTS clip did not finish within %.0fs: stopped", timeout)
         finally:
             if ducked and restore_volume is not None:
-                self.set_volume(int(restore_volume))  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+                # security review: argv list without shell; executable is sys.executable or a resolved, configured tool path
+                self.set_volume(int(restore_volume))

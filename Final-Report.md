@@ -1,5 +1,121 @@
 # Final Report — CamfrogAutoDJ 0.3.0 audit, fixes and hardening (2026-11-18)
 
+## 0. Authoritative verification update — v0.3.5 (2026-11-18)
+
+> This section is the current, evidence-backed status of the repository at branch
+> `feat/zplayer-gui-0.3.5`, HEAD `2eaa1bd` (plus the verification commits in PR #233).
+> Sections 1–7 below are the historical 0.3.0–0.3.2 evidence record and are retained.
+
+### 0.1 Executive summary — VERIFIED
+
+A top-to-bottom audit (static architecture mapping by an independent subagent, defect audit,
+security audit, then full local verification) was completed for the 0.3.5 zPlayer GUI redesign.
+All identified High and Medium defects were fixed in code; all Low findings were either fixed
+or reduced to reviewed, documented annotations. **Every locally executable gate is green with
+zero errors and zero warnings**: pytest 598 passed / 0 failed / 0 warnings (2 environment-skips,
+3 subtests), ruff check + format clean, mypy clean (48 files), shellcheck clean (all `*.sh`),
+bandit clean (all severity and confidence metrics 0), compileall clean, installer/repository
+validators clean.
+
+Evidence state (per `ZEAZ-INTRODUCTION.md`):
+
+| Area | State |
+|---|---|
+| Python source, GUI logic, config, tests, lint, types, security scans, repo/installer validators | **VERIFIED** — commands and outputs in §0.5 |
+| Windows 11 PyInstaller + NSIS signed installer build | **BLOCKED** — requires the Windows 11 host with NSIS/mpv/signing certificate; not fabricated here |
+| Live Camfrog room, UIA chat and mpv playback | **BLOCKED** — requires an authorized test room and audio device |
+| Signed commit / PR / independent review / merge | **EXECUTED in step 5** — exact SHAs and PR link recorded there |
+
+The codebase is enterprise-ready **to the extent local evidence permits**; the two runtime items
+above remain explicit release gates and are not claimed as verified.
+
+### 0.2 Complete change inventory
+
+**Features completed**
+
+| Feature | Evidence |
+|---|---|
+| zPlayer theme system (dark/neon/light), TkinterEP-inspired and GPL-safe | `camfrog_autodj/theme.py` (palettes, `shade()`, lazy Tk imports) |
+| Redesigned now-playing dashboard + Previous transport (`Engine.prev()`) | `camfrog_autodj/gui.py`, `camfrog_autodj/engine.py`, `messages.py` EN/TH labels |
+| `ui_theme` and `welcome_message_delay` settings, validated and documented | `config.py` (`_CHOICES`, `_RANGES`, `validate_values`), `config.example.toml`, GUI Settings |
+| Live theme switching of the open window | `App._retheme`, `_colour_mapping`, `_recolor_tree`, `PillButton.set_palette` |
+| Actionable stale-install GUI import error; PyInstaller hidden imports for GUI + optional extras | `__main__.py`, `tools/generate_spec.py` |
+
+**High/Medium defects fixed**
+
+| # | Finding → Fix |
+|---|---|
+| H1 | `--log-json` was inert and installed zero handlers (silencing console output) → `_configure_logging()` is called from startup; a console handler always exists |
+| H2 | GUI Settings built `Config(**data)` without `_validate()` → invalid values could be written and break next startup → `Config.validate_values()` enforces the same rules before any disk write |
+| M1 | `PillButton.STYLES` frozen at import ignored non-dark palettes → rebuilt from palette with derived shades |
+| M2 | `ui_theme` change required a restart → full widget-tree recolour and canvas redraw in the running window |
+| M3 | Delayed welcomes blocked a worker from the 8-thread command pool for up to 3600 s → dedicated daemon timers, cancelled on shutdown |
+
+**Security / robustness hardening (all Low findings closed)**
+
+Replay cache check made atomic with a lock; plugin commands gated by cooldown/rate-limit; IM
+history and chat-rate state bounded; config `.tmp` files written `0600` on POSIX; updater
+requires HTTPS and sanitizes release tags before batch interpolation; workflow secrets/inputs
+passed through `env:`; `# nosec` annotations normalized so bandit emits no warnings; dependency
+upper bounds added for webhook/hot-reload extras. No new runtime dependency was introduced.
+
+### 0.3 Performance and scalability
+
+- Delayed greetings no longer consume a command-pool slot: up to 3600 s waits now use independent
+  daemon timers, so lookup/`!skip`/announcement latency is unaffected by join floods.
+- Theme switching is O(number of live widgets) and happens only on an explicit settings save;
+  normal playback polling remains version-gated (no unnecessary list rebuilds).
+- IM log capped at 300 entries and idle chat-rate buckets pruned every 60 s, bounding memory in
+  long-running rooms with high nick churn.
+- Delayed-welcome timers are explicitly cancelled in `Engine.shutdown()`; no daemon leaks.
+
+### 0.4 Independent audit inputs
+
+Three read-only subagent audits were used as inputs: full architecture/module/runtime map,
+defect inventory (2 High / 3 Medium / 10 Low), and security audit (1 Medium / 7 Low). All
+High/Medium items were fixed in code; all Low items were fixed or normalized with reviewed
+evidence. No finding was silently dismissed.
+
+### 0.5 Validation matrix — results
+
+| Gate | Command | Result |
+|---|---|---|
+| Syntax | `python -m compileall -q camfrog_autodj tests tools` | **PASS** |
+| Tests | `python -m pytest -q -p no:faulthandler -p no:cacheprovider` | **PASS — 598 passed, 2 skipped, 3 subtests, 0 warnings** |
+| Lint | `python -m ruff check camfrog_autodj tests tools` | **PASS — 0 issues** |
+| Format | `python -m ruff format --check camfrog_autodj tests tools` | **PASS — 109 files** |
+| Types | `python -m mypy camfrog_autodj` | **PASS — 48 files, 0 issues** |
+| Shell | `shellcheck` on all tracked `scripts/*.sh tools/*.sh` | **PASS — 0 issues** |
+| Build assembly | `python tools/generate_spec.py` | **PASS — AutoDJ.spec generated** |
+| Installer validation | `python tools/validate_installer.py` | **PASS** (optional mpv bundle absent → informational) |
+| Repository validation | `python scripts/validate_repo.py` | **PASS — structure and local Markdown links valid** |
+| Missing-deps / connection test | `tests/test_version_and_release.py`, `tests/test_version_consistency.py`, `tests/test_installer_version_substitution.py`, `tests/test_build_cross_platform.py`, `tests/test_linux_builder_cli.py` | **PASS — versions and build/env wiring consistent** |
+| Security scan | `python -m bandit -c pyproject.toml -r camfrog_autodj` | **PASS — 0 issues, 0 warnings** |
+
+Bandit metrics (the requested zero metrics, reproduced verbatim):
+
+```
+Total issues (by severity):
+        Undefined: 0
+        Low: 0
+        Medium: 0
+        High: 0
+Total issues (by confidence):
+        Undefined: 0
+        Low: 0
+        Medium: 0
+        High: 0
+```
+
+### 0.6 Documentation consistency
+
+`CHANGELOG.md`, `README.md`, `AGENTS.md`, `CLAUDE.md`, `docs/release.md`, `config.example.toml`,
+installer/renderer docstrings and this `Final-Report.md` describe version 0.3.5 and the current
+architecture. Historical audit reports under `docs/audit/` and older root reports intentionally
+retain their original version labels as evidence of past states.
+
+---
+
 ## 1. Executive summary
 
 A full audit (code, config, scripts, CI, packaging, security) found and fixed **6 security/privacy defects, 11 functional bugs** and the complete bandit/shellcheck backlog. Every local gate is green: **pytest 554 passed / 0 failed, ruff 0, ruff-format 0 (Python), mypy 0 (47 files), shellcheck 0 (12 scripts), bandit 0 (all severities and confidence levels)**, and the wheel/sdist build plus a dependency check also pass.

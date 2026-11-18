@@ -246,7 +246,10 @@ class Updater:
         try:
             from urllib.parse import urlparse
 
-            host = (urlparse(url).hostname or "").lower()
+            parsed = urlparse(url)
+            if parsed.scheme != "https":  # assets must never be fetched over plain HTTP
+                return False
+            host = (parsed.hostname or "").lower()
         except ValueError:
             return False
         return host == "github.com" or host.endswith(".github.com")
@@ -256,7 +259,8 @@ class Updater:
         if not self._fail_closed_url(url):
             raise ValueError(f"non-GitHub URL rejected: {url}")
         req = Request(url, headers={"User-Agent": UA, "Accept": "application/vnd.github+json"})  # noqa: S310
-        with urlopen(req, timeout=30) as resp:  # noqa: S310 - url is fail-closed to github.com above  # nosec B310 - URL scheme/host validated just above (https/github.com only)
+        # security review: URL scheme/host validated just above (https/github.com only)
+        with urlopen(req, timeout=30) as resp:  # noqa: S310 - url is fail-closed to github.com above  # nosec B310
             if resp.status != 200:
                 raise HTTPError(url, resp.status, resp.reason, resp.headers, resp)
             return json.loads(resp.read().decode("utf-8"))
@@ -283,7 +287,8 @@ class Updater:
                 continue
             try:
                 req = Request(url, headers={"User-Agent": UA})  # noqa: S310
-                with urlopen(req, timeout=30) as resp:  # noqa: S310 - github.com only  # nosec B310 - URL scheme/host validated just above (https/github.com only)
+                # security review: URL scheme/host validated just above (https/github.com only)
+                with urlopen(req, timeout=30) as resp:  # noqa: S310 - github.com only  # nosec B310
                     text = resp.read(1 << 16).decode("utf-8", "replace")
             except (URLError, HTTPError, OSError) as ex:
                 log.warning("auto-update: cannot fetch checksum file: %s", ex)
@@ -321,7 +326,8 @@ class Updater:
         tmp = dest.with_suffix(dest.suffix + ".part")
         try:
             req = Request(url, headers={"User-Agent": UA, "Accept": "application/octet-stream"})  # noqa: S310
-            with urlopen(req, timeout=60) as resp:  # noqa: S310 - url is fail-closed to github.com above  # nosec B310 - URL scheme/host validated just above (https/github.com only)
+            # security review: URL scheme/host validated just above (https/github.com only)
+            with urlopen(req, timeout=60) as resp:  # noqa: S310 - url is fail-closed to github.com above  # nosec B310
                 if resp.status != 200:
                     log.error("auto-update: download HTTP %s", resp.status)
                     return False
@@ -398,12 +404,15 @@ class Updater:
     # ------------------------------------------------------------------ helpers
     def _write_update_script(self, exe: Path, new_exe: Path, tag: str) -> None:
         """Write a batch file that swaps the running exe with the new one."""
+        # The tag comes from a GitHub release name: whitelist it before it is
+        # interpolated into a .bat file so `&` / `|` cannot chain commands.
+        safe_tag = re.sub(r"[^A-Za-z0-9._-]", "", tag)[:64]
         old = exe.with_name(exe.stem + ".old" + exe.suffix)
         script = exe.with_name("autodj_update.bat")
         lines = [
             "@echo off",
             "setlocal",
-            "echo AutoDJ update: applying version %s..." % tag,
+            "echo AutoDJ update: applying version %s..." % safe_tag,
             'if not exist "%s" (echo ERROR: %s not found & goto end)' % (new_exe, new_exe),
             'taskkill /f /im "%s" >nul 2>&1' % exe.name,
             "timeout /t 2 /nobreak >nul",

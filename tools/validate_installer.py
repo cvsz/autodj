@@ -82,7 +82,9 @@ def validate_required_files() -> list[str]:
 def validate_required_dirs() -> list[str]:
     for rel in OPTIONAL_DIRS:
         if not (ROOT / rel).is_dir():
-            print(f"WARN: optional directory missing: {rel} (installer ships without bundled mpv)")
+            # Expected on CI/developer machines: the vendored mpv bundle is not
+            # in git and the installer marks SEC_MPV optional. Informational only.
+            print(f"INFO: optional directory absent: {rel} (installer ships without bundled mpv)")
     return [
         f"missing required source directory: {rel}"
         for rel in REQUIRED_DIRS

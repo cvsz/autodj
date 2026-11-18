@@ -166,7 +166,8 @@ class AIClient:
             },
             method="POST",
         )
-        with urlopen(req, timeout=30) as resp:  # noqa: S310 - validated by _allowed_url  # nosec B310 - URL scheme/host validated just above (https/github.com only)
+        # security review: URL scheme/host validated just above (https/github.com only)
+        with urlopen(req, timeout=30) as resp:  # noqa: S310 - validated by _allowed_url  # nosec B310
             if resp.status != 200:
                 raise HTTPError(url, resp.status, resp.reason, resp.headers, resp)
             return json.loads(resp.read().decode("utf-8"))

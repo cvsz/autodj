@@ -119,6 +119,10 @@ class Engine:
         self.exec = ThreadPoolExecutor(
             8
         )  # lookups can take seconds: keep !skip and friends responsive meanwhile
+        # Delayed welcomes use independent daemon timers: sleeping on the shared
+        # worker pool would starve commands when many users join at once.
+        self._welcome_timers: set[threading.Timer] = set()
+        self._welcome_timers_lock = threading.Lock()
         # AI calls wait on a remote provider (up to its timeout): give them their own
         # small pool so a slow provider can never starve command handling in self.exec.
         self._ai_exec = ThreadPoolExecutor(AI_MAX_INFLIGHT, thread_name_prefix="autodj-ai")
@@ -530,6 +534,23 @@ class Engine:
 
     # ---- controls -------------------------------------------------------
     def skip(self) -> None:
+        self.player.stop()
+
+    def prev(self) -> None:
+        """Go to the previously played track (from history) and play it now.
+
+        Puts the last completed track back at the front of the request queue
+        and stops the current player so the next loop iteration picks it up.
+        Safe to call when idle: it just re-queues the last track.
+        """
+        prev_track = None
+        for t in self.history:
+            if t is not self.current:
+                prev_track = t
+                break
+        if prev_track is not None:
+            # Re-queue at front so it plays next
+            self.queue.add_request(prev_track, position=0)
         self.player.stop()
 
     def note_request(self) -> None:
@@ -1470,6 +1491,8 @@ class Engine:
     def _log_im_message(self, msg: ChatMessage) -> None:
         """Log an IM / private message for the IM viewer GUI (read-only)."""
         self.im_log.append((msg.user, msg.text))
+        if len(self.im_log) > 300:  # bounded: the IM viewer only shows recent history
+            del self.im_log[:-300]
         self.im_seq += 1
         self._im_version += 1
 
@@ -1664,7 +1687,10 @@ class Engine:
 
         Only for non-IM messages. Rate-limited per user using welcome_message_cooldown
         to avoid spam. Thread-safe per-user cooldown tracking. ``{user}`` and ``{room}``
-        in the text are filled in. Returns True if the welcome was sent.
+        in the text are filled in. Returns True if the welcome was sent (or scheduled).
+
+        If ``welcome_message_delay`` is greater than 0, the welcome is sent by a
+        dedicated daemon timer after the delay instead of immediately.
         """
         if not self.cfg.welcome_message_enabled or msg.is_im:
             return False
@@ -1682,9 +1708,29 @@ class Engine:
                 should_send = True
                 self._welcome_cooldowns[key] = now
         if should_send:
-            self.say(welcome_text)
-            log.info("Sent welcome message to %s", msg.user)
+            delay = getattr(self.cfg, "welcome_message_delay", 0.0)
+            if delay and delay > 0:
+                timer = threading.Timer(delay, self._send_welcome_after_delay, args=(welcome_text,))
+                timer.daemon = True
+                with self._welcome_timers_lock:
+                    self._welcome_timers.add(timer)
+                timer.start()
+            else:
+                self.say(welcome_text)
+                log.info("Sent welcome message to %s", msg.user)
         return should_send
+
+    def _send_welcome_after_delay(self, text: str) -> None:
+        """Send a delayed welcome from its daemon timer, never from the worker pool."""
+        try:
+            with self._welcome_timers_lock:
+                self._welcome_timers.discard(threading.current_thread())
+            if self.stop_evt.is_set():
+                return
+            self.say(text)
+            log.info("Sent delayed welcome message")
+        except Exception:  # engine shutting down / send failure must not kill the timer
+            log.exception("failed to send delayed welcome message")
 
     def _emit(self, event: str, *args) -> None:
         """Forward an engine event to loaded plugins (never raises)."""
@@ -1980,6 +2026,14 @@ class Engine:
 
                 now = time.monotonic()
                 self.router.cleanup_expired_entries(now)
+                cutoff = now - _CHAT_RATE_LIMIT_WINDOW
+                with self._chat_rate_lock:
+                    for nick in list(self._chat_rate_window):
+                        window = self._chat_rate_window[nick]
+                        while window and window[0] <= cutoff:
+                            window.popleft()
+                        if not window:
+                            del self._chat_rate_window[nick]
             except Exception:
                 log.exception("Rate limit cleanup failed")
 
@@ -2225,6 +2279,10 @@ class Engine:
     def shutdown(self):
         self.stop_evt.set()
         self.wake.set()
+        with self._welcome_timers_lock:
+            for timer in tuple(self._welcome_timers):
+                timer.cancel()
+            self._welcome_timers.clear()
         self.player.stop()
         # Stop config watcher
         if self._config_watcher:

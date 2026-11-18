@@ -101,6 +101,7 @@ np_question_cooldown = 20.0         # Room-wide seconds between auto-answers (0-
 #   {eta} (msg_next only: time until that song starts, e.g. "เพลงต่อไป อีก {eta}")
 msg_now = ""                        # Override built-in now-playing text
 msg_next = ""                       # Override built-in up-next text
+ui_theme = "zplayer-dark"           # GUI theme: zplayer-dark | zplayer-neon | zplayer-light
 
 # Text-to-Speech (pyttsx3 / Windows SAPI)
 tts_voice = ""                      # Substring of an installed voice name (Thai voice for Thai text)
@@ -221,6 +222,7 @@ admin_delete_message_enabled = true # Enable !delete <msg id> command
 welcome_message_enabled = true      # Greet users entering the room
 welcome_message_message = "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"  # {user} = nick, {room} = room name
 welcome_message_cooldown = 3600.0   # Seconds between greetings for the same user (1 hour, 60-86400)
+welcome_message_delay = 0.0         # Seconds to wait before sending the welcome (0 = instant; 0-3600)
 # Room notice for someone entering; must contain (?P<user>...). "" = greet on first message only.
 # The default covers "*** bob has joined the room", "bob has entered the room" and "สมชาย เข้าสู่ห้อง";
 # check what your Camfrog client actually shows and adjust (single quotes keep backslashes).

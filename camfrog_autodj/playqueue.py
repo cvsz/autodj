@@ -81,7 +81,8 @@ class PlayQueue:
                 self._played.clear()
                 fresh = self.pool
             c = [t for t in fresh if t.source != self._last] or fresh
-            return random.choice(c)  # noqa: S311  # music shuffle is not security-sensitive  # nosec B311 - music shuffle order, not security-sensitive
+            # security review: music shuffle order, not security-sensitive
+            return random.choice(c)  # noqa: S311  # music shuffle is not security-sensitive  # nosec B311
         t = self.pool[self._i % len(self.pool)]
         self._i += 1
         return t

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from .exceptions import ConfigError
+from .theme import THEMES
 
 log = logging.getLogger("autodj")
 
@@ -144,6 +145,7 @@ class Config:
     np_question_cooldown: float = 20.0  # seconds; room-wide, prevents flooding
     msg_now: str = ""  # empty = built-in text for `lang`
     msg_next: str = ""
+    ui_theme: str = "zplayer-dark"  # GUI theme: zplayer-dark | zplayer-neon | zplayer-light
     tts_voice: str = ""
     tts_rate: int = 170
     tts_duck: int = 25
@@ -244,6 +246,7 @@ class Config:
     # Welcome Message
     welcome_message_enabled: bool = True  # greet every (non-admin) user who enters the room
     welcome_message_message: str = "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"  # {user} {room}
+    welcome_message_delay: float = 0.0  # seconds to wait before sending the welcome (0 = instant)
     # Room notice for someone entering, with a (?P<user>...) group; "" disables join detection
     # (users are then greeted on their first message). Check the exact wording your Camfrog
     # client shows and adjust if needed.
@@ -379,6 +382,28 @@ class Config:
         _validate(cfg, data, str(p) if p else "config")
         return cfg
 
+    @classmethod
+    def validate_values(cls, data: dict, where: str = "settings") -> "Config":
+        """Validate already-parsed settings without touching disk.
+
+        Used by the GUI before saving so an invalid value can never be written
+        to config.toml and make the next startup fail closed.  Raises
+        ConfigError with the offending field and location.
+        """
+        names = {f.name for f in fields(cls)}
+        bad = sorted(set(data) - names)
+        if bad:
+            raise ConfigError(f"{where}: unknown setting(s): {', '.join(bad)}")
+        if "message_style" in data and isinstance(data["message_style"], dict):
+            data = dict(data)
+            try:
+                data["message_style"] = MessageStyle(**data["message_style"])
+            except (TypeError, ValueError) as ex:
+                raise ConfigError(f"{where}: invalid message_style table: {ex}") from None
+        cfg = cls(**data)
+        _validate(cfg, data, where)
+        return cfg
+
 
 # ---- validation -------------------------------------------------------------------------------
 
@@ -388,6 +413,7 @@ _CHOICES = {
     "chat_sender": ("uia", "logtail", "console"),
     "view_kind": ("auto", "web", "text"),
     "send_mode": ("auto", "background", "foreground"),
+    "ui_theme": tuple(THEMES.keys()),
 }
 _REGEXES = (
     "window_title_re",
@@ -420,6 +446,7 @@ _RANGES = {
     "autoplay_idle_timeout": (0.0, 86400.0),
     "ai_user_cooldown": (0.0, 86400.0),
     "ai_max_chars": (1, 2000),
+    "welcome_message_delay": (0.0, 3600.0),
 }
 
 

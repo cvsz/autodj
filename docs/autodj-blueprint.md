@@ -1,6 +1,6 @@
 # CamfrogAutoDJ — Complete Architecture Blueprint
 
-**Version:** 0.3.0 (Enterprise Production Release)  
+**Version:** 0.3.5 (Enterprise Production Release)  
 **Generated:** 2026-11-10  
 **Repository:** https://github.com/cvsz/autodj  
 **Total Source:** 10,085 lines across 32 modules  

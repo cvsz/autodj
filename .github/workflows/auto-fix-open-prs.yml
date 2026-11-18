@@ -28,11 +28,15 @@ jobs:
     steps:
       - name: Check required secrets
         id: check
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+          POLIEDBC_PAT: ${{ secrets.POLIEDBC_PAT }}
         run: |
           MISSING=""
-          [ -z "${{ secrets.GPG_PASSPHRASE }}" ] && MISSING="$MISSING GPG_PASSPHRASE"
-          [ -z "${{ secrets.GPG_SIGNING_KEY }}" ] && MISSING="$MISSING GPG_SIGNING_KEY"
-          [ -z "${{ secrets.POLIEDBC_PAT }}" ] && MISSING="$MISSING POLIEDBC_PAT"
+          [ -z "$GPG_PASSPHRASE" ] && MISSING="$MISSING GPG_PASSPHRASE"
+          [ -z "$GPG_SIGNING_KEY" ] && MISSING="$MISSING GPG_SIGNING_KEY"
+          [ -z "$POLIEDBC_PAT" ] && MISSING="$MISSING POLIEDBC_PAT"
           if [ -n "$MISSING" ]; then
             echo "::error::Required secrets not set:$MISSING"
             echo "all-present=false" >> $GITHUB_OUTPUT

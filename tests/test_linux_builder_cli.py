@@ -62,7 +62,7 @@ def test_missing_pyinstaller_fails_with_actionable_hint(tmp_path):
     env["WINE_PYTHON"] = str(windows_python)
 
     result = subprocess.run(
-        ["bash", str(SCRIPT), "0.3.0"],
+        ["bash", str(SCRIPT), "0.3.5"],
         cwd=ROOT,
         env=env,
         capture_output=True,

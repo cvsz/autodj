@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import threading
 import time
 from typing import TYPE_CHECKING
 
@@ -90,15 +91,23 @@ def _check_fresh(timestamp: str, now: float) -> None:
         raise HTTPException(status_code=401, detail="Stale signature")
 
 
+_REPLAY_LOCK = threading.Lock()
+
+
 def _remember_once(state: object, signature: str, now: float) -> None:
-    """Replay cache: accept each valid signature only once within the window."""
-    seen: dict[str, float] = state.__dict__.setdefault("_seen_signatures", {})
-    for sig, exp in list(seen.items()):
-        if exp < now:
-            seen.pop(sig, None)
-    if signature in seen:
-        raise HTTPException(status_code=401, detail="Replayed signature")
-    seen[signature] = now + 2 * SIGNATURE_TOLERANCE_S
+    """Replay cache: accept each valid signature only once within the window.
+
+    The check-and-insert must be atomic: concurrent requests carrying the same
+    valid signature may reach this helper from different uvicorn worker threads.
+    """
+    with _REPLAY_LOCK:
+        seen: dict[str, float] = state.__dict__.setdefault("_seen_signatures", {})
+        for sig, exp in list(seen.items()):
+            if exp < now:
+                seen.pop(sig, None)
+        if signature in seen:
+            raise HTTPException(status_code=401, detail="Replayed signature")
+        seen[signature] = now + 2 * SIGNATURE_TOLERANCE_S
 
 
 async def verify_webhook_signature(request: Request) -> bool:

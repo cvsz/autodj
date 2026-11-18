@@ -7,7 +7,9 @@ from __future__ import annotations
 import importlib.util
 import os
 import shutil
-import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
+
+# security review: subprocess only with fixed argv lists, never shell=True
+import subprocess  # nosec B404
 from pathlib import Path
 
 from .library import MEDIA, find_ytdlp
@@ -61,7 +63,8 @@ def _ytdlp_version(exe: str) -> str:
         kw: dict = {"capture_output": True, "text": True, "timeout": 15}
         if os.name == "nt":
             kw["creationflags"] = 0x08000000
-        r = subprocess.run([exe, "--version"], check=False, **kw)  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+        # security review: argv list without shell; executable is sys.executable or a resolved, configured tool path
+        r = subprocess.run([exe, "--version"], check=False, **kw)  # nosec B603
         return (
             (r.stdout or "").strip().splitlines()[0]
             if r.returncode == 0 and r.stdout.strip()

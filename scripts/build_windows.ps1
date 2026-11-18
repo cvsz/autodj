@@ -104,7 +104,7 @@ $ScriptDir = $PSScriptRoot
 $RepoRoot = Join-Path $PSScriptRoot ".."
 $RepoRoot = Resolve-Path $RepoRoot
 $RepoUrl = "git@github.com:cvsz/autodj.git"
-$RequiredVersion = "0.3.4"
+$RequiredVersion = "0.3.5"
 
 # Output setup
 $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -874,7 +874,7 @@ try {
     # Create evidence directories FIRST (before any logging)
     New-EvidenceDirs
 
-    Write-Log "=== AUTO DJ 0.3.4 WINDOWS 11 REPRODUCIBLE BUILD STARTED ===" "INFO" "MAIN"
+    Write-Log "=== AUTO DJ 0.3.5 WINDOWS 11 REPRODUCIBLE BUILD STARTED ===" "INFO" "MAIN"
     Write-Log "Build ID: $BuildId" "INFO" "MAIN"
     Write-Log "Approved SHA: $ApprovedSha" "INFO" "MAIN"
     Write-Log "Output Root: $OutputRoot" "INFO" "MAIN"

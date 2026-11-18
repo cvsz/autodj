@@ -19,7 +19,7 @@ SH = ROOT / "scripts" / "build_installer_linux.sh"
 RELEASE = ROOT / ".github" / "workflows" / "release.yml"
 
 
-def _render(tmp_path: Path, template: str, version: str = "0.3.0"):
+def _render(tmp_path: Path, template: str, version: str = "0.3.5"):
     source = tmp_path / "installer.nsi"
     output = tmp_path / "rendered.nsi"
     source.write_text(template, encoding="utf-8")
@@ -48,7 +48,7 @@ def test_render_replaces_ifndef_default(tmp_path):
 
     assert result.returncode == 0, result.stderr
     rendered = output.read_text(encoding="utf-8")
-    assert '!define /IfNDef APP_VERSION "0.3.0"' in rendered
+    assert '!define /IfNDef APP_VERSION "0.3.5"' in rendered
     assert "9.9.9" not in rendered
 
 
@@ -57,7 +57,7 @@ def test_render_replaces_plain_define(tmp_path):
 
     assert result.returncode == 0, result.stderr
     rendered = output.read_text(encoding="utf-8")
-    assert '!define APP_VERSION "0.3.0"' in rendered
+    assert '!define APP_VERSION "0.3.5"' in rendered
     assert "9.9.9" not in rendered
 
 

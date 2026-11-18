@@ -5,8 +5,8 @@ Both the PowerShell and the Linux/Wine installer builders use this helper so
 the version-substitution rule lives in exactly one place.  It replaces the
 default value of either form:
 
-    !define /IfNDef APP_VERSION "0.3.0"
-    !define APP_VERSION "0.3.0"
+    !define /IfNDef APP_VERSION "0.3.5"
+    !define APP_VERSION "0.3.5"
 
 The build scripts additionally pass ``/DAPP_VERSION=<version>`` to makensis;
 NSIS lets a command-line define override ``!define /IfNDef``, so a stale
