@@ -1,3 +1,5 @@
+import os
+
 from camfrog_autodj import paths
 from camfrog_autodj.library import find_ytdlp
 
@@ -56,7 +58,7 @@ def test_only_exe_asks_path_for_exe(monkeypatch, tmp_path):
 
     monkeypatch.setattr(paths.shutil, "which", fake_which)
     assert paths.resolve_executable("mpv", only_exe=True) == str(exe.resolve())
-    assert calls == ["mpv.exe"]
+    assert calls == ["mpv.exe" if os.name == "nt" else "mpv"]
 
 
 def test_player_never_launches_mpv_com(monkeypatch):
@@ -64,9 +66,11 @@ def test_player_never_launches_mpv_com(monkeypatch):
     from camfrog_autodj.player import MpvPlayer
 
     monkeypatch.setattr("camfrog_autodj.player.resolve_executable", lambda *_a, **_k: "")
-    player = MpvPlayer(Config(mpv_path="D:/tools/mpv.com"))
-    assert player._mpv_executable().lower().endswith("mpv.exe")
-    assert all(not arg.lower().endswith(".com") for arg in player._base())
+    configured = "D:/tools/mpv.com" if os.name == "nt" else "/tools/mpv.com"
+    player = MpvPlayer(Config(mpv_path=configured))
+    if os.name == "nt":
+        assert player._mpv_executable().lower().endswith("mpv.exe")
+        assert all(not arg.lower().endswith(".com") for arg in player._base())
 
 
 def test_invalid_explicit_path_does_not_fall_back(monkeypatch):
