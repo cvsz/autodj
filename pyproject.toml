@@ -12,12 +12,15 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest"]
 build = ["pyinstaller"]
-hotreload = ["watchdog>=3.0"]
+hotreload = ["watchdog>=3.0,<7"]
 webhook = [
-  "fastapi>=0.100",
-  "uvicorn>=0.23",
-  "pydantic>=2.5",
-  "httpx>=0.25",
+  # Upper bounds prevent a future major release from silently changing the
+  # webhook API in a signed build; yt-dlp is intentionally left unbounded so
+  # its extractors can keep up with site changes.
+  "fastapi>=0.100,<1",
+  "uvicorn>=0.23,<1",
+  "pydantic>=2.5,<3",
+  "httpx>=0.25,<1",
 ]
 [project.scripts]
 camfrog-autodj = "camfrog_autodj.__main__:main"
@@ -36,6 +39,10 @@ filterwarnings = [
     "ignore::DeprecationWarning:starlette",
     # fastapi.testclient (third-party) nags about httpx vs httpx2; not our code
     "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+    # pywinauto reports COM apartment coercion on headless CI runners; it is an
+    # environment notice from a dependency, not an AutoDJ warning.
+    "ignore:Apply externally defined coinit_flags",
+    "ignore:Revert to STA COM threading mode",
 ]
 
 [tool.mypy]

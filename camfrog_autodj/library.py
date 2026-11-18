@@ -4,7 +4,9 @@ import json
 import logging
 import os
 import re
-import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
+
+# security review: subprocess only with fixed argv lists, never shell=True
+import subprocess  # nosec B404
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -302,7 +304,8 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
                 artist = a
     except ImportError:
         pass  # mutagen not installed; fall back to filename
-    except Exception:  # nosec B110  # any metadata error: fall back to filename, never crash the folder scan  # noqa: S110, BLE001
+    # security review: any metadata error: fall back to filename, never crash the folder scan
+    except Exception:  # nosec B110  # noqa: S110, BLE001
         pass
 
     # Cache the result (even if fallback to filename)
@@ -599,7 +602,8 @@ def _extract_exe(
     # Custom CA bundle support is handled by the yt_dlp Python module path
     # (see _extract_module) which can patch certifi.where().
     try:
-        r = subprocess.run(cmd, check=False, **kw)  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+        # security review: argv list without shell; executable is sys.executable or a resolved, configured tool path
+        r = subprocess.run(cmd, check=False, **kw)  # nosec B603
     except subprocess.TimeoutExpired:
         raise RuntimeError("yt-dlp timed out") from None
     if r.returncode != 0:

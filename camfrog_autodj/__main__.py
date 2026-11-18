@@ -79,12 +79,9 @@ def main():
     a = _parser().parse_args()
     level = logging.DEBUG if a.verbose else logging.INFO
 
-    # Configure logging: JSON or plain text
-    if a.log_json:
-        # JSON logging will be configured after config is loaded
-        logging.basicConfig(level=level, handlers=[])  # No default handler
-    else:
-        logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(message)s")
+    # Always install a console handler: no flag may silence startup logging.
+    # _configure_logging() switches the formatter to JSON once config is loaded.
+    logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(message)s")
 
     try:
         _run(a, level)
@@ -138,7 +135,7 @@ def _run(a, level):
         )
     _migrate_config(a.config)
     cfg = Config.load(a.config)
-    _setup_log_file(a, cfg, level)
+    _configure_logging(a, cfg, level)
     cfg = _relocate_config(a, cfg)
     if a.lang:
         cfg.lang = a.lang

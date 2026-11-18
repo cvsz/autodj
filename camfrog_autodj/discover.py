@@ -299,6 +299,8 @@ def save_config(path: str, updates: dict) -> bool:
             shutil.copyfile(p, p.with_name(p.name + ".bak"))
         tmp = p.with_name(p.name + ".tmp")
         tmp.write_text(new, "utf-8")
+        if os.name != "nt":  # config may hold webhook_secret / ai_api_key
+            os.chmod(tmp, 0o600)
         os.replace(tmp, p)  # atomic: a crash mid-write cannot leave half a file
     except OSError as ex:  # permission denied, read-only file, etc.
         log.warning(

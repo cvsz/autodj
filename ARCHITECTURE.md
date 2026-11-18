@@ -1,4 +1,4 @@
-# Architecture — CamfrogAutoDJ v0.3.0
+# Architecture — CamfrogAutoDJ v0.3.5
 
 **Date:** 2026-11-16  
 **Branch:** main (HEAD: fecc053)  

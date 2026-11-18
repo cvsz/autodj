@@ -15,12 +15,13 @@ import os
 import shutil
 import time
 import tkinter as tk
+from pathlib import Path
 from tkinter import filedialog, ttk
 from tkinter import font as tkfont
 
 from .clipkeys import clip_action
 from .library import MEDIA
-from .theme import Theme, apply_theme
+from .theme import Theme, apply_theme, shade
 from .visuals import (
     aurora_offset,
     bar_heights,
@@ -90,6 +91,7 @@ def _apply_palette_to_module(palette) -> None:
     )
     ON_AIR, IDLE, WARN = palette.on_air, palette.idle, palette.warning
     AURORA = [palette.bg, palette.surface, palette.surface2, palette.surface, palette.bg]
+    PillButton.set_palette(palette)
 
 
 def mmss(sec: float) -> str:
@@ -214,6 +216,66 @@ class PillButton(tk.Canvas):
         "danger": (SURFACE2, "#2d1f33", RED, RED, SURFACE2, RED, RED),
         "outline": (SURFACE, "#232b4a", BORDER, TEXT, SURFACE, BORDER, TEXT),
     }
+
+    @classmethod
+    def set_palette(cls, p) -> None:
+        """Rebuild the frozen style table for a newly selected palette."""
+
+        def lift(color: str) -> str:
+            return shade(color, 0.12)
+
+        cls.STYLES = {
+            "primary": (
+                p.on_air,
+                shade(p.on_air, 0.18),
+                "",
+                p.inverse,
+                p.on_air,
+                "",
+                p.inverse,
+            ),
+            "ghost": (
+                p.surface2,
+                lift(p.surface2),
+                p.border,
+                p.text,
+                p.surface2,
+                p.border_focus,
+                p.text,
+            ),
+            "tab": (p.surface, p.surface2, "", p.muted, p.surface2, p.primary, p.text),
+            "chip": (
+                p.surface2,
+                lift(p.surface2),
+                p.border,
+                p.muted,
+                p.surface2,
+                p.cyan,
+                p.cyan,
+            ),
+            "danger": (
+                p.surface2,
+                shade(p.danger, -0.25),
+                p.danger,
+                p.danger,
+                p.surface2,
+                p.danger,
+                p.danger,
+            ),
+            "outline": (
+                p.surface,
+                lift(p.surface),
+                p.border,
+                p.text,
+                p.surface,
+                p.border_focus,
+                p.text,
+            ),
+        }
+
+    def refresh_style(self) -> None:
+        """Redraw with the current palette (used by live theme switching)."""
+        self._draw()
 
     def __init__(
         self,
@@ -498,6 +560,72 @@ class VolSlider(tk.Canvas):
         self.create_oval(x - 6, mid - 6, x + 6, mid + 6, fill="#ffffff", outline=CYAN, width=2)
 
 
+def _colour_mapping(old, new) -> dict[str, str]:
+    """Map every colour used by the old palette to its new-palette role."""
+    from dataclasses import fields
+
+    mapping = {getattr(old, f.name): getattr(new, f.name) for f in fields(old)}
+    mapping.update(
+        {
+            "#232a48": shade(new.surface2, 0.12),
+            "#232b4a": shade(new.surface2, 0.12),
+            "#b79cff": shade(new.primary, 0.2),
+            "#241b4d": shade(new.primary, -0.3),
+            "#0f2a35": shade(new.cyan, -0.3),
+            "#2d1f33": shade(new.danger, -0.3),
+            "#ff62b0": shade(new.on_air, 0.18),
+        }
+    )
+    return mapping
+
+
+def _recolor_options(widget, mapping: dict[str, str]) -> None:
+    for attr in ("bg", "fg", "highlightbackground", "activebackground"):
+        try:
+            value = widget.cget(attr)
+        except (tk.TclError, AttributeError):
+            continue
+        replacement = mapping.get(value)
+        if replacement is not None:
+            try:
+                widget.configure(**{attr: replacement})
+            except tk.TclError:
+                pass
+
+
+def _recolor_items(widget, mapping: dict[str, str]) -> None:
+    find = getattr(widget, "find_all", None)
+    itemcget = getattr(widget, "itemcget", None)
+    itemconfigure = getattr(widget, "itemconfigure", None)
+    if find is None or itemcget is None or itemconfigure is None:
+        return
+    for item in find():
+        for attr in ("fill", "outline"):
+            try:
+                replacement = mapping.get(itemcget(item, attr))
+            except tk.TclError:
+                continue
+            if replacement is not None:
+                try:
+                    itemconfigure(item, **{attr: replacement})
+                except tk.TclError:
+                    pass
+
+
+def _recolor_tree(widget, mapping: dict[str, str]) -> None:
+    """Recursively restyle a widget tree after a palette change."""
+    _recolor_options(widget, mapping)
+    if hasattr(widget, "refresh_style"):
+        widget.refresh_style()
+    elif isinstance(widget, (GlowBar, VolSlider)):
+        widget._draw()
+    _recolor_items(widget, mapping)
+    children = getattr(widget, "winfo_children", None)
+    if children is not None:
+        for child in children():
+            _recolor_tree(child, mapping)
+
+
 class App(tk.Tk):
     def __init__(self, engine):
         # Tk must own the interpreter before any widget/theme helper runs.
@@ -515,6 +643,7 @@ class App(tk.Tk):
         # ---- theme (TkinterEP-inspired) ----------------------------------
         theme_name = getattr(self.e.cfg, "ui_theme", _DEFAULT_THEME_NAME) or _DEFAULT_THEME_NAME
         self.theme = Theme.from_name(theme_name)
+        self._palette = self.theme.palette
         _apply_palette_to_module(self.theme.palette)
         self.configure(bg=BG)
         apply_theme(self, self.theme)
@@ -619,6 +748,22 @@ class App(tk.Tk):
                 self.iconbitmap(default=str(ico))
             except (tk.TclError, OSError):
                 pass  # best-effort window icon; not critical
+
+    def _retheme(self, theme_name: str) -> None:
+        """Switch the already-built window to *theme_name* without restarting."""
+        old = self._palette
+        self.theme = Theme.from_name(theme_name)
+        new = self.theme.palette
+        if new is old:
+            return
+        _apply_palette_to_module(new)
+        apply_theme(self, self.theme)
+        self._style()
+        _recolor_tree(self, _colour_mapping(old, new))
+        self._palette = new
+        self._layout_stage()
+        self._layout_line()
+        self.refresh()
 
     # ---- construction ----------------------------------------------------
     def _fonts(self):
@@ -2929,11 +3074,13 @@ class App(tk.Tk):
 
     def do_discover(self):
         """Run auto-discovery to find the Camfrog room window and chat controls."""
-        import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
+        # security review: subprocess only with fixed argv lists, never shell=True
+        import subprocess  # nosec B404
         import sys
 
         try:
-            subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+            # security review: argv list without shell; executable is sys.executable or a resolved, configured tool path
+            subprocess.run(  # nosec B603
                 [
                     sys.executable,
                     "-m",
@@ -2949,11 +3096,13 @@ class App(tk.Tk):
 
     def do_check(self):
         """Run setup diagnostic: mpv, yt-dlp, folders, Camfrog window."""
-        import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
+        # security review: subprocess only with fixed argv lists, never shell=True
+        import subprocess  # nosec B404
         import sys
 
         try:
-            subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+            # security review: argv list without shell; executable is sys.executable or a resolved, configured tool path
+            subprocess.run(  # nosec B603
                 [
                     sys.executable,
                     "-m",
@@ -2995,6 +3144,16 @@ class App(tk.Tk):
         except ValueError as err:
             raise ValueError(f"{field} must be a number, got {raw!r}") from err
 
+    def _apply_saved_config(self, path: Path, previous_theme: str) -> None:
+        """Re-read the saved file and apply it exactly like a hot reload does."""
+        from .config import Config
+
+        new_cfg = Config.load(str(path))
+        self.e._on_config_reload(new_cfg)
+        self.e.queue.set_shuffle(new_cfg.shuffle)
+        if new_cfg.ui_theme != previous_theme:
+            self._retheme(new_cfg.ui_theme)
+
     def save_settings(self):
         """Save settings from the settings tab back to config.toml.
 
@@ -3003,6 +3162,7 @@ class App(tk.Tk):
         to be posted into the Camfrog room via say()).
         """
         try:
+            previous_theme = getattr(self.e.cfg, "ui_theme", _DEFAULT_THEME_NAME)
             cfg = copy.deepcopy(self.e.cfg)
             cfg.lang = self.e.lang  # the header language pills change e.lang only
 
@@ -3350,12 +3510,14 @@ class App(tk.Tk):
                 _candidate_data["message_style"] = MessageStyle.from_toml_dict(
                     _candidate_data["message_style"]
                 )
-            _probe = Config(**_candidate_data)
+            Config.validate_values(_candidate_data, where="settings")
             try:
                 if p.exists():
                     shutil.copyfile(p, p.with_name(p.name + ".bak"))
                 tmp = p.with_name(p.name + ".tmp")
                 tmp.write_text(new_text, "utf-8")
+                if os.name != "nt":  # config may hold webhook_secret / ai_api_key
+                    os.chmod(tmp, 0o600)
                 os.replace(tmp, p)
             except (OSError, PermissionError):
                 app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
@@ -3368,6 +3530,8 @@ class App(tk.Tk):
                     )
                 tmp = app_cfg_path.with_name(app_cfg_path.name + ".tmp")
                 tmp.write_text(new_text, "utf-8")
+                if os.name != "nt":  # config may hold webhook_secret / ai_api_key
+                    os.chmod(tmp, 0o600)
                 os.replace(tmp, app_cfg_path)
                 p = app_cfg_path
                 # Remember the writable location so subsequent saves don't keep trying
@@ -3379,13 +3543,7 @@ class App(tk.Tk):
                     p,
                 )
 
-            # Re-read the file and apply it exactly like a hot reload does (admins,
-            # blocked users, volume, AI/updater clients, player paths, ...).
-            from .config import Config
-
-            new_cfg = Config.load(str(p))
-            self.e._on_config_reload(new_cfg)
-            self.e.queue.set_shuffle(new_cfg.shuffle)
+            self._apply_saved_config(p, previous_theme)
             self._settings_feedback(self.e.t("g_settings_saved"), ok=True)
             self.relabel()  # language may have changed
 

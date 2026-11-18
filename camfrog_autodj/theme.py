@@ -23,10 +23,13 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
+
+log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only; keeps headless imports tkinter-free
     from tkinter import PhotoImage
@@ -179,6 +182,24 @@ class Theme:
         return self.loaded_fonts[key]
 
 
+def shade(color: str, amount: float) -> str:
+    """Blend a ``#RRGGBB`` colour toward white (positive) or black (negative).
+
+    Used to derive hover/active shades from a palette instead of hard-coding
+    per-theme colours. Invalid input is returned unchanged (never raises).
+    """
+    value = color.lstrip("#")
+    if len(value) != 6:
+        return color
+    try:
+        channels = [int(value[i : i + 2], 16) for i in (0, 2, 4)]
+    except ValueError:
+        return color
+    target = 255 if amount >= 0 else 0
+    ratio = min(1.0, abs(amount))
+    return "#" + "".join(f"{round(c + (target - c) * ratio):02x}" for c in channels)
+
+
 # ---------------------------------------------------------------------------
 # Custom font loading (python-tkextrafont pattern)
 # ---------------------------------------------------------------------------
@@ -271,8 +292,9 @@ def apply_theme(root, theme: Theme) -> None:
         root.ttk_style = s  # type: ignore[attr-defined]
     try:
         s.theme_use("clam")  # type: ignore[attr-defined]
-    except Exception:  # noqa: BLE001,S110 - best-effort theme switch; clam is a fallback
-        pass
+    except tk.TclError as ex:
+        # "clam" is a fallback; a Tk build without it keeps its native theme.
+        log.debug("preferred ttk theme 'clam' unavailable: %s", ex)
 
     def _cfg(style: str, **kw):
         try:

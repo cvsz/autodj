@@ -44,6 +44,12 @@ a = Analysis(
         # addition to collect_submodules("camfrog_autodj") so frozen builds
         # can never ship without it.
         "camfrog_autodj.gui",
+        # Optional features are imported lazily at runtime; make them visible
+        # to PyInstaller so a frozen build with webhook/hot-reload enabled works.
+        "fastapi",
+        "uvicorn",
+        "pydantic",
+        "watchdog.observers.polling",
         "comtypes",
         "pyperclip",
         "mutagen",

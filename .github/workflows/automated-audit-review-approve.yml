@@ -30,8 +30,10 @@ jobs:
     steps:
       - name: Check required secrets
         id: check
+        env:
+          POLIEDBC_PAT: ${{ secrets.POLIEDBC_PAT }}
         run: |
-          [ -z "${{ secrets.POLIEDBC_PAT }}" ] && { echo "::error::POLIEDBC_PAT secret is not set."; echo "all-present=false" >> $GITHUB_OUTPUT; exit 1; }
+          [ -z "$POLIEDBC_PAT" ] && { echo "::error::POLIEDBC_PAT secret is not set."; echo "all-present=false" >> $GITHUB_OUTPUT; exit 1; }
           echo "all-present=true" >> $GITHUB_OUTPUT
 
   audit-and-review:
@@ -82,10 +84,14 @@ jobs:
           echo "=== Audit complete: PASSED ==="
 
       - name: Post audit review comment (policedbc)
+        env:
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          AUDIT_RESULT: ${{ env.AUDIT_RESULT }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           chmod +x .github/scripts/post-review-comment.sh
           .github/scripts/post-review-comment.sh \
-            "${{ github.event.inputs.pr_number }}" \
-            "${{ env.AUDIT_RESULT }}" \
+            "$PR_NUMBER" \
+            "$AUDIT_RESULT" \
             "0" \
-            "${{ github.repository }}"
+            "$REPOSITORY"

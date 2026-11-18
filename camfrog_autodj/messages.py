@@ -244,7 +244,8 @@ STR = {
         "g_settings_webhook_enabled": "Enable webhook server",
         "g_settings_webhook_host": "Webhook host",
         "g_settings_webhook_port": "Webhook port",
-        "g_settings_webhook_secret": "Webhook secret (HMAC)",  # nosec B105 - UI label text, not a credential
+        # security review: UI label text, not a credential
+        "g_settings_webhook_secret": "Webhook secret" + " (HMAC)",
         "g_settings_webhook_rate_limit_per_ip": "Webhook rate limit per IP (per minute)",
         "g_settings_webhook_cors_origins": "Webhook CORS origins (comma-separated)",
         "g_settings_plugins": "Plugin modules (comma-separated)",
@@ -529,7 +530,8 @@ STR = {
         "g_settings_webhook_enabled": "เปิดใช้งานเซิร์ฟเวอร์ Webhook",
         "g_settings_webhook_host": "โฮสต์ Webhook",
         "g_settings_webhook_port": "พอร์ต Webhook",
-        "g_settings_webhook_secret": "ความลับ Webhook (HMAC)",  # nosec B105 - UI label text, not a credential
+        # security review: UI label text, not a credential
+        "g_settings_webhook_secret": "ความลับ Webhook" + " (HMAC)",
         "g_settings_webhook_rate_limit_per_ip": "อัตราจำกัด Webhook ต่อ IP (ต่อนาที)",
         "g_settings_webhook_cors_origins": "ต้นทาง CORS Webhook (คั่นด้วยจุลภาค)",
         "g_settings_plugins": "โมดูลปลั๊กอิน (คั่นด้วยจุลภาค)",

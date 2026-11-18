@@ -382,6 +382,28 @@ class Config:
         _validate(cfg, data, str(p) if p else "config")
         return cfg
 
+    @classmethod
+    def validate_values(cls, data: dict, where: str = "settings") -> "Config":
+        """Validate already-parsed settings without touching disk.
+
+        Used by the GUI before saving so an invalid value can never be written
+        to config.toml and make the next startup fail closed.  Raises
+        ConfigError with the offending field and location.
+        """
+        names = {f.name for f in fields(cls)}
+        bad = sorted(set(data) - names)
+        if bad:
+            raise ConfigError(f"{where}: unknown setting(s): {', '.join(bad)}")
+        if "message_style" in data and isinstance(data["message_style"], dict):
+            data = dict(data)
+            try:
+                data["message_style"] = MessageStyle(**data["message_style"])
+            except (TypeError, ValueError) as ex:
+                raise ConfigError(f"{where}: invalid message_style table: {ex}") from None
+        cfg = cls(**data)
+        _validate(cfg, data, where)
+        return cfg
+
 
 # ---- validation -------------------------------------------------------------------------------
 
