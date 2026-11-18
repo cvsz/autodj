@@ -252,7 +252,7 @@ mpv_timeout = 30                   # seconds to wait for one mpv track before tr
 ### Admin Greeting
 
 ```toml
-# Greet admin on first message in session
+# Greet an admin when they enter the room (they get this instead of the welcome)
 admin_greeting_enabled = true
 admin_greeting_message = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"
 admin_greeting_cooldown = 3600.0   # Seconds between greetings per admin (1 hour)
@@ -358,10 +358,18 @@ status_alert_enabled = true
 ### Welcome Message
 
 ```toml
-welcome_message_enabled = true
-welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ camfrog://room/{room}!"
-welcome_message_cooldown = 3600.0   # seconds between welcome messages for same user (1 hour)
+welcome_message_enabled = true     # greet every user who enters the room
+welcome_message_message = "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"   # {user}, {room}
+welcome_message_cooldown = 3600.0   # seconds between greetings for the same user (1 hour)
+join_line_regex = '...'             # room "X has joined" notice, must contain (?P<user>...); "" = greet on first message
 ```
+
+Arrival is detected from the room's join notice. The default pattern covers
+`*** bob has joined the room`, `bob has entered the room` and `สมชาย เข้าสู่ห้อง`;
+if your Camfrog client words it differently, copy one join line from the chat and adjust
+`join_line_regex`. When no join notice is seen, users are greeted on their first message.
+Each person gets one greeting per cooldown: admins get `admin_greeting_message`, everyone
+else `welcome_message_message`. Plugins can react with `on_join(user)`.
 
 ### Admin Command Gating (Config-gated Features)
 

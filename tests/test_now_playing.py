@@ -336,7 +336,7 @@ def test_welcome_cooldown_independent_of_machine_uptime(monkeypatch):
     e = make()
     monkeypatch.setattr(eng.time, "monotonic", lambda: 5.0)  # PC booted 5 s ago
     e._handle_welcome_message(ChatMessage("amy", "hi"))
-    assert out(e) == [e.cfg.welcome_message_message]
+    assert out(e) == [e.cfg.welcome_message_message.replace("{user}", "amy")]
 
 
 def test_unknown_command_reaches_plugins():

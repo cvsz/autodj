@@ -174,7 +174,7 @@ default_track = ""                  # e.g. "https://www.youtube.com/watch?v=HhVV
 autoplay_idle_timeout = 30.0        # Seconds with no requests (queue empty) before the default song / autoplay (0-86400)
 
 # --- Admin Greeting ----------------------------------------------------------
-admin_greeting_enabled = true       # Enable admin greeting on first message
+admin_greeting_enabled = true       # Greet admins when they enter the room (instead of the welcome)
 admin_greeting_message = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"  # Greeting message, {admin} will be replaced
 admin_greeting_cooldown = 3600.0    # Seconds between greetings for same admin (1 hour, 60-86400)
 
@@ -215,9 +215,16 @@ admin_punish_bot = true             # Enable !punishbot command
 admin_delete_message_enabled = true # Enable !delete <msg id> command
 
 # --- Welcome Message ---------------------------------------------------------
-welcome_message_enabled = true      # Enable welcome message
-welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"  # Welcome message
-welcome_message_cooldown = 3600.0   # Seconds between welcome messages for same user (1 hour, 60-86400)
+# Every user who enters the room is greeted once per cooldown (admins get admin_greeting_message).
+# Arrival is detected from the room's join notice (join_line_regex); without one, users are
+# greeted on their first message instead.
+welcome_message_enabled = true      # Greet users entering the room
+welcome_message_message = "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"  # {user} = nick, {room} = room name
+welcome_message_cooldown = 3600.0   # Seconds between greetings for the same user (1 hour, 60-86400)
+# Room notice for someone entering; must contain (?P<user>...). "" = greet on first message only.
+# The default covers "*** bob has joined the room", "bob has entered the room" and "สมชาย เข้าสู่ห้อง";
+# check what your Camfrog client actually shows and adjust (single quotes keep backslashes).
+join_line_regex = '^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?\W{0,4}\s*(?:(?P<user>[^\s:]+)\s+(?:has\s+)?(?:joined|entered)\b|(?P<user_th>[^\s:]+)\s+(?:ได้)?เข้า(?:สู่|มาใน)?ห้อง)'
 
 # --- Camfrog RE Integrations (Gift / Avatar / Status / Status Alert) ---------
 # Gift / virtual-gift announcement (detect gift messages in room chat; see docs/camfrog-re/08-feature-gift.md)

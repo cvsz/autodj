@@ -226,7 +226,7 @@ class Config:
     autoplay_idle_timeout: float = 30.0  # seconds before autoplay starts when no user requests
 
     # Admin Greeting
-    admin_greeting_enabled: bool = True  # enable admin greeting on first message
+    admin_greeting_enabled: bool = True  # greet admins (instead of the welcome) when they arrive
     admin_greeting_message: str = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"
     admin_greeting_cooldown: float = 3600.0  # seconds between greetings for same admin (1 hour)
 
@@ -242,8 +242,16 @@ class Config:
     mute_enabled: bool = False  # mic muted state (persisted)
 
     # Welcome Message
-    welcome_message_enabled: bool = True  # enable welcome message
-    welcome_message_message: str = "ยินดีต้อนรับสู่ห้องแชทของ AutoDJ!"
+    welcome_message_enabled: bool = True  # greet every (non-admin) user who enters the room
+    welcome_message_message: str = "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"  # {user} {room}
+    # Room notice for someone entering, with a (?P<user>...) group; "" disables join detection
+    # (users are then greeted on their first message). Check the exact wording your Camfrog
+    # client shows and adjust if needed.
+    join_line_regex: str = (
+        r"^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?\W{0,4}\s*"
+        r"(?:(?P<user>[^\s:]+)\s+(?:has\s+)?(?:joined|entered)\b"
+        r"|(?P<user_th>[^\s:]+)\s+(?:ได้)?เข้า(?:สู่|มาใน)?ห้อง)"
+    )
     welcome_message_cooldown: float = 3600.0  # seconds between welcome messages (1 hour)
 
     # Camfrog RE Integrations (Gift / Avatar / Status / Status Alert)
@@ -387,6 +395,7 @@ _REGEXES = (
     "window_exclude_re",
     "line_regex",
     "client_title_re",
+    "join_line_regex",
 )
 _RANGES = {
     "volume": (0, 100),

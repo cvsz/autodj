@@ -12,6 +12,7 @@ class ChatMessage:
     text: str
     local: bool = False  # from the local console: always trusted as admin
     is_im: bool = False  # instant/private message: can control the bot without room prefix
+    event: str = ""  # "" for a chat line; "join" when the room reported this user entering
 
 
 class ChatAdapter(ABC):
@@ -28,6 +29,23 @@ class ChatAdapter(ABC):
 def parse_line(line: str, rx: re.Pattern[str], is_im: bool = False) -> ChatMessage | None:
     m = rx.match(line.strip())
     return ChatMessage(m["user"].strip(), m["text"].strip(), is_im=is_im) if m else None
+
+
+def parse_join(line: str, rx: re.Pattern[str] | None) -> ChatMessage | None:
+    """A room notice that *user* entered (matched by ``join_line_regex``), else None."""
+    if rx is None:
+        return None
+    m = rx.search(line.strip())
+    if not m:
+        return None
+    # The pattern may offer alternatives (user, user_th, ...): take the group that matched.
+    user = next((v for k, v in m.groupdict().items() if k.startswith("user") and v), "")
+    return ChatMessage(user.strip(), "", event="join") if user.strip() else None
+
+
+def compile_join_rx(pattern: str) -> re.Pattern[str] | None:
+    """Compile ``join_line_regex``; empty disables join detection."""
+    return re.compile(pattern) if pattern.strip() else None
 
 
 def diff_lines(prev: list[str], cur: list[str]) -> list[str]:

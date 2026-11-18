@@ -71,6 +71,14 @@ _CHAT_RATE_LIMIT_WINDOW = 60.0  # seconds
 _CHAT_RATE_LIMIT_MAX = 20  # max messages per nick per window
 
 
+def _fill(template: str, **values: str) -> str:
+    """Replace ``{name}`` placeholders without ``str.format`` (a stray brace or an
+    unknown placeholder in a user-edited message must never raise)."""
+    for k, v in values.items():
+        template = template.replace("{" + k + "}", v)
+    return template
+
+
 class Engine:
     def __init__(self, cfg, adapter, player=None, index=None, cfg_path=None):
         self.cfg, self.adapter = cfg, adapter
@@ -1318,7 +1326,9 @@ class Engine:
                 if norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text):
                     continue
 
-                if msg.is_im:
+                if msg.event == "join":
+                    self._handle_room_join(msg)
+                elif msg.is_im:
                     self._handle_im(msg)
                 else:
                     self._handle_room_message(msg)
@@ -1378,8 +1388,9 @@ class Engine:
         # Camfrog RE integrations: gift announcement + upgrade/payment status alert
         self._handle_re_events(msg)
 
-        self._handle_admin_greeting(msg)
-        self._handle_welcome_message(msg)
+        # Greet once per visit: on the room's join notice, or (when the client shows no
+        # join notice) on the user's first message. Cooldowns stop a second greeting.
+        self._greet_user(msg.user)
 
         # Update last user request time for !play commands (tracked in router)
         self.exec.submit(self.router.handle, msg)
@@ -1462,20 +1473,37 @@ class Engine:
         self.im_seq += 1
         self._im_version += 1
 
-    def _handle_admin_greeting(self, msg: ChatMessage) -> None:
-        """Greet an admin on their first message of the session (if enabled)."""
+    def _handle_room_join(self, msg: ChatMessage) -> None:
+        """A user entered the room (``join_line_regex`` matched a room notice)."""
+        log.info("room: %s entered", msg.user)
+        self._update_participant_count(msg.user)
+        self._emit("join", msg.user)
+        self._greet_user(msg.user)
+
+    def _greet_user(self, user: str) -> bool:
+        """Greet *user* once per cooldown: admins get the admin greeting, everyone else
+        the welcome message. Returns True if a greeting was sent."""
+        if user.lower() in self.admins and self.cfg.admin_greeting_enabled:
+            return self._handle_admin_greeting(ChatMessage(user, ""))
+        return self._handle_welcome_message(ChatMessage(user, ""))
+
+    def _handle_admin_greeting(self, msg: ChatMessage) -> bool:
+        """Greet an admin who entered the room (or spoke first), if enabled."""
         if not self.cfg.admin_greeting_enabled:
-            return
+            return False
         if msg.user.lower() not in self.admins:
-            return
+            return False
         now = time.monotonic()
         last_greeting = self._admin_greeting_cooldowns.get(msg.user.lower(), float("-inf"))
         if now - last_greeting < self.cfg.admin_greeting_cooldown:
-            return
-        greeting = self.cfg.admin_greeting_message.format(admin=msg.user)
+            return False
+        greeting = _fill(
+            self.cfg.admin_greeting_message, admin=msg.user, user=msg.user, room=self.cfg.room
+        )
         self.say(greeting)
         self._admin_greeting_cooldowns[msg.user.lower()] = now
         log.info("Sent admin greeting to %s", msg.user)
+        return True
 
     # ---- Camfrog reverse-engineering integrations -------------------------
 
@@ -1631,14 +1659,15 @@ class Engine:
         self._name_colors[nick.lower()] = color
         log.debug("tracked name color for %s: %s", nick, color)
 
-    def _handle_welcome_message(self, msg):
-        """Send welcome message to a user on their first message in a session.
+    def _handle_welcome_message(self, msg: ChatMessage) -> bool:
+        """Welcome a user who entered the room (or spoke first) in the room.
 
         Only for non-IM messages. Rate-limited per user using welcome_message_cooldown
-        to avoid spam. Thread-safe per-user cooldown tracking.
+        to avoid spam. Thread-safe per-user cooldown tracking. ``{user}`` and ``{room}``
+        in the text are filled in. Returns True if the welcome was sent.
         """
         if not self.cfg.welcome_message_enabled or msg.is_im:
-            return
+            return False
         now = time.monotonic()
         key = f"welcome:{msg.user.lower()}"
         cooldown = getattr(self.cfg, "welcome_message_cooldown", 3600.0)
@@ -1647,15 +1676,15 @@ class Engine:
         with self._chat_lock:
             last_welcome = self._welcome_cooldowns.get(key, float("-inf"))  # never sent
             if now - last_welcome >= cooldown:
-                welcome_text = self.cfg.welcome_message_message
-                # Replace {room} placeholder if present
-                if "{room}" in welcome_text:
-                    welcome_text = welcome_text.replace("{room}", self.cfg.room)
+                welcome_text = _fill(
+                    self.cfg.welcome_message_message, user=msg.user, room=self.cfg.room
+                )
                 should_send = True
                 self._welcome_cooldowns[key] = now
         if should_send:
             self.say(welcome_text)
             log.info("Sent welcome message to %s", msg.user)
+        return should_send
 
     def _emit(self, event: str, *args) -> None:
         """Forward an engine event to loaded plugins (never raises)."""

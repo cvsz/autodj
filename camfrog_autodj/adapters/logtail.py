@@ -5,7 +5,7 @@ import re
 import time
 from pathlib import Path
 
-from .base import ChatAdapter, parse_line
+from .base import ChatAdapter, compile_join_rx, parse_join, parse_line
 
 log = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ class LogTailAdapter(ChatAdapter):
         self.path = Path(cfg.log_path)
         self.enc = cfg.log_encoding
         self.rx = re.compile(cfg.line_regex)
+        self.join_rx = compile_join_rx(getattr(cfg, "join_line_regex", ""))
 
     def test_connection(self) -> None:
         """Test if the log file can be read.
@@ -43,6 +44,8 @@ class LogTailAdapter(ChatAdapter):
                 # IM (private) messages in the log are marked with an [IM] tag or "IM " prefix
                 is_im = line.startswith(("IM ", "[IM]")) or " [IM] " in line
                 m = parse_line(line, self.rx, is_im=is_im)
+                if m is None and not is_im:
+                    m = parse_join(line, self.join_rx)  # "<user> has entered the room"
                 if m:
                     yield m
 

@@ -5,7 +5,7 @@ import re
 import threading
 import time
 
-from .base import ChatAdapter, diff_lines, parse_line
+from .base import ChatAdapter, compile_join_rx, diff_lines, parse_join, parse_line
 
 log = logging.getLogger("autodj")
 
@@ -34,6 +34,7 @@ class UiaAdapter(ChatAdapter):
     def __init__(self, cfg):
         self.cfg = cfg
         self.rx = re.compile(cfg.line_regex)
+        self.join_rx = compile_join_rx(getattr(cfg, "join_line_regex", ""))
         from ..windows import resolve
 
         c = resolve(
@@ -136,6 +137,8 @@ class UiaAdapter(ChatAdapter):
                     # IM (private) messages in Camfrog are marked with an [IM] tag or "IM " prefix
                     is_im = line.startswith(("IM ", "[IM]")) or " [IM] " in line
                     m = parse_line(line, self.rx, is_im=is_im)
+                    if m is None and not is_im:
+                        m = parse_join(line, self.join_rx)  # "<user> has entered the room"
                     if m:
                         yield m
             prev = lines  # first poll only sets the baseline: old history is never replayed
