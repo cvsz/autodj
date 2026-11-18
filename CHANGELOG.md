@@ -36,6 +36,8 @@
 - **Fix: `scripts/setup-git-credential-helper.sh`** wrote the plaintext credential store to a relative `D/.git-credentials` (inside whatever repo it ran in). Now uses `$GIT_CRED_FILE` (default `~/.git-credentials`), refuses paths inside the repo, and `chmod 600`s the file.
 - **Security: `.dockerignore`** — the Dockerfile does `COPY . ./` but the context did not exclude `.config/` (gh CLI token store), `cert/`, or `docs/rea/` (malware archives, memory dumps, pcap); a local `docker build` would bake them into the image. Also excludes bundled mpv and runtime state.
 - Tests: `tests/test_updater_ai_hardening.py` (new) and webhook replay/stale/cross-endpoint/weak-secret/429 cases.
+- **CI: Linux test run aborted partway (`Aborted (core dumped)`)** — Tk widgets still referenced when a GUI test returned were finalised by a webhook TestClient worker thread, and Tcl aborts when its interpreter is torn down off the creating thread. New `tests/conftest.py` collects garbage on the main thread after every test. (Also failed on `main`.)
+- **CI: Windows Build / release could not install mpv** — `choco install mpv --version=2024.01.01` does not exist on the Chocolatey feed. Pinned to the published `2024.9.26` and the step now adds the install directory to `PATH` when the package ships no shim. (Also failed on `main`.)
 
 ## 0.3.1
 2026-11-17 (tag `v0.3.1`; package metadata still read 0.3.0 — fixed in 0.3.2)

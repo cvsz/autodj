@@ -192,6 +192,7 @@ def test_settings_dialog_visible_saves_and_reopens(tmp_path):
         assert app._settings_win is None and not app._settings_visible
     finally:
         app.close()
+        win = None
         del app
         import gc
 

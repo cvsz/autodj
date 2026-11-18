@@ -96,7 +96,15 @@ jobs:
       - name: Install mpv via Chocolatey (reliable, version-pinned)
         run: |
           # Use Chocolatey for reliable mpv installation (avoids mpv.io 404s on old builds)
-          choco install mpv --version=2024.01.01 --yes
+          choco install mpv --version=2024.9.26 --yes
+          if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue)) {
+            # Some package versions install to Program Files without a shim: locate it.
+            $found = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib", "C:\Program Files", "C:\Program Files (x86)" -Filter mpv.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+              $env:PATH = "$($found.DirectoryName);$env:PATH"
+              $found.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            }
+          }
           # Verify mpv.exe is on PATH
           if (-not (Get-Command mpv.exe -ErrorAction SilentlyContinue)) {
             Write-Error "mpv.exe not found on PATH after Chocolatey install"
