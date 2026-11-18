@@ -1,3 +1,9 @@
+## 0.3.3 — 2026-11-18
+
+Release-only follow-up to 0.3.2 (no application code change).
+
+- **Fix: release workflow on a repository with immutable releases** — the release was published before its assets were attached, which immutable releases reject ("Cannot upload assets to an immutable release"); the `v0.3.2` tag was used up by an empty release and cannot be reused. The workflow now creates a draft, attaches `AutoDJ.exe`, the installer, the SBOM and `SHA256SUMS.txt`, then publishes it.
+
 ## 0.3.2 — 2026-11-18
 
 - **Release pipeline fixes found by the first signed `v0.3.2` run** — `release.yml` validated without the `webhook`/`hotreload` extras or a Tk display (tests could not import), pinned a non-existent `softprops/action-gh-release` commit, and `build.ps1` loaded the PFX with `Get-PfxCertificate -Password`, which Windows PowerShell 5.1 (used by the workflow) does not have. The PFX is now loaded with `X509Certificate2`, and a `HashMismatch` re-sign with `signtool` also works from a PFX.

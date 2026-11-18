@@ -187,5 +187,14 @@ jobs:
             Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
             SHA256SUMS.txt
           generate_release_notes: true
-          draft: false
+          # Immutable releases are enabled: assets cannot be added once a release is
+          # published, so create a draft, attach everything, then publish below.
+          draft: true
           prerelease: false
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
