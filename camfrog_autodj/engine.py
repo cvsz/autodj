@@ -48,6 +48,7 @@ MAX_FAIL_ANNOUNCE = (
     3  # consecutive failed tracks announced in the room; after that only the log hears about it
 )
 MAX_BACKOFF = 30.0  # seconds, ceiling of the pause between consecutive failed tracks
+AI_MAX_INFLIGHT = 2  # concurrent AI provider calls; further room lines are not sent to the AI
 ECHO_TTL = 120.0  # seconds a line we posted is remembered, to recognise it when it comes back from the room
 
 # Failure categories for structured diagnostics
@@ -110,6 +111,11 @@ class Engine:
         self.exec = ThreadPoolExecutor(
             8
         )  # lookups can take seconds: keep !skip and friends responsive meanwhile
+        # AI calls wait on a remote provider (up to its timeout): give them their own
+        # small pool so a slow provider can never starve command handling in self.exec.
+        self._ai_exec = ThreadPoolExecutor(AI_MAX_INFLIGHT, thread_name_prefix="autodj-ai")
+        self._ai_inflight = 0
+        self._ai_inflight_lock = threading.Lock()
         self.history: deque[Track] = deque(maxlen=20)  # newest first
         self.blocked: set[str] = {b.lower() for b in cfg.blocked_users}
         self.fail_delay = lambda n: min(
@@ -1411,15 +1417,30 @@ class Engine:
             return
         if msg.text.strip().startswith(self.cfg.prefix):
             return  # command: let the router handle it
-        if not self.ai.can_reply(msg.user):
-            return  # per-user cooldown (also bounds API spend)
-        # Network call (up to 30s) must never block the chat-reading loop.
-        self.exec.submit(self._ai_reply, msg.text)
+        if msg.user.lower() in self.blocked:
+            return  # blocked users are never forwarded to the provider
+        with self._ai_inflight_lock:
+            if self._ai_inflight >= AI_MAX_INFLIGHT:
+                return  # provider busy: drop rather than queue unbounded work
+            if not self.ai.can_reply(msg.user):
+                return  # per-user cooldown (also bounds API spend)
+            self._ai_inflight += 1
+        # Network call (up to 30s) must never block the chat-reading loop, and runs
+        # on its own pool so it cannot delay !skip and other commands.
+        try:
+            self._ai_exec.submit(self._ai_reply, msg.text)
+        except RuntimeError:  # pool shut down (engine stopping)
+            with self._ai_inflight_lock:
+                self._ai_inflight -= 1
 
     def _ai_reply(self, text: str) -> None:
-        reply = self.ai.chat(text)
-        if reply:
-            self.say(reply)
+        try:
+            reply = self.ai.chat(text)
+            if reply:
+                self.say(reply)
+        finally:
+            with self._ai_inflight_lock:
+                self._ai_inflight -= 1
 
     def refresh_ai(self) -> None:
         """Rebuild the AI client from the current config (after !ai or reload)."""
@@ -2191,6 +2212,7 @@ class Engine:
                 log.exception("Failed to stop webhook server")
         self.adapter.close()
         self.exec.shutdown(wait=False, cancel_futures=True)
+        self._ai_exec.shutdown(wait=False, cancel_futures=True)
         # Shutdown TTS worker
         from .tts import shutdown_tts
 

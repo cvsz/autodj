@@ -43,6 +43,7 @@
 - **Fix: tagged releases could never be signed** — `release.yml` required `AUTODJ_PFX`/`AUTODJ_PFX_PASSWORD` or `AUTODJ_CERT_THUMBPRINT` but never mapped any secret into the step, so every `v*` tag failed the signing gate. The step now reads repository secrets `AUTODJ_PFX_BASE64` (decoded to a runner-temp `.pfx`), `AUTODJ_PFX_PASSWORD` and `AUTODJ_CERT_THUMBPRINT`.
 - **Fix: `auto_update_enabled` hot-reload** — turning it off in a reload left the running loop calling GitHub; turning it on never started the loop. The loop now re-reads the flag every iteration and the reload starts it when newly enabled.
 - **Security: IM room-presence check for plugin commands** — unknown commands went straight to plugins with only the block-list check, bypassing `im_require_room_presence`. Plugin commands now use the same channel rules as built-ins.
+- **Fix: slow AI provider could stall commands** — AI replies ran on the 8-worker command executor, so several slow provider calls delayed `!skip` and friends. They now run on a dedicated 2-worker pool; further room lines are not sent to the AI while both are busy. Blocked users are no longer forwarded to the provider, and `ai_user_cooldown` (0–86400) / `ai_max_chars` (1–2000) are range-checked so a negative cooldown is rejected at load.
 
 ## 0.3.1
 2026-11-17 (tag `v0.3.1`; package metadata still read 0.3.0 — fixed in 0.3.2)

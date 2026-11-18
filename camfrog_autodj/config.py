@@ -409,6 +409,8 @@ _RANGES = {
     "auto_reply_interval": (60.0, 86400.0),
     "np_question_cooldown": (0.0, 3600.0),
     "autoplay_idle_timeout": (0.0, 86400.0),
+    "ai_user_cooldown": (0.0, 86400.0),
+    "ai_max_chars": (1, 2000),
 }
 
 

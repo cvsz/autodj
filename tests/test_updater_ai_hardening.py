@@ -133,20 +133,61 @@ def test_ai_never_answers_private_messages_in_public_room():
     fake.say.assert_not_called()
 
 
-def test_ai_room_reply_is_async_and_cooldown_gated():
+def _fake_ai_engine():
+    import threading
     from unittest.mock import Mock
-
-    from camfrog_autodj.engine import Engine
 
     fake = Mock()
     fake.cfg.prefix = "!"
+    fake.blocked = set()
+    fake._ai_inflight = 0
+    fake._ai_inflight_lock = threading.Lock()
     fake.ai.is_enabled.return_value = True
     fake.ai.can_reply.return_value = True
+    return fake
+
+
+def test_ai_room_reply_is_async_and_cooldown_gated():
+    from camfrog_autodj.engine import Engine
+
+    fake = _fake_ai_engine()
     Engine._ai_handle_room(fake, SimpleNamespace(user="bob", text="hello"))
     fake.ai.chat.assert_not_called()  # not on the chat thread
-    fake.exec.submit.assert_called_once_with(fake._ai_reply, "hello")
-
-    fake.reset_mock()
-    fake.ai.can_reply.return_value = False
-    Engine._ai_handle_room(fake, SimpleNamespace(user="bob", text="again"))
+    # dedicated AI pool, never the command executor
+    fake._ai_exec.submit.assert_called_once_with(fake._ai_reply, "hello")
     fake.exec.submit.assert_not_called()
+
+    fake._ai_exec.reset_mock()
+    fake.ai.can_reply.return_value = False
+    Engine._ai_handle_room(fake, SimpleNamespace(user="amy", text="again"))
+    fake._ai_exec.submit.assert_not_called()
+
+
+def test_ai_skips_blocked_users_and_caps_inflight_calls():
+    from camfrog_autodj.engine import AI_MAX_INFLIGHT, Engine
+
+    fake = _fake_ai_engine()
+    fake.blocked = {"troll"}
+    Engine._ai_handle_room(fake, SimpleNamespace(user="Troll", text="hi"))
+    fake.ai.can_reply.assert_not_called()
+    fake._ai_exec.submit.assert_not_called()
+
+    for n in range(AI_MAX_INFLIGHT + 3):
+        Engine._ai_handle_room(fake, SimpleNamespace(user=f"u{n}", text="hi"))
+    assert fake._ai_exec.submit.call_count == AI_MAX_INFLIGHT  # slow provider: drop the rest
+
+    fake.ai.chat.return_value = "ok"
+    Engine._ai_reply(fake, "hi")  # a finished call frees its slot
+    assert fake._ai_inflight == AI_MAX_INFLIGHT - 1
+
+
+def test_ai_numeric_settings_are_range_checked(tmp_path):
+    import pytest
+
+    from camfrog_autodj.config import Config, ConfigError
+
+    for line in ("ai_user_cooldown = -5", "ai_max_chars = 0"):
+        p = tmp_path / "config.toml"
+        p.write_text(line + "\n", encoding="utf-8")
+        with pytest.raises(ConfigError):
+            Config.load(str(p))
