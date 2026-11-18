@@ -28,6 +28,43 @@ def _expand_environment(value: str) -> str:
     return re.sub(r"%([^%]+)%", replace, expanded)
 
 
+def log_directory() -> Path:
+    """Return the install-folder ``logs`` directory (APPDATA fallback).
+
+    AutoDJ stores ``*.log`` next to the running installation so operators can
+    inspect actions from the same folder.  If the install folder is read-only
+    (e.g. Program Files), fall back to a user-writable APPDATA location.
+    """
+    install_logs = application_dir() / "logs"
+    try:
+        install_logs.mkdir(parents=True, exist_ok=True)
+        probe = install_logs / ".write_probe"
+        probe.write_text("", encoding="utf-8")
+        probe.unlink()
+        return install_logs
+    except OSError:
+        app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
+        fallback = Path(app_data) / "CamfrogAutoDJ" / "logs"
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
+
+
+def resolve_log_path(configured: str | None = None) -> Path:
+    """Resolve a configured log filename to a path under the logs directory."""
+    raw = (configured or "").strip()
+    if not raw:
+        return log_directory() / "autodj.log"
+    expanded = _expand_environment(raw)
+    candidate = Path(expanded)
+    if candidate.is_absolute():
+        return candidate
+    # Existing configs commonly use "logs/autodj.log"; avoid logs/logs nesting.
+    relative = expanded.replace("\\", "/")
+    if relative.lower().startswith("logs/"):
+        relative = relative[5:]
+    return log_directory() / relative
+
+
 def resolve_executable(
     configured: str | None, fallback: str = "", *, only_exe: bool = False
 ) -> str:

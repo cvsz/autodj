@@ -128,7 +128,7 @@ im_require_room_presence = true     # Only users seen in room chat can DM the bo
 allow_play_in_room = false          # When true, !play works in room chat for all users (not just IM)
 
 # --- Logging -----------------------------------------------------------------
-log_file = ""                       # Also write the log to this file (rotating, 1 MB x 3). Same as --log-file.
+log_file = "autodj.log"             # Log file (rotating, 1 MB x 3). Relative names go to <install>/logs/ (APPDATA fallback). Empty = default autodj.log there.
 # Relative paths are resolved to %APPDATA%/CamfrogAutoDJ/ so they are
 # writable even when AutoDJ is installed to Program Files.
 
@@ -143,6 +143,7 @@ log_json_fields = [                 # Extra fields to include in JSON logs
 playlist_file = "playlist.json"     # User-requested tracks (!play / GUI request / !load) are appended here
 # (deduplicated) and join the autoplay pool (random); "" = disable persistence
 playlist_dir = ""           # Directory of *.json playlist files auto-loaded at startup; "" = disabled (default off)
+playlist_dir_autoload = false  # Even with playlist_dir set, never auto-load demo playlists unless true
 
 # --- YouTube Search ----------------------------------------------------------
 search_limit = 1                    # YouTube text-search results fetched per non-admin !play (1 = first match only; max 50)
