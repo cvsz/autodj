@@ -120,6 +120,27 @@ class TestConfigWatcher:
         finally:
             watcher.stop()
 
+    def test_watcher_skips_unchanged_content(self, tmp_path: Path):
+        """Regression: Windows can surface one write as two stat changes seconds apart
+        (size, then mtime), which reloaded the same config twice. A reload whose bytes
+        match the last loaded content is skipped; a real change still fires."""
+        cfg_file = tmp_path / "config.toml"
+        cfg_file.write_text('bot_nick = "Test"\nadmins = []\n', encoding="utf-8")
+
+        watcher = ConfigWatcher(str(cfg_file), debounce_ms=100, polling_interval=0.1)
+        changes: list[str] = []
+        watcher.on_change(lambda cfg: changes.append(cfg.bot_nick))
+        watcher.start()
+        try:
+            watcher._trigger_reload()  # same bytes as at start(): no callback
+            assert changes == []
+            cfg_file.write_text('bot_nick = "Changed"\nadmins = []\n', encoding="utf-8")
+            watcher._trigger_reload()
+            watcher._trigger_reload()  # the duplicate stat event for the same write
+            assert changes == ["Changed"]
+        finally:
+            watcher.stop()
+
     def test_watcher_debounces_rapid_writes(self, tmp_path: Path):
         """Test that rapid writes are debounced."""
         cfg_file = tmp_path / "config.toml"

@@ -100,15 +100,17 @@ def _make_app(app_cls, engine):
     """Create the real Tk App, skipping when the runner's Tcl install is unusable.
 
     Hosted Windows runners intermittently fail to read ``init.tcl`` when a second
-    interpreter is created ("couldn't read file ... init.tcl: No error"). That is an
-    environment fault, not a GUI regression.
+    interpreter is created ("couldn't read file ... init.tcl: No error", or
+    'invalid command name "tcl_findLibrary"'). That is an environment fault, not a
+    GUI regression.
     """
     import tkinter as tk
 
     try:
         return app_cls(engine)
     except tk.TclError as exc:
-        if "init.tcl" in str(exc):
+        msg = str(exc)
+        if "init.tcl" in msg or "tcl_findLibrary" in msg:
             pytest.skip(f"Tcl runtime unavailable on this runner: {exc}")
         raise
 
