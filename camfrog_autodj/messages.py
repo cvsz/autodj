@@ -259,6 +259,12 @@ STR = {
         "update_no_release": "No new AutoDJ release found on GitHub.",
         "update_settings_enabled": "Auto-update enabled.",
         "update_settings_disabled": "Auto-update disabled.",
+        # AI (GPT-compatible chat)
+        "ai_enabled": "AI enabled.",
+        "ai_disabled": "AI disabled.",
+        "ai_status": "AI: {state} | model={model} | base_url={url}",
+        "ai_model_set": "AI model set to: {model}",
+        "ai_prompt_set": "AI system prompt set.",
     },
     "th": {
         "admin_only": "เฉพาะแอดมินเท่านั้น",
@@ -516,6 +522,12 @@ STR = {
         "update_no_release": "ไม่พบリリース AutoDJ ใหม่บน GitHub.",
         "update_settings_enabled": "เปิดใช้งานอัปเดตอัตโนมัติแล้ว.",
         "update_settings_disabled": "ปิดใช้งานอัปเดตอัตโนมัติแล้ว.",
+        # AI commands
+        "ai_enabled": "เปิดใช้งาน AI แล้ว.",
+        "ai_disabled": "ปิดใช้งาน AI แล้ว.",
+        "ai_status": "AI: {state} | model={model} | base_url={url}",
+        "ai_model_set": "ตั้งค่าโมเดล AI เป็น: {model}",
+        "ai_prompt_set": "ตั้งค่า system prompt ของ AI แล้ว.",
     },
 }
 

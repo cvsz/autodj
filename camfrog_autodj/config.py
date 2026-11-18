@@ -268,6 +268,18 @@ class Config:
     auto_update_check_interval: float = 21600.0  # seconds between checks (default 6h)
     auto_update_asset: str = "AutoDJ.exe"  # release asset filename to download
 
+    # AI: optional chat-completion integration (disabled by default)
+    ai_enabled: bool = False  # enable AI chat replies
+    ai_api_key: str = ""  # API key for the AI provider
+    ai_base_url: str = "https://api.openai.com/v1"  # OpenAI-compatible base URL
+    ai_model: str = "gpt-3.5-turbo"  # model name
+    ai_system_prompt: str = (
+        "You are AutoDJ, a music bot in a Camfrog room. Keep replies short, "
+        "friendly, and on-topic. Do not claim to play music unless asked."
+    )
+    ai_max_chars: int = 200  # max characters in AI reply
+    ai_user_cooldown: float = 30.0  # seconds between AI replies to same user
+
     # Reload callbacks (class-level, shared across all instances)
     _reload_callbacks: ClassVar[list] = []
 

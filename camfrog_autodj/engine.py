@@ -17,6 +17,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from .adapters.base import ChatMessage
+from .ai import AIClient
 from .commands import Router
 from .exceptions import (
     ChatAdapterError,
@@ -150,6 +151,7 @@ class Engine:
         self._config_watcher = None  # set up by the GUI if hot reload is enabled
         self._webhook_server = None  # set up by the GUI if webhook is enabled
         self.updater = Updater(self.cfg, engine=self)  # auto-update checker/downloader
+        self.ai = AIClient(self.cfg)  # AI chat client (disabled by default)
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -1162,6 +1164,18 @@ class Engine:
             self._plugin_manager.emit("chat", msg)
         # Process IM commands through the router (like room messages)
         self.exec.submit(self.router.handle, msg)
+        # AI: reply to non-command IM messages
+        self._ai_handle_im(msg)
+
+    def _ai_handle_im(self, msg: ChatMessage) -> None:
+        """Reply to non-command IM messages via AI (if enabled)."""
+        if not self.ai.is_enabled():
+            return
+        if msg.text.strip().startswith(("/", self.cfg.prefix)):
+            return  # command-like: let the router handle it
+        reply = self.ai.chat(msg.text)
+        if reply:
+            self.say(reply)
 
     def _handle_room_message(self, msg: ChatMessage) -> None:
         """Handle a room message (non-IM)."""
@@ -1186,6 +1200,18 @@ class Engine:
 
         # Update last user request time for !play commands (tracked in router)
         self.exec.submit(self.router.handle, msg)
+        # AI: reply to non-command room messages
+        self._ai_handle_room(msg)
+
+    def _ai_handle_room(self, msg: ChatMessage) -> None:
+        """Reply to non-command room messages via AI (if enabled)."""
+        if not self.ai.is_enabled():
+            return
+        if msg.text.strip().startswith(self.cfg.prefix):
+            return  # command: let the router handle it
+        reply = self.ai.chat(msg.text)
+        if reply:
+            self.say(reply)
 
     @property
     def participant_count(self) -> int:
@@ -1439,6 +1465,26 @@ class Engine:
 
         # Start auto-update checker (owns its thread; no GUI needed)
         self.updater.start()
+        # One-time check at startup (non-blocking)
+        self.exec.submit(self._auto_update_check)
+
+    def _auto_update_check(self) -> None:
+        """Periodic auto-update check (runs in updater thread)."""
+        try:
+            release = self.updater.check_for_update()
+            if release:
+                self.say(
+                    self.t(
+                        "update_available",
+                        version=release["tag"],
+                        current=__import__(
+                            "camfrog_autodj", fromlist=["__version__"]
+                        ).__version__,
+                        url=release["html_url"],
+                    )
+                )
+        except Exception:  # noqa: BLE001 - auto-update must never crash
+            log.exception("auto-update check failed")
 
     def _auto_reply_loop(self):
         """Send scheduled auto-reply messages from ads-list.json to the room.

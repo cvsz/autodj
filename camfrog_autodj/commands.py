@@ -700,6 +700,44 @@ def _welcome_message(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None
     e.say(e.t("welcome_enabled") if e.cfg.welcome_message_enabled else e.t("welcome_disabled"))
 
 
+# ---- AI (OpenAI-compatible chat) -------------------------------------------
+
+
+@command("ai", "เอไอ", admin=True)
+def _ai_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """Configure or check AI auto-reply.
+
+    Usage: !ai on|off           — enable/disable AI replies
+           !ai status           — show current AI settings
+           !ai model <name>     — set AI model
+           !ai prompt <text>    — set system prompt
+    """
+    arg = a.strip().lower()
+    if not arg:
+        raise UserError(e.t("usage", p=e.cfg.prefix))
+
+    if arg == "on":
+        e.cfg.ai_enabled = True
+        e.say(e.t("update_settings_enabled"))
+    elif arg == "off":
+        e.cfg.ai_enabled = False
+        e.say(e.t("update_settings_disabled"))
+    elif arg == "status":
+        enabled = e.cfg.ai_enabled
+        e.say(
+            f"AI: {'enabled' if enabled else 'disabled'} | model={e.cfg.ai_model} | "
+            f"base_url={e.cfg.ai_base_url}"
+        )
+    elif arg.startswith("model "):
+        e.cfg.ai_model = arg[len("model ") :].strip()
+        e.say(f"AI model set to: {e.cfg.ai_model}")
+    elif arg.startswith("prompt "):
+        e.cfg.ai_system_prompt = arg[len("prompt ") :].strip()
+        e.say("AI system prompt set.")
+    else:
+        raise UserError(e.t("usage", p=e.cfg.prefix))
+
+
 # ---- Auto-update (GitHub releases) ------------------------------------------
 
 
