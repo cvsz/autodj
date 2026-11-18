@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Greet users when they enter the room** — the greeting used to fire only for admins (and a generic welcome on a user's first message). Now every user who enters is greeted by name once per cooldown: admins get `admin_greeting_message`, everyone else `welcome_message_message`, which supports `{user}` and `{room}` (new default: "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"). Arrival is detected from the room's join notice via the new `join_line_regex` (default covers "X has joined/entered the room" and "X เข้าสู่ห้อง"; editable in Settings; "" turns it off). Without a join notice, users are still greeted on their first message, never twice. Joins count for IM room-presence, and plugins get `on_join(user)`. Greeting text no longer uses `str.format`, so a stray `{` in a custom message cannot crash it. The exact Camfrog join wording is not yet verified against a live room.
+
 ## 0.3.3 — 2026-11-18
 
 Release-only follow-up to 0.3.2 (no application code change).

@@ -148,6 +148,10 @@ class Plugin(ABC):
         """Called when a chat message is received. Override if needed."""
         pass
 
+    def on_join(self, user: str) -> None:  # noqa: B027
+        """Called when the room reports *user* entering (join_line_regex). Override if needed."""
+        pass
+
     def on_track_failed(self, track: "Track", error: str) -> None:  # noqa: B027
         """Called when a track fails to play. Override if needed."""
         pass

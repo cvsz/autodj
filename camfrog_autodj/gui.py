@@ -1997,6 +1997,15 @@ class App(tk.Tk):
         _setting_row(
             "g_settings_welcome_message_cooldown",
             self.s_welcome_message_cooldown,
+            "g_settings_join_line_regex",
+        )
+
+        # join_line_regex: room notice that someone entered (greets them on arrival)
+        self.s_join_line_regex = self._entry(sp_inner)
+        self.s_join_line_regex.insert(0, self.e.cfg.join_line_regex)
+        _setting_row(
+            "g_settings_join_line_regex",
+            self.s_join_line_regex,
             "g_settings_admin_delete_message_enabled",
         )
 
@@ -3212,6 +3221,8 @@ class App(tk.Tk):
             lines.append(f"welcome_message_enabled = {str(cfg.welcome_message_enabled).lower()}")
             lines.append(f"welcome_message_message = {_toml_str(cfg.welcome_message_message)}")
             lines.append(f"welcome_message_cooldown = {cfg.welcome_message_cooldown}")
+            cfg.join_line_regex = self.s_join_line_regex.get().strip()
+            lines.append(f"join_line_regex = {_toml_str(cfg.join_line_regex)}")
 
             # Admin delete message
             cfg.admin_delete_message_enabled = self.s_admin_delete_message_enabled

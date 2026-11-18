@@ -253,7 +253,7 @@ mpv_timeout = 30                   # วินาทีรอหนึ่งเ�
 
 ```toml
 # ทักทายแอดมินเมื่อส่งข้อความครั้งแรกในเซสชัน
-admin_greeting_enabled = true
+admin_greeting_enabled = true      # ทักแอดมินเมื่อเข้าห้อง (แทนข้อความต้อนรับ)
 admin_greeting_message = "สวัสดีครับแอดมิน {admin} ยินดีต้อนรับกลับมา!"
 admin_greeting_cooldown = 3600.0   # วินาทีระหว่างการทักทายต่อแอดมิน (1 ชั่วโมง)
 ```
@@ -358,10 +358,16 @@ status_alert_enabled = true
 ### Welcome Message
 
 ```toml
-welcome_message_enabled = true
-welcome_message_message = "ยินดีต้อนรับสู่ห้องแชทของ camfrog://room/{room}!"
-welcome_message_cooldown = 3600.0   # seconds between welcome messages for same user (1 hour)
+welcome_message_enabled = true     # ทักทายทุกคนที่เข้าห้อง
+welcome_message_message = "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"   # {user}, {room}
+welcome_message_cooldown = 3600.0   # วินาทีระหว่างการทักทายคนเดิม (1 ชั่วโมง)
+join_line_regex = '...'             # ข้อความแจ้ง "X เข้าห้อง" ต้องมี (?P<user>...) ; "" = ทักเมื่อพิมพ์ครั้งแรก
 ```
+
+บอทจับการเข้าห้องจากข้อความแจ้งของห้อง ค่าเริ่มต้นรองรับ `*** bob has joined the room`,
+`bob has entered the room` และ `สมชาย เข้าสู่ห้อง` ถ้า Camfrog ของคุณใช้ข้อความอื่น ให้คัดลอก
+บรรทัดแจ้งเข้าห้องหนึ่งบรรทัดมาปรับ `join_line_regex` ถ้าไม่เห็นข้อความแจ้งเข้าห้อง บอทจะทักตอนผู้ใช้พิมพ์ครั้งแรกแทน
+แต่ละคนถูกทักหนึ่งครั้งต่อช่วงคูลดาวน์: แอดมินได้ `admin_greeting_message` คนอื่นได้ `welcome_message_message`
 
 ### Admin Command Gating (Config-gated Features)
 
