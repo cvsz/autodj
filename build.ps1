@@ -237,8 +237,12 @@ function Find-SigningCertificate($subjectPattern) {
 }
 
 if ($Pfx) {
-  $sec = if ($Password) { ConvertTo-SecureString $Password -AsPlainText -Force } else { $null }
-  $cert = Get-PfxCertificate -FilePath $Pfx -Password $sec
+  # X509Certificate2 works in Windows PowerShell 5.1 too (Get-PfxCertificate -Password is PowerShell 7+
+  # only, and the release workflow runs this script with powershell.exe).
+  $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(
+    (Resolve-Path $Pfx).Path, $Password,
+    [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::DefaultKeySet)
+  if (-not $cert.HasPrivateKey) { throw "PFX $Pfx has no private key: cannot sign" }
 } elseif ($Thumbprint) {
   $tp = $Thumbprint -replace "\s", ""
   if ($certDriveAvailable) {
@@ -320,6 +324,10 @@ if ($v.Status -eq "HashMismatch") {
   if ($signtool -and -not $Pfx -and $cert.HasPrivateKey) {
     "HashMismatch after Set-AuthenticodeSignature: re-signing with signtool ($signtool)"
     & $signtool sign /sha1 $cert.Thumbprint /fd SHA256 /tr "http://timestamp.digicert.com" /td SHA256 $exe
+    if ($LASTEXITCODE -eq 0) { $v = Get-AuthenticodeSignature $exe } else { Write-Warning "signtool re-sign failed (exit $LASTEXITCODE)" }
+  } elseif ($signtool -and $Pfx) {
+    "HashMismatch after Set-AuthenticodeSignature: re-signing with signtool from the PFX ($signtool)"
+    & $signtool sign /f (Resolve-Path $Pfx).Path /p $Password /fd SHA256 /tr "http://timestamp.digicert.com" /td SHA256 $exe
     if ($LASTEXITCODE -eq 0) { $v = Get-AuthenticodeSignature $exe } else { Write-Warning "signtool re-sign failed (exit $LASTEXITCODE)" }
   } else {
     Write-Warning "HashMismatch: the signature on $exe is NOT valid. Install the Windows SDK (signtool.exe) and rebuild, or sign with signtool/az signtool (make trustsign) instead."
