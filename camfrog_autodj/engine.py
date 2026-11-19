@@ -1012,7 +1012,8 @@ class Engine:
         self._load_library()
         self._load_autoplay_sources()
         self._load_playlist()
-        self._load_playlist_dir()
+        if getattr(self.cfg, "playlist_dir_autoload", False):
+            self._load_playlist_dir()
         log.info(
             "autoplay pool: %d tracks; queue: %d requests",
             len(self.queue.pool),

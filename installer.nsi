@@ -108,6 +108,9 @@ CRCCheck on
 Section "!MainProgram" SEC_MAIN
     SectionIn RO
     SetOutPath "$INSTDIR"
+    ; Log destination: AutoDJ writes autodj.log (and rotations) here so operators
+    ; can read bot actions from the install folder. Keep logs on upgrades.
+    CreateDirectory "$INSTDIR\logs"
     File "dist\AutoDJ.exe"
     File "dist\app.ico"
     File "dist\README.md"

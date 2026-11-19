@@ -3,7 +3,9 @@
 ## 0. Authoritative verification update — v0.3.5 (2026-11-18)
 
 > This section is the current, evidence-backed status of the repository at branch
-> `feat/zplayer-gui-0.3.5`, HEAD `2eaa1bd` (plus the verification commits in PR #233).
+> PRs #233/#234, merged at `6d60623` / `485596d`. Release **v0.3.5** is published at
+> https://github.com/cvsz/autodj/releases/tag/v0.3.5 with AutoDJ.exe, the full client ZIP,
+> the signed installer, SBOM and SHA256SUMS.
 > Sections 1–7 below are the historical 0.3.0–0.3.2 evidence record and are retained.
 
 ### 0.1 Executive summary — VERIFIED
@@ -12,7 +14,7 @@ A top-to-bottom audit (static architecture mapping by an independent subagent, d
 security audit, then full local verification) was completed for the 0.3.5 zPlayer GUI redesign.
 All identified High and Medium defects were fixed in code; all Low findings were either fixed
 or reduced to reviewed, documented annotations. **Every locally executable gate is green with
-zero errors and zero warnings**: pytest 598 passed / 0 failed / 0 warnings (2 environment-skips,
+zero errors and zero warnings**: pytest 604 passed / 0 failed / 0 warnings (0 skips,
 3 subtests), ruff check + format clean, mypy clean (48 files), shellcheck clean (all `*.sh`),
 bandit clean (all severity and confidence metrics 0), compileall clean, installer/repository
 validators clean.
@@ -81,7 +83,7 @@ evidence. No finding was silently dismissed.
 | Gate | Command | Result |
 |---|---|---|
 | Syntax | `python -m compileall -q camfrog_autodj tests tools` | **PASS** |
-| Tests | `python -m pytest -q -p no:faulthandler -p no:cacheprovider` | **PASS — 598 passed, 2 skipped, 3 subtests, 0 warnings** |
+| Tests | `python -m pytest -q -p no:faulthandler -p no:cacheprovider` | **PASS — 604 passed, 0 skipped, 3 subtests, 0 warnings** |
 | Lint | `python -m ruff check camfrog_autodj tests tools` | **PASS — 0 issues** |
 | Format | `python -m ruff format --check camfrog_autodj tests tools` | **PASS — 109 files** |
 | Types | `python -m mypy camfrog_autodj` | **PASS — 48 files, 0 issues** |

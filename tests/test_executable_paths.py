@@ -73,6 +73,15 @@ def test_player_never_launches_mpv_com(monkeypatch):
         assert all(not arg.lower().endswith(".com") for arg in player._base())
 
 
+def test_log_path_defaults_to_install_logs_folder(monkeypatch, tmp_path):
+    monkeypatch.setattr(paths, "application_dir", lambda: tmp_path)
+    assert paths.resolve_log_path(None) == tmp_path / "logs" / "autodj.log"
+    assert paths.resolve_log_path("autodj.log") == tmp_path / "logs" / "autodj.log"
+    assert (tmp_path / "logs").is_dir()
+    custom = tmp_path / "logs" / "custom.log"
+    assert paths.resolve_log_path(str(custom)) == custom
+
+
 def test_invalid_explicit_path_does_not_fall_back(monkeypatch):
     monkeypatch.setattr(paths.shutil, "which", lambda _name: "/usr/bin/yt-dlp")
 

@@ -102,19 +102,17 @@ def _configure_logging(a, cfg, level):
             root_logger.removeHandler(h)
         # Add JSON console handler
         configure_json_logging(cfg, level=level)
-        # Also add JSON file handler if log_file is set
-        if a.log_file or cfg.log_file:
-            log_path = a.log_file or cfg.log_file
-            if log_path and not os.path.isabs(log_path):
-                app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-                log_path = os.path.join(app_data, "CamfrogAutoDJ", log_path)
-            try:
-                add_json_file_handler(cfg, log_path, level=level)
-            except (OSError, PermissionError):
-                log.warning(
-                    "cannot open log file %s; continuing without file logging",
-                    log_path,
-                )
+        # Always write JSON logs to <install>/logs/ (APPDATA fallback).
+        from .paths import resolve_log_path
+
+        log_path = resolve_log_path(a.log_file or cfg.log_file)
+        try:
+            add_json_file_handler(cfg, str(log_path), level=level)
+        except (OSError, PermissionError):
+            log.warning(
+                "cannot open log file %s; continuing without file logging",
+                log_path,
+            )
     else:
         # Standard text logging (handlers already set up by basicConfig)
         _setup_log_file(a, cfg, level)
@@ -257,16 +255,13 @@ def _migrate_config(path: str) -> None:
 
 
 def _setup_log_file(a, cfg, level) -> None:
-    if not (a.log_file or cfg.log_file):
-        return
-    log_path = a.log_file or cfg.log_file
-    # Resolve relative log paths to a user-writable directory (APPDATA/Camfrog AutoDJ)
-    # instead of CWD which may be Program Files (write-protected).
-    if log_path and not os.path.isabs(log_path):
-        app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-        log_path = os.path.join(app_data, "Camfrog AutoDJ", log_path)
+    # Default: <install>/logs/autodj.log so actions are inspectable next to the
+    # installed program. Falls back to APPDATA when the install dir is read-only.
+    from .paths import resolve_log_path
+
+    log_path = resolve_log_path(a.log_file or cfg.log_file)
     try:
-        _add_log_file(log_path, level)
+        _add_log_file(str(log_path), level)
     except (OSError, PermissionError):
         log.warning(
             "cannot open log file %s; continuing without file logging",

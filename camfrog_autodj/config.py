@@ -170,6 +170,9 @@ class Config:
     playlist_dir: str = (
         ""  # directory of *.json playlist files auto-loaded at startup; "" = disabled
     )
+    # Even when playlist_dir is set, do not auto-load its files unless explicitly
+    # enabled: demo/test playlists must not fill the live request queue.
+    playlist_dir_autoload: bool = False
     search_limit: int = (
         1  # YouTube text-search results fetched per non-admin !play (1 = first match only)
     )

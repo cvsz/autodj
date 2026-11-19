@@ -54,7 +54,7 @@ AURORA = [
     "#0a2a2e",
     "#1a0a2e",
 ]  # deep backdrop bands, drift slowly
-TEXT, MUTED = "#e8eaed", "#8b93a6"
+TEXT, MUTED, INVERSE = "#e8eaed", "#8b93a6", "#ffffff"
 PINK, VIOLET, CYAN, GREEN, RED = "#ff4da6", "#7c5cff", "#38bdf8", "#34d399", "#f87171"
 FAMILY = "Segoe UI"
 # semantic accents
@@ -73,7 +73,7 @@ def _apply_palette_to_module(palette) -> None:
     The frozen default arguments of PillButton/GlowBar/VolSlider are passed
     explicitly by their callers, which use these same globals.
     """
-    global BG, SURFACE, SURFACE2, BORDER, TEXT, MUTED
+    global BG, SURFACE, SURFACE2, BORDER, TEXT, MUTED, INVERSE
     global PINK, VIOLET, CYAN, GREEN, RED, ON_AIR, IDLE, WARN, AURORA
     BG, SURFACE, SURFACE2, BORDER = (
         palette.bg,
@@ -81,7 +81,7 @@ def _apply_palette_to_module(palette) -> None:
         palette.surface2,
         palette.border,
     )
-    TEXT, MUTED = palette.text, palette.muted
+    TEXT, MUTED, INVERSE = palette.text, palette.muted, palette.inverse
     PINK, VIOLET, CYAN, GREEN, RED = (
         palette.on_air,
         palette.primary,
@@ -447,7 +447,7 @@ class GlowBar(tk.Canvas):
         self.create_polygon(
             round_rect_points(0, mid - 3, w, mid + 3, 3),
             smooth=True,
-            fill="#232a48",
+            fill=shade(SURFACE2, 0.10),
             outline="",
         )
         fx = self._frac * (w - 12) + 6
@@ -472,9 +472,7 @@ class GlowBar(tk.Canvas):
                 fill=lerp_color(self._bg, CYAN, 0.22),
                 outline="",
             )
-            self.create_oval(
-                fx - 6, mid - 6, fx + 6, mid + 6, fill="#ffffff", outline=CYAN, width=2
-            )
+            self.create_oval(fx - 6, mid - 6, fx + 6, mid + 6, fill=TEXT, outline=CYAN, width=2)
 
 
 class VolSlider(tk.Canvas):
@@ -539,7 +537,7 @@ class VolSlider(tk.Canvas):
         self.create_polygon(
             round_rect_points(8, mid - 3, w - 8, mid + 3, 3),
             smooth=True,
-            fill="#232a48",
+            fill=shade(SURFACE2, 0.10),
             outline="",
         )
         if x > 12:
@@ -557,7 +555,7 @@ class VolSlider(tk.Canvas):
             fill=lerp_color(self["bg"], CYAN, 0.2),
             outline="",
         )
-        self.create_oval(x - 6, mid - 6, x + 6, mid + 6, fill="#ffffff", outline=CYAN, width=2)
+        self.create_oval(x - 6, mid - 6, x + 6, mid + 6, fill=TEXT, outline=CYAN, width=2)
 
 
 def _colour_mapping(old, new) -> dict[str, str]:
@@ -838,7 +836,9 @@ class App(tk.Tk):
             card.configure(highlightthickness=0)
             inner = tk.Frame(card, bg=SURFACE2, bd=0)
             inner.pack(fill="both", expand=True, padx=1, pady=1)
-            return inner
+        # Return the OUTER frame: the caller packs it into its parent. Returning
+        # `inner` here used to pack the inner widget twice and leave the outer
+        # bordered card unpacked, which made the whole now-playing stage vanish.
         return card
 
     def _section(self, parent, key: str):
@@ -891,7 +891,7 @@ class App(tk.Tk):
             highlightbackground=BORDER,
             highlightcolor=VIOLET,
             selectbackground=VIOLET,
-            selectforeground="#ffffff",
+            selectforeground=INVERSE,
             bd=0,
         )
         return ent
@@ -901,7 +901,7 @@ class App(tk.Tk):
             parent,
             bg=SURFACE,
             fg=TEXT,
-            selectbackground="#2a2160",
+            selectbackground=shade(VIOLET, -0.25),
             selectforeground=TEXT,
             relief="flat",
             highlightthickness=0,
@@ -982,8 +982,8 @@ class App(tk.Tk):
         if callable(avail) and not avail():
             ban = tk.Label(
                 root,
-                bg="#3a1424",
-                fg="#ffb3c6",
+                bg=shade(RED, -0.30),
+                fg=shade(RED, 0.40),
                 font=self.f_body,
                 anchor="w",
                 padx=px(26),
@@ -1191,7 +1191,7 @@ class App(tk.Tk):
         self.chat.configure(yscrollcommand=cs.set)
         cs.configure(command=self.chat.yview)
         self.chat.tag_configure("bot", foreground=CYAN)
-        self.chat.tag_configure("who", foreground="#b79cff", font=self.f_bold)
+        self.chat.tag_configure("who", foreground=shade(VIOLET, 0.2), font=self.f_bold)
 
         # ---- IM / private message viewer panel ----
         ip = self.pages["im"]
@@ -2514,7 +2514,7 @@ class App(tk.Tk):
         seg = w / n
         for i, c in enumerate(cols):
             self.line.create_rectangle(i * seg, 0, (i + 1) * seg + 1, 3, fill=c, outline="")
-        self._shimmer = self.line.create_rectangle(-200, 0, -80, 3, fill="#ffffff", outline="")
+        self._shimmer = self.line.create_rectangle(-200, 0, -80, 3, fill=TEXT, outline="")
 
     def _layout_stage(self, _e=None):
         c, px = self.stage, self.px
@@ -2550,7 +2550,7 @@ class App(tk.Tk):
                 sy * h * 0.7,
                 sx * w + sr * 2,
                 sy * h * 0.7 + sr * 2,
-                fill="#ffffff",
+                fill=TEXT,
                 outline="",
                 stipple="gray25",
             )
@@ -2563,14 +2563,14 @@ class App(tk.Tk):
                 cy - r - d,
                 cx + r + d,
                 cy + r + d,
-                fill=lerp_color("#0d1021", PINK, 0.05 + 0.03 * i),
+                fill=lerp_color(BG, PINK, 0.05 + 0.03 * i),
                 outline="",
             )
             for i, d in enumerate((px(44), px(28), px(14)))
         ]
-        c.create_oval(cx - r, cy - r, cx + r, cy + r, fill="#07080f", outline="#2b3156", width=2)
+        c.create_oval(cx - r, cy - r, cx + r, cy + r, fill=BG, outline=BORDER, width=2)
         for f in (0.92, 0.82, 0.72, 0.62, 0.52):
-            c.create_oval(cx - r * f, cy - r * f, cx + r * f, cy + r * f, outline="#171a2e")
+            c.create_oval(cx - r * f, cy - r * f, cx + r * f, cy + r * f, outline=SURFACE)
         rs = r * 0.94
         self._sheen = [
             c.create_arc(
@@ -2581,7 +2581,7 @@ class App(tk.Tk):
                 start=a,
                 extent=34,
                 style="arc",
-                outline="#566099",
+                outline=MUTED,
                 width=3,
             )
             for a in (20, 200)
@@ -2593,7 +2593,7 @@ class App(tk.Tk):
             cx + lab,
             cy + lab,
             fill=PINK,
-            outline=lerp_color(PINK, "#ffffff", 0.4),
+            outline=shade(PINK, 0.4),
             width=2,
         )
         c.create_oval(
@@ -2604,12 +2604,12 @@ class App(tk.Tk):
             fill=VIOLET,
             outline="",
         )
-        self._needle = c.create_line(cx, cy, cx + lab * 0.8, cy, fill="#ffffff", width=2)
-        c.create_oval(cx - 4, cy - 4, cx + 4, cy + 4, fill="#0a0c14", outline="")
+        self._needle = c.create_line(cx, cy, cx + lab * 0.8, cy, fill=TEXT, width=2)
+        c.create_oval(cx - 4, cy - 4, cx + 4, cy + 4, fill=BG, outline="")
         self._vc = (cx, cy, r, lab)
         self._particle_items = [
             c.create_oval(0, 0, 1, 1, fill=col, outline="")
-            for col in gradient([CYAN, VIOLET, PINK, "#ffffff"], len(self._particles))
+            for col in gradient([CYAN, VIOLET, PINK, TEXT], len(self._particles))
         ]
         self._confetti_items: list[int] = []
         x0, x1 = cx + r + px(52), w - px(26)
@@ -2744,7 +2744,7 @@ class App(tk.Tk):
             c.itemconfigure(
                 ring,
                 fill=lerp_color(
-                    "#0d1021",
+                    BG,
                     PINK,
                     (0.04 + 0.03 * i) + 0.10 * self._level * pulse(t, 1.8) * (i + 1) / 3,
                 ),
@@ -2755,7 +2755,7 @@ class App(tk.Tk):
             self.bar.set(self.e.position() / self._cur_dur)
         self.led.itemconfigure(
             self._led_id,
-            fill=lerp_color("#4a1f2c", RED, pulse(t, 1.4)) if st == "playing" else "#3a3f5c",
+            fill=lerp_color(shade(RED, -0.3), RED, pulse(t, 1.4)) if st == "playing" else SURFACE2,
         )
         if self._shimmer is not None and self.line.winfo_width() > 10:
             x = (t * 220) % (self.line.winfo_width() + 400) - 200
@@ -2856,7 +2856,7 @@ class App(tk.Tk):
         if not self._vc:
             return
         pieces = confetti_burst(22, seed=int(time.monotonic() * 1000) % 10_000)
-        cols = gradient([PINK, VIOLET, CYAN, GREEN, "#ffffff"], len(pieces))
+        cols = gradient([PINK, VIOLET, CYAN, GREEN, TEXT], len(pieces))
         now = time.monotonic()
         for piece, col in zip(pieces, cols, strict=False):
             item = self.stage.create_oval(0, 0, 1, 1, fill=col, outline="")
@@ -3557,7 +3557,7 @@ class App(tk.Tk):
         try:
             exists = getattr(lbl, "winfo_exists", None)
             if lbl is not None and (exists is None or exists()):
-                lbl.configure(text=text, fg=MUTED if ok else "#ff6b6b")
+                lbl.configure(text=text, fg=MUTED if ok else RED)
                 return
         except tk.TclError:
             pass

@@ -122,23 +122,25 @@ ZPLAYER_NEON = Palette(
 # zPlayer-light: clean daylight variant (inspired by "yaru" / "breeze" light).
 ZPLAYER_LIGHT = Palette(
     name="zplayer-light",
-    bg="#f8fafc",
+    # Soft cool slate instead of stark white: easier on the eyes, stronger
+    # contrast for text and controls, still clearly a light theme.
+    bg="#e9edf5",
     surface="#ffffff",
-    surface2="#f1f5f9",
-    border="#cbd5e1",
-    border_focus="#7c5cff",
-    text="#1e293b",
-    muted="#64748b",
+    surface2="#f4f6fb",
+    border="#d3dae8",
+    border_focus="#6d5efc",
+    text="#1f2740",
+    muted="#626d8a",
     inverse="#ffffff",
-    primary="#7c5cff",
-    primary_hover="#6d4ed6",
-    success="#10b981",
-    warning="#eab308",
-    danger="#ef4444",
-    on_air="#ec4899",
-    idle="#94a3b8",
-    glow="#7c5cff",
-    cyan="#7c5cff",
+    primary="#6d5efc",
+    primary_hover="#5546e0",
+    success="#12947a",
+    warning="#c98a12",
+    danger="#d6485c",
+    on_air="#d8457f",
+    idle="#8a94ac",
+    glow="#6d5efc",
+    cyan="#2b9bb5",
 )
 
 # All built-in themes.
