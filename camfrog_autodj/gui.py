@@ -690,7 +690,7 @@ class App(tk.Tk):
         self.show_tab("queue")
         self.protocol("WM_DELETE_WINDOW", self.close)
         self.bind_all("<space>", self._key_space)
-        self.bind_all("<Control-Right>", lambda _e: self.e.skip())
+        self.bind_all("<Control-Right>", lambda _e: self._off_thread(self.e.skip))
         self.after(60, self._dark_titlebar)
         self.refresh()
         self._tick()
@@ -1096,9 +1096,9 @@ class App(tk.Tk):
             padx=px(16),
         )
         self.b_pause.pack(side="left")
-        skip = self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=42, minw=96)
+        skip = self._btn(ctl, "g_skip", self._skip_async, icon="▶▶", height=42, minw=96)
         skip.pack(side="left", padx=(px(8), 0))
-        prev = self._btn(ctl, "g_prev", self.e.prev, icon="◀◀", height=42, minw=96)
+        prev = self._btn(ctl, "g_prev", self._prev_async, icon="◀◀", height=42, minw=96)
         prev.pack(side="left", padx=(px(8), 0))
 
         tools = tk.Frame(info, bg=SURFACE2)
@@ -1451,10 +1451,10 @@ class App(tk.Tk):
             padx=px(14),
         )
         self.b_pause.pack(side="left")
-        self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=40, minw=90).pack(
+        self._btn(ctl, "g_skip", self._skip_async, icon="▶▶", height=40, minw=90).pack(
             side="left", padx=(px(8), 0)
         )
-        self._btn(ctl, "g_prev", self.e.prev, icon="◀◀", height=40, minw=90).pack(
+        self._btn(ctl, "g_prev", self._prev_async, icon="◀◀", height=40, minw=90).pack(
             side="left", padx=(px(8), 0)
         )
         tools = tk.Frame(info, bg=SURFACE2)
@@ -3217,6 +3217,29 @@ class App(tk.Tk):
         self.b_pause.configure(text=self.e.t("g_resume" if paused else "g_pause"))
         self.b_pause.set_icon("▶" if paused else "❚❚")
 
+    @staticmethod
+    def _off_thread(fn) -> None:
+        """Run a blocking engine control call off the Tk main thread.
+
+        ``Engine.skip()``/``prev()`` end in ``MpvPlayer.stop()``, which can
+        fade out (up to 0.8 s) and wait for mpv to exit (up to 5 s): run on
+        the main thread that froze the whole window.
+        """
+
+        def run():
+            try:
+                fn()
+            except Exception:
+                log.exception("GUI control action failed")
+
+        threading.Thread(target=run, daemon=True, name="autodj-gui-ctl").start()
+
+    def _skip_async(self) -> None:
+        self._off_thread(self.e.skip)
+
+    def _prev_async(self) -> None:
+        self._off_thread(self.e.prev)
+
     def toggle_pause(self):
         self.e.resume() if self.e.paused else self.e.pause()
 
@@ -3309,27 +3332,40 @@ class App(tk.Tk):
         self._set_adding_state(True)
 
         def on_success(tracks):
-            self.after(0, self._set_adding_state, False)
-            self.after(0, self.ent_add.delete, 0, "end")
-            if len(tracks) == 1:
-                t = tracks[0]
-                self._set_hint(
-                    self.e.t(
-                        "queued_one",
-                        pos=1,
-                        title=t.title,
-                        dur=t.dur,
-                        user="you",
-                    )
-                )
-            else:
-                self._set_hint(self.e.t("queued_many", n=len(tracks), user="you"))
+            self._ui(self._set_adding_state, False)
+            self._ui(self.ent_add.delete, 0, "end")
+            self._set_hint(self._queued_text(tracks))
 
         def on_error(msg):
-            self.after(0, self._set_adding_state, False)
+            self._ui(self._set_adding_state, False)
             self._set_hint(msg)
 
         self.e.request(text, on_success=on_success, on_error=on_error)
+
+    def _ui(self, fn, *args) -> None:
+        """Run *fn* on the Tk main thread; drop it once the window is closing.
+
+        Engine callbacks arrive on worker threads and may fire after close():
+        calling ``after()`` on a destroyed window raises in that worker.
+        """
+        if self._closing:
+            return
+        try:
+            self.after(0, fn, *args)
+        except (RuntimeError, tk.TclError):
+            pass  # destroyed between the check and the call
+
+    def _queued_text(self, tracks) -> str:
+        """Hint for newly queued tracks, with the real queue position.
+
+        The old text always said "#1", even for a song at the end of the queue.
+        """
+        if len(tracks) != 1:
+            return self.e.t("queued_many", n=len(tracks), user="you")
+        t = tracks[0]
+        with self.e.queue.lock:
+            pos = next((i for i, q in enumerate(self.e.queue.requests, 1) if q is t), 1)
+        return self.e.t("queued_one", pos=pos, title=t.title, dur=t.dur, user="you")
 
     def add_files(self):
         ext = " ".join(f"*{x}" for x in sorted(MEDIA))
@@ -3346,28 +3382,19 @@ class App(tk.Tk):
         pending = {"n": len(files)}
 
         def _done():
+            # Runs on the Tk main thread only: the callbacks below fire on
+            # several worker threads at once, and an unsynchronised
+            # ``-= 1`` there could leave the Add button disabled forever.
             pending["n"] -= 1
             if pending["n"] <= 0:
-                self.after(0, self._set_adding_state, False)
+                self._set_adding_state(False)
 
         def on_success(tracks):
-            _done()
-            if len(tracks) == 1:
-                t = tracks[0]
-                self._set_hint(
-                    self.e.t(
-                        "queued_one",
-                        pos=1,
-                        title=t.title,
-                        dur=t.dur,
-                        user="you",
-                    )
-                )
-            else:
-                self._set_hint(self.e.t("queued_many", n=len(tracks), user="you"))
+            self._ui(_done)
+            self._set_hint(self._queued_text(tracks))
 
         def on_error(msg):
-            _done()
+            self._ui(_done)
             self._set_hint(msg)
 
         for f in files:
@@ -3376,7 +3403,7 @@ class App(tk.Tk):
     def _set_hint(self, text: str):
         """Update the hint label on the main thread (callbacks may run on a
         background thread from load_async). Tkinter is not thread-safe."""
-        self.after(0, lambda: self.v_hint.configure(text=text))
+        self._ui(lambda: self.v_hint.configure(text=text))
 
     def load_folder(self):
         """Open a folder picker and add all media files under it to the pool.
@@ -3405,8 +3432,8 @@ class App(tk.Tk):
             self.e.load_async(
                 d,
                 limit=2000,
-                on_success=lambda tracks: self.after(0, self._on_folder_loaded, len(tracks)),
-                on_error=lambda msg: self.after(0, self._on_folder_failed, msg),
+                on_success=lambda tracks: self._ui(self._on_folder_loaded, len(tracks)),
+                on_error=lambda msg: self._ui(self._on_folder_failed, msg),
             )
         except Exception as ex:
             log.exception("load folder failed: %s", d)
@@ -3446,9 +3473,12 @@ class App(tk.Tk):
         t = self._q_tracks[i]
         # Remove from current position and re-add to the front of the queue so it plays next
         self.e.queue.remove_track(t)
-        self.e.queue.add_request(t, position=0)
+        # dedupe=False: a same-title request already queued would otherwise
+        # make add_request refuse the insert, and the track was just removed.
+        self.e.queue.add_request(t, position=0, dedupe=False)
         self.e.wake.set()
-        self.e.say(self.e.t("queued_one", pos=1, title=t.title, dur=t.dur, user="you"))
+        # The room reads this message: name the real requester, not "you".
+        self.e.say(self.e.t("queued_one", pos=1, title=t.title, dur=t.dur, user=t.requester))
 
     def on_shuffle(self):
         self.e.queue.set_shuffle(not self.e.queue.shuffle)
@@ -3469,26 +3499,50 @@ class App(tk.Tk):
             self.ent_say.delete(0, "end")
 
     def do_discover(self):
-        """Run auto-discovery to find the Camfrog room window and chat controls."""
+        """Run auto-discovery (saves the room window/controls to config.toml).
+
+        In the shipped PyInstaller exe ``sys.executable`` *is* AutoDJ.exe, so
+        the old ``AutoDJ.exe -m camfrog_autodj --discover`` was rejected by
+        argparse and the button silently did nothing.  It also ran on the Tk
+        main thread, freezing the window for the whole scan.
+        """
         # security review: subprocess only with fixed argv lists, never shell=True
         import subprocess  # nosec B404
         import sys
+        from tkinter import messagebox
 
-        try:
-            # security review: argv list without shell; executable is sys.executable or a resolved, configured tool path
-            subprocess.run(  # nosec B603
-                [
-                    sys.executable,
-                    "-m",
-                    "camfrog_autodj",
-                    "--discover",
-                    "-c",
-                    self.e.cfg_path if hasattr(self.e, "cfg_path") else "config.toml",
-                ],
-                check=False,
-            )
-        except Exception:
-            log.exception("discover failed")
+        cfg_path = str(getattr(self.e, "cfg_path", None) or "config.toml")
+        base = (
+            [sys.executable]
+            if getattr(sys, "frozen", False)
+            else [sys.executable, "-m", "camfrog_autodj"]
+        )
+        argv = [*base, "--discover", "-c", cfg_path]
+
+        def work():
+            try:
+                # security review: argv list without shell; executable is sys.executable
+                proc = subprocess.run(  # nosec B603
+                    argv, check=False, capture_output=True, text=True, timeout=180
+                )
+                out = (proc.stdout or "").strip()
+                if proc.returncode != 0:
+                    report = (
+                        f"Discovery failed (exit code {proc.returncode}).\n{proc.stderr[-500:]}"
+                    )
+                elif not out or out.startswith(("nothing found", "discovery needs")):
+                    report = out or "Nothing found: open the Camfrog room window and try again."
+                else:
+                    report = (
+                        f"Saved to {cfg_path}:\n{out[:800]}\n\n"
+                        "Restart AutoDJ to attach to the room with these settings."
+                    )
+            except (OSError, subprocess.TimeoutExpired) as ex:
+                log.exception("discover failed")
+                report = f"Discovery failed: {ex}"
+            self._ui(lambda: messagebox.showinfo("AutoDJ — Discover", report))
+
+        threading.Thread(target=work, daemon=True, name="autodj-discover").start()
 
     def do_check(self):
         """Run setup diagnostics in the GUI and show the report in a dialog.
@@ -3507,7 +3561,7 @@ class App(tk.Tk):
             except Exception as ex:  # diagnostics must never break the GUI
                 log.exception("check failed")
                 report = f"Check failed: {ex}"
-            self.after(0, lambda: messagebox.showinfo("AutoDJ — Setup check", report))
+            self._ui(lambda: messagebox.showinfo("AutoDJ — Setup check", report))
 
         threading.Thread(target=work, daemon=True, name="autodj-check").start()
 
