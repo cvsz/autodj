@@ -18,7 +18,7 @@ webhook = [
   # webhook API in a signed build; yt-dlp is intentionally left unbounded so
   # its extractors can keep up with site changes.
   "fastapi>=0.100,<1",
-  "uvicorn>=0.23,<1",
+  "uvicorn>=0.54.0,<1",
   "pydantic>=2.5,<3",
   "httpx>=0.25,<1",
 ]
