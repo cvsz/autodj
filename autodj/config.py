@@ -224,6 +224,9 @@ class Config:
         "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
     )
     im_auto_reply_cooldown: float = 60.0  # seconds between auto-replies to the same user
+    # Private reply to an IM sender who is not in the room (im_require_room_presence).
+    # {room} = room name; Camfrog shows camfrog:join:<room> as a Join link. "" = no reply.
+    im_join_room_message: str = "กรุณาเข้าห้อง camfrog:join:{room} ก่อนขอเพลงครับ"
 
     # IM Security: require user to be in room to use IM commands
     im_require_room_presence: bool = True  # only users seen in room chat can DM the bot

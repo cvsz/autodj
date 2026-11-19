@@ -2111,6 +2111,11 @@ class App(tk.Tk):
             "g_settings_im_auto_reply_cooldown",
         )
 
+        # Reply to IMs from users who are not in the room
+        self.s_im_join_room_message = self._entry(sp_inner)
+        self.s_im_join_room_message.insert(0, self.e.cfg.im_join_room_message)
+        _setting_row("g_settings_im_join_room_message", self.s_im_join_room_message)
+
         # IM auto-reply cooldown
         self.s_im_auto_reply_cooldown = self._entry(sp_inner)
         self.s_im_auto_reply_cooldown.insert(0, str(self.e.cfg.im_auto_reply_cooldown))
@@ -3730,6 +3735,7 @@ class App(tk.Tk):
             cfg.im_viewer_enabled = self.s_im_viewer_enabled
             cfg.im_auto_reply_enabled = self.s_im_auto_reply_enabled
             cfg.im_auto_reply_message = self.s_im_auto_reply_message.get().strip()
+            cfg.im_join_room_message = self.s_im_join_room_message.get().strip()
             cfg.im_auto_reply_cooldown = self._parse_float(
                 self.s_im_auto_reply_cooldown, "IM auto-reply cooldown"
             )
@@ -3867,6 +3873,7 @@ class App(tk.Tk):
             lines.append(f"im_viewer_enabled = {str(cfg.im_viewer_enabled).lower()}")
             lines.append(f"im_auto_reply_enabled = {str(cfg.im_auto_reply_enabled).lower()}")
             lines.append(f"im_auto_reply_message = {_toml_str(cfg.im_auto_reply_message)}")
+            lines.append(f"im_join_room_message = {_toml_str(cfg.im_join_room_message)}")
             lines.append(f"im_auto_reply_cooldown = {cfg.im_auto_reply_cooldown}")
             lines.append(f"im_require_room_presence = {str(cfg.im_require_room_presence).lower()}")
             lines.append(f"allow_play_in_room = {str(cfg.allow_play_in_room).lower()}")

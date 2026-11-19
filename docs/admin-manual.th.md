@@ -336,7 +336,7 @@ im_auto_reply_message = "Thanks for your message! I'm a bot and will respond whe
 im_auto_reply_cooldown = 60.0      # seconds between auto-replies to the same user (avoid spam)
 im_viewer_enabled = true           # show the IM / private message viewer tab in the GUI
 im_require_room_presence = true    # รับ IM เฉพาะคนที่เคยพิมพ์ในห้อง; คนอื่นได้รับ IM ส่วนตัว
-                                   # "กรุณาเข้าห้อง {room} ก่อนถึงสามารถขอเพลงได้" (ครั้งเดียวต่อ im_auto_reply_cooldown)
+                                   # im_join_room_message (ค่าเริ่มต้น "กรุณาเข้าห้อง camfrog:join:{room} ก่อนขอเพลงครับ"; ครั้งเดียวต่อ im_auto_reply_cooldown)
 allow_play_in_room = false         # when true, !play works in room chat for all users
 ```
 

@@ -21,3 +21,11 @@ def test_missing_control_raises_runtime_error_for_retry():
 def test_present_control_is_returned():
     assert _adapter(["a", "b"])._find("Document", 1) == "b"
     assert _adapter(["a", "b"])._find("Document", -1) == "b"
+
+
+def test_keys_literal_escapes_send_keys_specials():
+    from autodj.adapters.uia import _keys_literal
+
+    assert _keys_literal("a+b (c) {d} ^%~ [x]") == "a{+}b {(}c{)} {{}d{}} {^}{%}{~} {[}x{]}"
+    assert _keys_literal("line1\nline2") == "line1 line2"
+    assert _keys_literal("กร camfrog:join:ZeaZDev") == "กร camfrog:join:ZeaZDev"

@@ -5,7 +5,7 @@ Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now
 ## What's new in 0.3.9
 
 - **Default song waits a real 30 seconds:** after the last requested song finishes, AutoDJ waits `autoplay_idle_timeout` (30 s) for a new request before the default song (`default_track`) plays. It used to start at once after any request longer than 30 s.
-- **Private IM replies actually go out:** replies ("กรุณาเข้าห้อง {room} ก่อนถึงสามารถขอเพลงได้" for users outside the room, IM auto-reply) are sent in the user's IM window and never in the room.
+- **Private IM replies actually go out:** replies ("กรุณาเข้าห้อง camfrog:join:{room} ก่อนขอเพลงครับ" (ตั้งค่าได้ที่ `im_join_room_message`) for users outside the room, IM auto-reply) are sent in the user's IM window and never in the room.
 - **No false status announcements:** ordinary chat such as "anyway" or a quote mentioning an "owner" no longer makes the bot announce "X is now away" / "X is the room owner".
 - **mpv.exe ends when AutoDJ ends,** even after End task or a crash. The installer also closes a running AutoDJ before upgrading or uninstalling.
 - **Help → About** shows the version and "camfrog:add:Seaza Dev @ZEAZDEV COMPANY LIMITED".

@@ -34,4 +34,4 @@ def test_engine_im_reply_goes_through_composite():
     reader.send_im = lambda user, text: sent.append((user, text))  # type: ignore[attr-defined]
     e = Engine(Config(room="ZeaZDev", lang="th"), Composite(reader, NullAdapter()))
     e._handle_im(ChatMessage("zdevz", "!play x", is_im=True))
-    assert sent == [("zdevz", "กรุณาเข้าห้อง ZeaZDev ก่อนถึงสามารถขอเพลงได้")]
+    assert sent == [("zdevz", "กรุณาเข้าห้อง camfrog:join:ZeaZDev ก่อนขอเพลงครับ")]

@@ -26,6 +26,12 @@ def _read(ctrl) -> str:
     return ""
 
 
+def _keys_literal(text: str) -> str:
+    """*text* as literal keystrokes for pywinauto.send_keys (newlines become spaces)."""
+    text = text.replace("\r", " ").replace("\n", " ")
+    return "".join("{%s}" % c if c in "+^%~(){}[]" else c for c in text)
+
+
 class UiaAdapter(ChatAdapter):
     """Windows UI Automation. Two layouts:
     - web (Camfrog room window): history/message box are embedded-web panes, see webchat.py
@@ -411,14 +417,15 @@ class UiaAdapter(ChatAdapter):
     def send_im(self, user: str, text: str) -> None:
         """Answer *user* privately in their open Camfrog IM window.
 
-        Background send first (posted messages, no focus change), verified by
-        reading the IM history back; if the line does not show up, falls back to
-        focus + paste + Enter and gives the user their foreground window back.
-        Raises RuntimeError when there is no IM window for *user*.
+        Camfrog's IM editor is a WebView2 pane that ignores posted keystrokes, so
+        the reply is pasted with the IM window in front.  The IM window is often
+        hidden behind the room window: it is brought to the front and the click
+        point is checked to be on it *before* anything is typed (a blind click
+        landed on the room window and the reply was lost).  Raises RuntimeError
+        when the window cannot be used or the line does not show up.
         """
         from pywinauto import Desktop
 
-        from .. import winmsg
         from ..webchat import find_web_panes, read_items
 
         with self.com_lock:
@@ -430,60 +437,77 @@ class UiaAdapter(ChatAdapter):
             if view is None or inp is None:
                 raise RuntimeError(f"IM window for {user!r} has no message box")
 
+            # Camfrog renders camfrog:join:<room> and URLs as links ("ZeaZDev (Join)"),
+            # and the IM reader keeps the text before a link: compare that part.
+            expect = re.split(r"camfrog:|https?://", text, maxsplit=1)[0].strip() or text.strip()
+
             def shown() -> int:
                 lines = self._im_pane_lines(read_items(view, tail=60))
-                return sum(1 for ln in lines if ln.split("|", 1)[-1].strip() == text.strip())
+                return sum(1 for ln in lines if ln.split("|", 1)[-1].strip() == expect)
 
             before = shown()
-            winmsg.show_noactivate(handle)
-            r = inp.rectangle()
-            pt = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
-            try:
-                winmsg.post_text_rich(handle, pt, text, enter=True, click=True)
-            except (OSError, RuntimeError) as e:
-                log.debug("IM background send failed: %s", e)
-            for _ in range(20):  # up to 4 s: a slow render must not trigger a 2nd send
+            self._send_im_fg(int(handle), win, inp, text)
+            for _ in range(20):  # up to 4 s for Camfrog to render the sent line
                 time.sleep(0.2)
                 if shown() > before:
-                    log.debug("IM sent to %s (background)", user)
+                    log.debug("IM sent to %s", user)
                     return
-            self._send_im_fg(win, inp, text)
-            log.debug("IM sent to %s (foreground)", user)
+            raise RuntimeError(f"IM to {user!r} was typed but did not appear in the IM window")
 
     @staticmethod
-    def _send_im_fg(win, inp, text: str) -> None:
-        import pyperclip
+    def _send_im_fg(handle: int, win, inp, text: str) -> None:
+        """Bring the IM window to the front, verify, then type the text + Enter.
+
+        Verified live: Camfrog's IM editor (WebView2) accepts typed keys -- Thai
+        included, sent as Unicode key events -- but ignores a clipboard paste,
+        and Ctrl+A does not select its text (one editing shortcut even sent the
+        draft).  So: click, type, Enter; nothing else.
+        """
+        import ctypes
+        from ctypes import wintypes
+
+        from pywinauto import mouse
         from pywinauto.keyboard import send_keys
 
         from .. import winmsg
 
+        u32 = ctypes.windll.user32  # type: ignore[attr-defined]
         prev = winmsg.foreground()
         try:
-            old_clip = pyperclip.paste()
-        except (pyperclip.PyperclipException, OSError):
-            old_clip = None
-        try:
+            if u32.IsIconic(handle):
+                u32.ShowWindow(handle, 9)  # SW_RESTORE
             try:
-                if win.is_minimized():
-                    win.restore()
-            except (RuntimeError, AttributeError):
-                pass
-            win.set_focus()
-            inp.click_input()  # web editor: only a click focuses it
-            pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
-            send_keys("^a")  # replace anything a failed background send left in the box
-            send_keys("^v")
+                win.set_focus()
+            except (RuntimeError, AttributeError, OSError):
+                pass  # the checks below decide
+            deadline = time.monotonic() + 2.0
+            while u32.GetForegroundWindow() != handle and time.monotonic() < deadline:
+                u32.BringWindowToTop(handle)
+                u32.SetForegroundWindow(handle)
+                time.sleep(0.1)
+            if u32.GetForegroundWindow() != handle:
+                raise RuntimeError("IM window could not be brought to the front; nothing typed")
+            time.sleep(0.15)
+            r = inp.rectangle()  # measured now that the window is in front
+            x, y = (r.left + r.right) // 2, (r.top + r.bottom) // 2
+            hit = u32.WindowFromPoint(wintypes.POINT(x, y))
+            if not hit or u32.GetAncestor(hit, 2) != handle:  # GA_ROOT
+                raise RuntimeError("IM message box is covered by another window; nothing typed")
+            mouse.click(coords=(x, y))  # web editor: only a click focuses it
+            time.sleep(0.35)  # WebView2 takes a moment to focus its editor after the click
+            if u32.GetForegroundWindow() != handle:
+                raise RuntimeError("IM window lost the focus before typing; nothing typed")
+            # Drop leftover draft text first, or it is sent glued to the reply.  End +
+            # Backspace only: they type no characters and never send (verified live;
+            # Ctrl+A does not select in this editor).
+            send_keys("{END}{BACKSPACE 120}", pause=0.002)
+            send_keys(_keys_literal(text), with_spaces=True, pause=0.005)
             time.sleep(0.15)
             send_keys("{ENTER}")
         finally:
             time.sleep(0.1)
-            if old_clip is not None:
-                try:
-                    pyperclip.copy(old_clip)
-                except (pyperclip.PyperclipException, OSError):
-                    pass
-            if prev and prev != int(win.handle):
-                winmsg.restore_foreground(prev)
+            if prev and prev != handle:
+                winmsg.restore_foreground(prev)  # give the user their window back
 
     def send(self, text):
         """Serialized entry point. UIA is COM-based: the reader thread and the sender thread must never

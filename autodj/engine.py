@@ -1512,10 +1512,18 @@ class Engine:
             ):
                 return
             self._im_reply_cooldowns[key] = now
-        text = self.t("im_join_room_first", room=self.cfg.room or "")
-        while "  " in text:  # no room name configured: no double space
+        template = (getattr(self.cfg, "im_join_room_message", "") or "").strip()
+        if not template:
+            return  # operator turned the reply off
+        room = self.cfg.room or ""
+        if (
+            not room
+        ):  # no room name configured: drop the Join link instead of a bare "camfrog:join:"
+            template = template.replace("camfrog:join:{room}", "")
+        text = _fill(template, room=room, user=user)
+        while "  " in text:
             text = text.replace("  ", " ")
-        self.send_im(user, text)
+        self.send_im(user, text.strip())
 
     def send_im(self, user: str, text: str) -> bool:
         """Send *text* privately to *user* (never to the room).
