@@ -24,7 +24,7 @@ RUN groupadd -r autodj && useradd -r -g autodj -G autodj autodj
 
 # Mirror .github/workflows/tests.yml (Linux): tkinter + virtual display for GUI tests.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git \
+        git make \
         python3-tk xvfb xauth \
     && rm -rf /var/lib/apt/lists/*
 
