@@ -2,6 +2,20 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
+## What's new in 0.3.7 (deep audit fixes)
+
+Logic and security fixes from a full code audit:
+
+- **Webhook:** `/say`, `/shuffle` and `/repeat` work again (they always returned 422). Request bodies are now size-capped, and a client disconnect no longer pins a CPU core.
+- **Playback:** a queue holding only songs that just failed no longer silences the room; the autoplay pool or default song plays meanwhile.
+- **Requests:** a duplicate request is reported as "already queued" instead of being falsely announced; `!prev` always re-queues.
+- **Player:** mpv position and property queries no longer fail spuriously.
+- **Library:** scans skip Windows junction loops.
+- **Private messages:** IM messages are now read, and a nickname such as `[IM]Admin` can no longer impersonate an admin.
+- **Updater:** the update script works with installs in `Program Files (x86)`, paths containing `%`, and non-ASCII paths.
+
+Full details: `CHANGELOG.md`.
+
 ## What's new in 0.3.6 (zPlayer GUI theme)
 
 The desktop GUI now ships a TkinterEP-inspired theme system with three built-in palettes — `zplayer-dark` (default studio look), `zplayer-neon` and `zplayer-light`. Pick one with `ui_theme` in `config.toml` or from the Settings panel. The now-playing dashboard has a larger title, separate up-next preview, a Previous transport button (`Engine.prev()`), and refreshed progress/volume styling. `welcome_message_delay` can hold the room greeting for a few seconds. All version sources are synchronized to 0.3.6. Full details: `CHANGELOG.md`.
@@ -78,7 +92,7 @@ Admin: `pause` (หยุดชั่วคราว), `resume` (เล่นต
 
 Non-admins: YouTube links only, 1 track, `max_duration`, no live, `max_requests_per_user`, and a song already queued or playing is refused. Name requests search `music_dirs` first, then YouTube.
 
-**Requested songs play immediately:** `!play` inserts at the front of the queue so the song plays next. If no user requests arrive within `autoplay_idle_timeout` (default 30 seconds), AutoDJ switches to the autoplay pool automatically. A new `!play` request immediately exits autoplay mode.
+**Requests always come first:** `!play` requests play in the order they arrive (first come, first served), ahead of the autoplay pool; a request also cuts an autoplay or startup song short. If no user requests arrive within `autoplay_idle_timeout` (default 30 seconds), AutoDJ switches to the autoplay pool automatically. A new `!play` request immediately exits autoplay mode.
 
 ## Auto launch
 `auto_launch = true` starts `camfrog_exe`, opens `join_uri_template` for `room`, then waits for `window_title_re`. It does not call the control-server API. If the control-server agent already launches/joins Camfrog, keep `auto_launch = false`: AutoDJ waits for the room window.

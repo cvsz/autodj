@@ -274,7 +274,7 @@ gh pr merge <PR_NUMBER> --merge
 git fetch origin
 git checkout main
 git pull origin main  # fast-forward
-# Verify: code present on main, pytest 336 pass, ruff clean
+# Verify: code present on main, full pytest suite passes (631 at v0.3.7), ruff clean
 ```
 
 ### Rules
