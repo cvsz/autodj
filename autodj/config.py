@@ -230,7 +230,9 @@ class Config:
 
     # IM Security: require user to be in room to use IM commands
     im_require_room_presence: bool = True  # only users seen in room chat can DM the bot
-    allow_play_in_room: bool = False  # when true, !play works in room chat for all users
+    # Song requests in room chat too (IM always works for users in the room;
+    # see im_require_room_presence / im_join_room_message). False = IM only.
+    allow_play_in_room: bool = True
 
     # Autoplay: switch to autoplay pool after idle timeout
     # Default song: plays at startup and whenever the request queue is empty and

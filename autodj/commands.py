@@ -141,7 +141,8 @@ class Router:
                 and present is not None
                 and msg.user.lower() not in present
             ):
-                # No reply: the bot can only post to the room, not back to the IM.
+                # Second guard: Engine._handle_im already answered privately with
+                # im_join_room_message and does not route such IMs here.
                 log.info("IM from %s ignored: not seen in the room", msg.user)
                 return False
             return True

@@ -125,7 +125,7 @@ poll_interval = 0.5                 # Seconds between chat reads; raise to 1.0 i
 
 # IM Security
 im_require_room_presence = true     # Only users seen in room chat can DM the bot
-allow_play_in_room = false          # When true, !play works in room chat for all users (not just IM)
+allow_play_in_room = true           # Song requests in room chat too (IM works for users in the room); false = IM only
 
 # --- Logging -----------------------------------------------------------------
 log_file = "autodj.log"             # Log file (rotating, 1 MB x 3). Relative names go to <install>/logs/ (APPDATA fallback). Empty = default autodj.log there.
