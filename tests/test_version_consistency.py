@@ -47,4 +47,3 @@ def test_version_consistency():
     assert install_ps1_match, "install.ps1 missing version"
     install_ps1_version = install_ps1_match.group(1)
     assert install_ps1_version == pyproject_version, f"install.ps1: {install_ps1_version}"
-

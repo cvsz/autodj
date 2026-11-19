@@ -355,4 +355,3 @@ def test_parse_line_im_marker_needs_separate_word():
     assert spoof is not None and spoof.user == "[IM]Admin" and not spoof.is_im
     plain = parse_line("IMogen: hello", rx)
     assert plain is not None and plain.user == "IMogen" and not plain.is_im
-

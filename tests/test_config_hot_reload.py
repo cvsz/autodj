@@ -329,4 +329,3 @@ def test_config_watcher_import_without_watchdog(monkeypatch):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

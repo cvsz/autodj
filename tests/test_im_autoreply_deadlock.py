@@ -43,4 +43,3 @@ def test_im_auto_reply_respects_cooldown():
     for _ in range(2):  # timeout-guarded: a regression must fail, not hang the suite
         assert _run_with_timeout(lambda: e._handle_im_message(msg)), "chat loop deadlocked"
     assert len(e.sent_ims) == 1  # type: ignore[attr-defined]
-

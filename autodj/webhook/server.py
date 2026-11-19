@@ -546,4 +546,3 @@ class WebhookServer:
     @property
     def is_running(self) -> bool:
         return self._server is not None and not self._server.should_exit
-

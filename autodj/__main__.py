@@ -384,4 +384,3 @@ def _build_adapter(a, cfg):
 
 if __name__ == "__main__":
     main()
-

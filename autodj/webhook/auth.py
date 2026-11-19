@@ -212,4 +212,3 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 async def verify_signature_dep(req: Request) -> bool:
     """FastAPI dependency for signature verification."""
     return await verify_webhook_signature(req)
-

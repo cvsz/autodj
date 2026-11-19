@@ -679,4 +679,3 @@ def test_user_request_rate_limit():
     # 3rd request within window should be rejected
     r.handle(Msg("user1", "play song3", True))
     assert any("max_requests" in m for m in e.messages)
-

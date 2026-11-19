@@ -198,4 +198,3 @@ def test_ai_numeric_settings_are_range_checked(tmp_path):
         p.write_text(line + "\n", encoding="utf-8")
         with pytest.raises(ConfigError):
             Config.load(str(p))
-

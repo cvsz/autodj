@@ -209,4 +209,3 @@ def test_auto_reply_loop_stops_on_shutdown():
 
     assert not loop_thread.is_alive(), "auto-reply loop did not stop on shutdown"
     assert elapsed < 6, f"loop did not exit promptly ({elapsed:.1f}s)"
-

@@ -213,4 +213,3 @@ def test_thai_messages_have_requested_keys():
     assert tr("th", "last_head") == "ขอเพลงล่าสุด: "
     assert tr("en", "requested_none") == "No requests saved yet."
     assert tr("en", "last_head") == "Recently requested: "
-

@@ -543,4 +543,3 @@ def _validate_regex(cfg: Config, k: str, where: str) -> None:
             f"{where}: '{k}' is not a valid regular expression ({ex}). "
             "Tip: write regexes in 'single quotes' so backslashes stay as they are."
         ) from None
-

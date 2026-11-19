@@ -67,4 +67,3 @@ def test_pop_next_track_exhausts_requests_then_pool():
     t = eng._pop_next_track()
     assert t is not None, "Should fall back to pool after requests exhausted"
     assert t.source == "pool1", f"Expected pool1, got {t.source}"
-

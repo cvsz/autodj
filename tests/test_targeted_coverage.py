@@ -579,4 +579,3 @@ class TestVisualsUncovered:
         assert rgb_to_hex(255, 0, 0) == "#ff0000"
         assert lerp_color("#FF0000", "#00FF00", 0.5) == "#808000"
         assert gradient(["#FF0000", "#00FF00"], 3) == ["#ff0000", "#808000", "#00ff00"]
-

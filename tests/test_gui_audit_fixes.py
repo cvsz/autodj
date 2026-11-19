@@ -133,4 +133,3 @@ def test_cli_discover_without_uia_does_not_start_the_bot(capsys):
     cfg = types.SimpleNamespace(chat_reader="console", chat_sender="console", auto_discover=False)
     assert _auto_discover(a, cfg) is True  # True = "handled, exit"
     assert "needs chat_reader" in capsys.readouterr().out
-

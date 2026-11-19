@@ -936,4 +936,3 @@ def _myfavp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
         return
     lines = " | ".join(f"{i + 1}) {it['title']}" for i, it in enumerate(items[:10]))
     e.say(e.t("myfavp_list", list=lines))
-

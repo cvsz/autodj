@@ -23,4 +23,3 @@ BUILTIN_PLUGINS = {
 def get_builtin_plugin(name: str) -> type | None:
     """Get a builtin plugin class by name."""
     return BUILTIN_PLUGINS.get(name)
-

@@ -155,4 +155,3 @@ class Plugin(ABC):
     def on_track_failed(self, track: "Track", error: str) -> None:  # noqa: B027
         """Called when a track fails to play. Override if needed."""
         pass
-

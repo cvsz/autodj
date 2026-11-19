@@ -80,4 +80,3 @@ class StatsPlugin(Plugin):
             self.interface.say(msg)
             return True
         return False
-

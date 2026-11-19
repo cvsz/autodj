@@ -60,9 +60,7 @@ def fmt():
     for cmd in ["ruff", "black"]:
         if has_command(cmd) or (cmd == "ruff" and has_module("ruff")):
             if cmd == "ruff":
-                run_cmd(
-                    [sys.executable, "-m", "ruff", "format", "autodj", "tests", "tools"]
-                )
+                run_cmd([sys.executable, "-m", "ruff", "format", "autodj", "tests", "tools"])
             else:
                 run_cmd([cmd, "autodj", "tests", "tools"])
             return
@@ -72,9 +70,7 @@ def fmt():
 def fmt_check():
     """Check formatting with ruff."""
     if has_command("ruff") or has_module("ruff"):
-        run_cmd(
-            [sys.executable, "-m", "ruff", "format", "--check", "autodj", "tests", "tools"]
-        )
+        run_cmd([sys.executable, "-m", "ruff", "format", "--check", "autodj", "tests", "tools"])
     else:
         print("ruff not installed -- skipping format check (pip install ruff)")
 
@@ -131,4 +127,3 @@ if __name__ == "__main__":
     else:
         print(f"Unknown command: {cmd}")
         sys.exit(1)
-

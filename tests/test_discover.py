@@ -170,4 +170,3 @@ def test_save_config_no_change_returns_false(tmp_path):
     p = tmp_path / "config.toml"
     p.write_text("bot_nick = 'X'\nlog_file = 'autodj.log'\n", "utf-8")
     assert save_config(str(p), {"log_file": "autodj.log"}) is False
-

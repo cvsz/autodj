@@ -86,4 +86,3 @@ def test_im_message_reaches_the_viewer_snapshot():
     assert done.wait(3), "IM handling deadlocked"
     seq, _ver, entries = e.im_snapshot()
     assert seq == 1 and entries == [("zdevz", "hello")]
-

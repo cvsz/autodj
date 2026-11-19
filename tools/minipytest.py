@@ -210,4 +210,3 @@ def _run_case(fn, m, kw, file_name, func_name):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-

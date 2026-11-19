@@ -93,4 +93,3 @@ def test_get_time_pos_invalidated_on_seek_stop(monkeypatch):
     player.stop()
     assert player.get_time_pos() == 30.0
     assert len(calls) == 3
-

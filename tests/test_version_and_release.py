@@ -61,4 +61,3 @@ def test_version_consistency():
     assert (
         "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9" in release_yml
     )  # v7.0.2
-

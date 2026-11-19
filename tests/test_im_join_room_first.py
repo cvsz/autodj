@@ -48,4 +48,3 @@ def test_no_private_channel_means_no_reply_anywhere():
     e.say = lambda text, *a, **k: room.append(text) or True  # type: ignore[method-assign]
     e._handle_im(ChatMessage("zdevz", "!play x", is_im=True))
     assert room == []
-

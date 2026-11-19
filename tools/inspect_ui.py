@@ -18,4 +18,3 @@ for i, c in enumerate(cs):
 if "--list" not in sys.argv:
     n = int(args[1]) if len(args) > 1 else 0
     Desktop(backend="uia").window(handle=cs[n].handle).print_control_identifiers()
-

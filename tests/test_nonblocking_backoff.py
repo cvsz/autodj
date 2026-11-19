@@ -44,4 +44,3 @@ def test_player_loop_respects_backoff():
     # After backoff expires, it should be 0
     eng._backoff_until = 0.0
     assert eng._backoff_until == 0.0
-

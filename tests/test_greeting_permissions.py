@@ -50,4 +50,3 @@ def test_welcome_without_room_name_has_no_double_space():
     e.say = lambda text, *a, **k: said.append(text) or True  # type: ignore[method-assign]
     assert e._handle_welcome_message(ChatMessage("amy", "hi"))
     assert said and "  " not in said[0] and "amy" in said[0]
-

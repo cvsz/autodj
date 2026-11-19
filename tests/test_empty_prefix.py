@@ -52,4 +52,3 @@ def test_valid_prefix_accepted():
         assert cfg.prefix == "!"
     finally:
         os.unlink(fname)
-

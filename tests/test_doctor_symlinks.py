@@ -54,4 +54,3 @@ def test_doctor_skips_symlink_directories():
         # Count should only include real.mp3, not files in symlink directory
         count = _count_media_files(music_dir)
         assert count == 1, f"Expected 1 file, got {count}"
-

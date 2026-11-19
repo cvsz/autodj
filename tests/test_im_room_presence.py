@@ -49,4 +49,3 @@ def test_presence_check_can_be_disabled():
     e.cfg.im_require_room_presence = False
     e._handle_im(_im("stranger", "play x"))
     assert routed == ["play x"]
-

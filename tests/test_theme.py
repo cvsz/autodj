@@ -102,4 +102,3 @@ def test_welcome_message_delay_range(tmp_path):
     config_file.write_text("welcome_message_delay = 5000\n", encoding="utf-8")
     with pytest.raises(ConfigError, match="welcome_message_delay"):
         Config.load(str(config_file))
-

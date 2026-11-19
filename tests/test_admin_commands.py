@@ -90,4 +90,3 @@ def test_delete_message_returns_false_when_disabled():
     result = eng.delete_message("msg123")
     assert result is False
     assert eng.outbox.empty()
-

@@ -478,4 +478,3 @@ def test_load_folder_empty_shows_loaded_zero(monkeypatch, tmp_path):
         assert "Loaded 0 tracks" in seen, f"hint={seen!r}"
     finally:
         sys.modules.pop("autodj.gui", None)
-

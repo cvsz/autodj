@@ -84,4 +84,3 @@ def test_chat_loop_routes_join_events_without_running_commands():
     t.join(timeout=5)
     assert out(e) == ["hi finn"]
     assert handled == []  # a join notice is not a command
-

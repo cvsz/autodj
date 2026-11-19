@@ -253,4 +253,3 @@ def test_module_imports_on_non_windows():
     assert callable(cf.read_camfrog_font_settings)
     assert callable(cf.write_camfrog_font_settings)
     assert callable(cf.sync_message_style_to_camfrog)
-

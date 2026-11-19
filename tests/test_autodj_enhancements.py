@@ -589,4 +589,3 @@ def test_track_name_color_no_color_leaves_default():
 def test_name_colors_initialized_empty():
     e = _re_engine()
     assert e._name_colors == {}
-

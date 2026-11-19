@@ -262,4 +262,3 @@ class TestWebhookSignatureHardening:
         client = self._client(Mock(), rate_limit_per_ip=2)
         codes = [client.get("/webhook/health").status_code for _ in range(3)]
         assert codes[-1] == 429
-

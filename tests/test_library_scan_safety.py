@@ -169,4 +169,3 @@ def test_scan_never_follows_symlink_cycle(tmp_path):
     os.symlink(str(root), str(root / "cycle"))
 
     assert _sources(scan_folder(str(root))) == [str(root / "keep.mp3")]
-

@@ -3513,9 +3513,7 @@ class App(tk.Tk):
 
         cfg_path = str(getattr(self.e, "cfg_path", None) or "config.toml")
         base = (
-            [sys.executable]
-            if getattr(sys, "frozen", False)
-            else [sys.executable, "-m", "autodj"]
+            [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, "-m", "autodj"]
         )
         argv = [*base, "--discover", "-c", cfg_path]
 
@@ -4132,4 +4130,3 @@ class App(tk.Tk):
             self.chat.see("end")
             self.chat.configure(state="disabled")
         self._seen = seq
-

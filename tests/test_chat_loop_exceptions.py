@@ -68,4 +68,3 @@ def test_chat_loop_does_not_mask_errors_in_tests():
     # (the current implementation catches all exceptions)
     eng._chat_loop()
     assert eng.chat_done.is_set()
-

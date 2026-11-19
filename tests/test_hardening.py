@@ -916,4 +916,3 @@ def test_updater_loop_honours_disable_on_reload():
         assert u._thread is first
     finally:
         u.stop()
-

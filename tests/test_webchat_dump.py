@@ -113,4 +113,3 @@ def test_emoticon_and_link_continue_body():
     assert parsed(items)[0] == ("bob", "!play https://youtu.be/x")
     items = [A, link("bob"), t("5:00"), t("!play"), link("https://youtu.be/x"), t("rest")]
     assert parsed(items) == [("bob", "!play https://youtu.be/x rest")]
-

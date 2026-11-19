@@ -2455,4 +2455,3 @@ class Engine:
         for t in self._threads:
             if t.is_alive():
                 t.join(timeout=5.0)
-

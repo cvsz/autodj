@@ -469,4 +469,3 @@ def test_end_to_end_request_flow_on_the_real_player_thread():
     assert log[1][2] == "end" and log[1][1] >= 0.75  # A was NOT cut by ben's request
     assert log[2][2] == "end"  # B played to its end
     # (starts[3]) after the queue emptied and >= 1 s without requests, default returned
-

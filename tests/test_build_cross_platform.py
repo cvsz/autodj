@@ -151,4 +151,3 @@ class TestLinuxInstallerBuilder:
         assert "pyproject.toml" in script
         for stale in ["${1:-0.3.6}", "${1:-0.2.3}"]:
             assert stale not in script, f"hard-coded default version {stale}"
-

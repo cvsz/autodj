@@ -34,4 +34,3 @@ def test_participant_count_initial_zero():
 
     assert eng.participant_count == 0
     assert eng._active_room_users == set()
-

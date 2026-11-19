@@ -51,4 +51,3 @@ def test_update_config_text_handles_spaces():
     updates = {"key": "new"}
     result = update_config_text(text, updates)
     assert "key = 'new'" in result
-

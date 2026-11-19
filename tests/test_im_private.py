@@ -32,4 +32,3 @@ def test_im_auto_reply_uses_private_channel_when_available():
     e._handle_im(_im("zdevz", "hi"))
     assert sent == [("zdevz", "away")]
     assert room == []
-

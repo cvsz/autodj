@@ -93,4 +93,3 @@ def test_non_admin_cannot_access_outside_library():
             assert "file is not in the music library" in str(e) or "folders are admin only" in str(
                 e
             )
-

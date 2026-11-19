@@ -46,4 +46,3 @@ def test_failed_track_is_not_announced_in_room():
     e._track_failed(Track("u", "Song", 10, "amy"), 1)
     assert not any("Song" in s for s in said)
     assert time.monotonic() <= e._backoff_until + 60  # back-off still applied
-

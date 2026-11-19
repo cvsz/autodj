@@ -41,4 +41,3 @@ def test_doctor_exact_uia_match_logic():
     cfg.chat_reader = "console"
     cfg.chat_sender = "logtail"
     assert is_uia_enabled(cfg) is False
-

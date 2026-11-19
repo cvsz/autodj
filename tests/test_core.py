@@ -354,4 +354,3 @@ def test_engine_chat_and_im_snapshot_versions():
     im_seq3, im_ver3, _ = eng.im_snapshot()
     assert im_seq3 == 1
     assert im_ver3 == 1  # version unchanged
-

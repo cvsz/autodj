@@ -76,4 +76,3 @@ def test_tts_ducks_music_volume_real_player():
     assert calls[-1][0][0] == 70, (
         f"Expected last call to be restored volume (70), got {calls[-1][0][0]}"
     )
-

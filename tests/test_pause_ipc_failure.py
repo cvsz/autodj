@@ -67,4 +67,3 @@ def test_resume_succeeds_when_ipc_available():
     eng.resume()
     assert eng.paused is False
     assert eng._paused_at is None
-

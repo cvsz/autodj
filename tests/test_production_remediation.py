@@ -1216,9 +1216,7 @@ def test_discover_multiple_candidates_picks_best(monkeypatch):
     fake_cand1 = Cand(handle=111, title="Room A", cls="CamfrogRoom", pid=111, exe="Camfrog.exe")
     fake_cand2 = Cand(handle=222, title="Room B", cls="CamfrogRoom", pid=222, exe="Camfrog.exe")
 
-    monkeypatch.setattr(
-        "autodj.windows.candidates", lambda *a, **k: [fake_cand1, fake_cand2]
-    )
+    monkeypatch.setattr("autodj.windows.candidates", lambda *a, **k: [fake_cand1, fake_cand2])
 
     mock_desktop = MagicMock()
     mock_desktop.window.return_value = MagicMock()
@@ -1305,4 +1303,3 @@ def test_config_has_youtube_ca_bundle_field():
     cfg = Config()
     assert hasattr(cfg, "youtube_ca_bundle")
     assert cfg.youtube_ca_bundle == ""
-

@@ -476,4 +476,3 @@ class Updater:
     def last_check(self) -> float:
         """Monotonic time of the last check, or 0 if never checked."""
         return self._last_check
-

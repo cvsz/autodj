@@ -226,4 +226,3 @@ def test_migrate_without_registry_values(tmp_path, monkeypatch):
 
     cfg = Config.load(str(p))
     assert "mpv.exe" in cfg.mpv_path
-
