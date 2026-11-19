@@ -385,7 +385,13 @@ def test_tts_play_file_ducks_and_restores_music(monkeypatch):
     p = MpvPlayer(Config(), threading.Event())
     vols: list[int] = []
     monkeypatch.setattr(p, "set_volume", lambda v: vols.append(v) or True)
-    monkeypatch.setattr("autodj.player.subprocess.run", lambda *a, **k: None)
+
+    class FakeClip:  # never start a real mpv in tests (CI has none)
+        def wait(self, timeout=None):
+            return 0
+
+    monkeypatch.setattr("autodj.player.subprocess.Popen", lambda *a, **k: FakeClip())
+    monkeypatch.setattr("autodj.player.kill_with_parent", lambda proc: True)
     p.play_file("tts.wav", duck_volume=20, restore_volume=70)
     assert vols == [20, 70]
 
