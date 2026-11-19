@@ -1783,13 +1783,22 @@ class Engine:
         low = body.lower()
         return any(k in low for k in self._STATUS_KEYWORDS)
 
+    # A status *notice* is a whole line of one of these shapes ("bob is now away",
+    # "bob is an admin").  Matching a bare substring announced ordinary chat:
+    # "anyway" -> away, a quote mentioning an "owner" -> "X is the room owner".
+    _STATUS_NOTICE_RE = re.compile(
+        r"^(?:\S{1,30}\s+)?is\s+(?:now\s+)?(?P<state>online|away|busy|invisible)\.?$"
+        r"|^(?:\S{1,30}\s+)?is\s+(?:an?\s+|the\s+(?:room\s+)?)(?P<role>admin|moderator|owner)\.?$",
+        re.IGNORECASE,
+    )
+
     def _is_status_indicator(self, body: str) -> str | None:
-        """Return the message key for a status indicator keyword found in body, else None."""
-        low = body.lower()
-        for keyword, msg_key in self._STATUS_INDICATOR_KEYWORDS.items():
-            if keyword in low:
-                return msg_key
-        return None
+        """Message key for a status notice line (whole line, see _STATUS_NOTICE_RE), else None."""
+        m = self._STATUS_NOTICE_RE.match(body.strip())
+        if not m:
+            return None
+        word = (m.group("state") or m.group("role")).lower()
+        return self._STATUS_INDICATOR_KEYWORDS.get(word)
 
     def _announce_gift(self, nick: str, body: str) -> None:
         """Announce a virtual gift detected in room chat."""
