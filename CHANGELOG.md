@@ -1,7 +1,23 @@
+## 0.3.7 — 2026-11-19
+
+- **Webhook `/say`, `/shuffle`, `/repeat` never worked** — `Request` was imported inside the route factory, so with postponed annotations FastAPI treated `request` as a required query parameter and every call returned 422. Now imported at module level; covered by tests.
+- **Webhook DoS hardening** — the raw-body middleware busy-looped forever after a client disconnect and buffered unbounded bodies before authentication. It now stops on `http.disconnect` (400) and caps bodies at 64 KiB (413). `/say` text and `/play` query are capped at 1000 characters. Blocking engine calls (skip, pause, resume, volume, status/queue/history snapshots, metrics) run in the thread pool instead of stalling the event loop.
+- **Playback could stall forever on failed requests** — when every queued request had recently failed, the player popped nothing and the autoplay pool/default song was refused because "a request is waiting". Failed songs are now skipped for 10 minutes (time-bounded, not a never-forgetting list), the pool/default song plays meanwhile, and skipped requests keep their FIFO place.
+- **Duplicate requests were announced as queued** — `PlayQueue.add_request` silently dropped same-title duplicates but returned the queue length, so chat said "queued at #N", stats were recorded and the playlist persisted a song that was never queued. It now returns 0 for a dropped duplicate and `!play`, `/aplay fav`, `!hbdp` and GUI requests report "already queued".
+- **`!prev` could skip the current song without re-queueing** — the duplicate check refused the re-queue; it now forces the insert.
+- **mpv IPC replies mis-parsed** — an mpv event line arriving before the reply made the whole read fail JSON parsing, so position/property queries spuriously returned "unavailable". Replies are now matched line-by-line by `request_id`.
+- **Library scan followed Windows junctions** — `DirEntry.is_symlink()` is False for junctions; junction loops are now skipped (`is_junction()`, Python 3.12+).
+- **IM pane reader** — skipped nothing (it compared against an unset `self.pid`), read UIA without the COM lock, and kept baselines for closed windows forever. Now skips the room/own windows, holds `com_lock`, and prunes closed windows.
+- **Auto-update script** — paths with `)` (e.g. `Program Files (x86)`) broke the batch block, `%` in paths was expanded by cmd, and non-ASCII paths were mangled; paths are now quoted/escaped and the script switches to UTF-8 (`chcp 65001`).
+- **`top_requests.json` lost updates** under concurrent requests; writes are now serialised.
+- Search-track preloading now bumps the queue version so the GUI shows resolved titles.
+- Validation: 630 passed; ruff, ruff format, mypy, compileall, bandit (0 issues) clean.
+
 ## 0.3.6 — 2026-11-19
 
 - **Release follow-up** — ships the final UI/runtime hardening from PR #241: now-playing dashboard restored, full palette coverage with the soft-slate `zplayer-light`, logs in `<install>/logs/`, and demo playlist auto-load disabled.
-- All version sources, documentation and installer metadata synchronized to 0.3.6. Full suite: 605 passed / 0 skipped; ruff, mypy, bandit (all metrics 0), shellcheck clean; signed build verified.
+- **Deployment config: no playlist auto-load, default song from startup** — the deployed `config.toml` sets `playlist_file`/`playlist_dir` empty and `default_track` to `https://www.youtube.com/watch?v=HhVVVgYsBYw`. The NSIS installer writes absolute `mpv_path`/`ytdlp_path` into `config.toml` at install time.
+- All version sources, documentation and installer metadata synchronized to 0.3.6. Full suite: 610 passed / 0 skipped; ruff, mypy, bandit (all metrics 0), shellcheck clean; signed build verified.
 
 ## 0.3.5 — 2026-11-18
 

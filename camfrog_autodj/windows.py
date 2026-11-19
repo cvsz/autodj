@@ -66,8 +66,10 @@ def pick(
     if exclude_re:
         rx = re.compile(exclude_re)
         out = [c for c in out if not rx.search(c.title)]
-    if prefer:
-        out.sort(key=lambda c: prefer.lower() not in c.title.lower())  # stable
+    # Prefer the requested room, then prefer the main client window over a
+    # #32770 dialog (Camfrog's room-list dialog) when both are visible.
+    prefer_l = prefer.lower()
+    out.sort(key=lambda c: (prefer_l not in c.title.lower(), c.cls == "#32770"))  # stable
     if not out:
         return None
     return out[min(max(index, 0), len(out) - 1)]

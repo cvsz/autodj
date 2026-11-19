@@ -111,6 +111,17 @@ def test_update_config_text_replaces_existing_key():
     assert 'bot_nick = "AutoDJ"' in new
 
 
+def test_update_config_text_does_not_duplicate_unchanged_keys():
+    import tomllib
+
+    text = 'window_title_re = ".*"   # keep me\nview_index = 0\n'
+    new = update_config_text(text, {"window_title_re": ".*", "view_index": 0})
+    assert new.count("window_title_re") == 1
+    assert new.count("view_index") == 1
+    assert "# keep me" in new
+    assert tomllib.loads(new)["window_title_re"] == ".*"
+
+
 def test_update_config_text_appends_missing_key():
     text = 'bot_nick = "AutoDJ"\n'
     new = update_config_text(text, {"playlist_file": "playlist.json"})
@@ -124,6 +135,17 @@ def test_update_config_text_keeps_comment():
 
 
 # ------------------------------------------------------------ save_config ---
+def test_installer_writes_absolute_media_paths(tmp_path):
+    p = tmp_path / "config.toml"
+    p.write_text('bot_nick = "AutoDJ"\nmpv_path = "mpv/mpv.exe"\n', encoding="utf-8")
+    mpv = tmp_path / "mpv" / "mpv.exe"
+    ytdlp = tmp_path / "mpv" / "yt-dlp.exe"
+    assert save_config(str(p), {"mpv_path": str(mpv), "ytdlp_path": str(ytdlp)}) is True
+    cfg = Config.load(str(p))
+    assert cfg.mpv_path == str(mpv)
+    assert cfg.ytdlp_path == str(ytdlp)
+
+
 def test_save_config_atomic_and_backup(tmp_path):
     p = tmp_path / "config.toml"
     p.write_text('bot_nick = "X"\n', "utf-8")

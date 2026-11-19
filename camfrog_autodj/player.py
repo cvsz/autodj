@@ -29,6 +29,30 @@ def _is_windows() -> bool:
     return os.name == "nt"
 
 
+_MISSING = object()
+
+
+def _ipc_reply(buf: bytes, request_id: int) -> object:
+    """Return the ``data`` of the reply to *request_id* in *buf*, else ``_MISSING``.
+
+    mpv pushes asynchronous event lines (``{"event": ...}``) to every IPC
+    client, so a reply can arrive after one or more events in the same read.
+    Parsing the whole buffer as one JSON document failed ("Extra data") and
+    reported the position/property as unavailable.
+    """
+    for raw in buf.split(b"\n"):
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            msg = json.loads(raw.decode("utf-8", errors="replace"))
+        except json.JSONDecodeError:
+            continue  # a partial trailing line: wait for more bytes
+        if isinstance(msg, dict) and msg.get("request_id") == request_id:
+            return msg.get("data") if msg.get("error", "success") == "success" else None
+    return _MISSING
+
+
 def failure_reasons(log_text: str, keep: int = 4) -> list[str]:
     """The last few lines of an mpv log that explain why playback failed."""
     lines = [ln.strip() for ln in log_text.splitlines() if any(w in ln.lower() for w in _WHY)]
@@ -122,6 +146,37 @@ class MpvPlayer:
                     break
         return rc, hung
 
+    def _stop_after_hang(
+        self, p: subprocess.Popen, source: str, duration: float | None
+    ) -> tuple[int, bool]:
+        """Stop an mpv that outlived its grace limit; report if it actually finished."""
+        log.warning(
+            "mpv still running %.0fs after the expected end of %s: checking position",
+            self.cfg.mpv_timeout,
+            source,
+        )
+        # Wrong/short metadata duration or a stalled end-of-stream can keep mpv
+        # alive past the limit even though the song played to the end.
+        self._invalidate_pos_cache()
+        pos = self.get_time_pos()
+        reached_end = (
+            pos is not None and duration is not None and pos >= max(0.0, float(duration) - 2.0)
+        )
+        if reached_end:
+            log.info("mpv reached the end of %s before the hang timeout: completed", source)
+        with self._lock:
+            if not reached_end:
+                self.skipped = True
+            p.terminate()
+        try:
+            rc = p.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            log.warning("mpv did not exit after terminate; killing")
+            with self._lock:
+                p.kill()
+            rc = p.wait()
+        return rc, reached_end
+
     def play(self, source: str, volume: int, duration: float | None = None) -> bool:
         """Play one track to its end; True = it played (or was skipped), False = it failed or hung.
 
@@ -172,23 +227,10 @@ class MpvPlayer:
         )
         started = time.monotonic()
         rc, hung = self._wait_for_mpv_end(p, started, limit)
+        reached_end = False
         if hung:
-            log.warning(
-                "mpv still running %.0fs after the expected end of %s: terminating",
-                self.cfg.mpv_timeout,
-                source,
-            )
-            with self._lock:
-                self.skipped = True
-                p.terminate()
-            try:
-                rc = p.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                log.warning("mpv did not exit after terminate; killing")
-                with self._lock:
-                    p.kill()
-                rc = p.wait()
-            ok = False
+            rc, reached_end = self._stop_after_hang(p, source, duration)
+            ok = reached_end
         with self._lock:
             self.proc = None
             self._ipc = None
@@ -288,11 +330,11 @@ class MpvPlayer:
         except OSError:
             return False
 
-    def _cmd_get(self, *cmd) -> float | None:
+    def _cmd_get(self, *cmd, timeout: float = 2.0) -> float | None:
         """Send a command to mpv via IPC and read the JSON response. Returns the property value or None on failure.
 
-        Uses a 2-second timeout for reading the response to avoid hanging indefinitely
-        if mpv doesn't respond or the IPC pipe/socket is in a bad state.
+        ``timeout`` is caller-controlled: GUI position polls use a short one so
+        a stuck mpv can never freeze the Tk main thread for seconds.
         """
         ipc = self._ipc
         if not ipc:
@@ -301,20 +343,19 @@ class MpvPlayer:
         data = (json.dumps({"command": list(cmd), "request_id": request_id}) + "\n").encode()
         try:
             if _is_windows():
-                response = self._ipc_read_windows(ipc, data)
+                response = self._ipc_read_windows(ipc, data, timeout, request_id)
             else:
-                response = self._ipc_read_unix(ipc, data)
-            if not response:
-                return None
-            # Parse JSON response
-            resp = json.loads(response.decode("utf-8", errors="replace"))
-            if resp.get("request_id") == request_id and "data" in resp:
-                return resp["data"]
-        except (OSError, json.JSONDecodeError, StopIteration, TimeoutError):
+                response = self._ipc_read_unix(ipc, data, timeout, request_id)
+        except (OSError, TimeoutError):
             return None
-        return None
+        if not response:
+            return None
+        value = _ipc_reply(response, request_id)
+        return None if value is _MISSING else value  # type: ignore[return-value]
 
-    def _ipc_read_windows(self, ipc: str, data: bytes, timeout: float = 2.0) -> bytes | None:
+    def _ipc_read_windows(
+        self, ipc: str, data: bytes, timeout: float = 2.0, request_id: int | None = None
+    ) -> bytes | None:
         """Read IPC response from Windows named pipe with timeout."""
         import time
 
@@ -323,7 +364,7 @@ class MpvPlayer:
             with open(ipc, "r+b", buffering=0) as f:
                 f.write(data)
                 response = b""
-                while b"\n" not in response:
+                while not self._have_reply(response, request_id):
                     if time.monotonic() - start > timeout:
                         log.debug("_cmd_get timed out reading from IPC pipe")
                         return None
@@ -335,7 +376,9 @@ class MpvPlayer:
         except OSError:
             return None
 
-    def _ipc_read_unix(self, ipc: str, data: bytes, timeout: float = 2.0) -> bytes | None:
+    def _ipc_read_unix(
+        self, ipc: str, data: bytes, timeout: float = 2.0, request_id: int | None = None
+    ) -> bytes | None:
         """Read IPC response from Unix socket with timeout."""
         import socket
         import time
@@ -347,7 +390,7 @@ class MpvPlayer:
                 s.connect(ipc)
                 s.sendall(data)
                 response = b""
-                while b"\n" not in response:
+                while not self._have_reply(response, request_id):
                     if time.monotonic() - start > timeout:
                         log.debug("_cmd_get timed out reading from IPC socket")
                         return None
@@ -358,6 +401,13 @@ class MpvPlayer:
                 return response
         except (OSError, TimeoutError):
             return None
+
+    @staticmethod
+    def _have_reply(buf: bytes, request_id: int | None) -> bool:
+        """Stop reading once the reply to *request_id* (or, without one, any line) arrived."""
+        if request_id is None:
+            return b"\n" in buf
+        return b"\n" in buf and _ipc_reply(buf, request_id) is not _MISSING
 
     def _invalidate_pos_cache(self) -> None:
         """Drop the cached mpv position so the next get_time_pos() re-queries IPC."""
@@ -380,7 +430,9 @@ class MpvPlayer:
             cpos, ts = cached
             if now - ts <= _POS_CACHE_TTL:
                 return cpos
-        pos: float | None = self._cmd_get("get_property", "time-pos")
+        # Short timeout: this is called from the Tk main thread by the GUI
+        # poller; a 2 s IPC stall here used to freeze the whole window.
+        pos: float | None = self._cmd_get("get_property", "time-pos", timeout=0.15)
         if pos is not None:
             with self._lock:
                 self._pos_cache = (pos, time.monotonic())

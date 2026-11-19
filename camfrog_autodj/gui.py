@@ -13,6 +13,7 @@ import logging
 import math
 import os
 import shutil
+import threading
 import time
 import tkinter as tk
 from pathlib import Path
@@ -682,7 +683,7 @@ class App(tk.Tk):
         self._border_glow = 0.0  # 0..1 window-border-glow intensity, pulses with playback
         self._fonts()
         self._style()
-        self._build()
+        self._build_modern()
         self._build_menu()
         install_clipboard(self, lambda: self.e.lang)
         self.relabel()
@@ -771,7 +772,7 @@ class App(tk.Tk):
             return tkfont.Font(root=self, family=fam or t.font_family, size=size, weight=weight)
 
         self.f_body, self.f_bold, self.f_small = mk(10), mk(10, "bold"), mk(9)
-        self.f_list, self.f_title, self.f_brand = mk(11), mk(24, "bold"), mk(24, "bold")
+        self.f_list, self.f_title, self.f_brand = mk(11), mk(20, "bold"), mk(23, "bold")
         self.f_h2, self.f_icon = mk(11, "bold"), mk(11, "normal", t.icon_font_family)
         self.f_big_icon = mk(16, "normal", t.icon_font_family)
         self.f_caption = mk(8, "normal")
@@ -992,13 +993,49 @@ class App(tk.Tk):
             self._labels.append((ban, "g_mpv_missing"))
             ban.pack(fill="x")
 
+        # Footer status strip — new GUI shell, no behaviour attached.
+        footer = tk.Frame(root, bg=BG)
+        footer.pack(side="bottom", fill="x", padx=px(26), pady=(0, px(6)))
+        tk.Label(
+            footer,
+            text="ZEAZDEV  ·  AUTODJ CONTROL ROOM",
+            bg=BG,
+            fg=MUTED,
+            font=self.f_caption,
+        ).pack(side="left")
+        self.v_theme_badge = tk.Label(
+            footer,
+            text=self.theme.palette.name.upper(),
+            bg=BG,
+            fg=shade(VIOLET, 0.35),
+            font=self.f_caption,
+        )
+        self.v_theme_badge.pack(side="right")
+
         body = tk.Frame(root, bg=BG)
         body.pack(fill="both", expand=True, padx=px(26), pady=(px(18), px(22)))
-        body.columnconfigure(0, weight=5, minsize=px(520))
-        body.columnconfigure(1, weight=4, minsize=px(380))
+        body.columnconfigure(0, weight=6, minsize=px(560))
+        body.columnconfigure(1, weight=4, minsize=px(360))
         body.rowconfigure(0, weight=1)
-        left = tk.Frame(body, bg=BG)
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, px(20)))
+        # Scrollable left column: on smaller windows the dashboard must never
+        # push the add/control rows below the visible area.
+        left_outer = tk.Frame(body, bg=BG)
+        left_outer.grid(row=0, column=0, sticky="nsew", padx=(0, px(20)))
+        left_canvas = tk.Canvas(left_outer, bg=BG, highlightthickness=0, bd=0)
+        left_canvas.pack(side="left", fill="both", expand=True)
+        left_bar = ttk.Scrollbar(left_outer, orient="vertical", command=left_canvas.yview)
+        left_bar.pack(side="right", fill="y")
+        left_canvas.configure(yscrollcommand=left_bar.set)
+        left = tk.Frame(left_canvas, bg=BG)
+        left_win = left_canvas.create_window((0, 0), window=left, anchor="nw")
+        left.bind(
+            "<Configure>",
+            lambda _e: left_canvas.configure(scrollregion=left_canvas.bbox("all")),
+        )
+        left_canvas.bind(
+            "<Configure>",
+            lambda e: left_canvas.itemconfigure(left_win, width=e.width),
+        )
         right = tk.Frame(body, bg=BG)
         right.grid(row=0, column=1, sticky="nsew")
 
@@ -1006,12 +1043,24 @@ class App(tk.Tk):
         card = self._card(left, pad=1)
         card.pack(fill="x", pady=(0, px(10)))
         # Vinyl / stage visualization: spinning record + animated border glow
-        self.stage = tk.Canvas(card, height=px(260), bg=SURFACE, highlightthickness=0, bd=0)
+        self.stage = tk.Canvas(card, height=px(164), bg=SURFACE, highlightthickness=0, bd=0)
         self.stage.pack(fill="x", padx=px(2), pady=px(2))
         self.stage.bind("<Configure>", self._layout_stage)
         # Inner info panel: title, artist, progress, controls
         info = tk.Frame(card, bg=SURFACE2)
         info.pack(fill="x", padx=px(18), pady=(px(10), px(14)))
+        # "NOW PLAYING" badge — new GUI signpost, purely decorative.
+        badge = tk.Frame(info, bg=shade(VIOLET, -0.35))
+        badge.pack(anchor="w", pady=(0, px(6)))
+        tk.Label(
+            badge,
+            text="●  NOW PLAYING",
+            bg=shade(VIOLET, -0.35),
+            fg=shade(VIOLET, 0.45),
+            font=self.f_caption,
+            padx=px(9),
+            pady=px(2),
+        ).pack()
         # Track title (large, prominent)
         self.v_title = tk.Label(
             info,
@@ -1031,7 +1080,7 @@ class App(tk.Tk):
         self.bar.pack(fill="x", pady=(0, px(2)))
         self.v_time = tk.Label(info, bg=SURFACE2, fg=MUTED, font=self.f_small, anchor="w")
         self.v_time.pack(fill="x", pady=(0, px(12)))
-        # Controls row
+        # Controls: compact transport row + tools/volume row (never truncated)
         ctl = tk.Frame(info, bg=SURFACE2)
         ctl.pack(fill="x")
         self.b_pause = PillButton(
@@ -1042,30 +1091,32 @@ class App(tk.Tk):
             font=self.f_bold,
             icon_font=self.f_big_icon,
             bg=SURFACE2,
-            height=px(46),
-            minw=px(156),
-            padx=px(24),
+            height=px(42),
+            minw=px(128),
+            padx=px(16),
         )
         self.b_pause.pack(side="left")
-        skip = self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=46, minw=114)
-        skip.pack(side="left", padx=(px(10), 0))
-        prev = self._btn(ctl, "g_prev", self.e.prev, icon="◀◀", height=46, minw=114)
-        prev.pack(side="left", padx=(px(10), 0))
-        discover = self._btn(ctl, "g_discover", self.do_discover, icon="🔍", height=46, minw=134)
-        discover.pack(side="left", padx=(px(10), 0))
-        check = self._btn(ctl, "g_check", self.do_check, icon="✓", height=46, minw=114)
-        check.pack(side="left", padx=(px(10), 0))
-        # Volume + percentage on the right
-        self.v_volpct = tk.Label(ctl, bg=SURFACE2, fg=TEXT, font=self.f_bold, width=5, anchor="e")
+        skip = self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=42, minw=96)
+        skip.pack(side="left", padx=(px(8), 0))
+        prev = self._btn(ctl, "g_prev", self.e.prev, icon="◀◀", height=42, minw=96)
+        prev.pack(side="left", padx=(px(8), 0))
+
+        tools = tk.Frame(info, bg=SURFACE2)
+        tools.pack(fill="x", pady=(px(8), 0))
+        discover = self._btn(tools, "g_discover", self.do_discover, icon="🔍", height=36, minw=112)
+        discover.pack(side="left")
+        check = self._btn(tools, "g_check", self.do_check, icon="✓", height=36, minw=92)
+        check.pack(side="left", padx=(px(8), 0))
+        self.v_volpct = tk.Label(tools, bg=SURFACE2, fg=TEXT, font=self.f_bold, width=5, anchor="e")
         self.v_volpct.pack(side="right")
         self.vol = VolSlider(
-            ctl,
+            tools,
             command=self._vol_release,
             on_change=self._vol_live,
             bg=SURFACE2,
-            height=px(26),
+            height=px(24),
         )
-        self.vol.pack(side="right", fill="x", expand=True, padx=(px(24), px(6)))
+        self.vol.pack(side="right", fill="x", expand=True, padx=(px(16), px(6)))
         # Up-next preview
         self.v_next = tk.Label(
             info,
@@ -1225,6 +1276,347 @@ class App(tk.Tk):
         self.im_chat.configure(yscrollcommand=ihs.set)
         ihs.configure(command=self.im_chat.yview)
         self.im_chat.tag_configure("who", foreground=PINK, font=self.f_bold)
+
+    def _build_modern(self):
+        """Modern three-zone shell: nav rail / hero player / data panel.
+
+        Creates exactly the same widget names as the legacy builder, so every
+        existing handler, poller and test continues to work unchanged.
+        """
+        px = self.px
+
+        # Animated outer border (also used by the glow effect).
+        self._border = tk.Frame(self, bg=BG)
+        self._border.pack(fill="both", expand=True)
+        root = tk.Frame(self._border, bg=BG)
+        root.pack(fill="both", expand=True, padx=px(3), pady=px(3))
+
+        # --- top bar -----------------------------------------------------------
+        hdr = tk.Frame(root, bg=BG)
+        hdr.pack(fill="x", padx=px(24), pady=(px(14), px(8)))
+        logo = tk.Canvas(hdr, width=px(168), height=px(40), bg=BG, highlightthickness=0, bd=0)
+        logo.pack(side="left")
+        halo = logo.create_text(
+            1,
+            px(20) + 1,
+            text="AUTODJ",
+            font=self.f_brand,
+            fill=lerp_color(PINK, BG, 0.35),
+            anchor="w",
+        )
+        logo.create_text(0, px(20), text="AUTO", font=self.f_brand, fill=TEXT, anchor="w")
+        logo.create_text(
+            self.f_brand.measure("AUTO") + 2,
+            px(20),
+            text="DJ",
+            font=self.f_brand,
+            fill=PINK,
+            anchor="w",
+        )
+        self._logo_halo = halo
+        tk.Label(
+            hdr,
+            text="ZEAZDEV  ·  ROOM MUSIC BOT",
+            bg=BG,
+            fg=MUTED,
+            font=self.f_small,
+        ).pack(side="left", padx=(px(10), 0), pady=(px(8), 0))
+        self.b_lang = {}
+        for code in ("th", "en"):
+            b = PillButton(
+                hdr,
+                text=code.upper(),
+                command=lambda c=code: self.set_lang(c),
+                kind="tab",
+                font=self.f_bold,
+                bg=BG,
+                height=px(30),
+                minw=px(50),
+                padx=px(10),
+            )
+            b.pack(side="right", padx=(px(6), 0))
+            self.b_lang[code] = b
+        self.led = tk.Canvas(hdr, width=px(18), height=px(18), bg=BG, highlightthickness=0, bd=0)
+        self._led_id = self.led.create_oval(
+            px(3), px(3), px(17), px(17), fill=IDLE, outline=PINK, width=1
+        )
+        self.led.pack(side="right", padx=(0, px(8)))
+        self.v_onair = self._lbl(hdr, "g_on_air", font=self.f_bold, bg=BG)
+        self.v_onair.pack(side="right", padx=(px(16), px(4)))
+
+        self.line = tk.Canvas(root, height=3, bg=BG, highlightthickness=0, bd=0)
+        self.line.pack(fill="x")
+        self._shimmer = None
+        self.line.bind("<Configure>", self._layout_line)
+
+        avail = getattr(self.e.player, "available", None)
+        if callable(avail) and not avail():
+            ban = tk.Label(
+                root,
+                bg=shade(RED, -0.30),
+                fg=shade(RED, 0.40),
+                font=self.f_body,
+                anchor="w",
+                padx=px(24),
+                pady=px(7),
+            )
+            self._labels.append((ban, "g_mpv_missing"))
+            ban.pack(fill="x")
+
+        # --- three-zone body ---------------------------------------------------
+        body = tk.Frame(root, bg=BG)
+        body.pack(fill="both", expand=True, padx=px(20), pady=(px(12), px(6)))
+        body.columnconfigure(0, weight=0, minsize=px(132))
+        body.columnconfigure(1, weight=6, minsize=px(480))
+        body.columnconfigure(2, weight=4, minsize=px(320))
+        body.rowconfigure(0, weight=1)
+
+        # Zone 1: vertical navigation rail (the tabs).
+        rail = tk.Frame(body, bg=BG)
+        rail.grid(row=0, column=0, sticky="nsew", padx=(0, px(12)))
+        self.tabs = {}
+        for key, lab in (
+            ("queue", "g_queue"),
+            ("history", "g_history"),
+            ("chat", "g_chat"),
+            ("im", "g_im"),
+        ):
+            b = self._btn(rail, lab, lambda k=key: self.show_tab(k), "tab", height=38, minw=px(118))
+            b.pack(fill="x", pady=(0, px(6)))
+            self.tabs[key] = b
+
+        # Zone 2: now-playing hero + add row.
+        main = tk.Frame(body, bg=BG)
+        main.grid(row=0, column=1, sticky="nsew", padx=(0, px(12)))
+        main_canvas = tk.Canvas(main, bg=BG, highlightthickness=0, bd=0)
+        main_canvas.pack(side="left", fill="both", expand=True)
+        main_bar = ttk.Scrollbar(main, orient="vertical", command=main_canvas.yview)
+        main_bar.pack(side="right", fill="y")
+        main_canvas.configure(yscrollcommand=main_bar.set)
+        scroll = tk.Frame(main_canvas, bg=BG)
+        win = main_canvas.create_window((0, 0), window=scroll, anchor="nw")
+        scroll.bind(
+            "<Configure>", lambda _e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+        )
+        main_canvas.bind("<Configure>", lambda e: main_canvas.itemconfigure(win, width=e.width))
+
+        card = self._card(scroll, pad=1)
+        card.pack(fill="x", pady=(0, px(10)))
+        self.stage = tk.Canvas(card, height=px(164), bg=SURFACE, highlightthickness=0, bd=0)
+        self.stage.pack(fill="x", padx=px(2), pady=px(2))
+        self.stage.bind("<Configure>", self._layout_stage)
+
+        info = tk.Frame(card, bg=SURFACE2)
+        info.pack(fill="x", padx=px(16), pady=(px(8), px(12)))
+        badge = tk.Frame(info, bg=shade(VIOLET, -0.35))
+        badge.pack(anchor="w", pady=(0, px(6)))
+        tk.Label(
+            badge,
+            text="●  NOW PLAYING",
+            bg=shade(VIOLET, -0.35),
+            fg=shade(VIOLET, 0.45),
+            font=self.f_caption,
+            padx=px(9),
+            pady=px(2),
+        ).pack()
+        self.v_title = tk.Label(
+            info,
+            bg=SURFACE2,
+            fg=TEXT,
+            font=self.f_title,
+            anchor="w",
+            justify="left",
+            wraplength=px(560),
+        )
+        self.v_title.pack(fill="x", pady=(0, px(2)))
+        self.v_sub = tk.Label(info, bg=SURFACE2, fg=MUTED, font=self.f_body, anchor="w")
+        self.v_sub.pack(fill="x", pady=(0, px(8)))
+        self.bar = GlowBar(info, height=px(18), bg=SURFACE2, command=self._on_seek)
+        self.bar.pack(fill="x", pady=(0, px(2)))
+        self.v_time = tk.Label(info, bg=SURFACE2, fg=MUTED, font=self.f_small, anchor="w")
+        self.v_time.pack(fill="x", pady=(0, px(10)))
+
+        ctl = tk.Frame(info, bg=SURFACE2)
+        ctl.pack(fill="x")
+        self.b_pause = PillButton(
+            ctl,
+            command=self.toggle_pause,
+            kind="primary",
+            icon="❚❚",
+            font=self.f_bold,
+            icon_font=self.f_big_icon,
+            bg=SURFACE2,
+            height=px(40),
+            minw=px(120),
+            padx=px(14),
+        )
+        self.b_pause.pack(side="left")
+        self._btn(ctl, "g_skip", self.e.skip, icon="▶▶", height=40, minw=90).pack(
+            side="left", padx=(px(8), 0)
+        )
+        self._btn(ctl, "g_prev", self.e.prev, icon="◀◀", height=40, minw=90).pack(
+            side="left", padx=(px(8), 0)
+        )
+        tools = tk.Frame(info, bg=SURFACE2)
+        tools.pack(fill="x", pady=(px(7), 0))
+        self._btn(tools, "g_discover", self.do_discover, icon="🔍", height=34, minw=px(104)).pack(
+            side="left"
+        )
+        self._btn(tools, "g_check", self.do_check, icon="✓", height=34, minw=px(86)).pack(
+            side="left", padx=(px(8), 0)
+        )
+        self.v_volpct = tk.Label(tools, bg=SURFACE2, fg=TEXT, font=self.f_bold, width=5, anchor="e")
+        self.v_volpct.pack(side="right")
+        self.vol = VolSlider(
+            tools, command=self._vol_release, on_change=self._vol_live, bg=SURFACE2, height=px(22)
+        )
+        self.vol.pack(side="right", fill="x", expand=True, padx=(px(12), px(6)))
+        self.v_next = tk.Label(
+            info,
+            bg=SURFACE2,
+            fg=CYAN,
+            font=self.f_small,
+            anchor="w",
+            justify="left",
+            wraplength=px(560),
+        )
+        self.v_next.pack(fill="x", pady=(px(8), 0))
+        card.bind(
+            "<Configure>",
+            lambda e: [
+                w.configure(wraplength=max(200, e.width - px(72)))
+                for w in (self.v_title, self.v_next)
+            ],
+        )
+
+        self._section(scroll, "g_add_section")
+        add = tk.Frame(scroll, bg=SURFACE2, highlightthickness=1, highlightbackground=BORDER)
+        add.pack(fill="x", pady=(px(6), 0), padx=px(2))
+        self.ent_add = self._entry(add)
+        self.ent_add.pack(side="left", fill="x", expand=True, ipady=px(8), padx=(0, px(8)))
+        self.ent_add.bind("<Return>", lambda _e: self.add())
+        self.b_add = self._btn(add, "g_add", self.add, "primary", icon="+", height=36, minw=px(92))
+        self.b_add.pack(side="left", padx=(px(8), 0))
+        self.b_folder = self._btn(add, "g_folder", self.load_folder, bg=BG, height=36)
+        self.b_folder.pack(side="left", padx=(px(6), 0))
+        self._btn(add, "g_file", self.add_files, bg=BG, height=36).pack(
+            side="left", padx=(px(6), 0)
+        )
+        self.v_hint = tk.Label(scroll, bg=BG, fg=MUTED, font=self.f_small, anchor="w")
+        self.v_hint.pack(fill="x", pady=(px(5), 0))
+        opts = tk.Frame(scroll, bg=BG)
+        opts.pack(fill="x", pady=(px(6), 0))
+        self.c_shuffle = self._btn(
+            opts, "g_shuffle", self.on_shuffle, "chip", icon="⇄", bg=BG, height=32
+        )
+        self.c_shuffle.pack(side="left")
+        self.c_repeat = self._btn(
+            opts, "g_repeat", self.on_repeat, "chip", icon="↻", bg=BG, height=32
+        )
+        self.c_repeat.pack(side="left", padx=(px(8), 0))
+
+        # Zone 3: data pages (queue / history / chat / IM).
+        side = tk.Frame(body, bg=BG)
+        side.grid(row=0, column=2, sticky="nsew")
+        panel = self._card(side)
+        panel.pack(fill="both", expand=True)
+        pages = tk.Frame(panel, bg=SURFACE)
+        pages.pack(fill="both", expand=True, padx=px(10), pady=px(10))
+        self.pages = {k: tk.Frame(pages, bg=SURFACE) for k in ("queue", "history", "chat", "im")}
+
+        qp = self.pages["queue"]
+        qb = tk.Frame(qp, bg=SURFACE)
+        qb.pack(side="bottom", fill="x", pady=(px(8), 0))
+        self._btn(qb, "g_remove", self.remove_selected, "danger", height=32).pack(side="left")
+        self._btn(qb, "g_clear", self.e.queue.clear, height=32).pack(side="left", padx=(px(6), 0))
+        sb = ttk.Scrollbar(qp, orient="vertical")
+        sb.pack(side="right", fill="y")
+        self.lb = self._listbox(qp)
+        self.lb.pack(side="left", fill="both", expand=True)
+        self.lb.configure(yscrollcommand=sb.set)
+        sb.configure(command=self.lb.yview)
+        self.lb.bind("<Double-Button-1>", self._on_queue_double_click)
+
+        hp = self.pages["history"]
+        hb = ttk.Scrollbar(hp, orient="vertical")
+        hb.pack(side="right", fill="y")
+        self.hist = self._listbox(hp)
+        self.hist.pack(side="left", fill="both", expand=True)
+        self.hist.configure(yscrollcommand=hb.set)
+        hb.configure(command=self.hist.yview)
+
+        cp = self.pages["chat"]
+        sr = tk.Frame(cp, bg=SURFACE)
+        sr.pack(side="bottom", fill="x", pady=(px(8), 0))
+        self.ent_say = self._entry(sr)
+        self.ent_say.pack(side="left", fill="x", expand=True, ipady=px(6), padx=(0, px(6)))
+        self.ent_say.bind("<Return>", lambda _e: self.say())
+        self._btn(sr, "g_say", self.say, "primary", height=32).pack(side="left")
+        self._btn(sr, "g_speak", self.speak, height=32).pack(side="left", padx=(px(6), 0))
+        cs = ttk.Scrollbar(cp, orient="vertical")
+        cs.pack(side="right", fill="y")
+        self.chat = tk.Text(
+            cp,
+            bg=SURFACE,
+            fg=TEXT,
+            wrap="word",
+            state="disabled",
+            relief="flat",
+            highlightthickness=0,
+            padx=px(8),
+            pady=px(6),
+            font=self.f_body,
+            insertbackground=CYAN,
+            selectbackground=VIOLET,
+            bd=0,
+        )
+        self.chat.pack(side="left", fill="both", expand=True)
+        self.chat.configure(yscrollcommand=cs.set)
+        cs.configure(command=self.chat.yview)
+        self.chat.tag_configure("bot", foreground=CYAN)
+        self.chat.tag_configure("who", foreground=shade(VIOLET, 0.2), font=self.f_bold)
+
+        ip = self.pages["im"]
+        ih = tk.Label(
+            ip, text=self.e.t("g_im"), bg=SURFACE, fg=TEXT, font=self.f_section, anchor="w"
+        )
+        ih.pack(fill="x", padx=px(10), pady=(px(10), px(5)))
+        ihs = ttk.Scrollbar(ip, orient="vertical")
+        ihs.pack(side="right", fill="y")
+        self.im_chat = tk.Text(
+            ip,
+            bg=SURFACE,
+            fg=TEXT,
+            wrap="word",
+            state="disabled",
+            relief="flat",
+            highlightthickness=0,
+            padx=px(8),
+            pady=px(6),
+            font=self.f_body,
+            insertbackground=CYAN,
+            selectbackground=VIOLET,
+            bd=0,
+        )
+        self.im_chat.pack(side="left", fill="both", expand=True)
+        self.im_chat.configure(yscrollcommand=ihs.set)
+        ihs.configure(command=self.im_chat.yview)
+        self.im_chat.tag_configure("who", foreground=PINK, font=self.f_bold)
+
+        # --- footer ------------------------------------------------------------
+        footer = tk.Frame(root, bg=BG)
+        footer.pack(side="bottom", fill="x", padx=px(24), pady=(0, px(5)))
+        tk.Label(
+            footer, text="ZEAZDEV  ·  AUTODJ CONTROL ROOM", bg=BG, fg=MUTED, font=self.f_caption
+        ).pack(side="left")
+        self.v_theme_badge = tk.Label(
+            footer,
+            text=self.theme.palette.name.upper(),
+            bg=BG,
+            fg=shade(VIOLET, 0.35),
+            font=self.f_caption,
+        )
+        self.v_theme_badge.pack(side="right")
 
     # ---- settings panel ------------------------------------------------------
     def open_settings(self):
@@ -2675,14 +3067,18 @@ class App(tk.Tk):
             off = aurora_offset(t, i, n) * h * 0.1
             y0 = i * h / n - off
             c.coords(item, 0, y0, w, y0 + strip)
+        cache = getattr(self, "_star_stipple", None)
+        if cache is None or len(cache) != len(self._star_items):
+            cache = [""] * len(self._star_items)
+            self._star_stipple = cache
         for i, (item, (_sx, _sy, _sr)) in enumerate(
             zip(self._star_items, self._stars, strict=False)
         ):
             a = 0.4 + 0.6 * pulse(t * 0.6 + i * 0.9, 2.3)
-            c.itemconfigure(
-                item,
-                stipple="gray75" if a > 0.7 else ("gray50" if a > 0.4 else "gray25"),
-            )
+            stipple = "gray75" if a > 0.7 else ("gray50" if a > 0.4 else "gray25")
+            if cache[i] != stipple:  # avoid redundant Tk calls: main stutter source
+                cache[i] = stipple
+                c.itemconfigure(item, stipple=stipple)
 
     def _animate_particles(self, t: float, st: str) -> None:
         if not (self._vc and getattr(self, "_particle_items", None)):
@@ -3095,26 +3491,25 @@ class App(tk.Tk):
             log.exception("discover failed")
 
     def do_check(self):
-        """Run setup diagnostic: mpv, yt-dlp, folders, Camfrog window."""
-        # security review: subprocess only with fixed argv lists, never shell=True
-        import subprocess  # nosec B404
-        import sys
+        """Run setup diagnostics in the GUI and show the report in a dialog.
 
-        try:
-            # security review: argv list without shell; executable is sys.executable or a resolved, configured tool path
-            subprocess.run(  # nosec B603
-                [
-                    sys.executable,
-                    "-m",
-                    "camfrog_autodj",
-                    "--check",
-                    "-c",
-                    self.e.cfg_path if hasattr(self.e, "cfg_path") else "config.toml",
-                ],
-                check=False,
-            )
-        except Exception:
-            log.exception("check failed")
+        The old implementation spawned ``python -m camfrog_autodj --check``
+        with no console attached, so the report never appeared anywhere.
+        Work runs on a daemon thread; Tk is only touched via ``after(0, ...)``.
+        """
+        from tkinter import messagebox
+
+        from .doctor import format_report, run_checks
+
+        def work():
+            try:
+                report = format_report(run_checks(self.e.cfg, check_window=True))
+            except Exception as ex:  # diagnostics must never break the GUI
+                log.exception("check failed")
+                report = f"Check failed: {ex}"
+            self.after(0, lambda: messagebox.showinfo("AutoDJ — Setup check", report))
+
+        threading.Thread(target=work, daemon=True, name="autodj-check").start()
 
     def _toggle_bool(self, attr: str, btn: PillButton):
         """Toggle a boolean setting stored as a plain Python attribute."""

@@ -28,7 +28,21 @@ class ChatAdapter(ABC):
 
 def parse_line(line: str, rx: re.Pattern[str], is_im: bool = False) -> ChatMessage | None:
     m = rx.match(line.strip())
-    return ChatMessage(m["user"].strip(), m["text"].strip(), is_im=is_im) if m else None
+    if not m:
+        return None
+    user, text = m["user"].strip(), m["text"].strip()
+    # Camfrog prefixes private messages onto the nick; strip the marker so the
+    # IM viewer and nickname auth see the real sender.  The marker must be a
+    # separate word (followed by whitespace): Camfrog nicknames cannot contain
+    # spaces, so a *nick* such as "[IM]Admin" is never rewritten to "Admin"
+    # (that would hand the "Admin" nickname's privileges to another user).
+    for marker in ("IM", "IM:", "[IM]", "(IM)", "PM", "Private:"):
+        head, sep, rest = user.partition(" ")
+        if head == marker and sep and rest.strip():
+            user = rest.strip()
+            is_im = True
+            break
+    return ChatMessage(user, text, is_im=is_im)
 
 
 def parse_join(line: str, rx: re.Pattern[str] | None) -> ChatMessage | None:

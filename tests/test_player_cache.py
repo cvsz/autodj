@@ -20,7 +20,7 @@ def _make_player(monkeypatch):
     player = MpvPlayer(_Cfg())
     calls: list[tuple] = []
 
-    def fake_cmd_get(*cmd):
+    def fake_cmd_get(*cmd, **_kw):
         calls.append(cmd)
         return float(len(calls)) * 10.0
 
@@ -44,6 +44,40 @@ def test_get_time_pos_refreshes_after_ttl(monkeypatch):
         player._pos_cache = (10.0, time.monotonic() - _POS_CACHE_TTL - 0.1)
     assert player.get_time_pos() == 20.0
     assert len(calls) == 2
+
+
+class _Proc:
+    def terminate(self):
+        self.terminated = True
+
+    def wait(self, timeout=None):
+        return 0
+
+    def kill(self):
+        pass
+
+
+def test_hang_after_track_ended_is_not_a_failure(monkeypatch):
+    """mpv lingering past the grace limit must not post 'cannot play' if it reached the end."""
+    cfg = type(
+        "Cfg",
+        (),
+        {
+            "mpv_path": "mpv/mpv.exe",
+            "audio_device": "",
+            "audio_fade": False,
+            "audio_fade_in_sec": 0.0,
+            "mpv_timeout": 30.0,
+        },
+    )()
+    player = MpvPlayer(cfg)
+    proc = _Proc()
+    monkeypatch.setattr("camfrog_autodj.player.subprocess.Popen", lambda *a, **k: proc)
+    monkeypatch.setattr(player, "_wait_for_mpv_end", lambda *a: (None, True))
+    monkeypatch.setattr(player, "get_time_pos", lambda: 59.0)
+    monkeypatch.setattr(MpvPlayer, "_report", lambda *a: None)
+    assert player.play("http://track", 100, duration=60.0) is True
+    assert getattr(proc, "terminated", False)
 
 
 def test_get_time_pos_invalidated_on_seek_stop(monkeypatch):

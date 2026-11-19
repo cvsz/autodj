@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import threading
 import time
 
-from .base import ChatAdapter, compile_join_rx, diff_lines, parse_join, parse_line
+from .base import ChatAdapter, ChatMessage, compile_join_rx, diff_lines, parse_join, parse_line
 
 log = logging.getLogger("autodj")
 
@@ -121,6 +122,90 @@ class UiaAdapter(ChatAdapter):
                 return read_web(self._view, strict=self.cfg.web_strict_body)[-300:]
             return _read(self._view).splitlines()[-300:]
 
+    @staticmethod
+    def _im_pane_lines(items: list[tuple[str, str]]) -> list[str]:
+        """Flat web texts -> 'time|body', skipping date headers."""
+        lines: list[str] = []
+        pending: str | None = None
+        for kind, name in items:
+            n = name.strip()
+            if not n or kind not in ("text", "link"):
+                continue
+            if re.match(r"^(วัน|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)", n):
+                continue
+            if re.fullmatch(r"\d{1,2}:\d{2}(?::\d{2})?", n):
+                pending = n
+            elif pending is not None:
+                lines.append(f"{pending}|{n}")
+                pending = None
+        return lines
+
+    def _read_im_window(self, w) -> tuple[list[str], str] | None:
+        """Return (messages, nick) from one private-chat window, or None."""
+        from ..webchat import find_web_panes, read_items
+
+        try:
+            from pywinauto import Desktop
+
+            win = Desktop(backend="uia").window(handle=w.handle)
+            view, _inp = find_web_panes(win, "wb-log-im-data", "")
+            if view is None:
+                return None
+            nick = w.title.split(" (", 1)[0].strip() or "IM"
+            return self._im_pane_lines(read_items(view, tail=400)), nick
+        except Exception as ex:  # a chat window can close mid-read
+            log.debug("IM pane read failed for %r: %s", w.title, ex)
+            return None
+
+    def _im_window_messages(self, w) -> list[ChatMessage]:
+        """New messages from one private-chat window (the first read is a baseline)."""
+        lock = getattr(self, "com_lock", None)
+        if lock is not None:
+            with lock:  # UIA is COM-based: never race the sender thread
+                got = self._read_im_window(w)
+        else:
+            got = self._read_im_window(w)
+        if got is None:
+            return []
+        lines, nick = got
+        prev = self._im_prev.get(w.handle)
+        self._im_prev[w.handle] = lines
+        if prev is None:
+            return []  # baseline: never replay old history
+        out: list[ChatMessage] = []
+        for raw in diff_lines(prev, lines):
+            _time, text = raw.split("|", 1)
+            if text:
+                out.append(ChatMessage(nick, text, is_im=True))
+        return out
+
+    def _im_lines(self) -> list[ChatMessage]:
+        """Read new private messages from Camfrog IM panes (one per open chat)."""
+        out: list[ChatMessage] = []
+        if not hasattr(self, "_im_prev"):
+            self._im_prev: dict[int, list[str]] = {}
+        try:
+            from ..windows import candidates
+
+            wins = candidates(".*", exe_re=self.cfg.process_re)
+        except Exception as ex:
+            log.debug("IM window scan failed: %s", ex)
+            return out
+        own_pid = os.getpid()
+        main_handle = getattr(self, "handle", None)
+        live: set[int] = set()
+        for w in wins:
+            # Skip our own windows and the attached room window (``self.pid``
+            # was never set, so the old check skipped nothing).
+            if w.pid == own_pid or w.handle == main_handle:
+                continue
+            live.add(w.handle)
+            out.extend(self._im_window_messages(w))
+        # Forget baselines of closed chat windows (handles are reused by Windows).
+        for gone in [h for h in self._im_prev if h not in live]:
+            del self._im_prev[gone]
+        return out
+
     def messages(self):
         prev = None
         while True:
@@ -134,14 +219,31 @@ class UiaAdapter(ChatAdapter):
                 continue
             if prev is not None:
                 for line in diff_lines(prev, lines):
-                    # IM (private) messages in Camfrog are marked with an [IM] tag or "IM " prefix
-                    is_im = line.startswith(("IM ", "[IM]")) or " [IM] " in line
+                    # Camfrog builds have used several IM markers over time.
+                    # Detect all of them; a debug log record makes a new format
+                    # easy to spot from the normal startup log.
+                    low = line.lower()
+                    is_im = (
+                        line.startswith(("IM ", "[IM]", "(IM)", "PM ", "Private:", "IM:"))
+                        or low.startswith(("im from ", "private message from "))
+                        or "[IM]" in line
+                        or " (IM) " in line
+                    )
+                    if is_im:
+                        log.info("IM detected: %r", line[:240])
                     m = parse_line(line, self.rx, is_im=is_im)
                     if m is None and not is_im:
                         m = parse_join(line, self.join_rx)  # "<user> has entered the room"
                     if m:
                         yield m
             prev = lines  # first poll only sets the baseline: old history is never replayed
+            # Private messages live in a different web pane; read them too.
+            try:
+                for im in self._im_lines():
+                    log.info("IM received: %s: %s", im.user, im.text[:120])
+                    yield im
+            except Exception:  # IM reading must never break room chat
+                log.debug("IM read failed", exc_info=True)
             time.sleep(self.cfg.poll_interval)
 
     def _ensure_controls(self):

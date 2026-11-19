@@ -17,6 +17,13 @@ if TYPE_CHECKING:
     from camfrog_autodj.models import Track
 
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
+
+# Module level on purpose: with ``from __future__ import annotations`` FastAPI
+# resolves the ``request: Request`` annotation against module globals; a
+# function-local import made it a required *query* parameter, so /say,
+# /shuffle and /repeat answered every call with 422.
+from starlette.requests import Request  # noqa: TC002
 
 if TYPE_CHECKING:
     import uvicorn
@@ -31,10 +38,13 @@ from camfrog_autodj.webhook.models import WebhookConfig
 
 log = logging.getLogger("autodj.webhook")
 
+# Longest text accepted by /webhook/say and /webhook/play.
+MAX_SAY_CHARS = 1000
+
 
 # Request/Response models (defined at module level for FastAPI parameter detection)
 class PlayRequest(BaseModel):
-    query: str
+    query: str = Field(max_length=MAX_SAY_CHARS)
 
 
 class VolumeRequest(BaseModel):
@@ -150,7 +160,7 @@ def _add_metrics_endpoint(app: "FastAPI"):
             return Response(content="# Engine not available\n", media_type="text/plain")
 
         try:
-            health = state.engine.health_check()
+            health = await run_in_threadpool(state.engine.health_check)
             lines = [
                 f"autodj_health_ok {1 if health['ok'] else 0}",
                 f"autodj_mpv_available {1 if health['checks'].get('mpv', {}).get('ok', False) else 0}",
@@ -211,7 +221,7 @@ def _add_skip_endpoint(app: "FastAPI"):
         state = app.state.webhook_state
         if not state.engine:
             raise HTTPException(status_code=503, detail="Engine not available")
-        state.engine.skip()
+        await run_in_threadpool(state.engine.skip)
         return {"status": "skipped"}
 
 
@@ -229,7 +239,7 @@ def _add_volume_endpoint(app: "FastAPI"):
             raise HTTPException(status_code=503, detail="Engine not available")
 
         vol = body.volume
-        state.engine.set_volume(vol)
+        await run_in_threadpool(state.engine.set_volume, vol)
         return {"status": "ok", "volume": vol}
 
 
@@ -246,7 +256,7 @@ def _add_queue_endpoints(app: "FastAPI"):
         if not state.engine:
             raise HTTPException(status_code=503, detail="Engine not available")
 
-        snap = state.engine.snapshot()
+        snap = await run_in_threadpool(state.engine.snapshot)
         current = _track_to_dict(snap.get("current"))
         next_track = _track_to_dict(snap.get("next"))
 
@@ -278,7 +288,7 @@ def _add_queue_endpoints(app: "FastAPI"):
         if not state.engine:
             raise HTTPException(status_code=503, detail="Engine not available")
 
-        snap = state.engine.snapshot()
+        snap = await run_in_threadpool(state.engine.snapshot)
         queue = snap.get("queue", [])
         next_track = snap.get("next")
 
@@ -294,7 +304,7 @@ def _add_queue_endpoints(app: "FastAPI"):
         if not state.engine:
             raise HTTPException(status_code=503, detail="Engine not available")
 
-        snap = state.engine.snapshot()
+        snap = await run_in_threadpool(state.engine.snapshot)
         history = snap.get("history", [])
 
         return {"history": [_track_to_dict(t) for t in history]}
@@ -320,7 +330,7 @@ def _add_pause_endpoint(app: "FastAPI"):
         state = app.state.webhook_state
         if not state.engine:
             raise HTTPException(status_code=503, detail="Engine not available")
-        state.engine.pause()
+        await run_in_threadpool(state.engine.pause)
         return {"status": "paused"}
 
 
@@ -336,13 +346,13 @@ def _add_resume_endpoint(app: "FastAPI"):
         state = app.state.webhook_state
         if not state.engine:
             raise HTTPException(status_code=503, detail="Engine not available")
-        state.engine.resume()
+        await run_in_threadpool(state.engine.resume)
         return {"status": "resumed"}
 
 
 def _add_shuffle_endpoint(app: "FastAPI"):
     """Add /webhook/shuffle endpoint."""
-    from fastapi import Depends, HTTPException, Request
+    from fastapi import Depends, HTTPException
 
     auth_dep = Depends(verify_signature_dep)
 
@@ -367,7 +377,7 @@ def _add_shuffle_endpoint(app: "FastAPI"):
 
 def _add_repeat_endpoint(app: "FastAPI"):
     """Add /webhook/repeat endpoint."""
-    from fastapi import Depends, HTTPException, Request
+    from fastapi import Depends, HTTPException
 
     auth_dep = Depends(verify_signature_dep)
 
@@ -393,7 +403,7 @@ def _add_repeat_endpoint(app: "FastAPI"):
 
 def _add_chat_endpoints(app: "FastAPI"):
     """Add chat/say endpoints."""
-    from fastapi import Depends, HTTPException, Request
+    from fastapi import Depends, HTTPException
 
     auth_dep = Depends(verify_signature_dep)
 
@@ -413,6 +423,10 @@ def _add_chat_endpoints(app: "FastAPI"):
         text = text.strip() if isinstance(text, str) else ""
         if not text:
             raise HTTPException(status_code=400, detail="Missing text parameter")
+        if len(text) > MAX_SAY_CHARS:
+            # engine.say() wraps text into max_msg_len chunks sent one per
+            # send_interval: an unbounded text could flood the room for hours.
+            raise HTTPException(status_code=413, detail="Text too long")
 
         state.engine.say(text)
         return {"status": "sent"}
@@ -420,7 +434,7 @@ def _add_chat_endpoints(app: "FastAPI"):
 
 def _add_exception_handlers(app: "FastAPI"):
     """Add global exception handlers for clean error responses."""
-    from fastapi import HTTPException, Request
+    from fastapi import HTTPException
     from fastapi.responses import JSONResponse
 
     @app.exception_handler(HTTPException)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+import re
 import threading
 from collections import deque
 
@@ -40,9 +41,30 @@ class PlayQueue:
         """Return True if the queue has been mutated since *version*."""
         return self._version != version
 
-    def add_request(self, t: Track, position: int | None = None) -> int:
-        t.is_request = True
+    def add_request(self, t: Track, position: int | None = None, dedupe: bool = True) -> int:
+        """Queue a request; return its 1-based position, or 0 if it was a duplicate.
+
+        Callers must treat 0 as "not added": the old behaviour returned the
+        queue length for a dropped duplicate, so chat said "queued at #N",
+        recorded stats and persisted a song that was never queued.
+        ``dedupe=False`` forces the insert (e.g. !prev re-queueing a song).
+        """
+        # Persisted queues can contain hundreds of copies of the same song.
+        # Dedupe by source or normalised title so a failed/popped item is not
+        # immediately played again from a different video ID.
+        key = self._dedupe_key(t)
         with self.lock:
+            if (
+                dedupe
+                and key
+                and any(
+                    self._dedupe_key(q) == key
+                    and (q.requester == t.requester or t.requester in ("AutoDJ", "", None))
+                    for q in self.requests
+                )
+            ):
+                return 0
+            t.is_request = True
             if position is not None:
                 # Clamp position to valid range and insert at the front of the requests list
                 pos = max(0, min(position, len(self.requests)))
@@ -51,10 +73,30 @@ class PlayQueue:
                 req_list = list(self.requests)
                 req_list.insert(pos, t)
                 self.requests = deque(req_list)
-            else:
-                self.requests.append(t)
+                self._version += 1
+                return pos + 1
+            self.requests.append(t)
             self._version += 1
             return len(self.requests)
+
+    def replace_request(self, old: Track, new: Track) -> bool:
+        """Swap a queued request in place (e.g. a resolved ``ytsearch1:`` item).
+
+        Bumps the version so GUI pollers refresh; direct index assignment on
+        ``requests`` left the list showing the unresolved search title.
+        """
+        with self.lock:
+            for idx, req in enumerate(self.requests):
+                if req is old:
+                    self.requests[idx] = new
+                    self._version += 1
+                    return True
+            return False
+
+    @staticmethod
+    def _dedupe_key(t: Track) -> str:
+        title = re.sub(r"\W+", " ", t.title or "").strip().lower()
+        return title or (t.source or "").strip().lower()
 
     def add_pool(self, tracks: list[Track]):
         """Add to the autoplay pool, skipping sources that are already there (reloading a folder is harmless)."""

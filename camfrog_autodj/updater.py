@@ -80,6 +80,11 @@ def is_newer(latest: str, current: str) -> bool:
     return lv + (0,) * (width - len(lv)) > cv + (0,) * (width - len(cv))
 
 
+def _bat(value: object) -> str:
+    """Escape ``%`` for a .bat file: cmd expands ``%NAME%`` even inside quotes."""
+    return str(value).replace("%", "%%")
+
+
 def default_exe_path() -> Path:
     """Path of the running AutoDJ executable.
 
@@ -441,19 +446,26 @@ class Updater:
         safe_tag = re.sub(r"[^A-Za-z0-9._-]", "", tag)[:64]
         old = exe.with_name(exe.stem + ".old" + exe.suffix)
         script = exe.with_name("autodj_update.bat")
+        # chcp 65001: the script is written as UTF-8, and a non-ASCII install
+        # path (e.g. a Thai user profile) was mangled under the OEM codepage.
+        # Paths inside ( ... ) blocks are always quoted: an unquoted ")" such
+        # as "Program Files (x86)" closed the block early and broke the script.
         lines = [
             "@echo off",
+            "chcp 65001 >nul",
             "setlocal",
             "echo AutoDJ update: applying version %s..." % safe_tag,
-            'if not exist "%s" (echo ERROR: %s not found & goto end)' % (new_exe, new_exe),
-            'taskkill /f /im "%s" >nul 2>&1' % exe.name,
+            'if not exist "%s" (echo ERROR: "%s" not found & goto end)'
+            % (_bat(new_exe), _bat(new_exe)),
+            'taskkill /f /im "%s" >nul 2>&1' % _bat(exe.name),
             "timeout /t 2 /nobreak >nul",
-            'if exist "%s" del "%s"' % (old, old),
-            'ren "%s" "%s" || (echo ERROR: cannot rename running exe & goto end)' % (exe, old.name),
+            'if exist "%s" del "%s"' % (_bat(old), _bat(old)),
+            'ren "%s" "%s" || (echo ERROR: cannot rename running exe & goto end)'
+            % (_bat(exe), _bat(old.name)),
             'ren "%s" "%s" || (ren "%s" "%s" & echo ERROR: update failed, rolled back & goto end)'
-            % (new_exe, exe.name, old, exe.name),
-            'del "%s"' % old,
-            'start "" "%s"' % exe,
+            % (_bat(new_exe), _bat(exe.name), _bat(old), _bat(exe.name)),
+            'del "%s"' % _bat(old),
+            'start "" "%s"' % _bat(exe),
             ":end",
             "endlocal",
         ]

@@ -26,7 +26,7 @@
 ; Metadata (overridable from command line)
 ; -----------------------------------------------------------------------------
 !define /IfNDef APP_NAME "Camfrog AutoDJ"
-!define /IfNDef APP_VERSION "0.3.6"
+!define /IfNDef APP_VERSION "0.3.7"
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
 !define /IfNDef APP_EXE "AutoDJ.exe"
@@ -123,6 +123,9 @@ Section "!MainProgram" SEC_MAIN
     IfFileExists "$INSTDIR\config.toml" config_exists
     File "dist\config.toml"
 config_exists:
+    ; Bake this installation's absolute media-tool paths into config.toml.
+    ; AutoDJ.exe handles this without starting the bot or the GUI.
+    ExecWait '"$INSTDIR\AutoDJ.exe" --write-install-paths -c "$INSTDIR\config.toml"'
     ; config.toml can be customized by install.ps1 on first run (interactive prompts)
     File "dist\run_autodj.py"
 SectionEnd

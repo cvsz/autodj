@@ -61,6 +61,7 @@ def _parser() -> argparse.ArgumentParser:
         help="output logs in JSON format (structured logging)",
     )
     ap.add_argument("-v", "--verbose", action="store_true")
+    ap.add_argument("--write-install-paths", action="store_true", help=argparse.SUPPRESS)
     return ap
 
 
@@ -76,7 +77,27 @@ def _add_log_file(path: str, level: int):
 
 
 def main():
+    # Must run before pywinauto/comtypes are imported so UIA wrappers are
+    # generated in a writable directory instead of Program Files.
+    from .paths import prepare_comtypes
+
+    prepare_comtypes()
     a = _parser().parse_args()
+    if a.write_install_paths:
+        # Called by the NSIS installer: persist absolute media-tool paths so a
+        # deployed client never depends on CWD or relative resolution.
+        from .discover import save_config
+        from .paths import application_dir
+
+        mpv_dir = application_dir() / "mpv"
+        save_config(
+            a.config,
+            {
+                "mpv_path": str(mpv_dir / "mpv.exe"),
+                "ytdlp_path": str(mpv_dir / "yt-dlp.exe"),
+            },
+        )
+        return
     level = logging.DEBUG if a.verbose else logging.INFO
 
     # Always install a console handler: no flag may silence startup logging.

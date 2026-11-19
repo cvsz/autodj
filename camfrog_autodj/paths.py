@@ -28,6 +28,35 @@ def _expand_environment(value: str) -> str:
     return re.sub(r"%([^%]+)%", replace, expanded)
 
 
+def prepare_comtypes() -> Path | None:
+    """Point comtypes' generated COM wrappers at a writable user directory.
+
+    On a typical Windows install ``comtypes/gen`` lives under Program Files and
+    is not writable by a non-elevated process.  pywinauto then fails with
+    ``PermissionError`` and AutoDJ silently falls back to NullAdapter (no chat).
+    """
+    try:
+        import comtypes.client
+        import comtypes.gen
+    except Exception:  # comtypes is Windows-only / may be absent
+        return None
+    target = (
+        Path(os.environ.get("APPDATA", os.path.expanduser("~"))) / "CamfrogAutoDJ" / "comtypes_gen"
+    )
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
+    # gen_dir controls where wrappers are WRITTEN; comtypes.gen.__path__ is
+    # where Python IMPORTS them from. Both must point at the writable folder,
+    # otherwise a stale read-only wrapper is imported and the typelib version
+    # check fails ("Typelib different than module").
+    comtypes.client.gen_dir = str(target)
+    if str(target) not in comtypes.gen.__path__:
+        comtypes.gen.__path__.insert(0, str(target))
+    return target
+
+
 def log_directory() -> Path:
     """Return the install-folder ``logs`` directory (APPDATA fallback).
 
