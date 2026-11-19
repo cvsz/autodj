@@ -48,3 +48,16 @@ jobs:
         run: |
           python -m pip install mypy
           python -m mypy camfrog_autodj
+
+  docker-audit-image:
+    # The Dockerfile's build step runs ruff and the full pytest suite, so a
+    # successful build proves the audit image is usable.  Without it, a broken
+    # image build (e.g. missing test extras) went unnoticed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build audit image (runs lint + tests)
+        run: docker build --pull -t autodj-audit:ci .
