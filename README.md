@@ -2,9 +2,9 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
-## What's new in 0.3.5 (zPlayer GUI theme)
+## What's new in 0.3.6 (zPlayer GUI theme)
 
-The desktop GUI now ships a TkinterEP-inspired theme system with three built-in palettes — `zplayer-dark` (default studio look), `zplayer-neon` and `zplayer-light`. Pick one with `ui_theme` in `config.toml` or from the Settings panel. The now-playing dashboard has a larger title, separate up-next preview, a Previous transport button (`Engine.prev()`), and refreshed progress/volume styling. `welcome_message_delay` can hold the room greeting for a few seconds. All version sources are synchronized to 0.3.5. Full details: `CHANGELOG.md`.
+The desktop GUI now ships a TkinterEP-inspired theme system with three built-in palettes — `zplayer-dark` (default studio look), `zplayer-neon` and `zplayer-light`. Pick one with `ui_theme` in `config.toml` or from the Settings panel. The now-playing dashboard has a larger title, separate up-next preview, a Previous transport button (`Engine.prev()`), and refreshed progress/volume styling. `welcome_message_delay` can hold the room greeting for a few seconds. All version sources are synchronized to 0.3.6. Full details: `CHANGELOG.md`.
 
 ## What's new in 0.3.0 (Enterprise Production Release)
 Highlights: **Enterprise-grade exception hierarchy** with structured error codes, **Circuit breaker** for playback resilience, **Per-nick chat rate limiting**, **Health check endpoint** for monitoring, **C901 complexity fixes** in chat/player loops, **IM viewer GUI** with settings, **IM auto-reply** with cooldown, **Camfrog RE integrations**: gift detection, avatar change detection, status indicators, upgrade/payment alerts, name color tracking. Full list: `CHANGELOG.md`.

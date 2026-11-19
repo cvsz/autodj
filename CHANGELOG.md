@@ -1,3 +1,8 @@
+## 0.3.6 — 2026-11-19
+
+- **Release follow-up** — ships the final UI/runtime hardening from PR #241: now-playing dashboard restored, full palette coverage with the soft-slate `zplayer-light`, logs in `<install>/logs/`, and demo playlist auto-load disabled.
+- All version sources, documentation and installer metadata synchronized to 0.3.6. Full suite: 605 passed / 0 skipped; ruff, mypy, bandit (all metrics 0), shellcheck clean; signed build verified.
+
 ## 0.3.5 — 2026-11-18
 
 - **Feature: zPlayer GUI theme system** — new `camfrog_autodj/theme.py` provides three palettes (`zplayer-dark` default, `zplayer-neon`, `zplayer-light`) plus font/SVG helpers inspired by the TkinterEP projects (`ttkthemes`, `python-tkextrafont`, `python-tksvg`, `ttkwidgets`). The ideas are reimplemented with the standard library only (no GPL dependency); tkinter is imported lazily so console/headless runs stay tkinter-free. Select the theme with `ui_theme` in `config.toml` or the Settings panel (EN/TH labels included).
