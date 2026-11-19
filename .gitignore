@@ -25,6 +25,8 @@ htmlcov/
 .git-credentials
 # Incremental library-scan state written at runtime (camfrog_autodj/library.py)
 .autodj_scan_state.json
+# Plugin statistics written at runtime by the stats plugin
+plugin_stats.json
 # Tool caches
 .cache/
 .eslintcache

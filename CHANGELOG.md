@@ -1,5 +1,8 @@
-## Unreleased
+## 0.3.8 — 2026-11-19
 
+- **Freeze on the first private message (P0, found in a live Camfrog test)** — `Engine._handle_im_message` called `say()` while holding the non-reentrant `_chat_lock`; `say()` → `log_chat()` takes the same lock, so the chat loop deadlocked on the first IM and the GUI froze with it (`chat_snapshot`). IM auto-reply is on by default, so every 0.3.7 install was affected once IMs were read. The cooldown is now claimed under the lock and the reply sent outside it.
+- **IM viewer missed the first message of every new chat** — a chat window that opens after startup already contains the first IM, and the reader treated it as old history. Lines from new windows are now delivered when their timestamp is recent (history in windows open at startup is still never replayed). The IM log is also updated under the lock the viewer reads with.
+- Camfrog windows without an IM pane (buddy list, popups) are no longer re-scanned and logged on every poll.
 - **GUI freezes** — Skip, Prev and Ctrl+Right ran `MpvPlayer.stop()` (fade-out plus up to 5 s waiting for mpv) on the Tk main thread; they now run in the background.
 - **Discover button did nothing in the installed exe** — it ran `AutoDJ.exe -m camfrog_autodj --discover`, which argparse rejects in a PyInstaller build, and it blocked the window while running. It now calls the exe directly, runs in the background and shows the result.
 - **`--discover` without UIA started the bot** — with `chat_reader`/`chat_sender` not set to `uia`, the flag fell through and launched AutoDJ normally; it now explains the requirement and exits.

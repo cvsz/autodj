@@ -1563,11 +1563,12 @@ class Engine:
 
     def _log_im_message(self, msg: ChatMessage) -> None:
         """Log an IM / private message for the IM viewer GUI (read-only)."""
-        self.im_log.append((msg.user, msg.text))
-        if len(self.im_log) > 300:  # bounded: the IM viewer only shows recent history
-            del self.im_log[:-300]
-        self.im_seq += 1
-        self._im_version += 1
+        with self._chat_lock:  # im_snapshot() reads these under the same lock
+            self.im_log.append((msg.user, msg.text))
+            if len(self.im_log) > 300:  # bounded: the IM viewer only shows recent history
+                del self.im_log[:-300]
+            self.im_seq += 1
+            self._im_version += 1
 
     def _handle_room_join(self, msg: ChatMessage) -> None:
         """A user entered the room (``join_line_regex`` matched a room notice)."""
@@ -2066,23 +2067,27 @@ class Engine:
             return
         user = msg.user.lower()
         now = time.monotonic()
+        reply_text = self.cfg.im_auto_reply_message
+        if not reply_text:
+            return
+        # Decide and claim the cooldown under the lock, but send OUTSIDE it:
+        # say() -> log_chat() takes the same non-reentrant _chat_lock, so
+        # calling it here deadlocked the chat loop on the first IM, and the
+        # GUI (chat_snapshot) froze with it.
         with self._chat_lock:  # protect _im_reply_cooldowns across chat loop and cleanup loop
             last_reply = self._im_reply_cooldowns.get(user, float("-inf"))  # never replied
             if now - last_reply < self.cfg.im_auto_reply_cooldown:
                 log.debug("IM auto-reply on cooldown for %s", user)
                 return
-            # Send auto-reply (currently posts to room as fallback)
-            reply_text = self.cfg.im_auto_reply_message
-            if reply_text:
-                try:
-                    # Design limit: ChatAdapter has no private send channel, so the
-                    # fixed (operator-written) reply is posted to the room. Only the
-                    # canned text is sent — never the content of the user's IM.
-                    self.say(f"[IM auto-reply to {msg.user}] {reply_text}")
-                    self._im_reply_cooldowns[user] = time.monotonic()
-                    log.info("Sent IM auto-reply notification to room for %s", msg.user)
-                except Exception:
-                    log.exception("Failed to send IM auto-reply notification for %s", msg.user)
+            self._im_reply_cooldowns[user] = now
+        try:
+            # Design limit: ChatAdapter has no private send channel, so the
+            # fixed (operator-written) reply is posted to the room. Only the
+            # canned text is sent — never the content of the user's IM.
+            self.say(f"[IM auto-reply to {msg.user}] {reply_text}")
+            log.info("Sent IM auto-reply notification to room for %s", msg.user)
+        except Exception:
+            log.exception("Failed to send IM auto-reply notification for %s", msg.user)
 
     def _rate_limit_cleanup_loop(self):
         """Periodically clean up expired rate limit entries in the Router.

@@ -2,6 +2,14 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
+## What's new in 0.3.8 (hotfix)
+
+- **Fixes a freeze on the first private message:** with IM auto-reply on (the default), the bot's chat loop and the whole window locked up when the first IM arrived. Found in a live Camfrog test.
+- **IM viewer:** private messages now appear in the IM tab, including the first message of a new chat window.
+- **GUI:** Skip/Prev no longer freeze the window, and Discover works in the installed exe.
+
+Full details: `CHANGELOG.md`.
+
 ## What's new in 0.3.7 (deep audit fixes)
 
 Logic and security fixes from a full code audit:
