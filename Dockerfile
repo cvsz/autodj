@@ -35,8 +35,8 @@ RUN python -m pip install --upgrade pip setuptools && \
 
 # Build-time self-verification: the image is only usable when lint,
 # format, and the full test suite pass.
-RUN ruff check camfrog_autodj tests tools && \
-    ruff format --check camfrog_autodj tests tools && \
+RUN ruff check autodj tests tools && \
+    ruff format --check autodj tests tools && \
     xvfb-run -a python -m pytest -q -p no:faulthandler -p no:cacheprovider tests
 
 USER autodj

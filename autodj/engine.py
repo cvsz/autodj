@@ -58,6 +58,8 @@ FAIL_PLAYBACK = "playback_failed"  # mpv could not play the track
 FAIL_HUNG = "playback_hung"  # mpv did not exit within the expected time
 FAIL_CRASH = "playback_crashed"  # mpv exited with non-zero code
 FAIL_DELIVERY = "chat_delivery_failed"  # chat message could not be delivered
+FAIL_DROPPED = "chat_dropped"  # no chat connection (NullAdapter): message discarded
+MAX_DELIVERY_RECORDS = 500  # delivery log kept in memory (the bot runs 24/7)
 FAIL_CONFIG = "config_error"  # configuration problem
 
 _req_ids = itertools.count()  # global request ID_counter
@@ -189,6 +191,10 @@ class Engine:
         self._default_meta: Track | None = None  # cached title/duration lookup
         self._default_failed_until = 0.0  # after a failed play, use the pool for a while
         self._default_lookup_retry_at = 0.0  # after a failed metadata lookup
+        # When the player first found the request queue empty (monotonic), i.e.
+        # when the last requested song finished.  The idle timeout counts from
+        # here, so a long request is still followed by a full idle window.
+        self._queue_empty_since: float | None = None
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -468,6 +474,9 @@ class Engine:
             "text": clean_text(text)[:80],  # truncated: never log full private content
             "stage": stage,  # attempted | submitted | confirmed | failed
         }
+        if len(self._delivery_attempts) > MAX_DELIVERY_RECORDS:  # oldest first (dict order)
+            for old in list(self._delivery_attempts)[:-MAX_DELIVERY_RECORDS]:
+                del self._delivery_attempts[old]
         log.debug(
             "deliv=%d stage=%s text=%r",
             attempt_id,
@@ -491,7 +500,8 @@ class Engine:
             return
         rec["stage"] = "failed"
         rec["category"] = category
-        log.warning(
+        # A dropped message is already reported by NullAdapter.send(): no second warning.
+        (log.debug if category == FAIL_DROPPED else log.warning)(
             "deliv=%d stage=failed category=%s text=%r",
             attempt_id,
             category,
@@ -520,6 +530,11 @@ class Engine:
             attempt_id = self.log_delivery(m, "attempted")
             try:
                 self.adapter.send(m)
+                if not getattr(self.adapter, "delivers", True):
+                    # No chat connection: the message was discarded, not sent.  Not a
+                    # send failure either (that would suspend sending for nothing).
+                    self.fail_delivery(attempt_id, FAIL_DROPPED)
+                    continue
                 self.confirm_delivery(attempt_id)
                 self._record_send_success()
                 log.info("send ok: %r", m)
@@ -1183,6 +1198,7 @@ class Engine:
                     if t is not None and self._is_recent_failed(t):
                         skipped.append(t)
                         continue
+                    self._queue_empty_since = None  # a request plays: idle window restarts later
                     return t
             finally:
                 for i, t in enumerate(skipped):
@@ -1190,6 +1206,8 @@ class Engine:
             # Only recently failed requests are waiting: fall through to the
             # default song / autoplay pool instead of leaving the room silent.
         now = time.monotonic() if now is None else now
+        if self._queue_empty_since is None:
+            self._queue_empty_since = now  # queue just ran out: idle window starts
         src = (getattr(self.cfg, "default_track", "") or "").strip()
         if src and now >= self._default_failed_until:
             if self._default_due(now):
@@ -1205,12 +1223,17 @@ class Engine:
         return bool(src) and (t.source == src or (meta is not None and t.source == meta.source))
 
     def _default_due(self, now: float) -> bool:
-        """True at startup (no request yet) or after the idle timeout."""
+        """True at startup (no request yet), or once the request queue has been
+        empty AND nobody has requested anything for ``autoplay_idle_timeout``
+        seconds.  Both clocks matter: the window starts when the last requested
+        song finished (not when it was requested, which would skip the wait after
+        a long song) and a new request restarts it."""
         last = self._last_user_request_time
         if last <= 0:
             return True
         idle = float(getattr(self.cfg, "autoplay_idle_timeout", 30.0))
-        return now - last >= idle
+        start = max(last, self._queue_empty_since if self._queue_empty_since is not None else now)
+        return now - start >= idle
 
     def _default_track_for_play(self, src: str) -> Track:
         """A fresh, non-request Track for the default song.
@@ -1419,15 +1442,9 @@ class Engine:
                 if self.stop_evt.is_set():
                     break
                 # Ignore our own messages: match by normalized nick or by echo detection
-                if norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text):
+                if self._should_ignore_message(msg):
                     continue
-
-                if msg.event == "join":
-                    self._handle_room_join(msg)
-                elif msg.is_im:
-                    self._handle_im(msg)
-                else:
-                    self._handle_room_message(msg)
+                self._dispatch_chat(msg)
         except (OSError, RuntimeError, ChatAdapterError):
             # Expected adapter-level failures at shutdown or COM wedges
             if not self.stop_evt.is_set():
@@ -1438,6 +1455,17 @@ class Engine:
                 log.exception("chat loop ended with unexpected error")
         finally:
             self.chat_done.set()
+
+    def _dispatch_chat(self, msg: ChatMessage) -> None:
+        """Route one incoming chat event to its handler."""
+        if msg.event == "seen":  # in the room history at startup: present, nothing else
+            self._update_participant_count(msg.user)
+        elif msg.event == "join":
+            self._handle_room_join(msg)
+        elif msg.is_im:
+            self._handle_im(msg)
+        else:
+            self._handle_room_message(msg)
 
     def _should_ignore_message(self, msg: ChatMessage) -> bool:
         """Return True if the message should be ignored (echo or own message)."""
@@ -1477,16 +1505,30 @@ class Engine:
         now = time.monotonic()
         key = f"join:{user.lower()}"
         with self._chat_lock:
+            # The cleanup loop only runs with im_auto_reply_enabled: keep this dict
+            # bounded on its own (one key per IM sender from outside the room).
+            if len(self._im_reply_cooldowns) > 1000:
+                cutoff = now - self.cfg.im_auto_reply_cooldown * 2
+                for k in [k for k, t in self._im_reply_cooldowns.items() if t < cutoff]:
+                    del self._im_reply_cooldowns[k]
             if (
                 now - self._im_reply_cooldowns.get(key, float("-inf"))
                 < self.cfg.im_auto_reply_cooldown
             ):
                 return
             self._im_reply_cooldowns[key] = now
-        text = self.t("im_join_room_first", room=self.cfg.room or "")
-        while "  " in text:  # no room name configured: no double space
+        template = (getattr(self.cfg, "im_join_room_message", "") or "").strip()
+        if not template:
+            return  # operator turned the reply off
+        room = self.cfg.room or ""
+        if (
+            not room
+        ):  # no room name configured: drop the Join link instead of a bare "camfrog:join:"
+            template = template.replace("camfrog:join:{room}", "")
+        text = _fill(template, room=room, user=user)
+        while "  " in text:
             text = text.replace("  ", " ")
-        self.send_im(user, text)
+        self.send_im(user, text.strip())
 
     def send_im(self, user: str, text: str) -> bool:
         """Send *text* privately to *user* (never to the room).
@@ -1503,6 +1545,12 @@ class Engine:
             log.info("IM to %s not sent: chat adapter cannot send IMs", user)
             return False
         self._remember_sent(text)
+        # Camfrog renders camfrog:join:<room> / URLs as links and the IM reader keeps
+        # the text before the link: remember that part too, or our own reply comes
+        # back as an IM from the user ("IM received: zdevz: กรุณาเข้าห้อง").
+        visible = re.split(r"camfrog:|https?://", text, maxsplit=1)[0].strip()
+        if visible and visible != text:
+            self._remember_sent(visible)
         try:
             send(user, text)
         except Exception:
@@ -1754,13 +1802,22 @@ class Engine:
         low = body.lower()
         return any(k in low for k in self._STATUS_KEYWORDS)
 
+    # A status *notice* is a whole line of one of these shapes ("bob is now away",
+    # "bob is an admin").  Matching a bare substring announced ordinary chat:
+    # "anyway" -> away, a quote mentioning an "owner" -> "X is the room owner".
+    _STATUS_NOTICE_RE = re.compile(
+        r"^(?:\S{1,30}\s+)?is\s+(?:now\s+)?(?P<state>online|away|busy|invisible)\.?$"
+        r"|^(?:\S{1,30}\s+)?is\s+(?:an?\s+|the\s+(?:room\s+)?)(?P<role>admin|moderator|owner)\.?$",
+        re.IGNORECASE,
+    )
+
     def _is_status_indicator(self, body: str) -> str | None:
-        """Return the message key for a status indicator keyword found in body, else None."""
-        low = body.lower()
-        for keyword, msg_key in self._STATUS_INDICATOR_KEYWORDS.items():
-            if keyword in low:
-                return msg_key
-        return None
+        """Message key for a status notice line (whole line, see _STATUS_NOTICE_RE), else None."""
+        m = self._STATUS_NOTICE_RE.match(body.strip())
+        if not m:
+            return None
+        word = (m.group("state") or m.group("role")).lower()
+        return self._STATUS_INDICATOR_KEYWORDS.get(word)
 
     def _announce_gift(self, nick: str, body: str) -> None:
         """Announce a virtual gift detected in room chat."""

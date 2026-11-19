@@ -105,7 +105,7 @@ This manual covers administrative features, configuration, and operational proce
 admins = ["YourNick", "BackupAdmin"]
 
 # Bot's own nickname in the room (for echo detection)
-bot_nick = "AutoDJ"
+bot_nick = "AutoDJBot"
 
 # Command prefix
 prefix = "!"
@@ -335,8 +335,9 @@ im_auto_reply_enabled = true       # enable auto-reply to private/instant messag
 im_auto_reply_message = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
 im_auto_reply_cooldown = 60.0      # seconds between auto-replies to the same user (avoid spam)
 im_viewer_enabled = true           # show the IM / private message viewer tab in the GUI
-im_require_room_presence = true    # only users seen in room chat can DM the bot
-allow_play_in_room = false         # when true, !play works in room chat for all users
+im_require_room_presence = true    # only users seen in room chat can DM the bot; others get a private
+                                   # reply from im_join_room_message (once per im_auto_reply_cooldown)
+allow_play_in_room = true          # requests in room chat and by IM; false = IM only
 ```
 
 ### Camfrog RE Integrations (Gift / Avatar / Status / Alerts)
@@ -416,9 +417,9 @@ log_json_fields = [                    # extra fields to include in JSON logs
 
 ```toml
 ai_enabled = false
-ai_api_key = ""
-ai_base_url = "https://api.openai.com/v1"   # any OpenAI-compatible endpoint; https required (http only for localhost/127.0.0.1/::1)
-ai_model = "gpt-3.5-turbo"
+ai_api_key = ""                    # NVIDIA key (nvapi-...) from https://build.nvidia.com/settings
+ai_base_url = "https://integrate.api.nvidia.com/v1"   # any OpenAI-compatible endpoint; https required (http only for localhost/127.0.0.1/::1)
+ai_model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"   # NVIDIA API catalog model id
 ai_system_prompt = "..."
 ai_max_chars = 200                 # max characters in an AI reply
 ai_user_cooldown = 30.0            # seconds between AI replies to the same user

@@ -326,7 +326,7 @@ Key settings in `config.toml`:
 # Core
 prefix = "!"
 lang = "en"
-bot_nick = "AutoDJ"
+bot_nick = "AutoDJBot"
 admins = ["admin_nick"]  # case-insensitive
 
 # Chat
@@ -393,12 +393,12 @@ message_style = { font_family = "Consolas", font_size = 14, font_color = "#FF000
 - **Default song** (`default_track` in config.toml or Settings) starts when the program starts.
 - The **first request** cuts the default/autoplay song and plays **immediately**.
 - **Later requests** are queued first come, first served; a *requested* song is **never cut** and always plays to the end.
-- When the queue is empty and **nobody has requested for `autoplay_idle_timeout` (default 30 s)**, the default song plays again (repeating until the next request).
+- When the queue is empty and **nobody has requested for `autoplay_idle_timeout` (default 30 s) since the last requested song finished**, the default song plays again (repeating until the next request).
 - If the default link cannot be played, the autoplay pool is used for 10 minutes.
 
 ### Requesting from the room or by IM
 
-- `allow_play_in_room = true` → `!play` works in room chat; `false` → song requests by IM only (the bot tells room users to send an IM)
-- `im_require_room_presence = true` → IM commands are accepted only from users already seen in the room chat
+- `allow_play_in_room = true` (default) → song requests work in room chat **and** by IM; `false` → by IM only (the bot tells room users to send an IM). IM requests always need the sender to be in the room.
+- `im_require_room_presence = true` → IM commands are accepted only from users already seen in the room chat; anyone else gets a private reply: "กรุณาเข้าห้อง camfrog:join:{room} ก่อนขอเพลงครับ" (text: `im_join_room_message`; Camfrog shows `camfrog:join:<room>` as a Join link)
 - IM commands work with or without the prefix (`np` or `!np`)
 - The per-user request limit (`user_request_limit` per `rate_limit_window`) applies to every request alias (play, เล่น, ขอเพลง, เล่นเพลง, เปิดเพลง, aplay, addm, hbdp)

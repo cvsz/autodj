@@ -26,6 +26,12 @@ def _read(ctrl) -> str:
     return ""
 
 
+def _keys_literal(text: str) -> str:
+    """*text* as literal keystrokes for pywinauto.send_keys (newlines become spaces)."""
+    text = text.replace("\r", " ").replace("\n", " ")
+    return "".join("{%s}" % c if c in "+^%~(){}[]" else c for c in text)
+
+
 class UiaAdapter(ChatAdapter):
     """Windows UI Automation. Two layouts:
     - web (Camfrog room window): history/message box are embedded-web panes, see webchat.py
@@ -73,8 +79,50 @@ class UiaAdapter(ChatAdapter):
         self._view = self._input = None
         self._web = False
 
+    def _room_line_message(self, line: str) -> ChatMessage | None:
+        """A new room-history line as a ChatMessage (chat line, IM line or join notice)."""
+        # Camfrog builds have used several IM markers over time.  Detect all of
+        # them; a log record makes a new format easy to spot in the startup log.
+        low = line.lower()
+        is_im = (
+            line.startswith(("IM ", "[IM]", "(IM)", "PM ", "Private:", "IM:"))
+            or low.startswith(("im from ", "private message from "))
+            or "[IM]" in line
+            or " (IM) " in line
+        )
+        if is_im:
+            log.info("IM detected: %r", line[:240])
+        m = parse_line(line, self.rx, is_im=is_im)
+        if m is None and not is_im:
+            m = parse_join(line, self.join_rx)  # "<user> has entered the room"
+        return m
+
+    def _recent_nicks(self, lines: list[str], window_s: float = 3 * 3600.0) -> list[str]:
+        """Nicks that spoke or joined in *lines* within *window_s* (by the line's
+        ``H:MM`` stamp; a line without a stamp counts).  Camfrog's user list is a
+        virtual list view whose names cannot be read, so the room history is the
+        presence source at startup."""
+        seen: dict[str, None] = {}
+        for line in lines:
+            stamp = re.match(r"^\s*(\d{1,2}:\d{2}(?::\d{2})?)\b", line)
+            if stamp and not self._is_recent(stamp.group(1), window_s=window_s):
+                continue
+            m = parse_line(line, self.rx) or parse_join(line, self.join_rx)
+            if m and m.user:
+                seen[m.user] = None
+        return list(seen)
+
     def _find(self, ctype, idx):
-        return self.win.descendants(control_type=ctype)[idx]
+        """The idx-th control of ctype.  RuntimeError (which messages() retries)
+        when it is not there yet -- e.g. a Camfrog window that is still loading.
+        A bare IndexError used to escape and end the chat loop for good."""
+        found = self.win.descendants(control_type=ctype)
+        if not -len(found) <= idx < len(found):
+            raise RuntimeError(
+                f"chat control {ctype}[{idx}] not found ({len(found)} present); "
+                "room window not ready yet, or run AutoDJ.exe --discover"
+            )
+        return found[idx]
 
     def _resolve(self):
         """Locate the chat history (and message box) once; remembered until something fails."""
@@ -251,23 +299,17 @@ class UiaAdapter(ChatAdapter):
                     self._view = self.win = None  # drop everything: the next poll re-attaches fresh
                 time.sleep(1)
                 continue
-            if prev is not None:
+            if prev is None:
+                # First read: the history is a baseline and is never replayed, but
+                # the people in it are (most likely) still in the room.  Without
+                # this, after a restart everyone already present counted as "not
+                # in the room" until they spoke again, and their IM requests were
+                # refused (im_require_room_presence).
+                for nick in self._recent_nicks(lines):
+                    yield ChatMessage(nick, "", event="seen")
+            else:
                 for line in diff_lines(prev, lines):
-                    # Camfrog builds have used several IM markers over time.
-                    # Detect all of them; a debug log record makes a new format
-                    # easy to spot from the normal startup log.
-                    low = line.lower()
-                    is_im = (
-                        line.startswith(("IM ", "[IM]", "(IM)", "PM ", "Private:", "IM:"))
-                        or low.startswith(("im from ", "private message from "))
-                        or "[IM]" in line
-                        or " (IM) " in line
-                    )
-                    if is_im:
-                        log.info("IM detected: %r", line[:240])
-                    m = parse_line(line, self.rx, is_im=is_im)
-                    if m is None and not is_im:
-                        m = parse_join(line, self.join_rx)  # "<user> has entered the room"
+                    m = self._room_line_message(line)
                     if m:
                         yield m
             prev = lines  # first poll only sets the baseline: old history is never replayed
@@ -402,14 +444,15 @@ class UiaAdapter(ChatAdapter):
     def send_im(self, user: str, text: str) -> None:
         """Answer *user* privately in their open Camfrog IM window.
 
-        Background send first (posted messages, no focus change), verified by
-        reading the IM history back; if the line does not show up, falls back to
-        focus + paste + Enter and gives the user their foreground window back.
-        Raises RuntimeError when there is no IM window for *user*.
+        Camfrog's IM editor is a WebView2 pane that ignores posted keystrokes, so
+        the reply is pasted with the IM window in front.  The IM window is often
+        hidden behind the room window: it is brought to the front and the click
+        point is checked to be on it *before* anything is typed (a blind click
+        landed on the room window and the reply was lost).  Raises RuntimeError
+        when the window cannot be used or the line does not show up.
         """
         from pywinauto import Desktop
 
-        from .. import winmsg
         from ..webchat import find_web_panes, read_items
 
         with self.com_lock:
@@ -421,59 +464,77 @@ class UiaAdapter(ChatAdapter):
             if view is None or inp is None:
                 raise RuntimeError(f"IM window for {user!r} has no message box")
 
+            # Camfrog renders camfrog:join:<room> and URLs as links ("ZeaZDev (Join)"),
+            # and the IM reader keeps the text before a link: compare that part.
+            expect = re.split(r"camfrog:|https?://", text, maxsplit=1)[0].strip() or text.strip()
+
             def shown() -> int:
                 lines = self._im_pane_lines(read_items(view, tail=60))
-                return sum(1 for ln in lines if ln.split("|", 1)[-1].strip() == text.strip())
+                return sum(1 for ln in lines if ln.split("|", 1)[-1].strip() == expect)
 
             before = shown()
-            winmsg.show_noactivate(handle)
-            r = inp.rectangle()
-            pt = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
-            try:
-                winmsg.post_text_rich(handle, pt, text, enter=True, click=True)
-            except (OSError, RuntimeError) as e:
-                log.debug("IM background send failed: %s", e)
-            for _ in range(10):
+            self._send_im_fg(int(handle), win, inp, text)
+            for _ in range(20):  # up to 4 s for Camfrog to render the sent line
                 time.sleep(0.2)
                 if shown() > before:
-                    log.debug("IM sent to %s (background)", user)
+                    log.debug("IM sent to %s", user)
                     return
-            self._send_im_fg(win, inp, text)
-            log.debug("IM sent to %s (foreground)", user)
+            raise RuntimeError(f"IM to {user!r} was typed but did not appear in the IM window")
 
     @staticmethod
-    def _send_im_fg(win, inp, text: str) -> None:
-        import pyperclip
+    def _send_im_fg(handle: int, win, inp, text: str) -> None:
+        """Bring the IM window to the front, verify, then type the text + Enter.
+
+        Verified live: Camfrog's IM editor (WebView2) accepts typed keys -- Thai
+        included, sent as Unicode key events -- but ignores a clipboard paste,
+        and Ctrl+A does not select its text (one editing shortcut even sent the
+        draft).  So: click, type, Enter; nothing else.
+        """
+        import ctypes
+        from ctypes import wintypes
+
+        from pywinauto import mouse
         from pywinauto.keyboard import send_keys
 
         from .. import winmsg
 
+        u32 = ctypes.windll.user32  # type: ignore[attr-defined]
         prev = winmsg.foreground()
         try:
-            old_clip = pyperclip.paste()
-        except (pyperclip.PyperclipException, OSError):
-            old_clip = None
-        try:
+            if u32.IsIconic(handle):
+                u32.ShowWindow(handle, 9)  # SW_RESTORE
             try:
-                if win.is_minimized():
-                    win.restore()
-            except (RuntimeError, AttributeError):
-                pass
-            win.set_focus()
-            inp.click_input()  # web editor: only a click focuses it
-            pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
-            send_keys("^v")
+                win.set_focus()
+            except (RuntimeError, AttributeError, OSError):
+                pass  # the checks below decide
+            deadline = time.monotonic() + 2.0
+            while u32.GetForegroundWindow() != handle and time.monotonic() < deadline:
+                u32.BringWindowToTop(handle)
+                u32.SetForegroundWindow(handle)
+                time.sleep(0.1)
+            if u32.GetForegroundWindow() != handle:
+                raise RuntimeError("IM window could not be brought to the front; nothing typed")
+            time.sleep(0.15)
+            r = inp.rectangle()  # measured now that the window is in front
+            x, y = (r.left + r.right) // 2, (r.top + r.bottom) // 2
+            hit = u32.WindowFromPoint(wintypes.POINT(x, y))
+            if not hit or u32.GetAncestor(hit, 2) != handle:  # GA_ROOT
+                raise RuntimeError("IM message box is covered by another window; nothing typed")
+            mouse.click(coords=(x, y))  # web editor: only a click focuses it
+            time.sleep(0.35)  # WebView2 takes a moment to focus its editor after the click
+            if u32.GetForegroundWindow() != handle:
+                raise RuntimeError("IM window lost the focus before typing; nothing typed")
+            # Drop leftover draft text first, or it is sent glued to the reply.  End +
+            # Backspace only: they type no characters and never send (verified live;
+            # Ctrl+A does not select in this editor).
+            send_keys("{END}{BACKSPACE 120}", pause=0.002)
+            send_keys(_keys_literal(text), with_spaces=True, pause=0.005)
             time.sleep(0.15)
             send_keys("{ENTER}")
         finally:
             time.sleep(0.1)
-            if old_clip is not None:
-                try:
-                    pyperclip.copy(old_clip)
-                except (pyperclip.PyperclipException, OSError):
-                    pass
-            if prev and prev != int(win.handle):
-                winmsg.restore_foreground(prev)
+            if prev and prev != handle:
+                winmsg.restore_foreground(prev)  # give the user their window back
 
     def send(self, text):
         """Serialized entry point. UIA is COM-based: the reader thread and the sender thread must never

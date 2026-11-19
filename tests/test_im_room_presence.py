@@ -24,9 +24,7 @@ def test_im_from_outside_room_is_ignored_but_shown_in_viewer():
     e, routed, sent = _engine()
     e._handle_im(_im("stranger", "play x"))
     assert routed == []  # not executed...
-    assert sent == [
-        ("stranger", "Please join room before requesting songs.")
-    ]  # ...answered privately
+    assert sent == [("stranger", "กรุณาเข้าห้อง ก่อนขอเพลงครับ")]  # ...answered privately
     assert ("stranger", "play x") in e.im_snapshot()[2]
 
 

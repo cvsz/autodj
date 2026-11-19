@@ -2111,6 +2111,11 @@ class App(tk.Tk):
             "g_settings_im_auto_reply_cooldown",
         )
 
+        # Reply to IMs from users who are not in the room
+        self.s_im_join_room_message = self._entry(sp_inner)
+        self.s_im_join_room_message.insert(0, self.e.cfg.im_join_room_message)
+        _setting_row("g_settings_im_join_room_message", self.s_im_join_room_message)
+
         # IM auto-reply cooldown
         self.s_im_auto_reply_cooldown = self._entry(sp_inner)
         self.s_im_auto_reply_cooldown.insert(0, str(self.e.cfg.im_auto_reply_cooldown))
@@ -3173,7 +3178,19 @@ class App(tk.Tk):
         settings_menu = tk.Menu(menu_bar, tearoff=0)
         settings_menu.add_command(label=self.e.t("g_settings"), command=self.show_settings)
         menu_bar.add_cascade(label=self.e.t("g_settings"), menu=settings_menu)
+        help_menu = tk.Menu(menu_bar, tearoff=0)
+        help_menu.add_command(label=self.e.t("g_about"), command=self.show_about)
+        menu_bar.add_cascade(label=self.e.t("g_help"), menu=help_menu)
         self._menu_bar, self._settings_menu = menu_bar, settings_menu
+        self._help_menu = help_menu
+
+    def show_about(self) -> None:
+        """Help -> About: version and credit line."""
+        from tkinter import messagebox
+
+        from . import about_text
+
+        messagebox.showinfo(self.e.t("g_about"), about_text(), parent=self)
 
     def _relabel_menu(self) -> None:
         """Menu entries are not widgets in _labels: retitle them on language change."""
@@ -3181,6 +3198,15 @@ class App(tk.Tk):
             try:
                 if menu is not None and hasattr(menu, "entryconfigure"):
                     menu.entryconfigure(0, label=self.e.t("g_settings"))
+            except tk.TclError:
+                pass
+        for menu, index, key in (
+            (getattr(self, "_menu_bar", None), 1, "g_help"),
+            (getattr(self, "_help_menu", None), 0, "g_about"),
+        ):
+            try:
+                if menu is not None and hasattr(menu, "entryconfigure"):
+                    menu.entryconfigure(index, label=self.e.t(key))
             except tk.TclError:
                 pass
 
@@ -3709,6 +3735,7 @@ class App(tk.Tk):
             cfg.im_viewer_enabled = self.s_im_viewer_enabled
             cfg.im_auto_reply_enabled = self.s_im_auto_reply_enabled
             cfg.im_auto_reply_message = self.s_im_auto_reply_message.get().strip()
+            cfg.im_join_room_message = self.s_im_join_room_message.get().strip()
             cfg.im_auto_reply_cooldown = self._parse_float(
                 self.s_im_auto_reply_cooldown, "IM auto-reply cooldown"
             )
@@ -3846,6 +3873,7 @@ class App(tk.Tk):
             lines.append(f"im_viewer_enabled = {str(cfg.im_viewer_enabled).lower()}")
             lines.append(f"im_auto_reply_enabled = {str(cfg.im_auto_reply_enabled).lower()}")
             lines.append(f"im_auto_reply_message = {_toml_str(cfg.im_auto_reply_message)}")
+            lines.append(f"im_join_room_message = {_toml_str(cfg.im_join_room_message)}")
             lines.append(f"im_auto_reply_cooldown = {cfg.im_auto_reply_cooldown}")
             lines.append(f"im_require_room_presence = {str(cfg.im_require_room_presence).lower()}")
             lines.append(f"allow_play_in_room = {str(cfg.allow_play_in_room).lower()}")

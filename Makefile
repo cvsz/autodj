@@ -22,11 +22,17 @@ PY          ?= python
 #   $env:SHELL = "C:/Program Files/Git/bin/bash.exe"
 #   make build-all
 MPV_BUNDLE_EXE ?= D:/data/autodj-installer/mpv.exe
+# Without a POSIX shell, make falls back to cmd.exe: every `2>/dev/null` probe
+# fails, so RUFF came out empty and `make lint` silently ran py_compile only.
+# Stop with instructions instead of passing with fake results.
+ifneq ($(shell echo posix-ok 2>/dev/null),posix-ok)
+$(error This Makefile needs Git Bash on Windows. In cmd: set "SHELL=C:/Program Files/Git/bin/bash.exe" and set "PATH=C:\Program Files\Git\usr\bin;%PATH%" (PowerShell: $$env:SHELL / $$env:PATH, see the comment above), then run make again)
+endif
 else
 PY          ?= $(shell command -v python3 >/dev/null 2>&1 && echo python3 || echo python)
 endif
 PIP         := $(PY) -m pip
-PROJECT     := camfrog_autodj
+PROJECT     := autodj
 CONFIG      ?= config.toml
 VERSION     := $(shell $(PY) -c "import tomllib,sys; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])" 2>/dev/null || echo unknown)
 DIST_ZIP    := dist/camfrog-autodj-$(VERSION).zip

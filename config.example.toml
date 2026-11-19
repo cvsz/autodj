@@ -13,7 +13,7 @@
 # See autodj/config.py for the complete validation logic.
 
 # --- Core Bot Identity --------------------------------------------------------
-bot_nick = "AutoDJ"                 # Nickname the bot uses in the room (its own lines are ignored)
+bot_nick = "AutoDJBot"              # Nickname the bot uses in the room (its own lines are ignored)
 admins = []                         # Case-insensitive list of admin nicks (no default; configure operator nicks only)
 # WARNING: Nickname-based authorization is spoofable. Prefer immutable authenticated
 # account identifiers where the chat protocol supports them.
@@ -125,7 +125,7 @@ poll_interval = 0.5                 # Seconds between chat reads; raise to 1.0 i
 
 # IM Security
 im_require_room_presence = true     # Only users seen in room chat can DM the bot
-allow_play_in_room = false          # When true, !play works in room chat for all users (not just IM)
+allow_play_in_room = true           # Song requests in room chat too (IM works for users in the room); false = IM only
 
 # --- Logging -----------------------------------------------------------------
 log_file = "autodj.log"             # Log file (rotating, 1 MB x 3). Relative names go to <install>/logs/ (APPDATA fallback). Empty = default autodj.log there.
@@ -167,6 +167,7 @@ auto_reply_file = "ads-list.json"   # JSON file with messages to rotate through
 im_auto_reply_enabled = true        # Enable auto-reply to private/instant messages
 im_auto_reply_message = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
 im_auto_reply_cooldown = 60.0       # Seconds between auto-replies to the same user (avoid spam, 10-3600)
+im_join_room_message = "กรุณาเข้าห้อง camfrog:join:{room} ก่อนขอเพลงครับ"  # private reply to an IM sender not in the room ({room}; camfrog:join:<room> = Join link; "" = none)
 
 # --- Autoplay: Switch to Autoplay Pool After Idle Timeout --------------------
 # Default song: plays at startup, and again when the request queue is empty and nobody
@@ -266,10 +267,10 @@ auto_update_apply_on_start = true        # download latest AutoDJ.exe from GitHu
 # ---- AI chat replies (OpenAI-compatible API) — off by default ----------------------------
 # Answers non-command room lines (never private IMs). https required except for localhost.
 ai_enabled = false
-ai_api_key = ""                          # keep this file private (it is git-ignored)
-ai_base_url = "https://api.openai.com/v1"
-ai_model = "gpt-3.5-turbo"
-ai_system_prompt = "You are AutoDJ, a music bot in a Camfrog room. Keep replies short, friendly, and on-topic. Do not claim to play music unless asked."
+ai_api_key = ""                          # NVIDIA key (nvapi-...) from https://build.nvidia.com/settings; keep this file private (it is git-ignored). Empty = AI stays off
+ai_base_url = "https://integrate.api.nvidia.com/v1"  # any OpenAI-compatible endpoint (https)
+ai_model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"   # NVIDIA API catalog model id
+ai_system_prompt = "You are AutoDJ, a music bot in a Camfrog room. Keep replies short, friendly, and on-topic. Do not claim to play music unless asked. Powered by NVIDIA AI"
 ai_max_chars = 200                       # reply length cap (Camfrog line limit)
 ai_user_cooldown = 30.0                  # seconds between AI replies to the same user
 

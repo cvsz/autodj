@@ -26,7 +26,7 @@
 ; Metadata (overridable from command line)
 ; -----------------------------------------------------------------------------
 !define /IfNDef APP_NAME "Camfrog AutoDJ"
-!define /IfNDef APP_VERSION "0.3.8"
+!define /IfNDef APP_VERSION "0.3.9"
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
 !define /IfNDef APP_EXE "AutoDJ.exe"
@@ -64,6 +64,17 @@ CRCCheck on
 !include "LogicLib.nsh"
 !include "FileFunc.nsh"
 !include "x64.nsh"
+
+; Close a running AutoDJ (and an mpv) started from THIS install folder before
+; files are replaced or removed: a running AutoDJ.exe is locked, so an upgrade
+; stopped with "Error opening file for writing" and an uninstall left files
+; behind.  Matched by path, so another copy or the user's own mpv is untouched.
+!macro STOP_RUNNING_AUTODJ
+    DetailPrint "Closing AutoDJ if it is running from $INSTDIR ..."
+    nsExec::ExecToLog `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Get-Process AutoDJ,mpv -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like '$INSTDIR\*' } | Stop-Process -Force -ErrorAction SilentlyContinue"`
+    Pop $0
+    Sleep 1000
+!macroend
 
 !define MUI_ICON "app.ico"
 !define MUI_UNICON "app.ico"
@@ -108,6 +119,7 @@ CRCCheck on
 Section "!MainProgram" SEC_MAIN
     SectionIn RO
     SetOutPath "$INSTDIR"
+    !insertmacro STOP_RUNNING_AUTODJ
     ; Log destination: AutoDJ writes autodj.log (and rotations) here so operators
     ; can read bot actions from the install folder. Keep logs on upgrades.
     CreateDirectory "$INSTDIR\logs"
@@ -256,6 +268,7 @@ Function un.onInit
 FunctionEnd
 
 Section Uninstall
+    !insertmacro STOP_RUNNING_AUTODJ
     ; Remove shortcuts
     Delete "$SMPROGRAMS\CamfrogAutoDJ\CamfrogAutoDJ.lnk"
     Delete "$SMPROGRAMS\CamfrogAutoDJ\Edit Config.lnk"

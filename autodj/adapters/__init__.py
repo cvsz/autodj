@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Iterator, Optional
+from typing import TYPE_CHECKING, Callable, Iterator, Optional
 
 from .base import ChatAdapter, ChatMessage
 
@@ -114,6 +114,26 @@ class Composite(ChatAdapter):
 
     def send(self, text: str) -> None:
         self.sender.send(text)
+
+    @property
+    def delivers(self) -> bool:
+        """False when the sender only discards messages (NullAdapter)."""
+        return bool(getattr(self.sender, "delivers", True))
+
+    @property
+    def send_im(self) -> Callable[[str, str], None] | None:
+        """Private-message sender of the wrapped adapters, or None.
+
+        The reader is asked first: with UIA it is the one that has seen the IM
+        windows (and knows which window belongs to which user).  Without this,
+        Engine.send_im found no ``send_im`` on the Composite and every IM reply
+        was silently skipped in the live room.
+        """
+        for adapter in (self.reader, self.sender):
+            fn = getattr(adapter, "send_im", None)
+            if callable(fn):
+                return fn  # type: ignore[no-any-return]
+        return None
 
     def close(self) -> None:
         self.reader.close()
@@ -258,6 +278,8 @@ class NullAdapter(ChatAdapter):
     """Fallback adapter when Camfrog cannot be reached (pywinauto missing, no room
     window open, ...). The GUI still opens; chat simply does nothing until Camfrog
     is available and discovery is re-run."""
+
+    delivers = False  # send() discards: the engine must not log it as delivered
 
     def messages(self) -> Iterator[ChatMessage]:  # no chat lines ever
         return iter(())

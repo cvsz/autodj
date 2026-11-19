@@ -137,10 +137,16 @@ def test_play_file_uses_create_no_window_on_windows(monkeypatch):
     """On Windows, play_file must set creationflags=0x08000000 to avoid console flash."""
     captured_kw = {}
 
-    def fake_run(cmd, **kw):
-        captured_kw.update(kw)
+    class FakeClip:  # play_file uses Popen (so the clip can be tied to AutoDJ's lifetime)
+        def wait(self, timeout=None):
+            return 0
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    def fake_popen(cmd, **kw):
+        captured_kw.update(kw)
+        return FakeClip()
+
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr("autodj.player.kill_with_parent", lambda proc: True)
     monkeypatch.setattr("autodj.player._is_windows", lambda: True)
 
     cfg = Config(mpv_path="mpv")
@@ -155,10 +161,16 @@ def test_play_file_no_creationflags_on_posix(monkeypatch):
     """On non-Windows, play_file must not set creationflags."""
     captured_kw = {}
 
-    def fake_run(cmd, **kw):
-        captured_kw.update(kw)
+    class FakeClip:  # play_file uses Popen (so the clip can be tied to AutoDJ's lifetime)
+        def wait(self, timeout=None):
+            return 0
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    def fake_popen(cmd, **kw):
+        captured_kw.update(kw)
+        return FakeClip()
+
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr("autodj.player.kill_with_parent", lambda proc: True)
     monkeypatch.setattr("autodj.player._is_windows", lambda: False)
 
     cfg = Config(mpv_path="mpv")

@@ -714,9 +714,9 @@ function Create-Config {
     # Interactive config edits - simplified to avoid regex issues
     try {
         if (Confirm "Configure basic settings now? (bot nickname, admin, music folder)") {
-            Write-Host "Bot nickname in Camfrog room [AutoDJ]:"
+            Write-Host "Bot nickname in Camfrog room [AutoDJBot]:"
             $botNick = Read-Host
-            if (-not $botNick) { $botNick = "AutoDJ" }
+            if (-not $botNick) { $botNick = "AutoDJBot" }
             Write-Host "Your Camfrog nickname (admin):"
             $adminNick = Read-Host
             Write-Host "Music folder path [D:\Music]:"
@@ -725,10 +725,16 @@ function Create-Config {
 
             $content = Get-Content $configPath -Raw
             # Use simple string replacement for the key values
-            $content = $content -replace 'bot_nick = "AutoDJ"', ('bot_nick = "' + $botNick + '"')
-            $content = $content -replace 'admins = \["Seaza"\]', ('admins = ["' + $adminNick + '"]')
-            $musicDirFixed = $musicDir -replace '\\', '/'
-            $content = $content -replace 'music_dirs = \["D:/Music"\]', ('music_dirs = ["' + $musicDirFixed + '"]')
+            # Match each key whatever its current value (the old literal patterns never
+            # matched the example's `admins = []` / `music_dirs = []`). Quotes/backslashes
+            # would break the TOML string and `$` the .NET replacement: strip/escape them.
+            $tomlSafe = { param($v) (($v -replace '["\\]', '').Trim()).Replace('$', '$$') }
+            $content = $content -replace '(?m)^bot_nick\s*=\s*"[^"]*"', ('bot_nick = "' + (& $tomlSafe $botNick) + '"')
+            if ($adminNick) {
+                $content = $content -replace '(?m)^admins\s*=\s*\[[^\]]*\]', ('admins = ["' + (& $tomlSafe $adminNick) + '"]')
+            }
+            $musicDirFixed = (& $tomlSafe ($musicDir -replace '\\', '/'))
+            $content = $content -replace '(?m)^music_dirs\s*=\s*\[[^\]]*\]', ('music_dirs = ["' + $musicDirFixed + '"]')
             Set-Content $configPath -Value $content -Encoding utf8
             SubStep "Configuration updated with your settings" -Success
         }
@@ -954,7 +960,7 @@ function Main {
     Write-Host ""
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
     Write-Host "           Camfrog AutoDJ - Windows 11 Automated Installer" -ForegroundColor $C_CYAN
-    Write-Host "                         Version 0.3.8" -ForegroundColor $C_CYAN
+    Write-Host "                         Version 0.3.9" -ForegroundColor $C_CYAN
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
     Write-Host ""
     Write-Log "=== CamfrogAutoDJ Installer Started ==="

@@ -287,7 +287,7 @@ function Auto-ConfigComplete {
         '# ============================'
         ''
         '# --- Core Bot Identity --------------------------------------------------------'
-        'bot_nick = "AutoDJ"'
+        'bot_nick = "AutoDJBot"'
         'admins = ["Seaza"]'
         'prefix = "!"'
         'lang = "th"'

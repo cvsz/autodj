@@ -72,9 +72,14 @@ class MessageStyle:
 # to the same class.
 
 
+# Shipped default nick: the setup check (doctor) asks to replace it with the
+# nickname the bot really chats as.
+DEFAULT_BOT_NICK = "AutoDJBot"
+
+
 @dataclass
 class Config:
-    bot_nick: str = "AutoDJ"
+    bot_nick: str = DEFAULT_BOT_NICK
     admins: list[str] = field(default_factory=list)
     prefix: str = "!"
     lang: str = "en"  # en | th (bot replies and GUI)
@@ -219,10 +224,15 @@ class Config:
         "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
     )
     im_auto_reply_cooldown: float = 60.0  # seconds between auto-replies to the same user
+    # Private reply to an IM sender who is not in the room (im_require_room_presence).
+    # {room} = room name; Camfrog shows camfrog:join:<room> as a Join link. "" = no reply.
+    im_join_room_message: str = "กรุณาเข้าห้อง camfrog:join:{room} ก่อนขอเพลงครับ"
 
     # IM Security: require user to be in room to use IM commands
     im_require_room_presence: bool = True  # only users seen in room chat can DM the bot
-    allow_play_in_room: bool = False  # when true, !play works in room chat for all users
+    # Song requests in room chat too (IM always works for users in the room;
+    # see im_require_room_presence / im_join_room_message). False = IM only.
+    allow_play_in_room: bool = True
 
     # Autoplay: switch to autoplay pool after idle timeout
     # Default song: plays at startup and whenever the request queue is empty and
@@ -312,11 +322,11 @@ class Config:
     # AI: optional chat-completion integration (disabled by default)
     ai_enabled: bool = False  # enable AI chat replies
     ai_api_key: str = ""  # API key for the AI provider
-    ai_base_url: str = "https://api.openai.com/v1"  # OpenAI-compatible base URL
-    ai_model: str = "gpt-3.5-turbo"  # model name
+    ai_base_url: str = "https://integrate.api.nvidia.com/v1"  # NVIDIA Inference API endpoint
+    ai_model: str = "nvidia/llama-3.3-nemotron-super-49b-v1.5"  # NVIDIA API catalog model id
     ai_system_prompt: str = (
         "You are AutoDJ, a music bot in a Camfrog room. Keep replies short, "
-        "friendly, and on-topic. Do not claim to play music unless asked."
+        "friendly, and on-topic. Do not claim to play music unless asked. Powered by NVIDIA AI"
     )
     ai_max_chars: int = 200  # max characters in AI reply
     ai_user_cooldown: float = 30.0  # seconds between AI replies to same user

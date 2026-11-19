@@ -589,3 +589,21 @@ def test_track_name_color_no_color_leaves_default():
 def test_name_colors_initialized_empty():
     e = _re_engine()
     assert e._name_colors == {}
+
+
+def test_status_indicator_ignores_ordinary_chat():
+    """Live bug: words inside normal chat were announced as status changes."""
+    from autodj.adapters import NullAdapter
+    from autodj.config import Config
+    from autodj.engine import Engine
+
+    e = Engine(Config(), NullAdapter())
+    for body in (
+        "anyway, play something",
+        "who are the admins here?",
+        "Happiness comes from the owner of your own mind",
+        "I'm online now lol",
+        "busy day today",
+        "bob is now away from keyboard for a bit",
+    ):
+        assert e._is_status_indicator(body) is None, body

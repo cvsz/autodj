@@ -105,7 +105,7 @@
 admins = ["YourNick", "BackupAdmin"]
 
 # ชื่อของบอทในห้อง (สำหรับตรวจจับข้อความตัวเอง)
-bot_nick = "AutoDJ"
+bot_nick = "AutoDJBot"
 
 # คำนำหน้าคำสั่ง
 prefix = "!"
@@ -335,8 +335,9 @@ im_auto_reply_enabled = true       # enable auto-reply to private/instant messag
 im_auto_reply_message = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
 im_auto_reply_cooldown = 60.0      # seconds between auto-replies to the same user (avoid spam)
 im_viewer_enabled = true           # show the IM / private message viewer tab in the GUI
-im_require_room_presence = true    # only users seen in room chat can DM the bot
-allow_play_in_room = false         # when true, !play works in room chat for all users
+im_require_room_presence = true    # รับ IM เฉพาะคนที่เคยพิมพ์ในห้อง; คนอื่นได้รับ IM ส่วนตัว
+                                   # im_join_room_message (ค่าเริ่มต้น "กรุณาเข้าห้อง camfrog:join:{room} ก่อนขอเพลงครับ"; ครั้งเดียวต่อ im_auto_reply_cooldown)
+allow_play_in_room = true          # requests in room chat and by IM; false = IM only
 ```
 
 ### Camfrog RE Integrations (Gift / Avatar / Status / Alerts)
@@ -414,9 +415,9 @@ log_json_fields = [                    # extra fields to include in JSON logs
 
 ```toml
 ai_enabled = false
-ai_api_key = ""
-ai_base_url = "https://api.openai.com/v1"   # endpoint ที่รองรับ OpenAI API; ต้องเป็น https (http ใช้ได้เฉพาะ localhost/127.0.0.1/::1)
-ai_model = "gpt-3.5-turbo"
+ai_api_key = ""                    # NVIDIA key (nvapi-...) from https://build.nvidia.com/settings
+ai_base_url = "https://integrate.api.nvidia.com/v1"   # endpoint ที่รองรับ OpenAI API; ต้องเป็น https (http ใช้ได้เฉพาะ localhost/127.0.0.1/::1)
+ai_model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"   # NVIDIA API catalog model id
 ai_system_prompt = "..."
 ai_max_chars = 200                 # ความยาวคำตอบ AI สูงสุด (ตัวอักษร)
 ai_user_cooldown = 30.0            # วินาทีระหว่างคำตอบ AI ถึงผู้ใช้คนเดิม

@@ -1,6 +1,6 @@
 # CLAUDE.md — ZEAZ Claude Code Operating Instructions (AutoDJ)
 
-Read `AGENTS.md` first. Act as a senior architect, engineer, security auditor, DevOps/SRE, QA and release engineer for **CamfrogAutoDJ v0.3.8**.
+Read `AGENTS.md` first. Act as a senior architect, engineer, security auditor, DevOps/SRE, QA and release engineer for **CamfrogAutoDJ v0.3.9**.
 
 ## Project Context
 
@@ -176,7 +176,7 @@ gh pr merge <PR_NUMBER> --merge --match-head-commit <EXPECTED_HEAD_SHA>
 git fetch origin
 git checkout main
 git pull origin main  # fast-forward
-# Verify: code present on main, full pytest suite passes (631 at v0.3.7), ruff clean
+# Verify: code present on main, full pytest suite passes (694 at v0.3.9), ruff clean
 ```
 
 ### Rules

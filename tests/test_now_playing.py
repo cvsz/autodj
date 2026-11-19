@@ -177,9 +177,33 @@ def test_default_returns_only_after_queue_empty_and_30s_idle():
     _req(e, "amy", "a")
     e._pop_next_track(time.monotonic())  # amy's song taken from the queue
     t0 = e._last_user_request_time
-    assert e._pop_next_track(t0 + 10) is None  # queue empty but only 10 s idle: wait
-    t = e._pop_next_track(t0 + 31)
-    assert t is not None and t.source == DEFAULT_URL  # > 30 s idle: default song
+    assert e._pop_next_track(t0 + 10) is None  # amy's song ended at +10: queue empty, wait
+    assert e._pop_next_track(t0 + 31) is None  # only 21 s since the queue ran out
+    t = e._pop_next_track(t0 + 41)
+    assert t is not None and t.source == DEFAULT_URL  # 30 s empty + no request: default
+
+
+def test_long_request_is_still_followed_by_a_full_idle_window():
+    """A 4-minute request ends long after it was requested: still wait 30 s."""
+    e = _engine_with_default()
+    _req(e, "amy", "long song")
+    t0 = e._last_user_request_time
+    assert e._pop_next_track(t0).title == "long song"
+    ended = t0 + 240
+    assert e._pop_next_track(ended) is None  # used to start the default song right here
+    assert e._pop_next_track(ended + 29) is None
+    t = e._pop_next_track(ended + 30.5)  # not +30: float rounding of monotonic sums
+    assert t is not None and t.source == DEFAULT_URL
+
+
+def test_request_during_idle_window_cancels_the_default():
+    e = _engine_with_default()
+    _req(e, "amy", "a")
+    t0 = e._last_user_request_time
+    e._pop_next_track(t0)
+    assert e._pop_next_track(t0 + 100) is None  # queue empty, window starts
+    _req(e, "ben", "b")  # someone asks within the 30 s
+    assert e._pop_next_track(time.monotonic()).title == "b"
 
 
 def test_default_song_repeats_while_idle():
@@ -361,7 +385,13 @@ def test_tts_play_file_ducks_and_restores_music(monkeypatch):
     p = MpvPlayer(Config(), threading.Event())
     vols: list[int] = []
     monkeypatch.setattr(p, "set_volume", lambda v: vols.append(v) or True)
-    monkeypatch.setattr("autodj.player.subprocess.run", lambda *a, **k: None)
+
+    class FakeClip:  # never start a real mpv in tests (CI has none)
+        def wait(self, timeout=None):
+            return 0
+
+    monkeypatch.setattr("autodj.player.subprocess.Popen", lambda *a, **k: FakeClip())
+    monkeypatch.setattr("autodj.player.kill_with_parent", lambda proc: True)
     p.play_file("tts.wav", duck_volume=20, restore_volume=70)
     assert vols == [20, 70]
 

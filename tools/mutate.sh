@@ -28,21 +28,21 @@ PY
 }
 
 echo "M1: disable echo guard in chat loop"
-run_one camfrog_autodj/engine.py "or self._is_echo(msg.text)" "or False"
+run_one autodj/engine.py "or self._is_echo(msg.text)" "or False"
 echo "M2: disable failure back-off/throttle (always announce)"
-run_one camfrog_autodj/engine.py "if fails <= MAX_FAIL_ANNOUNCE:" "if True:"
+run_one autodj/engine.py "if fails <= MAX_FAIL_ANNOUNCE:" "if True:"
 echo "M3: remove post-lookup limit re-check"
-run_one camfrog_autodj/commands.py '            if e.queue.count_by(m.user) >= c.max_requests_per_user:
+run_one autodj/commands.py '            if e.queue.count_by(m.user) >= c.max_requests_per_user:
                 raise UserError(e.t("max_requests", n=c.max_requests_per_user))
             src = tracks[0].source' '            src = tracks[0].source'
 echo "M4: remove duplicate-request guard"
-run_one camfrog_autodj/commands.py 'raise UserError(e.t("already_queued"))' 'pass'
+run_one autodj/commands.py 'raise UserError(e.t("already_queued"))' 'pass'
 echo "M5: remove-by-position instead of identity"
-run_one camfrog_autodj/commands.py "if e.queue.remove_track(t):" "if e.queue.remove(int(a)):"
+run_one autodj/commands.py "if e.queue.remove_track(t):" "if e.queue.remove(int(a)):"
 echo "M6: help line starts with prefix again"
-run_one camfrog_autodj/messages.py '"help_base": "Commands: {p}play' '"help_base": "{p}play'
+run_one autodj/messages.py '"help_base": "Commands: {p}play' '"help_base": "{p}play'
 echo "M7: config accepts string admins"
-run_one camfrog_autodj/config.py "        if not ok:
+run_one autodj/config.py "        if not ok:
             hint" "        if False:
             hint"
 echo
