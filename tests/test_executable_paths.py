@@ -73,6 +73,26 @@ def test_player_never_launches_mpv_com(monkeypatch):
         assert all(not arg.lower().endswith(".com") for arg in player._base())
 
 
+def test_prepare_comtypes_uses_writable_directory(monkeypatch, tmp_path):
+    try:
+        import comtypes.client
+        import comtypes.gen
+    except ImportError:  # comtypes is Windows-only
+        return
+    original_dir = comtypes.client.gen_dir
+    original_path = list(comtypes.gen.__path__)
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    try:
+        result = paths.prepare_comtypes()
+        assert result is not None
+        assert result.is_dir()
+        assert str(result).startswith(str(tmp_path))
+        assert str(result) in comtypes.gen.__path__
+    finally:  # never leave process-wide comtypes state behind
+        comtypes.client.gen_dir = original_dir
+        comtypes.gen.__path__[:] = original_path
+
+
 def test_log_path_defaults_to_install_logs_folder(monkeypatch, tmp_path):
     monkeypatch.setattr(paths, "application_dir", lambda: tmp_path)
     assert paths.resolve_log_path(None) == tmp_path / "logs" / "autodj.log"

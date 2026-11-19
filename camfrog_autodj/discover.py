@@ -144,7 +144,14 @@ def scan_window(win) -> list[Ctl]:
                 vis, ena = bool(c.is_visible()), bool(c.is_enabled())
             except (AttributeError, RuntimeError):
                 vis = ena = True
-            out.append(Ctl(ctype, i, _read(c), *box, enabled=ena, visible=vis))
+            try:
+                text = _read(c)
+            except Exception as ex:  # NoPatternInterfaceError / NULL COM pointer:
+                log.debug(
+                    "discover: skip %s[%d] (%s)", ctype, i, ex
+                )  # one bad control must not abort the scan
+                continue
+            out.append(Ctl(ctype, i, text, *box, enabled=ena, visible=vis))
     return out
 
 
@@ -184,7 +191,7 @@ def discover(cfg) -> dict | None:
         try:
             win = Desktop(backend="uia").window(handle=c.handle)
             f = score_web(c.title, win, cfg, rx) or score_window(c.title, scan_window(win), rx)
-        except (AttributeError, RuntimeError) as e:  # a window can vanish mid-scan
+        except Exception as e:  # a window can vanish or expose no UIA patterns mid-scan
             log.debug("skip %r: %s", c.title, e)
             continue
         if f:
@@ -258,7 +265,10 @@ def update_config_text(text: str, updates: dict[str, object]) -> str:
                     old_d = tomllib.loads(f"{key} = {old_val_part}")
                     new_d = tomllib.loads(new)
                     if old_d.get(key) == new_d.get(key):
-                        continue
+                        # Keep the original line, but stop scanning for this
+                        # key: `continue` would fall through to the `else`
+                        # clause below and append a duplicate TOML key.
+                        break
                 except (tomllib.TOMLDecodeError, ValueError):
                     pass  # value comparison failed; update anyway
                 lines[i] = m.group(1) + new + (m.group(2) or "")

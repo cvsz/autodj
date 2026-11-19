@@ -319,6 +319,19 @@ def local_track(path, requester: str = "AutoDJ") -> Track:
     return Track(str(p), title, dur, requester)
 
 
+def _is_link(entry: os.DirEntry[str]) -> bool:
+    """True for symlinks *and* Windows directory junctions.
+
+    ``DirEntry.is_symlink()`` is False for junctions, so a junction loop
+    (e.g. ``Music\\loop -> Music``) recursed until ``max_dirs`` -- unbounded
+    for manual scans.  ``is_junction()`` exists on Python 3.12+.
+    """
+    if entry.is_symlink():
+        return True
+    is_junction = getattr(entry, "is_junction", None)
+    return bool(is_junction and is_junction())
+
+
 def scan_folder(  # noqa: C901
     folder, requester: str = "AutoDJ", limit: int = 0, incremental: bool = False, max_dirs: int = 0
 ) -> list[Track]:
@@ -343,7 +356,7 @@ def scan_folder(  # noqa: C901
         if limit and len(tracks) >= limit:
             break
         try:
-            if entry.is_symlink():
+            if _is_link(entry):
                 continue  # never follow symlinks: avoids cycles and slow reparse points
             if entry.is_dir():
                 subdirs.append(entry.path)
@@ -425,7 +438,7 @@ def _scan_folder_recursive(  # noqa: C901
         if limit and len(tracks) >= limit:
             break
         try:
-            if entry.is_symlink():
+            if _is_link(entry):
                 continue
             if entry.is_dir():
                 if remaining_dirs <= 0:

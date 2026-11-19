@@ -48,6 +48,7 @@ MAX_FAIL_ANNOUNCE = (
     3  # consecutive failed tracks announced in the room; after that only the log hears about it
 )
 MAX_BACKOFF = 30.0  # seconds, ceiling of the pause between consecutive failed tracks
+RECENT_FAIL_TTL = 600.0  # seconds a failed song is skipped before it may be retried
 AI_MAX_INFLIGHT = 2  # concurrent AI provider calls; further room lines are not sent to the AI
 ECHO_TTL = 120.0  # seconds a line we posted is remembered, to recognise it when it comes back from the room
 
@@ -129,6 +130,12 @@ class Engine:
         self._ai_inflight = 0
         self._ai_inflight_lock = threading.Lock()
         self.history: deque[Track] = deque(maxlen=20)  # newest first
+        # Tracks that just failed: key -> monotonic expiry. Time-bounded so a
+        # failed request becomes playable again later (a count-bounded deque
+        # never forgot anything and could stall the player for good).
+        self._recent_failed: dict[str, float] = {}
+        self._recent_failed_lock = threading.Lock()
+        self._stats_lock = threading.Lock()  # serialises top_requests.json read-modify-write
         self.blocked: set[str] = {b.lower() for b in cfg.blocked_users}
         self.fail_delay = lambda n: min(
             MAX_BACKOFF, 2.0 ** (n - 1)
@@ -365,8 +372,10 @@ class Engine:
     def say(self, text: str) -> bool:
         """Queue a message for sending to the chat room.
 
-        Returns True if the message was queued, False if chat sends are
-        suspended due to repeated failures (circuit breaker).
+        Returns True if the message was queued, False if it was empty after
+        cleaning.  Messages are queued even while sends are suspended after
+        repeated failures: the suspension only clears on a successful send,
+        so refusing to queue would make it permanent.
         """
         text = clean_text(text)
         if not text:
@@ -550,7 +559,9 @@ class Engine:
                 break
         if prev_track is not None:
             # Re-queue at front so it plays next
-            self.queue.add_request(prev_track, position=0)
+            # dedupe=False: the duplicate check would silently refuse the
+            # re-queue while stop() below still cut the current song.
+            self.queue.add_request(prev_track, position=0, dedupe=False)
         self.player.stop()
 
     def note_request(self) -> None:
@@ -582,7 +593,7 @@ class Engine:
         if self.stop_evt.wait(delay):
             return
         cur = self.current
-        if cur is not None and not cur.is_request and self.queue.requests:
+        if cur is not None and not cur.is_request and self._has_playable_request():
             log.info("request still waiting behind %r: cutting it", cur.title)
             self.skip()
 
@@ -795,24 +806,30 @@ class Engine:
             counter_path = Path("top_requests.json")
 
         try:
-            try:
-                data = json.loads(counter_path.read_text(encoding="utf-8-sig"))
-            except (FileNotFoundError, json.JSONDecodeError, OSError):
-                data = {"requests": []}
-            if not isinstance(data, dict) or not isinstance(data.get("requests"), list):
-                data = {"requests": []}
-            data["requests"].append({"source": source, "title": title, "ts": time.time()})
-            # เก็บแค่ 30 วันย้อนหลัง
-            cutoff = time.time() - 86400.0 * 30
-            data["requests"] = [r for r in data["requests"] if r.get("ts", 0) >= cutoff]
-            tmp = counter_path.with_suffix(".json.tmp")
-            tmp.write_text(
-                json.dumps(data, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
-            tmp.replace(counter_path)
+            with self._stats_lock:  # concurrent requests lost updates / raced on the .tmp
+                self._record_request_locked(counter_path, source, title)
         except OSError:
             log.exception("failed to record request for top_requests")
+
+    @staticmethod
+    def _record_request_locked(counter_path: Path, source: str, title: str) -> None:
+        """Append one request to top_requests.json (caller holds _stats_lock)."""
+        try:
+            data = json.loads(counter_path.read_text(encoding="utf-8-sig"))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            data = {"requests": []}
+        if not isinstance(data, dict) or not isinstance(data.get("requests"), list):
+            data = {"requests": []}
+        data["requests"].append({"source": source, "title": title, "ts": time.time()})
+        # เก็บแค่ 30 วันย้อนหลัง
+        cutoff = time.time() - 86400.0 * 30
+        data["requests"] = [r for r in data["requests"] if r.get("ts", 0) >= cutoff]
+        tmp = counter_path.with_suffix(".json.tmp")
+        tmp.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        tmp.replace(counter_path)
 
     def resolve(self, arg: str, user: str, admin: bool) -> list[Track]:
         arg = self._normalize_url_arg(arg.strip().strip('"'))
@@ -875,10 +892,7 @@ class Engine:
                 tracks = self.resolve(arg, user, True)
                 if not tracks:
                     raise UserError(self.t("nothing_found"))
-                pos = 0
-                for t in tracks:
-                    pos = self.queue.add_request(t)
-                    self._log_track(t, "QUEUED", req_id)
+                pos, tracks = self._enqueue_requests(tracks, req_id)
                 self.wake.set()
                 self.note_request()
                 self.preempt_unrequested()
@@ -914,6 +928,23 @@ class Engine:
                     self.say(self.t("error"))
 
         self.exec.submit(job)
+
+    def _enqueue_requests(self, tracks: list[Track], req_id: str) -> tuple[int, list[Track]]:
+        """Queue *tracks*; return (last position, tracks actually queued).
+
+        Duplicates dropped by ``PlayQueue.add_request`` are not reported as
+        queued; ``UserError`` is raised when nothing was added.
+        """
+        pos, added = 0, []
+        for t in tracks:
+            n = self.queue.add_request(t)
+            if n:
+                pos = n
+                added.append(t)
+                self._log_track(t, "QUEUED", req_id)
+        if not added:
+            raise UserError(self.t("already_queued"))
+        return pos, added
 
     def load_source(self, src: str, limit: int = 0) -> list[Track]:
         if is_url(src) or SEARCH_PREFIX.match(src):  # "ytsearch20:text" works as an autoplay source
@@ -993,11 +1024,7 @@ class Engine:
                     break
                 resolved = self._resolve_track_if_search(cand)
                 if resolved is not cand:
-                    with self.queue.lock:
-                        for idx, req in enumerate(self.queue.requests):
-                            if req is cand or req.source == cand.source:
-                                self.queue.requests[idx] = resolved
-                                break
+                    self.queue.replace_request(cand, resolved)
         except Exception:
             log.debug("preload search tracks encountered an issue", exc_info=True)
 
@@ -1146,7 +1173,22 @@ class Engine:
         * Without ``default_track`` the autoplay pool plays as before.
         """
         if self.queue.requests:
-            return self.queue.pop()  # user request: play now
+            # A failed song must not be picked again before a different one.
+            # Put skipped items back at the front, in their original order, so
+            # they keep their FIFO place once the failure back-off expires.
+            skipped: list[Track] = []
+            try:
+                for _ in range(len(self.queue.requests)):
+                    t = self.queue.pop()
+                    if t is not None and self._is_recent_failed(t):
+                        skipped.append(t)
+                        continue
+                    return t
+            finally:
+                for i, t in enumerate(skipped):
+                    self.queue.add_request(t, position=i, dedupe=False)
+            # Only recently failed requests are waiting: fall through to the
+            # default song / autoplay pool instead of leaving the room silent.
         now = time.monotonic() if now is None else now
         src = (getattr(self.cfg, "default_track", "") or "").strip()
         if src and now >= self._default_failed_until:
@@ -1269,6 +1311,10 @@ class Engine:
         """
         t.state = "FAILED"
         self._log_track(t, "FAILED")
+        key = self._track_key(t)
+        if key:
+            with self._recent_failed_lock:
+                self._recent_failed[key] = time.monotonic() + RECENT_FAIL_TTL
         self.current = None
         self._emit("track_failed", t, "playback failed")
         if not t.is_request and self._is_default_track(t):
@@ -1284,6 +1330,32 @@ class Engine:
             delay,
             fails,
         )
+
+    @staticmethod
+    def _track_key(t: Track) -> str:
+        """Normalised identity used to avoid immediately replaying a failed song."""
+        return norm(f"{t.title or ''} {t.source or ''}")
+
+    def _is_recent_failed(self, t: Track) -> bool:
+        key = self._track_key(t)
+        if not key:
+            return False
+        now = time.monotonic()
+        with self._recent_failed_lock:
+            for k in [k for k, exp in self._recent_failed.items() if exp <= now]:
+                del self._recent_failed[k]
+            return key in self._recent_failed
+
+    def _has_playable_request(self) -> bool:
+        """True if a queued request exists that is not in its failure back-off.
+
+        Only those may pre-empt an autoplay/default song: a queue holding
+        nothing but recently failed requests used to block the pool forever
+        (the pool track was popped, then refused because "a request waits").
+        """
+        with self.queue.lock:
+            reqs = list(self.queue.requests)
+        return any(not self._is_recent_failed(r) for r in reqs)
 
     def _try_play(self, t: Track) -> bool:
         try:
@@ -1303,7 +1375,7 @@ class Engine:
         recorded = False
         announced = False  # repeat-one must not re-post "now playing" every loop
         while not self.stop_evt.is_set():
-            if not t.is_request and self.queue.requests:
+            if not t.is_request and self._has_playable_request():
                 # A request arrived while this autoplay/startup song was being
                 # picked: requests go first, so don't start it at all.
                 log.info("not starting %r: a request is waiting", t.title)

@@ -310,13 +310,11 @@ def _aplay_fav(e: "Engine", m: "ChatMessage", stripped: str, admin: bool) -> Non
         _assert_queue_capacity(e, m.user)  # Fast pre-check
         for t in tracks:
             _assert_not_already_queued(e, t)  # Prevent duplicate favorite requests
-    pos = 0
     with e.queue.lock:  # Re-check under lock to prevent TOCTOU race
         if not admin:
             _assert_queue_capacity(e, m.user)
             _assert_not_already_queued(e, tracks[0])
-        for t in tracks:
-            pos = e.queue.add_request(t)  # FIFO: first requester plays first
+        pos, tracks = _enqueue(e, tracks)  # FIFO: first requester plays first
     for t in tracks:  # stats file I/O outside the queue lock
         e.record_request(t.source, t.title)
     e.wake.set()
@@ -347,13 +345,11 @@ def _play(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
         raise UserError(e.t("nothing_found"))
     if not admin:
         tracks = _validate_non_admin_track(e, c, tracks)
-    pos = 0
     with e.queue.lock:  # the lookup above can take seconds: re-check now, atomically with the add
         if not admin:
             _assert_queue_capacity(e, m.user)
             _assert_not_already_queued(e, tracks[0])
-        for t in tracks:
-            pos = e.queue.add_request(t)  # FIFO: requests play in the order they arrive
+        pos, tracks = _enqueue(e, tracks)  # FIFO: requests play in the order they arrive
     for t in tracks:  # บันทึกสถิติสำหรับ /topm (file I/O outside the queue lock)
         e.record_request(t.source, t.title)
     e.wake.set()
@@ -364,6 +360,25 @@ def _play(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
         e.say(e.t("queued_one", pos=pos, title=tracks[0].title, dur=tracks[0].dur, user=m.user))
     else:
         e.say(e.t("queued_many", n=len(tracks), user=m.user))
+
+
+def _enqueue(e: "Engine", tracks: list["Track"]) -> tuple[int, list["Track"]]:
+    """Queue *tracks*; return (position of the last added, tracks actually added).
+
+    ``PlayQueue.add_request`` drops duplicates (same title from the same
+    requester).  Reporting "queued at #N" for a dropped song, recording it in
+    the request stats and persisting it to the playlist was wrong, so callers
+    only act on what was really queued.  Raises ``UserError`` if nothing was.
+    """
+    pos, added = 0, []
+    for t in tracks:
+        n = e.queue.add_request(t)
+        if n:
+            pos = n
+            added.append(t)
+    if not added:
+        raise UserError(e.t("already_queued"))
+    return pos, added
 
 
 def _assert_queue_capacity(e: "Engine", user: str) -> None:
@@ -872,7 +887,7 @@ def _hbdp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
                 _assert_not_already_queued(e, tracks[0])
             for t in tracks:
                 t.requester = m.user
-                e.queue.add_request(t)  # waits its turn like any request
+            _enqueue(e, tracks)  # waits its turn like any request
         e.wake.set()
         _cut_current(e)
         e.say(e.t("hbdp_playing", title=tracks[0].title, name=name))

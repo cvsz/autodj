@@ -18,6 +18,9 @@ if TYPE_CHECKING:
 # Key for storing raw body in request.state
 _RAW_BODY_KEY = "_webhook_raw_body"
 
+# Largest accepted request body. Every endpoint takes a tiny JSON document.
+MAX_BODY_BYTES = 64 * 1024
+
 
 class RawBodyMiddleware(BaseHTTPMiddleware):
     """Middleware to capture the raw request body before any parsing.
@@ -29,24 +32,34 @@ class RawBodyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # Check if body is already cached (e.g., by TestClient)
         if hasattr(request, "_body") and request._body is not None:
+            if len(request._body) > MAX_BODY_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": "Request body too large", "status_code": 413},
+                )
             request.state.__dict__[_RAW_BODY_KEY] = request._body
             return await call_next(request)
 
-        # Consume the receive stream to get the raw body
-        body_chunks = []
-        more_body = True
-
-        async def receive():
-            nonlocal more_body
+        # Consume the receive stream to get the raw body. Bounded: an unbounded
+        # read let any client hold arbitrary amounts of memory before auth ran.
+        body_chunks: list[bytes] = []
+        size = 0
+        while True:
             message = await request._receive()
-            if message["type"] == "http.request":
-                body_chunks.append(message.get("body", b""))
-                more_body = message.get("more_body", False)
-            return message
-
-        # Read all body chunks
-        while more_body:
-            await receive()
+            if message["type"] != "http.request":
+                # http.disconnect: the old loop kept polling forever here
+                # (more_body never became False), pinning a CPU core.
+                return Response(status_code=400)
+            chunk = message.get("body", b"")
+            size += len(chunk)
+            if size > MAX_BODY_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": "Request body too large", "status_code": 413},
+                )
+            body_chunks.append(chunk)
+            if not message.get("more_body", False):
+                break
 
         # Store the complete raw body
         raw_body = b"".join(body_chunks)

@@ -237,6 +237,17 @@ def test_window_pick():
     assert pick([], self_pid=1) is None
 
 
+def test_window_pick_prefers_main_client_over_room_list_dialog():
+    from camfrog_autodj.windows import Cand, pick
+
+    cs = [
+        Cand(1, "รายชื่อห้องสนทนา", "#32770", 10),  # room-list dialog
+        Cand(2, "Camfrog Video Chat", "A", 10),
+    ]
+    picked = pick(cs, self_pid=99)
+    assert picked is not None and picked.handle == 2
+
+
 def test_discover_pick_and_config(tmp_path):
     import re
 

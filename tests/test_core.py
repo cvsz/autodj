@@ -52,6 +52,16 @@ def test_diff_lines():
     assert diff_lines([], ["a"]) == []
 
 
+def test_parse_im_marker_is_stripped_from_nick():
+    from camfrog_autodj.config import Config
+
+    rx = __import__("re").compile(Config().line_regex)
+    m = parse_line("IM mika: สวัสดี", rx, is_im=True)
+    assert m is not None and m.user == "mika" and m.is_im is True
+    m2 = parse_line("[IM] boss: !play", rx, is_im=False)
+    assert m2 is not None and m2.user == "boss" and m2.is_im is True
+
+
 def test_parse_line():
     rx = re.compile(Config().line_regex)
     m = parse_line("[12:30] mika_88: !play queen", rx)

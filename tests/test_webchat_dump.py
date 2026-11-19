@@ -10,6 +10,19 @@ A = ("avatar", "")
 RX = re.compile(Config().line_regex)
 
 
+def test_im_pane_lines_parses_camfrog_private_history():
+    from camfrog_autodj.adapters.uia import UiaAdapter
+
+    items = [
+        ("text", "วันเสาร์, ตุลาคม 03"),
+        ("text", "6:52"),
+        ("text", "555"),
+        ("text", "17:37"),
+        ("text", "สวัสดี"),
+    ]
+    assert UiaAdapter._im_pane_lines(items) == ["6:52|555", "17:37|สวัสดี"]
+
+
 def t(n):
     return ("text", n)
 
