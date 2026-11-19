@@ -107,7 +107,7 @@ def test_failures_are_throttled_and_backed_off():
     th.join(2)
     cannot = [o for o in out(e) if o.startswith("Could not play")]
     assert e.player.plays >= 3  # retries continue without relying on scheduler speed...
-    assert 1 <= len(cannot) <= 3  # ...but only announced a few times
+    assert cannot == []  # ...and failures are never announced in the room
     assert delays[:3] == [1, 2, 3]  # consecutive-failure counter grows
 
 

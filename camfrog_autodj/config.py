@@ -248,7 +248,9 @@ class Config:
 
     # Welcome Message
     welcome_message_enabled: bool = True  # greet every (non-admin) user who enters the room
-    welcome_message_message: str = "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"  # {user} {room}
+    welcome_message_message: str = (
+        "ยินดีต้อนรับ {user} เข้าสู่ {room} สถานีเพลง อัตโนมัติ 24/7 ชั่วโมง"  # {user} {room}
+    )
     welcome_message_delay: float = 0.0  # seconds to wait before sending the welcome (0 = instant)
     # Room notice for someone entering, with a (?P<user>...) group; "" disables join detection
     # (users are then greeted on their first message). Check the exact wording your Camfrog

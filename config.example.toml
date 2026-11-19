@@ -221,7 +221,7 @@ admin_delete_message_enabled = true # Enable !delete <msg id> command
 # Arrival is detected from the room's join notice (join_line_regex); without one, users are
 # greeted on their first message instead.
 welcome_message_enabled = true      # Greet users entering the room
-welcome_message_message = "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"  # {user} = nick, {room} = room name
+welcome_message_message = "ยินดีต้อนรับ {user} เข้าสู่ {room} สถานีเพลง อัตโนมัติ 24/7 ชั่วโมง"  # {user} = nick, {room} = room name
 welcome_message_cooldown = 3600.0   # Seconds between greetings for the same user (1 hour, 60-86400)
 welcome_message_delay = 0.0         # Seconds to wait before sending the welcome (0 = instant; 0-3600)
 # Room notice for someone entering; must contain (?P<user>...). "" = greet on first message only.

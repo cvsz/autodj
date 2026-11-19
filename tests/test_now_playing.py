@@ -334,12 +334,15 @@ def test_welcome_cooldown_independent_of_machine_uptime(monkeypatch):
     import camfrog_autodj.engine as eng
 
     e = make()
+    e.cfg.room = "ZeaZDev"
     monkeypatch.setattr(eng.time, "monotonic", lambda: 5.0)  # PC booted 5 s ago
     e._handle_welcome_message(ChatMessage("amy", "hi"))
-    assert out(e) == [e.cfg.welcome_message_message.replace("{user}", "amy")]
+    expected = e.cfg.welcome_message_message.replace("{user}", "amy").replace("{room}", "ZeaZDev")
+    assert out(e) == [expected]
 
 
-def test_unknown_command_reaches_plugins():
+def test_unknown_command_reaches_plugins(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)  # the stats plugin keeps plugin_stats.json in the CWD
     e = make()
     from camfrog_autodj.plugins.manager import PluginManager
 

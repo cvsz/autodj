@@ -189,6 +189,9 @@ class UiaAdapter(ChatAdapter):
             self._im_not_im.add(w.handle)  # no IM pane: stop re-scanning this window
             return []
         lines, nick = got
+        if not hasattr(self, "_im_handles"):
+            self._im_handles: dict[str, int] = {}
+        self._im_handles[nick.lower()] = w.handle  # where send_im() answers this user
         prev = self._im_prev.get(w.handle)
         self._im_prev[w.handle] = lines
         if prev is None:
@@ -395,6 +398,82 @@ class UiaAdapter(ChatAdapter):
                     pass  # clipboard restore is best-effort
             if prev and prev != int(self.win.handle):
                 winmsg.restore_foreground(prev)  # give the user their window back
+
+    def send_im(self, user: str, text: str) -> None:
+        """Answer *user* privately in their open Camfrog IM window.
+
+        Background send first (posted messages, no focus change), verified by
+        reading the IM history back; if the line does not show up, falls back to
+        focus + paste + Enter and gives the user their foreground window back.
+        Raises RuntimeError when there is no IM window for *user*.
+        """
+        from pywinauto import Desktop
+
+        from .. import winmsg
+        from ..webchat import find_web_panes, read_items
+
+        with self.com_lock:
+            handle = getattr(self, "_im_handles", {}).get(user.lower())
+            if handle is None:
+                raise RuntimeError(f"no open IM window for {user!r}")
+            win = Desktop(backend="uia").window(handle=handle)
+            view, inp = find_web_panes(win, "wb-log-im-data", self.cfg.web_input_title)
+            if view is None or inp is None:
+                raise RuntimeError(f"IM window for {user!r} has no message box")
+
+            def shown() -> int:
+                lines = self._im_pane_lines(read_items(view, tail=60))
+                return sum(1 for ln in lines if ln.split("|", 1)[-1].strip() == text.strip())
+
+            before = shown()
+            winmsg.show_noactivate(handle)
+            r = inp.rectangle()
+            pt = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
+            try:
+                winmsg.post_text_rich(handle, pt, text, enter=True, click=True)
+            except (OSError, RuntimeError) as e:
+                log.debug("IM background send failed: %s", e)
+            for _ in range(10):
+                time.sleep(0.2)
+                if shown() > before:
+                    log.debug("IM sent to %s (background)", user)
+                    return
+            self._send_im_fg(win, inp, text)
+            log.debug("IM sent to %s (foreground)", user)
+
+    @staticmethod
+    def _send_im_fg(win, inp, text: str) -> None:
+        import pyperclip
+        from pywinauto.keyboard import send_keys
+
+        from .. import winmsg
+
+        prev = winmsg.foreground()
+        try:
+            old_clip = pyperclip.paste()
+        except (pyperclip.PyperclipException, OSError):
+            old_clip = None
+        try:
+            try:
+                if win.is_minimized():
+                    win.restore()
+            except (RuntimeError, AttributeError):
+                pass
+            win.set_focus()
+            inp.click_input()  # web editor: only a click focuses it
+            pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
+            send_keys("^v")
+            time.sleep(0.15)
+            send_keys("{ENTER}")
+        finally:
+            time.sleep(0.1)
+            if old_clip is not None:
+                try:
+                    pyperclip.copy(old_clip)
+                except (pyperclip.PyperclipException, OSError):
+                    pass
+            if prev and prev != int(win.handle):
+                winmsg.restore_foreground(prev)
 
     def send(self, text):
         """Serialized entry point. UIA is COM-based: the reader thread and the sender thread must never

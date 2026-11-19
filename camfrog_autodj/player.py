@@ -231,11 +231,25 @@ class MpvPlayer:
         if hung:
             rc, reached_end = self._stop_after_hang(p, source, duration)
             ok = reached_end
+        # Computed before taking _lock: _played() takes it itself.
+        played_to_end = (
+            duration is not None and duration > 0 and self._played(started) >= duration - 5.0
+        )
         with self._lock:
             self.proc = None
             self._ipc = None
             if not hung:
                 ok = rc == 0 or self.skipped
+                if not ok and played_to_end:
+                    # Streams often end with mpv exit code 1 (a dropped connection
+                    # or hook error at EOF) after the whole song played: that is a
+                    # completed track, not a failure to announce.
+                    log.info(
+                        "mpv exited with code %s after playing %s to the end: completed",
+                        rc,
+                        source,
+                    )
+                    ok = True
         if rc is None:  # defensive: never pass None to _report (asserts vanish under -O)
             rc = -1
         self._report(ok, rc, source, logf)
