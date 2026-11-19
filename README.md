@@ -2,6 +2,18 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
+## What's new in 0.3.9
+
+- **Default song waits a real 30 seconds:** after the last requested song finishes, AutoDJ waits `autoplay_idle_timeout` (30 s) for a new request before the default song (`default_track`) plays. It used to start at once after any request longer than 30 s.
+- **Private IM replies actually go out:** replies ("กรุณาเข้าห้อง {room} ก่อนถึงสามารถขอเพลงได้" for users outside the room, IM auto-reply) are sent in the user's IM window and never in the room.
+- **No false status announcements:** ordinary chat such as "anyway" or a quote mentioning an "owner" no longer makes the bot announce "X is now away" / "X is the room owner".
+- **mpv.exe ends when AutoDJ ends,** even after End task or a crash. The installer also closes a running AutoDJ before upgrading or uninstalling.
+- **Help → About** shows the version and "camfrog:add:Seaza Dev @ZEAZDEV COMPANY LIMITED".
+- The chat loop no longer dies when Camfrog's room window is still loading, and messages dropped while Camfrog is closed are no longer logged as sent.
+- AI defaults use the NVIDIA API catalog (`nvidia/llama-3.3-nemotron-super-49b-v1.5`); AI stays off until `ai_api_key` is set. The Python package is now `autodj` (`python -m autodj`).
+
+Full list: `CHANGELOG.md`.
+
 ## What's new in 0.3.8 (hotfix)
 
 - **Fixes a freeze on the first private message:** with IM auto-reply on (the default), the bot's chat loop and the whole window locked up when the first IM arrived. Found in a live Camfrog test.
@@ -45,7 +57,7 @@ Highlights: **Enterprise-grade exception hierarchy** with structured error codes
 2. **IM Auto-Reply**: Configurable auto-reply to private messages with per-user cooldown (default 60s, min 10s). Uses `[IM]` prefix in sent replies.
 3. **Camfrog Gift Detection**: Detect virtual-gift messages in room chat (`GIFT_RECEIVED`, `room_gift_message`, `camfrog://gift`, etc.) and announce them. Config-gated: `gift_announce_enabled`. (see `docs/camfrog-re/08-feature-gift.md`)
 4. **Camfrog Avatar Change Detection**: Detect avatar change messages in room chat (`updateAvatarMessage`) and announce them. Config-gated: `avatar_change_enabled`. (see `docs/camfrog-re/16-user-icon-avatar.md`)
-5. **Camfrog Status Indicators**: Detect user status changes in room chat (online/away/busy/invisible/admin/moderator/owner) and announce them. Config-gated: `status_indicator_enabled`. (see `docs/camfrog-re/14-png-assets.md`)
+5. **Camfrog Status Indicators**: Announce status-notice lines in room chat ("bob is now away", "bob is an admin"; whole line only, ordinary chat is ignored). Config-gated: `status_indicator_enabled`. (see `docs/camfrog-re/14-png-assets.md`)
 6. **Camfrog Upgrade/Payment Alerts**: Detect upgrade/payment-required status text and alert admin. Config-gated: `status_alert_enabled`. (see `docs/camfrog-re/07-upgrade-logic.md`, `09-payment.md`)
 7. **Camfrog Name Color Tracking**: Read nickname color (`color: #RRGGBB`) from incoming chat HTML for GUI preview (read-only; AutoDJ cannot set name color). (see `docs/camfrog-re/15-name-color.md`)
 
@@ -66,7 +78,7 @@ Highlights: **Enterprise-grade exception hierarchy** with structured error codes
 14. **Welcome Message**: Welcome message feature with configurable text (config-gated: `welcome_message_enabled`).
 15. **Camfrog Gift Detection**: Detect virtual-gift messages in room chat (`GIFT_RECEIVED`, `room_gift_message`, `camfrog://gift`, etc.) and announce them. Config-gated: `gift_announce_enabled`. (see `docs/camfrog-re/08-feature-gift.md`)
 16. **Camfrog Avatar Change Detection**: Detect avatar change messages in room chat (`updateAvatarMessage`) and announce them. Config-gated: `avatar_change_enabled`. (see `docs/camfrog-re/16-user-icon-avatar.md`)
-17. **Camfrog Status Indicators**: Detect user status changes in room chat (online/away/busy/invisible/admin/moderator/owner) and announce them. Config-gated: `status_indicator_enabled`. (see `docs/camfrog-re/14-png-assets.md`)
+17. **Camfrog Status Indicators**: Announce status-notice lines in room chat ("bob is now away", "bob is an admin"; whole line only, ordinary chat is ignored). Config-gated: `status_indicator_enabled`. (see `docs/camfrog-re/14-png-assets.md`)
 18. **Camfrog Upgrade/Payment Alerts**: Detect upgrade/payment-required status text and alert admin. Config-gated: `status_alert_enabled`. (see `docs/camfrog-re/07-upgrade-logic.md`, `09-payment.md`)
 19. **Camfrog Name Color Tracking**: Read nickname color (`color: #RRGGBB`) from incoming chat HTML for GUI preview (read-only; AutoDJ cannot set name color). (see `docs/camfrog-re/15-name-color.md`)
 
@@ -100,7 +112,7 @@ Admin: `pause` (หยุดชั่วคราว), `resume` (เล่นต
 
 Non-admins: YouTube links only, 1 track, `max_duration`, no live, `max_requests_per_user`, and a song already queued or playing is refused. Name requests search `music_dirs` first, then YouTube.
 
-**Requests always come first:** `!play` requests play in the order they arrive (first come, first served), ahead of the autoplay pool; a request also cuts an autoplay or startup song short. If no user requests arrive within `autoplay_idle_timeout` (default 30 seconds), AutoDJ switches to the autoplay pool automatically. A new `!play` request immediately exits autoplay mode.
+**Requests always come first:** `!play` requests play in the order they arrive (first come, first served), ahead of the autoplay pool; a request also cuts an autoplay or startup song short. When the queue runs out and nobody requests anything for `autoplay_idle_timeout` (default 30 seconds, counted from when the last requested song finished), AutoDJ plays the default song (`default_track`) or, without one, the autoplay pool. A new `!play` request immediately exits autoplay mode.
 
 ## Auto launch
 `auto_launch = true` starts `camfrog_exe`, opens `join_uri_template` for `room`, then waits for `window_title_re`. It does not call the control-server API. If the control-server agent already launches/joins Camfrog, keep `auto_launch = false`: AutoDJ waits for the room window.

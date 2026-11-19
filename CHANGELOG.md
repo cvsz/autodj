@@ -1,4 +1,4 @@
-## Unreleased
+## 0.3.9 — 2026-11-20
 
 - **Installer closes a running AutoDJ first** — an upgrade while AutoDJ was running stopped with "Error opening file for writing" (the exe is locked) and an uninstall left files behind. Install and uninstall now stop AutoDJ.exe / mpv.exe started from the install folder (matched by path: another copy or the user's own mpv is untouched).
 - **Makefile** — `PROJECT` pointed at the pre-rename `camfrog_autodj/` (make lint/fmt/typecheck broken), and on Windows without Git Bash `make lint` silently fell back to py_compile and passed; it now stops with setup instructions.
