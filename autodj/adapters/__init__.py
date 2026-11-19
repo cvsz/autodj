@@ -116,6 +116,11 @@ class Composite(ChatAdapter):
         self.sender.send(text)
 
     @property
+    def delivers(self) -> bool:
+        """False when the sender only discards messages (NullAdapter)."""
+        return bool(getattr(self.sender, "delivers", True))
+
+    @property
     def send_im(self) -> Callable[[str, str], None] | None:
         """Private-message sender of the wrapped adapters, or None.
 
@@ -273,6 +278,8 @@ class NullAdapter(ChatAdapter):
     """Fallback adapter when Camfrog cannot be reached (pywinauto missing, no room
     window open, ...). The GUI still opens; chat simply does nothing until Camfrog
     is available and discovery is re-run."""
+
+    delivers = False  # send() discards: the engine must not log it as delivered
 
     def messages(self) -> Iterator[ChatMessage]:  # no chat lines ever
         return iter(())

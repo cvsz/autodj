@@ -433,7 +433,7 @@ class UiaAdapter(ChatAdapter):
                 winmsg.post_text_rich(handle, pt, text, enter=True, click=True)
             except (OSError, RuntimeError) as e:
                 log.debug("IM background send failed: %s", e)
-            for _ in range(10):
+            for _ in range(20):  # up to 4 s: a slow render must not trigger a 2nd send
                 time.sleep(0.2)
                 if shown() > before:
                     log.debug("IM sent to %s (background)", user)
@@ -462,6 +462,7 @@ class UiaAdapter(ChatAdapter):
             win.set_focus()
             inp.click_input()  # web editor: only a click focuses it
             pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
+            send_keys("^a")  # replace anything a failed background send left in the box
             send_keys("^v")
             time.sleep(0.15)
             send_keys("{ENTER}")

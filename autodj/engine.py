@@ -58,6 +58,8 @@ FAIL_PLAYBACK = "playback_failed"  # mpv could not play the track
 FAIL_HUNG = "playback_hung"  # mpv did not exit within the expected time
 FAIL_CRASH = "playback_crashed"  # mpv exited with non-zero code
 FAIL_DELIVERY = "chat_delivery_failed"  # chat message could not be delivered
+FAIL_DROPPED = "chat_dropped"  # no chat connection (NullAdapter): message discarded
+MAX_DELIVERY_RECORDS = 500  # delivery log kept in memory (the bot runs 24/7)
 FAIL_CONFIG = "config_error"  # configuration problem
 
 _req_ids = itertools.count()  # global request ID_counter
@@ -472,6 +474,9 @@ class Engine:
             "text": clean_text(text)[:80],  # truncated: never log full private content
             "stage": stage,  # attempted | submitted | confirmed | failed
         }
+        if len(self._delivery_attempts) > MAX_DELIVERY_RECORDS:  # oldest first (dict order)
+            for old in list(self._delivery_attempts)[:-MAX_DELIVERY_RECORDS]:
+                del self._delivery_attempts[old]
         log.debug(
             "deliv=%d stage=%s text=%r",
             attempt_id,
@@ -495,7 +500,8 @@ class Engine:
             return
         rec["stage"] = "failed"
         rec["category"] = category
-        log.warning(
+        # A dropped message is already reported by NullAdapter.send(): no second warning.
+        (log.debug if category == FAIL_DROPPED else log.warning)(
             "deliv=%d stage=failed category=%s text=%r",
             attempt_id,
             category,
@@ -524,6 +530,11 @@ class Engine:
             attempt_id = self.log_delivery(m, "attempted")
             try:
                 self.adapter.send(m)
+                if not getattr(self.adapter, "delivers", True):
+                    # No chat connection: the message was discarded, not sent.  Not a
+                    # send failure either (that would suspend sending for nothing).
+                    self.fail_delivery(attempt_id, FAIL_DROPPED)
+                    continue
                 self.confirm_delivery(attempt_id)
                 self._record_send_success()
                 log.info("send ok: %r", m)
@@ -1489,6 +1500,12 @@ class Engine:
         now = time.monotonic()
         key = f"join:{user.lower()}"
         with self._chat_lock:
+            # The cleanup loop only runs with im_auto_reply_enabled: keep this dict
+            # bounded on its own (one key per IM sender from outside the room).
+            if len(self._im_reply_cooldowns) > 1000:
+                cutoff = now - self.cfg.im_auto_reply_cooldown * 2
+                for k in [k for k, t in self._im_reply_cooldowns.items() if t < cutoff]:
+                    del self._im_reply_cooldowns[k]
             if (
                 now - self._im_reply_cooldowns.get(key, float("-inf"))
                 < self.cfg.im_auto_reply_cooldown

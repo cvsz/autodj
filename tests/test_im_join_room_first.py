@@ -48,3 +48,11 @@ def test_no_private_channel_means_no_reply_anywhere():
     e.say = lambda text, *a, **k: room.append(text) or True  # type: ignore[method-assign]
     e._handle_im(ChatMessage("zdevz", "!play x", is_im=True))
     assert room == []
+
+
+def test_join_notice_cooldowns_stay_bounded_without_cleanup_loop():
+    e, _room, _ims = _engine()  # im_auto_reply_enabled=False: no cleanup loop
+    for i in range(1200):
+        e._im_reply_cooldowns[f"join:old{i}"] = -1e9  # long expired
+    e._handle_im(ChatMessage("zdevz", "!play x", is_im=True))
+    assert len(e._im_reply_cooldowns) < 10
