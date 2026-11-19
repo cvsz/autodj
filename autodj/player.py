@@ -13,6 +13,7 @@ import time
 
 from .library import find_ytdlp
 from .paths import resolve_executable
+from .winjob import kill_with_parent
 
 _ids = itertools.count()
 log = logging.getLogger("autodj")
@@ -215,6 +216,7 @@ class MpvPlayer:
             self._pos_cache = None
             # security review: argv list without shell; executable is sys.executable or a resolved, configured tool path
             self.proc = p = subprocess.Popen(cmd, **kw)  # nosec B603
+            kill_with_parent(p)  # mpv dies with AutoDJ, even on End task / crash
         if fade_in:
             threading.Thread(
                 target=self._fade_volume,
@@ -494,14 +496,16 @@ class MpvPlayer:
         ducked = duck_volume is not None and self.set_volume(int(duck_volume))
         try:
             # security review: argv list without shell; resolved mpv path
-            subprocess.run(  # nosec B603
-                self._base() + ["--volume=100", "--", path],
-                check=False,
-                timeout=max(1.0, float(timeout)),  # a broken WAV must not block forever
-                **kw,
+            clip = subprocess.Popen(  # nosec B603
+                self._base() + ["--volume=100", "--", path], **kw
             )
-        except subprocess.TimeoutExpired:
-            log.warning("TTS clip did not finish within %.0fs: stopped", timeout)
+            kill_with_parent(clip)  # the TTS mpv dies with AutoDJ too
+            try:
+                clip.wait(timeout=max(1.0, float(timeout)))  # a broken WAV must not block forever
+            except subprocess.TimeoutExpired:
+                clip.kill()
+                clip.wait()
+                log.warning("TTS clip did not finish within %.0fs: stopped", timeout)
         finally:
             if ducked and restore_volume is not None:
                 # security review: argv list without shell; executable is sys.executable or a resolved, configured tool path
