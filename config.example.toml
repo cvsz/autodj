@@ -266,10 +266,10 @@ auto_update_apply_on_start = true        # download latest AutoDJ.exe from GitHu
 # ---- AI chat replies (OpenAI-compatible API) — off by default ----------------------------
 # Answers non-command room lines (never private IMs). https required except for localhost.
 ai_enabled = false
-ai_api_key = ""                          # keep this file private (it is git-ignored)
-ai_base_url = "https://api.openai.com/v1"
-ai_model = "gpt-3.5-turbo"
-ai_system_prompt = "You are AutoDJ, a music bot in a Camfrog room. Keep replies short, friendly, and on-topic. Do not claim to play music unless asked."
+ai_api_key = ""                          # NVIDIA key (nvapi-...) from https://build.nvidia.com/settings; keep this file private (it is git-ignored). Empty = AI stays off
+ai_base_url = "https://integrate.api.nvidia.com/v1"  # any OpenAI-compatible endpoint (https)
+ai_model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"   # NVIDIA API catalog model id
+ai_system_prompt = "You are AutoDJ, a music bot in a Camfrog room. Keep replies short, friendly, and on-topic. Do not claim to play music unless asked. Powered by NVIDIA AI"
 ai_max_chars = 200                       # reply length cap (Camfrog line limit)
 ai_user_cooldown = 30.0                  # seconds between AI replies to the same user
 

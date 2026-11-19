@@ -312,11 +312,11 @@ class Config:
     # AI: optional chat-completion integration (disabled by default)
     ai_enabled: bool = False  # enable AI chat replies
     ai_api_key: str = ""  # API key for the AI provider
-    ai_base_url: str = "https://api.openai.com/v1"  # OpenAI-compatible base URL
-    ai_model: str = "gpt-3.5-turbo"  # model name
+    ai_base_url: str = "https://integrate.api.nvidia.com/v1"  # NVIDIA Inference API endpoint
+    ai_model: str = "nvidia/llama-3.3-nemotron-super-49b-v1.5"  # NVIDIA API catalog model id
     ai_system_prompt: str = (
         "You are AutoDJ, a music bot in a Camfrog room. Keep replies short, "
-        "friendly, and on-topic. Do not claim to play music unless asked."
+        "friendly, and on-topic. Do not claim to play music unless asked. Powered by NVIDIA AI"
     )
     ai_max_chars: int = 200  # max characters in AI reply
     ai_user_cooldown: float = 30.0  # seconds between AI replies to same user

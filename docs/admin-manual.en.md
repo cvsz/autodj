@@ -416,9 +416,9 @@ log_json_fields = [                    # extra fields to include in JSON logs
 
 ```toml
 ai_enabled = false
-ai_api_key = ""
-ai_base_url = "https://api.openai.com/v1"   # any OpenAI-compatible endpoint; https required (http only for localhost/127.0.0.1/::1)
-ai_model = "gpt-3.5-turbo"
+ai_api_key = ""                    # NVIDIA key (nvapi-...) from https://build.nvidia.com/settings
+ai_base_url = "https://integrate.api.nvidia.com/v1"   # any OpenAI-compatible endpoint; https required (http only for localhost/127.0.0.1/::1)
+ai_model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"   # NVIDIA API catalog model id
 ai_system_prompt = "..."
 ai_max_chars = 200                 # max characters in an AI reply
 ai_user_cooldown = 30.0            # seconds between AI replies to the same user
