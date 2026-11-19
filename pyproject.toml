@@ -20,7 +20,7 @@ webhook = [
   "fastapi>=0.100,<1",
   "uvicorn>=0.23,<1",
   "pydantic>=2.5,<3",
-  "httpx>=0.25,<1",
+  "httpx>=0.28.1,<1",
 ]
 [project.scripts]
 camfrog-autodj = "camfrog_autodj.__main__:main"
