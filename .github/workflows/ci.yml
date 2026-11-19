@@ -42,12 +42,12 @@ jobs:
       - name: Lint (ruff)
         run: |
           python -m pip install ruff
-          ruff check camfrog_autodj tests tools
+          ruff check autodj tests tools
 
       - name: Typecheck (mypy)
         run: |
           python -m pip install mypy
-          python -m mypy camfrog_autodj
+          python -m mypy autodj
 
   docker-audit-image:
     # The Dockerfile's build step runs ruff and the full pytest suite, so a
@@ -61,3 +61,4 @@ jobs:
 
       - name: Build audit image (runs lint + tests)
         run: docker build --pull -t autodj-audit:ci .
+
