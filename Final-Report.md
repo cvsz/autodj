@@ -1,17 +1,17 @@
 # Final Report — CamfrogAutoDJ 0.3.0 audit, fixes and hardening (2026-11-18)
 
-## 0. Authoritative verification update — v0.3.5 (2026-11-18)
+## 0. Authoritative verification update — v0.3.6 (2026-11-19)
 
-> This section is the current, evidence-backed status of the repository at branch
-> PRs #233/#234, merged at `6d60623` / `485596d`. Release **v0.3.5** is published at
-> https://github.com/cvsz/autodj/releases/tag/v0.3.5 with AutoDJ.exe, the full client ZIP,
-> the signed installer, SBOM and SHA256SUMS.
+> This section is the current, evidence-backed status of the repository at branch `main`.
+> PRs #233/#234/#241 merged at `6d60623` / `485596d` / `7f2f5e7`. Release **v0.3.5** is
+> published at https://github.com/cvsz/autodj/releases/tag/v0.3.5; v0.3.6 follows with the
+> final UI/log/playlist hardening from PR #241.
 > Sections 1–7 below are the historical 0.3.0–0.3.2 evidence record and are retained.
 
 ### 0.1 Executive summary — VERIFIED
 
 A top-to-bottom audit (static architecture mapping by an independent subagent, defect audit,
-security audit, then full local verification) was completed for the 0.3.5 zPlayer GUI redesign.
+security audit, then full local verification) was completed for the 0.3.5 zPlayer GUI redesign and the 0.3.6 final hardening.
 All identified High and Medium defects were fixed in code; all Low findings were either fixed
 or reduced to reviewed, documented annotations. **Every locally executable gate is green with
 zero errors and zero warnings**: pytest 604 passed / 0 failed / 0 warnings (0 skips,
