@@ -1,3 +1,8 @@
+## Unreleased
+
+- **Dependencies** — consolidates the open Dependabot updates: webhook extra floors raised to `fastapi>=0.163.1`, `uvicorn>=0.54.0`, `pydantic>=2.14.3`, `httpx>=0.28.1`; hot-reload extra moves to `watchdog>=7.1.0,<8` (#236-#240). `github/codeql-action` 4.39.1 -> 4.39.3 (#186). `softprops/action-gh-release` 2.0.8 -> 3.0.4, moving the release step off the deprecated Node 20 runtime (#235). All pinned by commit SHA (verified against the release tags).
+- **Audit Docker image** — base image `python:3.12-slim` -> `python:3.15-slim` (#185), and the image now installs the `webhook` and `hotreload` extras: with `[dev]` alone its build-time self-test failed at collection (`tests/test_webhook_server.py` needs fastapi) on any Python version.
+
 ## 0.3.7 — 2026-11-19
 
 - **Webhook `/say`, `/shuffle`, `/repeat` never worked** — `Request` was imported inside the route factory, so with postponed annotations FastAPI treated `request` as a required query parameter and every call returned 422. Now imported at module level; covered by tests.
