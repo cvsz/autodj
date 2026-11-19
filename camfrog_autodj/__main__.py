@@ -339,6 +339,10 @@ def _auto_discover(a, cfg) -> bool:
     # Auto-discovery must never prevent the GUI from opening: log the failure
     # and continue with the existing config instead of crashing at startup.
     uses_uia = "uia" in (cfg.chat_reader, cfg.chat_sender)
+    if a.discover and not uses_uia:
+        # Returning False here used to fall through and start the whole bot.
+        print("discovery needs chat_reader or chat_sender = 'uia' in config.toml")
+        return True
     if not (uses_uia and (a.discover or (cfg.auto_discover and not a.no_discover))):
         return False
     from . import discover
