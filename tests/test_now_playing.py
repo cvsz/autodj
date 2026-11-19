@@ -192,7 +192,7 @@ def test_long_request_is_still_followed_by_a_full_idle_window():
     ended = t0 + 240
     assert e._pop_next_track(ended) is None  # used to start the default song right here
     assert e._pop_next_track(ended + 29) is None
-    t = e._pop_next_track(ended + 30)
+    t = e._pop_next_track(ended + 30.5)  # not +30: float rounding of monotonic sums
     assert t is not None and t.source == DEFAULT_URL
 
 
