@@ -110,7 +110,8 @@ def _make_app(app_cls, engine):
         return app_cls(engine)
     except tk.TclError as exc:
         msg = str(exc)
-        if "init.tcl" in msg or "tcl_findLibrary" in msg:
+        # Same runner fault, other spellings: missing tk.tcl / auto.tcl.
+        if any(s in msg for s in ("init.tcl", "tcl_findLibrary", "tk.tcl", "auto.tcl")):
             pytest.skip(f"Tcl runtime unavailable on this runner: {exc}")
         raise
 
