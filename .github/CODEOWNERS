@@ -17,7 +17,7 @@
 /build.ps1 @cvsz @policedbc
 
 # Application code — owner review
-/camfrog_autodj/ @cvsz
+/autodj/ @cvsz
 
 # Configuration
 /config.example.toml @cvsz @policedbc

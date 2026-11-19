@@ -3173,7 +3173,19 @@ class App(tk.Tk):
         settings_menu = tk.Menu(menu_bar, tearoff=0)
         settings_menu.add_command(label=self.e.t("g_settings"), command=self.show_settings)
         menu_bar.add_cascade(label=self.e.t("g_settings"), menu=settings_menu)
+        help_menu = tk.Menu(menu_bar, tearoff=0)
+        help_menu.add_command(label=self.e.t("g_about"), command=self.show_about)
+        menu_bar.add_cascade(label=self.e.t("g_help"), menu=help_menu)
         self._menu_bar, self._settings_menu = menu_bar, settings_menu
+        self._help_menu = help_menu
+
+    def show_about(self) -> None:
+        """Help -> About: version and credit line."""
+        from tkinter import messagebox
+
+        from . import about_text
+
+        messagebox.showinfo(self.e.t("g_about"), about_text(), parent=self)
 
     def _relabel_menu(self) -> None:
         """Menu entries are not widgets in _labels: retitle them on language change."""
@@ -3181,6 +3193,15 @@ class App(tk.Tk):
             try:
                 if menu is not None and hasattr(menu, "entryconfigure"):
                     menu.entryconfigure(0, label=self.e.t("g_settings"))
+            except tk.TclError:
+                pass
+        for menu, index, key in (
+            (getattr(self, "_menu_bar", None), 1, "g_help"),
+            (getattr(self, "_help_menu", None), 0, "g_about"),
+        ):
+            try:
+                if menu is not None and hasattr(menu, "entryconfigure"):
+                    menu.entryconfigure(index, label=self.e.t(key))
             except tk.TclError:
                 pass
 

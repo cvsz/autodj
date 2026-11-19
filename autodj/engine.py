@@ -189,6 +189,10 @@ class Engine:
         self._default_meta: Track | None = None  # cached title/duration lookup
         self._default_failed_until = 0.0  # after a failed play, use the pool for a while
         self._default_lookup_retry_at = 0.0  # after a failed metadata lookup
+        # When the player first found the request queue empty (monotonic), i.e.
+        # when the last requested song finished.  The idle timeout counts from
+        # here, so a long request is still followed by a full idle window.
+        self._queue_empty_since: float | None = None
 
     # ---- text -----------------------------------------------------------
     def t(self, key: str, **kw) -> str:
@@ -1183,6 +1187,7 @@ class Engine:
                     if t is not None and self._is_recent_failed(t):
                         skipped.append(t)
                         continue
+                    self._queue_empty_since = None  # a request plays: idle window restarts later
                     return t
             finally:
                 for i, t in enumerate(skipped):
@@ -1190,6 +1195,8 @@ class Engine:
             # Only recently failed requests are waiting: fall through to the
             # default song / autoplay pool instead of leaving the room silent.
         now = time.monotonic() if now is None else now
+        if self._queue_empty_since is None:
+            self._queue_empty_since = now  # queue just ran out: idle window starts
         src = (getattr(self.cfg, "default_track", "") or "").strip()
         if src and now >= self._default_failed_until:
             if self._default_due(now):
@@ -1205,12 +1212,17 @@ class Engine:
         return bool(src) and (t.source == src or (meta is not None and t.source == meta.source))
 
     def _default_due(self, now: float) -> bool:
-        """True at startup (no request yet) or after the idle timeout."""
+        """True at startup (no request yet), or once the request queue has been
+        empty AND nobody has requested anything for ``autoplay_idle_timeout``
+        seconds.  Both clocks matter: the window starts when the last requested
+        song finished (not when it was requested, which would skip the wait after
+        a long song) and a new request restarts it."""
         last = self._last_user_request_time
         if last <= 0:
             return True
         idle = float(getattr(self.cfg, "autoplay_idle_timeout", 30.0))
-        return now - last >= idle
+        start = max(last, self._queue_empty_since if self._queue_empty_since is not None else now)
+        return now - start >= idle
 
     def _default_track_for_play(self, src: str) -> Track:
         """A fresh, non-request Track for the default song.

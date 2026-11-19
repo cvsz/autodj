@@ -1,3 +1,10 @@
+## Unreleased
+
+- **Idle default song waits a real 30 s** — `autoplay_idle_timeout` was counted from the last *request*, so after any request longer than 30 s the default song started the moment the queue ran out. It now counts from when the queue ran out (the last requested song finished); a request inside the window cancels it. Startup still plays the default at once.
+- **IM replies were never sent live** — the engine talks to a `Composite` adapter, which did not forward `send_im`, so every private reply (join-room notice, IM auto-reply) was skipped as "adapter cannot send IMs". `Composite.send_im` now forwards to the reader/sender.
+- **Help → About** — shows version and "camfrog:add:Seaza Dev @ZEAZDEV COMPANY LIMITED" (EN/TH menu labels); `autodj.about_text()`.
+- Rename follow-up: remaining `camfrog_autodj/` paths in `.dockerignore`, `.gitignore`, `.github/CODEOWNERS` and `tools/mutate.sh` now point at `autodj/`.
+
 ## 0.3.8 — 2026-11-19
 
 - **Private IM replies; join the room first** — the UIA adapter can now answer in the sender's open Camfrog IM window (`send_im`: background send verified by reading the IM history back, foreground paste as fallback). An IM from someone who is not in the room (`im_require_room_presence`, default on) is answered privately with "กรุณาเข้าห้อง {room} ก่อนถึงสามารถขอเพลงได้" (EN: "Please join room {room} before requesting songs."), at most once per `im_auto_reply_cooldown`; its command is still not executed. Outgoing IMs show in the IM viewer and are filtered as echoes. Presence comes from room activity seen since AutoDJ started (joins and room messages).

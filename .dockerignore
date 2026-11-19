@@ -59,7 +59,7 @@ docs/camfrog-re/
 
 # Bundled runtimes and user/runtime state
 mpv/
-camfrog_autodj/mpv/
+autodj/mpv/
 playlist.json
 playlist.json.bak
 top_requests.json
