@@ -27,19 +27,19 @@ from unittest.mock import MagicMock
 import pytest
 from test_core import FakeAdapter, FakePlayer, make, out
 
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.config import Config, ConfigError
-from camfrog_autodj.discover import Ctl, Found, best_room, choose_view
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.exceptions import UserError
-from camfrog_autodj.library import (
+from autodj.adapters.base import ChatMessage
+from autodj.config import Config, ConfigError
+from autodj.discover import Ctl, Found, best_room, choose_view
+from autodj.engine import Engine
+from autodj.exceptions import UserError
+from autodj.library import (
     LocalIndex,
     _extract_exe,
     parse_ytdlp_info,
     remote_tracks,
 )
-from camfrog_autodj.models import Track
-from camfrog_autodj.player import MpvPlayer, failure_reasons
+from autodj.models import Track
+from autodj.player import MpvPlayer, failure_reasons
 
 # ============================================================================
 # P0 — YouTube Certificate Trust
@@ -164,9 +164,9 @@ def test_remote_tracks_with_missing_ca_bundle_falls_back_to_system_trust(monkeyp
         called["module_ca_bundle"] = ca_bundle
         return SEARCH_JSON
 
-    monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
-    monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
+    monkeypatch.setattr("autodj.library._extract_exe", fake_extract_exe)
+    monkeypatch.setattr("autodj.library._extract_module", fake_extract_module)
+    monkeypatch.setattr("autodj.library.find_ytdlp", lambda *a, **k: str(exe))
 
     tracks = remote_tracks("test song", "amy", ytdlp_path=str(exe), ca_bundle="/nonexistent/ca.pem")
     assert tracks[0].title == "Song A"
@@ -194,9 +194,9 @@ def test_remote_tracks_passes_ca_bundle_through(monkeypatch, tmp_path):
         captured["module_ca_bundle"] = ca_bundle
         return SEARCH_JSON
 
-    monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
-    monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
+    monkeypatch.setattr("autodj.library._extract_exe", fake_extract_exe)
+    monkeypatch.setattr("autodj.library._extract_module", fake_extract_module)
+    monkeypatch.setattr("autodj.library.find_ytdlp", lambda *a, **k: str(exe))
 
     remote_tracks("test song", "amy", ytdlp_path=str(exe), ca_bundle=str(ca))
     assert captured["exe_called"] is True  # exe was tried first
@@ -222,9 +222,9 @@ def test_remote_tracks_respects_proxy_env_vars(monkeypatch, tmp_path):
     def fake_extract_module(target, playlist, limit, ca_bundle=""):
         return SEARCH_JSON
 
-    monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
-    monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
+    monkeypatch.setattr("autodj.library._extract_exe", fake_extract_exe)
+    monkeypatch.setattr("autodj.library._extract_module", fake_extract_module)
+    monkeypatch.setattr("autodj.library.find_ytdlp", lambda *a, **k: str(exe))
 
     remote_tracks("test song", "amy", ytdlp_path=str(exe))
     assert called["env_proxy"] == "http://proxy.corp:8080"
@@ -274,9 +274,9 @@ def test_remote_tracks_ssl_failure_falls_back_to_module_with_ca_bundle(monkeypat
         module_called["ca_bundle"] = ca_bundle
         return SEARCH_JSON
 
-    monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
-    monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
+    monkeypatch.setattr("autodj.library._extract_exe", fake_extract_exe)
+    monkeypatch.setattr("autodj.library._extract_module", fake_extract_module)
+    monkeypatch.setattr("autodj.library.find_ytdlp", lambda *a, **k: str(exe))
 
     tracks = remote_tracks("test song", "amy", ytdlp_path=str(exe), ca_bundle=str(ca))
     assert tracks[0].title == "Song A"
@@ -295,9 +295,9 @@ def test_remote_tracks_ssl_failure_without_ca_bundle_raises(monkeypatch, tmp_pat
     def fake_extract_module(target, playlist, limit, ca_bundle=""):
         return SEARCH_JSON
 
-    monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
-    monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
+    monkeypatch.setattr("autodj.library._extract_exe", fake_extract_exe)
+    monkeypatch.setattr("autodj.library._extract_module", fake_extract_module)
+    monkeypatch.setattr("autodj.library.find_ytdlp", lambda *a, **k: str(exe))
 
     with pytest.raises(RuntimeError, match="CERTIFICATE_VERIFY_FAILED"):
         remote_tracks("test song", "amy", ytdlp_path=str(exe))
@@ -318,7 +318,7 @@ def test_resolve_rejects_placeholder_youtube_id(monkeypatch):
     def fake_remote(query, user, playlist=False, search_limit=1, raw_target=False, **kw):
         return [Track("https://www.youtube.com/watch?v=VIDEO_ID", "Placeholder", 100, user)]
 
-    monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote)
+    monkeypatch.setattr("autodj.engine.remote_tracks", fake_remote)
     # The resolve path doesn't validate the video ID itself; it trusts yt-dlp's output.
     # But parse_ytdlp_info validates that the URL is http(s) - which it is.
     # The real validation is: empty/missing URL is skipped (tested in test_hardening).
@@ -490,7 +490,7 @@ def test_resolve_extracts_youtube_playlist(monkeypatch):
 
     cfg = Config(admins=["boss"])
     e = Engine(cfg, FakeAdapter(), player=FakePlayer(), index=LocalIndex([]))
-    monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote)
+    monkeypatch.setattr("autodj.engine.remote_tracks", fake_remote)
     tracks = e.resolve("https://www.youtube.com/playlist?list=PLxxxx", "amy", True)
     assert len(tracks) == 2
     assert tracks[0].title == "Playlist Song 1"
@@ -509,10 +509,10 @@ def test_remote_tracks_timeout_raises_runtime_error(monkeypatch, tmp_path):
         raise subprocess.TimeoutExpired(cmd="yt-dlp", timeout=90)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
+    monkeypatch.setattr("autodj.library.find_ytdlp", lambda *a, **k: str(exe))
     # Also block the module fallback
     monkeypatch.setattr(
-        "camfrog_autodj.library._extract_module",
+        "autodj.library._extract_module",
         lambda *a, **k: (_ for _ in ()).throw(ImportError("no module")),
     )
 
@@ -532,10 +532,10 @@ def test_remote_tracks_yt_dlp_failure_raises_runtime_error(monkeypatch, tmp_path
         return subprocess.CompletedProcess(exe, 1, "", "ERROR: video unavailable")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **k: str(exe))
+    monkeypatch.setattr("autodj.library.find_ytdlp", lambda *a, **k: str(exe))
     # Block the module fallback so the exe failure propagates
     monkeypatch.setattr(
-        "camfrog_autodj.library._extract_module",
+        "autodj.library._extract_module",
         lambda *a, **k: (_ for _ in ()).throw(ImportError("no module")),
     )
 
@@ -558,7 +558,7 @@ def test_player_loop_no_mpv_after_resolver_failure(monkeypatch):
     def fake_remote(query, user, playlist=False, search_limit=1, raw_target=False, **kw):
         return []
 
-    monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote)
+    monkeypatch.setattr("autodj.engine.remote_tracks", fake_remote)
 
     th = threading.Thread(target=e._player_loop, daemon=True)
     th.start()
@@ -689,7 +689,7 @@ def test_thai_unicode_preserved_in_chat():
     """Thai text must be preserved correctly through parse_line and router."""
     e = make()
     rx = e.cfg.line_regex and __import__("re").compile(e.cfg.line_regex)
-    from camfrog_autodj.adapters.base import parse_line
+    from autodj.adapters.base import parse_line
 
     line = "[12:30] มานะ: !play เพลงไทย"
     m = parse_line(line, rx)
@@ -729,8 +729,8 @@ def test_mpv_normal_exit_reported_ok(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
-    monkeypatch.setattr("camfrog_autodj.player.find_ytdlp", lambda *a, **k: "D:/tools/yt-dlp.exe")
+    monkeypatch.setattr("autodj.player._is_windows", lambda: True)
+    monkeypatch.setattr("autodj.player.find_ytdlp", lambda *a, **k: "D:/tools/yt-dlp.exe")
 
     cfg = Config(mpv_path="mpv", ytdlp_path="D:/tools/yt-dlp.exe")
     assert MpvPlayer(cfg).play("https://youtu.be/abc", 80) is True
@@ -748,8 +748,8 @@ def test_mpv_crash_reported_failed(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
-    monkeypatch.setattr("camfrog_autodj.player.find_ytdlp", lambda *a, **k: "D:/tools/yt-dlp.exe")
+    monkeypatch.setattr("autodj.player._is_windows", lambda: True)
+    monkeypatch.setattr("autodj.player.find_ytdlp", lambda *a, **k: "D:/tools/yt-dlp.exe")
 
     cfg = Config(mpv_path="mpv", ytdlp_path="D:/tools/yt-dlp.exe")
     assert MpvPlayer(cfg).play("https://youtu.be/abc", 80) is False
@@ -782,8 +782,8 @@ def test_mpv_hung_process_terminated(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
-    monkeypatch.setattr("camfrog_autodj.player.find_ytdlp", lambda *a, **k: "D:/tools/yt-dlp.exe")
+    monkeypatch.setattr("autodj.player._is_windows", lambda: True)
+    monkeypatch.setattr("autodj.player.find_ytdlp", lambda *a, **k: "D:/tools/yt-dlp.exe")
 
     cfg = Config(mpv_path="mpv", ytdlp_path="", mpv_timeout=1)
     player = MpvPlayer(cfg)
@@ -816,8 +816,8 @@ def test_mpv_timeout_no_duration(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
-    monkeypatch.setattr("camfrog_autodj.player.find_ytdlp", lambda *a, **k: "D:/tools/yt-dlp.exe")
+    monkeypatch.setattr("autodj.player._is_windows", lambda: True)
+    monkeypatch.setattr("autodj.player.find_ytdlp", lambda *a, **k: "D:/tools/yt-dlp.exe")
 
     cfg = Config(mpv_path="mpv", ytdlp_path="", mpv_timeout=1)
     player = MpvPlayer(cfg)
@@ -894,7 +894,7 @@ def test_engine_say_puts_text_in_outbox():
 def test_send_auto_mode_verifies_before_confirming(monkeypatch):
     """In auto mode with send_verify, background send is confirmed only when
     the line appears in the room (tested at adapter level)."""
-    from camfrog_autodj.adapters.uia import UiaAdapter
+    from autodj.adapters.uia import UiaAdapter
 
     appeared = {"result": False}
     bg_calls = []
@@ -939,7 +939,7 @@ def test_send_auto_mode_verifies_before_confirming(monkeypatch):
 
 def test_send_wrong_control_raises_runtime_error(monkeypatch):
     """If the input control is not found, send() must raise RuntimeError."""
-    from camfrog_autodj.adapters.uia import UiaAdapter
+    from autodj.adapters.uia import UiaAdapter
 
     class FakeAdapter(UiaAdapter):
         def __init__(self, cfg):
@@ -1058,7 +1058,7 @@ def test_config_preserves_existing_custom_values(tmp_path):
 
 def test_save_config_atomic_replace_leaves_original_on_failure(tmp_path, monkeypatch):
     """If the atomic replace fails, the original config.toml must be untouched."""
-    from camfrog_autodj.discover import save_config
+    from autodj.discover import save_config
 
     p = tmp_path / "config.toml"
     p.write_text('bot_nick = "X"\n', "utf-8")
@@ -1140,10 +1140,10 @@ def test_best_room_picks_most_matched_lines():
 
 def test_discover_no_windows_returns_none(monkeypatch):
     """When no Camfrog windows exist, discover() returns None without crashing."""
-    from camfrog_autodj import discover
+    from autodj import discover
 
     # Mock external dependencies only - not the function under test
-    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: [])
+    monkeypatch.setattr("autodj.windows.candidates", lambda *a, **k: [])
     # Mock pywinauto.Desktop to avoid ImportError on non-Windows
     mock_desktop = MagicMock()
     mock_pywinauto = MagicMock()
@@ -1160,8 +1160,8 @@ def test_discover_no_windows_returns_none(monkeypatch):
 
 def test_discover_one_valid_candidate(monkeypatch):
     """When one valid Camfrog window with chat is found, discover() returns config updates."""
-    from camfrog_autodj import discover
-    from camfrog_autodj.windows import Cand
+    from autodj import discover
+    from autodj.windows import Cand
 
     # Mock a valid candidate with chat-like content
     fake_cand = Cand(
@@ -1172,7 +1172,7 @@ def test_discover_one_valid_candidate(monkeypatch):
         exe="Camfrog.exe",
     )
 
-    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: [fake_cand])
+    monkeypatch.setattr("autodj.windows.candidates", lambda *a, **k: [fake_cand])
 
     # Mock pywinauto.Desktop
     mock_win = MagicMock()
@@ -1186,7 +1186,7 @@ def test_discover_one_valid_candidate(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "pywinauto", mock_pywinauto)
 
     monkeypatch.setattr(
-        "camfrog_autodj.discover.scan_window",
+        "autodj.discover.scan_window",
         lambda win: [
             discover.Ctl("Document", 0, "alice: hello\nbob: hi\n", 0, 0, 500, 200),
             discover.Ctl("Edit", 0, "", 0, 210, 500, 30, enabled=True, visible=True),
@@ -1210,14 +1210,14 @@ def test_discover_one_valid_candidate(monkeypatch):
 
 def test_discover_multiple_candidates_picks_best(monkeypatch):
     """When multiple Camfrog windows exist, discover() picks the one with most chat lines."""
-    from camfrog_autodj import discover
-    from camfrog_autodj.windows import Cand
+    from autodj import discover
+    from autodj.windows import Cand
 
     fake_cand1 = Cand(handle=111, title="Room A", cls="CamfrogRoom", pid=111, exe="Camfrog.exe")
     fake_cand2 = Cand(handle=222, title="Room B", cls="CamfrogRoom", pid=222, exe="Camfrog.exe")
 
     monkeypatch.setattr(
-        "camfrog_autodj.windows.candidates", lambda *a, **k: [fake_cand1, fake_cand2]
+        "autodj.windows.candidates", lambda *a, **k: [fake_cand1, fake_cand2]
     )
 
     mock_desktop = MagicMock()
@@ -1245,7 +1245,7 @@ def test_discover_multiple_candidates_picks_best(monkeypatch):
                 ]
         return []
 
-    monkeypatch.setattr("camfrog_autodj.discover.scan_window", fake_scan_window)
+    monkeypatch.setattr("autodj.discover.scan_window", fake_scan_window)
 
     cfg = Config()
     result = discover.discover(cfg)
@@ -1259,12 +1259,12 @@ def test_discover_multiple_candidates_picks_best(monkeypatch):
 
 def test_discover_pywinauto_missing_returns_none(monkeypatch):
     """When pywinauto is not available, discover() returns None gracefully."""
-    from camfrog_autodj import discover
+    from autodj import discover
 
     # Make pywinauto import fail
     monkeypatch.delitem(__import__("sys").modules, "pywinauto", raising=False)
     # Also ensure candidates isn't called
-    monkeypatch.setattr("camfrog_autodj.windows.candidates", lambda *a, **k: [])
+    monkeypatch.setattr("autodj.windows.candidates", lambda *a, **k: [])
 
     cfg = Config()
     result = discover.discover(cfg)
@@ -1278,10 +1278,10 @@ def test_discover_pywinauto_missing_returns_none(monkeypatch):
 def test_discover_candidates_raises_propagates(monkeypatch):
     """When windows.candidates() raises (e.g., Windows API unavailable),
     the exception propagates (current behavior - could be improved to return None)."""
-    from camfrog_autodj import discover
+    from autodj import discover
 
     monkeypatch.setattr(
-        "camfrog_autodj.windows.candidates",
+        "autodj.windows.candidates",
         lambda *a, **k: (_ for _ in ()).throw(OSError("access denied")),
     )
 
@@ -1305,3 +1305,4 @@ def test_config_has_youtube_ca_bundle_field():
     cfg = Config()
     assert hasattr(cfg, "youtube_ca_bundle")
     assert cfg.youtube_ca_bundle == ""
+

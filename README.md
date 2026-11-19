@@ -32,13 +32,13 @@ The desktop GUI now ships a TkinterEP-inspired theme system with three built-in 
 Highlights: **Enterprise-grade exception hierarchy** with structured error codes, **Circuit breaker** for playback resilience, **Per-nick chat rate limiting**, **Health check endpoint** for monitoring, **C901 complexity fixes** in chat/player loops, **IM viewer GUI** with settings, **IM auto-reply** with cooldown, **Camfrog RE integrations**: gift detection, avatar change detection, status indicators, upgrade/payment alerts, name color tracking. Full list: `CHANGELOG.md`.
 
 ### Enterprise Architecture Improvements
-1. **Exception Hierarchy** (`camfrog_autodj/exceptions.py`): 20+ structured exception types with machine-readable codes (`config.error`, `chat.send_failed`, `player.hung`, `security.unauthorized`, etc.) and contextual metadata. All exceptions inherit from `AutoDJError` for unified catching.
+1. **Exception Hierarchy** (`autodj/exceptions.py`): 20+ structured exception types with machine-readable codes (`config.error`, `chat.send_failed`, `player.hung`, `security.unauthorized`, etc.) and contextual metadata. All exceptions inherit from `AutoDJError` for unified catching.
 2. **Circuit Breaker** (engine.py): Tracks consecutive playback failures; opens after 5 failures, pauses playback for 60s, then half-opens for recovery. Prevents cascading failures on broken tracks/yt-dlp issues.
 3. **Chat Send Circuit Breaker**: Suspends chat sends after 10 consecutive delivery failures to prevent API bans.
 4. **Per-Nick Rate Limiting**: Sliding window (20 messages/60s per nick) prevents chat flooding. Admins exempt.
 5. **Health Check Endpoint** (`engine.health_check()`): Returns structured dict with mpv availability, circuit breaker state, send suspension, queue depth, IM viewer status — safe for monitoring dashboards.
 6. **Code Quality**: C901 complexity refactored (`_chat_loop` split into `_handle_im`, `_handle_room_message`, `_should_ignore_message`), all 336 tests pass, ruff/mypy/format/shellcheck clean.
-7. **Webhook API Refactor** (`camfrog_autodj/webhook/`): Eliminated global mutable state; dependency injection via FastAPI `app.state`; `RawBodyMiddleware` captures raw request body for HMAC verification; Pydantic request models (`PlayRequest`, `VolumeRequest`) for automatic validation; Prometheus `/webhook/metrics` endpoint; lazy FastAPI imports (optional dependency); all 13 tests pass.
+7. **Webhook API Refactor** (`autodj/webhook/`): Eliminated global mutable state; dependency injection via FastAPI `app.state`; `RawBodyMiddleware` captures raw request body for HMAC verification; Pydantic request models (`PlayRequest`, `VolumeRequest`) for automatic validation; Prometheus `/webhook/metrics` endpoint; lazy FastAPI imports (optional dependency); all 13 tests pass.
 
 ### New in 0.3.0
 1. **IM Viewer GUI**: New IM tab in the desktop window shows private/instant messages with polling. Settings dialog includes IM viewer enable/disable, auto-reply message, cooldown, and room presence requirement.
@@ -118,7 +118,7 @@ It first verifies that every package the exe must contain (yt-dlp, mutagen, pytt
 - Certificate, in order: `-Pfx file.pfx -Password ...` (or env `AUTODJ_PFX`, `AUTODJ_PFX_PASSWORD`), `-Thumbprint <hex>` (or env `AUTODJ_CERT_THUMBPRINT`), otherwise a self-signed cert for `-Subject` is reused or created once in your user store and trusted on this PC (one Windows confirmation dialog). It also writes `cert\autodj-codesign.cer` for other PCs.
 - A self-signed cert is only trusted where that `.cer` is imported. Public distribution without SmartScreen warnings needs a real code-signing certificate (OV/EV or Azure Trusted Signing), then use `-Pfx`.
 - The exe is built without UPX (fewer antivirus false positives) and started once with `--version` as a smoke test. `AutoDJ.spec` mirrors the options in `build.ps1`; edit `build.ps1`, not the spec.
-- Close `AutoDJ.exe` before building (it cannot be rebuilt or signed while running). `camfrog_autodj/__init__.py` must contain only `__version__`.
+- Close `AutoDJ.exe` before building (it cannot be rebuilt or signed while running). `autodj/__init__.py` must contain only `__version__`.
 
 ## Automated Windows 11 Installer (one click)
 **New in 0.2.6**: `install.ps1` / `install.bat` — a full-featured automated installer for Windows 11.
@@ -171,3 +171,4 @@ Messages are split at the avatar images of the room's history pane, so date head
 - Tested (325 passed, `python -m pytest -q -p no:faulthandler -p no:cacheprovider`): queue, commands EN/TH, chat diff, parsing, launcher flow (mocked), config validation, failure/echo/limit regressions (`tests/test_hardening.py`), GUI logic against a strict fake Tk (`tests/test_gui_logic.py`), an end-to-end run of the real CLI with a fake mpv, and all Thai/English command paths (`!ช่วยเหลือ`, `!เล่น`, `!เพลงนี้`, `!ข้าม`, `!บล็อก`, `!คิว`, `!ประวัติ`, `!สุ่ม`, `!วนซ้ำ`, `!เสียง`, `!ล้างคิว`, `!พูด`, `!ออกเสียง`, `!โหลด`, `!บล็อก`, `!เลิกบล็อก`, `!โหวตข้าม`, `!ลบ`, `!np`, `!ถัดไป`).
 - Not tested: real Camfrog, mpv, yt-dlp, TTS (Thai voice must be installed in Windows), Windows launch/URI, how the new GUI actually looks on screen (the real-Tk smoke test `test_gui_smoke` runs wherever a display exists), `build.ps1`.
 - Check room rules and Camfrog terms before running a bot.
+

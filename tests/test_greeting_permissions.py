@@ -1,8 +1,8 @@
 """Room greeting by permission: admin greeting, user welcome, blocked users ignored."""
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
+from autodj.adapters import NullAdapter
+from autodj.config import Config
+from autodj.engine import Engine
 
 
 def _engine(**cfg_kw):
@@ -39,10 +39,10 @@ def test_welcome_respects_cooldown():
 
 
 def test_welcome_without_room_name_has_no_double_space():
-    from camfrog_autodj.adapters import NullAdapter
-    from camfrog_autodj.adapters.base import ChatMessage
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.engine import Engine
+    from autodj.adapters import NullAdapter
+    from autodj.adapters.base import ChatMessage
+    from autodj.config import Config
+    from autodj.engine import Engine
 
     e = Engine(Config(), NullAdapter())
     e.cfg.room = ""
@@ -50,3 +50,4 @@ def test_welcome_without_room_name_has_no_double_space():
     e.say = lambda text, *a, **k: said.append(text) or True  # type: ignore[method-assign]
     assert e._handle_welcome_message(ChatMessage("amy", "hi"))
     assert said and "  " not in said[0] and "amy" in said[0]
+

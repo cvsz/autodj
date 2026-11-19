@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from ..base import Plugin, PluginInterface
 
 if TYPE_CHECKING:
-    from camfrog_autodj.models import Track
+    from autodj.models import Track
 
 log = logging.getLogger("autodj.plugins.stats")
 
@@ -80,3 +80,4 @@ class StatsPlugin(Plugin):
             self.interface.say(msg)
             return True
         return False
+

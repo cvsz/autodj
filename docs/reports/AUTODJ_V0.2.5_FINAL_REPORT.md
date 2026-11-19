@@ -23,10 +23,10 @@ All functional code and release automation changes were vetted via independent c
 
 | File | Purpose | Change Summary |
 |---|---|---|
-| `camfrog_autodj/config.py` | Configuration schema | Added configurations for audio fade, dynamic normalization (`dynaudnorm`), vote skip thresholds, rate limit sliding windows, and YouTube cookie options. |
-| `camfrog_autodj/player.py` | Audio player engine | Added fade-in/fade-out transitions, dynamic filter generation for loudness normalization, and player state safeguards. |
-| `camfrog_autodj/commands.py` | Bot command handler | Enforced per-user sliding window cooldowns and dynamic participant-based vote skip logic. |
-| `camfrog_autodj/library.py` | Media search & downloader | Added YouTube browser cookie extraction and cookies file support with masked log reporting. |
+| `autodj/config.py` | Configuration schema | Added configurations for audio fade, dynamic normalization (`dynaudnorm`), vote skip thresholds, rate limit sliding windows, and YouTube cookie options. |
+| `autodj/player.py` | Audio player engine | Added fade-in/fade-out transitions, dynamic filter generation for loudness normalization, and player state safeguards. |
+| `autodj/commands.py` | Bot command handler | Enforced per-user sliding window cooldowns and dynamic participant-based vote skip logic. |
+| `autodj/library.py` | Media search & downloader | Added YouTube browser cookie extraction and cookies file support with masked log reporting. |
 | `installer.nsi` | NSIS Windows installer script | Marked optional bundled dependencies as `/nonfatal` and `/o` for reliable CI runner execution; standardized installer output name. |
 | `.github/workflows/release.yml` | GitHub Actions Release | Configured full packaging pipeline: Python setup, PyInstaller compilation, NSIS installation, CycloneDX SBOM generation, and GitHub Artifact Attestation. |
 | `docs/reports/AUTODJ_V0.2.5_BASELINE_AUDIT.md` | Discovery audit | Documented baseline architecture, dependencies, technical debt, and audit findings. |
@@ -39,12 +39,12 @@ All functional code and release automation changes were vetted via independent c
 
 | Feature | Implementation | Tests | Status |
 |---|---|---|---|
-| Audio Fade-In/Out | `camfrog_autodj/player.py` (`fade_in_ms`, `fade_out_ms`) | `tests/test_v030_fixes.py::test_fade_in_out` | `COMPLETED_VERIFIED` |
-| Volume Normalization | `camfrog_autodj/player.py` (`dynaudnorm`, `loudnorm`) | `tests/test_v030_fixes.py::test_normalization_filter` | `COMPLETED_VERIFIED` |
-| YouTube Cookies / Auth | `camfrog_autodj/library.py` (`--cookies-from-browser`) | `tests/test_v030_fixes.py::test_youtube_cookies` | `COMPLETED_VERIFIED` |
-| Dynamic Vote Skip | `camfrog_autodj/commands.py` (`voteskip_dynamic_pct`) | `tests/test_v030_fixes.py::test_dynamic_voteskip` | `COMPLETED_VERIFIED` |
-| Anti-Spam Rate Limiting | `camfrog_autodj/commands.py` (`rate_limit_window`) | `tests/test_v030_fixes.py::test_rate_limiting` | `COMPLETED_VERIFIED` |
-| Windows Hi-DPI & GUI | `camfrog_autodj/gui/` (DPI awareness & cards) | `tests/test_gui_logic.py`, `tests/test_gui_i18n.py` | `COMPLETED_VERIFIED` |
+| Audio Fade-In/Out | `autodj/player.py` (`fade_in_ms`, `fade_out_ms`) | `tests/test_v030_fixes.py::test_fade_in_out` | `COMPLETED_VERIFIED` |
+| Volume Normalization | `autodj/player.py` (`dynaudnorm`, `loudnorm`) | `tests/test_v030_fixes.py::test_normalization_filter` | `COMPLETED_VERIFIED` |
+| YouTube Cookies / Auth | `autodj/library.py` (`--cookies-from-browser`) | `tests/test_v030_fixes.py::test_youtube_cookies` | `COMPLETED_VERIFIED` |
+| Dynamic Vote Skip | `autodj/commands.py` (`voteskip_dynamic_pct`) | `tests/test_v030_fixes.py::test_dynamic_voteskip` | `COMPLETED_VERIFIED` |
+| Anti-Spam Rate Limiting | `autodj/commands.py` (`rate_limit_window`) | `tests/test_v030_fixes.py::test_rate_limiting` | `COMPLETED_VERIFIED` |
+| Windows Hi-DPI & GUI | `autodj/gui/` (DPI awareness & cards) | `tests/test_gui_logic.py`, `tests/test_gui_i18n.py` | `COMPLETED_VERIFIED` |
 | CycloneDX SBOM | `.github/workflows/release.yml` (`cyclonedx-py`) | Verified in Action run [#41285640249](https://github.com/cvsz/autodj/actions/runs/41285640249) | `COMPLETED_VERIFIED` |
 | Artifact Attestation | `.github/workflows/release.yml` (`actions/attest-build-provenance`) | Verified in Action run [#41285640249](https://github.com/cvsz/autodj/actions/runs/41285640249) | `COMPLETED_VERIFIED` |
 | Unit Test Suite | 143 tests passing in 3.59s | `pytest tests/` | `COMPLETED_VERIFIED` |
@@ -88,3 +88,4 @@ All functional code and release automation changes were vetted via independent c
 ## G. Final Status
 
 `IMPLEMENTATION_COMPLETE_RELEASE_BLOCKED`
+

@@ -41,9 +41,9 @@ a = Analysis(
     hiddenimports=[
         # gui is imported lazily in __main__.py (only when --gui is passed),
         # so PyInstaller's bytecode scan won't see it. Name it explicitly in
-        # addition to collect_submodules("camfrog_autodj") so frozen builds
+        # addition to collect_submodules("autodj") so frozen builds
         # can never ship without it.
-        "camfrog_autodj.gui",
+        "autodj.gui",
         # Optional features are imported lazily at runtime; make them visible
         # to PyInstaller so a frozen build with webhook/hot-reload enabled works.
         "fastapi",
@@ -53,7 +53,7 @@ a = Analysis(
         "comtypes",
         "pyperclip",
         "mutagen",
-        *collect_submodules("camfrog_autodj"),
+        *collect_submodules("autodj"),
         *collect_submodules("pywinauto"),
         *collect_submodules("pyttsx3"),
         *yt_dlp_hidden,
@@ -105,3 +105,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

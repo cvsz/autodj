@@ -34,24 +34,24 @@ All module interfaces are well-defined with type hints. The `Engine` is the cent
 
 | ID | Severity | File | Finding | Status |
 |----|----------|------|---------|--------|
-| T-01 | P1 | `camfrog_autodj/gui.py` | `save_settings()` reads `auto_reply_enabled`, `auto_reply_interval`, `auto_reply_file` into the config object but never writes them to the TOML file. Settings are lost on restart. | **FIXED** |
-| T-02 | P1 | `camfrog_autodj/gui.py` | `save_settings()` replaces `self.e.cfg` with a reloaded config but does not update `self.e.admins` or `self.e.blocked`, so admin/blocklist changes from the settings dialog do not take effect until restart. | **FIXED** |
+| T-01 | P1 | `autodj/gui.py` | `save_settings()` reads `auto_reply_enabled`, `auto_reply_interval`, `auto_reply_file` into the config object but never writes them to the TOML file. Settings are lost on restart. | **FIXED** |
+| T-02 | P1 | `autodj/gui.py` | `save_settings()` replaces `self.e.cfg` with a reloaded config but does not update `self.e.admins` or `self.e.blocked`, so admin/blocklist changes from the settings dialog do not take effect until restart. | **FIXED** |
 
 ### P2 — Maintainability/operational weaknesses
 
 | ID | Severity | File | Finding | Status |
 |----|----------|------|---------|--------|
-| T-03 | P2 | `camfrog_autodj/config.py` | `auto_reply_interval` is not in `_RANGES`, so invalid values (e.g. negative, 0) are accepted without validation. | **FIXED** (added range 60–86400s) |
-| T-04 | P2 | `camfrog_autodj/engine.py` | `auto_reply_file` (`ads-list.json`) is treated as a relative path resolved against CWD. If the working directory changes (e.g. installed to Program Files), the file is not found. | **FIXED** (resolved against config file directory) |
-| T-05 | P2 | `camfrog_autodj/gui.py` | `save_settings()` TOML writer does not include `youtube_cookies_file`, `youtube_cookies_browser`, `youtube_ca_bundle`, `audio_fade_*`, `audio_normalize`, `voteskip_dynamic_*`, `user_request_limit`, `rate_limit_window`. These settings cannot be persisted through the GUI. | Pre-existing, out of scope |
-| T-06 | P2 | `camfrog_autodj/engine.py` | Auto-reply message index (`idx`) resets on restart; no persisted state for which message was last sent. | Pre-existing, acceptable |
+| T-03 | P2 | `autodj/config.py` | `auto_reply_interval` is not in `_RANGES`, so invalid values (e.g. negative, 0) are accepted without validation. | **FIXED** (added range 60–86400s) |
+| T-04 | P2 | `autodj/engine.py` | `auto_reply_file` (`ads-list.json`) is treated as a relative path resolved against CWD. If the working directory changes (e.g. installed to Program Files), the file is not found. | **FIXED** (resolved against config file directory) |
+| T-05 | P2 | `autodj/gui.py` | `save_settings()` TOML writer does not include `youtube_cookies_file`, `youtube_cookies_browser`, `youtube_ca_bundle`, `audio_fade_*`, `audio_normalize`, `voteskip_dynamic_*`, `user_request_limit`, `rate_limit_window`. These settings cannot be persisted through the GUI. | Pre-existing, out of scope |
+| T-06 | P2 | `autodj/engine.py` | Auto-reply message index (`idx`) resets on restart; no persisted state for which message was last sent. | Pre-existing, acceptable |
 
 ### P3 — Optional enhancements
 
 | ID | Severity | File | Finding | Status |
 |----|----------|------|---------|--------|
-| T-07 | P3 | `camfrog_autodj/engine.py` | `_auto_reply_loop` calls `self.say(msg)` which puts messages in the outbox even when the adapter is `NullAdapter` (Camfrog unavailable). Messages are silently dropped by `NullAdapter.send()`. This is acceptable degraded behavior. | Documented |
-| T-08 | P3 | `camfrog_autodj/adapters/logtail.py` | IM detection uses heuristic `[IM]` tag / `IM ` prefix. Actual Camfrog log format may differ. | Documented |
+| T-07 | P3 | `autodj/engine.py` | `_auto_reply_loop` calls `self.say(msg)` which puts messages in the outbox even when the adapter is `NullAdapter` (Camfrog unavailable). Messages are silently dropped by `NullAdapter.send()`. This is acceptable degraded behavior. | Documented |
+| T-08 | P3 | `autodj/adapters/logtail.py` | IM detection uses heuristic `[IM]` tag / `IM ` prefix. Actual Camfrog log format may differ. | Documented |
 
 ## Component-by-component audit
 
@@ -162,7 +162,7 @@ See `docs/audits/SECURITY_AUDIT.md` for the full security audit. Key observation
 
 | Suite | Result |
 |-------|--------|
-| `python -m ruff check camfrog_autodj/` | **Passed** (0 errors) |
+| `python -m ruff check autodj/` | **Passed** (0 errors) |
 | `python -m pytest tests/ -q` | **288 passed, 3 subtests passed** |
 
 ## What is NOT tested (limitations)
@@ -182,3 +182,4 @@ New regression tests should be added for:
 3. Click-to-seek via `GlowBar` / `Engine.seek()`
 4. Double-click queue item → `add_request(t, position=0)`
 5. Settings persistence of auto-reply fields
+

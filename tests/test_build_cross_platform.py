@@ -42,7 +42,7 @@ class TestGenerateSpec:
             '"app.ico"',
             '"version_info.txt"',
             'collect_all("yt_dlp")',
-            'collect_submodules("camfrog_autodj")',
+            'collect_submodules("autodj")',
             'collect_submodules("pywinauto")',
             'collect_submodules("pyttsx3")',
             '"comtypes"',
@@ -151,3 +151,4 @@ class TestLinuxInstallerBuilder:
         assert "pyproject.toml" in script
         for stale in ["${1:-0.3.6}", "${1:-0.2.3}"]:
             assert stale not in script, f"hard-coded default version {stale}"
+

@@ -11,8 +11,8 @@ from unittest.mock import Mock
 import pytest
 from fastapi.testclient import TestClient
 
-from camfrog_autodj.webhook.models import WebhookConfig
-from camfrog_autodj.webhook.server import WebhookServer, create_webhook_app
+from autodj.webhook.models import WebhookConfig
+from autodj.webhook.server import WebhookServer, create_webhook_app
 
 
 def _signed(
@@ -262,3 +262,4 @@ class TestWebhookSignatureHardening:
         client = self._client(Mock(), rate_limit_per_ip=2)
         codes = [client.get("/webhook/health").status_code for _ in range(3)]
         assert codes[-1] == 429
+

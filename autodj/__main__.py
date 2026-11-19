@@ -202,7 +202,7 @@ def _run(a, level):
 def _run_gui(eng) -> None:
     """Start the engine and open the Tk desktop window.
 
-    ``camfrog_autodj.gui`` is imported lazily here (only under ``--gui``) so
+    ``autodj.gui`` is imported lazily here (only under ``--gui``) so
     headless / console runs never pull in tkinter.  The import is wrapped so a
     shadowing/stale installed copy (older builds lack gui.py) yields an
     actionable error instead of a bare ModuleNotFoundError.
@@ -210,11 +210,11 @@ def _run_gui(eng) -> None:
     try:
         from .gui import App
     except ImportError:
-        pkg = sys.modules.get("camfrog_autodj")
+        pkg = sys.modules.get("autodj")
         pkg_file = getattr(pkg, "__file__", "<unknown>")
         print(
-            "\nCannot start GUI: 'camfrog_autodj.gui' could not be imported.\n"
-            f"  The 'camfrog_autodj' package was loaded from: {pkg_file}\n"
+            "\nCannot start GUI: 'autodj.gui' could not be imported.\n"
+            f"  The 'autodj' package was loaded from: {pkg_file}\n"
             "  This usually means a stale pip-installed copy of camfrog-autodj\n"
             "  (older builds do not ship gui.py) is shadowing this repo's source.\n"
             "  Fix:\n"
@@ -384,3 +384,4 @@ def _build_adapter(a, cfg):
 
 if __name__ == "__main__":
     main()
+

@@ -9,14 +9,14 @@ This report documents the completion of **Task 1: Webhook/API Integration (Phase
 ### Changes Made
 
 #### New Files Created
-1. **`camfrog_autodj/webhook/__init__.py`** - Package exports
-2. **`camfrog_autodj/webhook/models.py`** - WebhookConfig dataclass
-3. **`camfrog_autodj/webhook/auth.py`** - HMAC authentication & rate limiting
-4. **`camfrog_autodj/webhook/server.py`** - FastAPI webhook server
+1. **`autodj/webhook/__init__.py`** - Package exports
+2. **`autodj/webhook/models.py`** - WebhookConfig dataclass
+3. **`autodj/webhook/auth.py`** - HMAC authentication & rate limiting
+4. **`autodj/webhook/server.py`** - FastAPI webhook server
 5. **`tests/test_webhook_server.py`** - Comprehensive test suite (13 tests)
 
 #### Modified Files
-1. **`camfrog_autodj/config.py`** - Added webhook config fields:
+1. **`autodj/config.py`** - Added webhook config fields:
    - `webhook_enabled: bool = False`
    - `webhook_port: int = 8080`
    - `webhook_secret: str = ""`
@@ -24,7 +24,7 @@ This report documents the completion of **Task 1: Webhook/API Integration (Phase
    - `webhook_rate_limit_per_ip: int = 60`
    - Validation ranges for port (1-65535) and rate limit (1-10000)
 
-2. **`camfrog_autodj/engine.py`** - Integrated webhook server:
+2. **`autodj/engine.py`** - Integrated webhook server:
    - Added `_webhook_server` attribute
    - Start webhook server in `start()` if enabled
    - Stop webhook server in `shutdown()`

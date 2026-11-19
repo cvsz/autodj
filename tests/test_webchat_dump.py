@@ -2,16 +2,16 @@
 
 import re
 
-from camfrog_autodj.adapters.base import parse_line
-from camfrog_autodj.config import Config
-from camfrog_autodj.webchat import items_to_lines
+from autodj.adapters.base import parse_line
+from autodj.config import Config
+from autodj.webchat import items_to_lines
 
 A = ("avatar", "")
 RX = re.compile(Config().line_regex)
 
 
 def test_im_pane_lines_parses_camfrog_private_history():
-    from camfrog_autodj.adapters.uia import UiaAdapter
+    from autodj.adapters.uia import UiaAdapter
 
     items = [
         ("text", "วันเสาร์, ตุลาคม 03"),
@@ -113,3 +113,4 @@ def test_emoticon_and_link_continue_body():
     assert parsed(items)[0] == ("bob", "!play https://youtu.be/x")
     items = [A, link("bob"), t("5:00"), t("!play"), link("https://youtu.be/x"), t("rest")]
     assert parsed(items) == [("bob", "!play https://youtu.be/x rest")]
+

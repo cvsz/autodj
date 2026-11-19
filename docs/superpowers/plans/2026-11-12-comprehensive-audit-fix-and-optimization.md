@@ -13,11 +13,11 @@
 ## Global Constraints
 
 - All code changes must pass: `pytest -q -p no:faulthandler -p no:cacheprovider` (485+ tests)
-- All code changes must pass: `ruff check camfrog_autodj tests tools`
-- All code changes must pass: `ruff format --check camfrog_autodj tests tools`
-- All code changes must pass: `mypy camfrog_autodj`
+- All code changes must pass: `ruff check autodj tests tools`
+- All code changes must pass: `ruff format --check autodj tests tools`
+- All code changes must pass: `mypy autodj`
 - All code changes must pass: `shellcheck scripts/*.sh tools/*.sh`
-- All code changes must pass: `python -m compileall -q camfrog_autodj tests tools`
+- All code changes must pass: `python -m compileall -q autodj tests tools`
 - No new dependencies beyond those in `pyproject.toml`
 - Follow AGENTS.md rules: fail-closed validation, atomic writes, no symlinks, bounded recursion, no shell=True, nickname auth spoofing documented
 - Maintain backward compatibility - no API/config changes unless fixing bugs
@@ -41,7 +41,7 @@
 ### Task 1: Fix Critical Bug - Duplicate `stop_evt` Initialization
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py:74,92`
+- Modify: `autodj/engine.py:74,92`
 - Test: `tests/test_engine_init.py` (new)
 
 **Interfaces:**
@@ -51,9 +51,9 @@
 - [ ] **Step 1: Write failing test for duplicate initialization**
 ```python
 def test_engine_single_stop_evt():
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.adapters import NullAdapter
+    from autodj.engine import Engine
+    from autodj.config import Config
+    from autodj.adapters import NullAdapter
     
     cfg = Config()
     adapter = NullAdapter()
@@ -80,7 +80,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/engine.py tests/test_engine_init.py
+git add autodj/engine.py tests/test_engine_init.py
 git commit -m "fix: remove duplicate stop_evt initialization in Engine.__init__"
 ```
 
@@ -89,7 +89,7 @@ git commit -m "fix: remove duplicate stop_evt initialization in Engine.__init__"
 ### Task 2: Fix Critical Bug - Pause Proceeds Without IPC Confirmation
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py:404-410`, `camfrog_autodj/player.py:346-351`
+- Modify: `autodj/engine.py:404-410`, `autodj/player.py:346-351`
 - Test: `tests/test_pause_ipc_failure.py` (new)
 
 **Interfaces:**
@@ -99,10 +99,10 @@ git commit -m "fix: remove duplicate stop_evt initialization in Engine.__init__"
 - [ ] **Step 1: Write failing test for pause IPC failure**
 ```python
 def test_pause_fails_when_ipc_unavailable():
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.adapters import NullAdapter
-    from camfrog_autodj.player import MpvPlayer
+    from autodj.engine import Engine
+    from autodj.config import Config
+    from autodj.adapters import NullAdapter
+    from autodj.player import MpvPlayer
     from unittest.mock import MagicMock
     
     cfg = Config()
@@ -153,7 +153,7 @@ Expected: 485 passed
 
 - [ ] **Step 7: Commit**
 ```bash
-git add camfrog_autodj/engine.py camfrog_autodj/player.py tests/test_pause_ipc_failure.py
+git add autodj/engine.py autodj/player.py tests/test_pause_ipc_failure.py
 git commit -m "fix: pause/resume only update state when IPC confirms success"
 ```
 
@@ -162,7 +162,7 @@ git commit -m "fix: pause/resume only update state when IPC confirms success"
 ### Task 3: Fix Critical Bug - TTS Volume Ducking No-Op
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py:479`, `camfrog_autodj/player.py:346-351`
+- Modify: `autodj/engine.py:479`, `autodj/player.py:346-351`
 - Test: `tests/test_tts_ducking.py` (new)
 
 **Interfaces:**
@@ -172,10 +172,10 @@ git commit -m "fix: pause/resume only update state when IPC confirms success"
 - [ ] **Step 1: Write failing test for TTS ducking**
 ```python
 def test_tts_ducks_music_volume():
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.adapters import NullAdapter
-    from camfrog_autodj.player import MpvPlayer
+    from autodj.engine import Engine
+    from autodj.config import Config
+    from autodj.adapters import NullAdapter
+    from autodj.player import MpvPlayer
     from unittest.mock import MagicMock, patch
     
     cfg = Config()
@@ -189,7 +189,7 @@ def test_tts_ducks_music_volume():
     eng.player.set_volume = MagicMock()
     eng.volume = 70
     
-    with patch('camfrog_autodj.tts.synth'):
+    with patch('autodj.tts.synth'):
         eng.speak("test")
     
     # Verify volume was set to duck level then restored
@@ -224,7 +224,7 @@ Expected: 485 passed
 
 - [ ] **Step 7: Commit**
 ```bash
-git add camfrog_autodj/engine.py camfrog_autodj/player.py tests/test_tts_ducking.py
+git add autodj/engine.py autodj/player.py tests/test_tts_ducking.py
 git commit -m "fix: TTS volume ducking now works by setting IPC in play_file"
 ```
 
@@ -233,7 +233,7 @@ git commit -m "fix: TTS volume ducking now works by setting IPC in play_file"
 ### Task 4: Fix Critical Bug - `_pop_next_track` Ignores `is_request` Flag
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py:831-837`
+- Modify: `autodj/engine.py:831-837`
 - Test: `tests/test_pop_next_track.py` (new)
 
 **Interfaces:**
@@ -243,10 +243,10 @@ git commit -m "fix: TTS volume ducking now works by setting IPC in play_file"
 - [ ] **Step 1: Write failing test for pop_next_track logic**
 ```python
 def test_pop_next_track_respects_is_request():
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.adapters import NullAdapter
-    from camfrog_autodj.models import Track
+    from autodj.engine import Engine
+    from autodj.config import Config
+    from autodj.adapters import NullAdapter
+    from autodj.models import Track
     
     cfg = Config()
     adapter = NullAdapter()
@@ -292,7 +292,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/engine.py tests/test_pop_next_track.py
+git add autodj/engine.py tests/test_pop_next_track.py
 git commit -m "fix: _pop_next_track now correctly uses is_request flag"
 ```
 
@@ -301,7 +301,7 @@ git commit -m "fix: _pop_next_track now correctly uses is_request flag"
 ### Task 5: Fix Critical Security Bug - Admin Path Traversal
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py:566-576`
+- Modify: `autodj/engine.py:566-576`
 - Test: `tests/test_admin_path_traversal.py` (new)
 
 **Interfaces:**
@@ -311,9 +311,9 @@ git commit -m "fix: _pop_next_track now correctly uses is_request flag"
 - [ ] **Step 1: Write failing test for admin path traversal**
 ```python
 def test_admin_cannot_escape_music_dirs():
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.adapters import NullAdapter
+    from autodj.engine import Engine
+    from autodj.config import Config
+    from autodj.adapters import NullAdapter
     import tempfile
     import os
     
@@ -332,7 +332,7 @@ def test_admin_cannot_escape_music_dirs():
         with open(outside_file, "w") as f:
             f.write("secret")
         
-        from camfrog_autodj.exceptions import UserError
+        from autodj.exceptions import UserError
         try:
             eng._resolve_local_file(outside_file, "admin", admin=True)
             assert False, "Should have raised UserError"
@@ -378,7 +378,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/engine.py tests/test_admin_path_traversal.py
+git add autodj/engine.py tests/test_admin_path_traversal.py
 git commit -m "security: enforce music_dirs confinement for all users including admins"
 ```
 
@@ -387,7 +387,7 @@ git commit -m "security: enforce music_dirs confinement for all users including 
 ### Task 6: Fix Critical Bug - Blocking Backoff in Player Loop
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py:906` (and `_track_failed` method)
+- Modify: `autodj/engine.py:906` (and `_track_failed` method)
 - Test: `tests/test_nonblocking_backoff.py` (new)
 
 **Interfaces:**
@@ -397,10 +397,10 @@ git commit -m "security: enforce music_dirs confinement for all users including 
 - [ ] **Step 1: Write failing test for non-blocking backoff**
 ```python
 def test_backoff_does_not_block_player_loop():
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.adapters import NullAdapter
-    from camfrog_autodj.models import Track
+    from autodj.engine import Engine
+    from autodj.config import Config
+    from autodj.adapters import NullAdapter
+    from autodj.models import Track
     import time
     
     cfg = Config()
@@ -448,7 +448,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/engine.py tests/test_nonblocking_backoff.py
+git add autodj/engine.py tests/test_nonblocking_backoff.py
 git commit -m "fix: player loop backoff is now non-blocking"
 ```
 
@@ -457,7 +457,7 @@ git commit -m "fix: player loop backoff is now non-blocking"
 ### Task 7: Fix Critical Security Bug - Empty Prefix Auth Bypass
 
 **Files:**
-- Modify: `camfrog_autodj/commands.py:19`
+- Modify: `autodj/commands.py:19`
 - Test: `tests/test_empty_prefix.py` (new)
 
 **Interfaces:**
@@ -467,8 +467,8 @@ git commit -m "fix: player loop backoff is now non-blocking"
 - [ ] **Step 1: Write failing test for empty prefix**
 ```python
 def test_empty_prefix_rejected():
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.exceptions import ConfigError
+    from autodj.config import Config
+    from autodj.exceptions import ConfigError
     
     # Config validation should reject empty prefix
     import tempfile
@@ -518,7 +518,7 @@ Expected: 485 passed
 
 - [ ] **Step 7: Commit**
 ```bash
-git add camfrog_autodj/commands.py camfrog_autodj/config.py tests/test_empty_prefix.py
+git add autodj/commands.py autodj/config.py tests/test_empty_prefix.py
 git commit -m "security: reject empty command prefix at config validation and runtime"
 ```
 
@@ -527,7 +527,7 @@ git commit -m "security: reject empty command prefix at config validation and ru
 ### Task 8: Fix Bug - doctor.py Follows Symlinks
 
 **Files:**
-- Modify: `camfrog_autodj/doctor.py:121`
+- Modify: `autodj/doctor.py:121`
 - Test: `tests/test_doctor_symlinks.py` (new)
 
 **Interfaces:**
@@ -537,7 +537,7 @@ git commit -m "security: reject empty command prefix at config validation and ru
 - [ ] **Step 1: Write failing test for symlink handling**
 ```python
 def test_doctor_skips_symlinks():
-    from camfrog_autodj.doctor import check_library
+    from autodj.doctor import check_library
     import tempfile
     import os
     
@@ -592,7 +592,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/doctor.py tests/test_doctor_symlinks.py
+git add autodj/doctor.py tests/test_doctor_symlinks.py
 git commit -m "fix: doctor.py now skips symlinks per AGENTS.md rules"
 ```
 
@@ -601,7 +601,7 @@ git commit -m "fix: doctor.py now skips symlinks per AGENTS.md rules"
 ### Task 9: Fix Bug - doctor.py Substring Match for "uia"
 
 **Files:**
-- Modify: `camfrog_autodj/doctor.py:57`
+- Modify: `autodj/doctor.py:57`
 - Test: `tests/test_doctor_uia_match.py` (new)
 
 **Interfaces:**
@@ -611,8 +611,8 @@ git commit -m "fix: doctor.py now skips symlinks per AGENTS.md rules"
 - [ ] **Step 1: Write failing test for exact match**
 ```python
 def test_doctor_exact_uia_match():
-    from camfrog_autodj.doctor import check_chat_adapter
-    from camfrog_autodj.config import Config
+    from autodj.doctor import check_chat_adapter
+    from autodj.config import Config
     
     cfg = Config()
     cfg.chat_reader = "uia"  # exact match
@@ -644,7 +644,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/doctor.py tests/test_doctor_uia_match.py
+git add autodj/doctor.py tests/test_doctor_uia_match.py
 git commit -m "fix: doctor.py uses exact match for chat adapter type"
 ```
 
@@ -653,7 +653,7 @@ git commit -m "fix: doctor.py uses exact match for chat adapter type"
 ### Task 10: Fix Bug - discover.py Fragile Regex for Unquoted Values
 
 **Files:**
-- Modify: `camfrog_autodj/discover.py:221-223`
+- Modify: `autodj/discover.py:221-223`
 - Test: `tests/test_discover_regex.py` (new)
 
 **Interfaces:**
@@ -663,7 +663,7 @@ git commit -m "fix: doctor.py uses exact match for chat adapter type"
 - [ ] **Step 1: Write failing test for config parsing**
 ```python
 def test_discover_handles_unquoted_values():
-    from camfrog_autodj.discover import parse_config_value
+    from autodj.discover import parse_config_value
     # Test various edge cases
     assert parse_config_value('value') == 'value'
     assert parse_config_value('"value"') == 'value'
@@ -688,7 +688,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/discover.py tests/test_discover_regex.py
+git add autodj/discover.py tests/test_discover_regex.py
 git commit -m "fix: discover.py uses robust config value parsing"
 ```
 
@@ -697,7 +697,7 @@ git commit -m "fix: discover.py uses robust config value parsing"
 ### Task 11: Fix Critical Bug - player.py play_file Never Sets _ipc
 
 **Files:**
-- Modify: `camfrog_autodj/player.py:346-351`
+- Modify: `autodj/player.py:346-351`
 - Test: Covered by Task 3 (TTS ducking)
 
 **Interfaces:**
@@ -716,7 +716,7 @@ Expected: 485 passed
 ### Task 12: Fix Bug - Broad Exception Catch in _chat_loop
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py:973`
+- Modify: `autodj/engine.py:973`
 - Test: `tests/test_chat_loop_exceptions.py` (new)
 
 **Interfaces:**
@@ -726,9 +726,9 @@ Expected: 485 passed
 - [ ] **Step 1: Write failing test for exception handling**
 ```python
 def test_chat_loop_catches_only_expected():
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.adapters import NullAdapter
+    from autodj.engine import Engine
+    from autodj.config import Config
+    from autodj.adapters import NullAdapter
     from unittest.mock import MagicMock
     
     cfg = Config()
@@ -791,7 +791,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/engine.py tests/test_chat_loop_exceptions.py
+git add autodj/engine.py tests/test_chat_loop_exceptions.py
 git commit -m "fix: _chat_loop only catches expected adapter exceptions"
 ```
 
@@ -800,7 +800,7 @@ git commit -m "fix: _chat_loop only catches expected adapter exceptions"
 ### Task 13: Implement Incomplete Features - Admin Kick/Ban/Punish/Delete
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py:1545-1570`
+- Modify: `autodj/engine.py:1545-1570`
 - Test: `tests/test_admin_commands.py` (new)
 
 **Interfaces:**
@@ -810,9 +810,9 @@ git commit -m "fix: _chat_loop only catches expected adapter exceptions"
 - [ ] **Step 1: Write failing tests for each admin command**
 ```python
 def test_kick_user_sends_command():
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.adapters import NullAdapter
+    from autodj.engine import Engine
+    from autodj.config import Config
+    from autodj.adapters import NullAdapter
     from unittest.mock import MagicMock
     
     cfg = Config()
@@ -862,7 +862,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/engine.py tests/test_admin_commands.py
+git add autodj/engine.py tests/test_admin_commands.py
 git commit -m "feat: implement actual Camfrog commands for kick/ban/punish/delete"
 ```
 
@@ -871,7 +871,7 @@ git commit -m "feat: implement actual Camfrog commands for kick/ban/punish/delet
 ### Task 14: Fix Dead Feature - participant_count Referenced But Undefined
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py:432` (and related)
+- Modify: `autodj/engine.py:432` (and related)
 - Test: `tests/test_participant_count.py` (new)
 
 **Interfaces:**
@@ -881,10 +881,10 @@ git commit -m "feat: implement actual Camfrog commands for kick/ban/punish/delet
 - [ ] **Step 1: Write failing test for participant_count**
 ```python
 def test_participant_count_tracked():
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.adapters import NullAdapter
-    from camfrog_autodj.adapters.base import ChatMessage
+    from autodj.engine import Engine
+    from autodj.config import Config
+    from autodj.adapters import NullAdapter
+    from autodj.adapters.base import ChatMessage
     
     cfg = Config()
     adapter = NullAdapter()
@@ -920,7 +920,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/engine.py tests/test_participant_count.py
+git add autodj/engine.py tests/test_participant_count.py
 git commit -m "fix: participant_count now properly tracks active room users"
 ```
 
@@ -929,7 +929,7 @@ git commit -m "fix: participant_count now properly tracks active room users"
 ### Task 15: Fix Divergence Risk - voteskip Duplicated in commands.py
 
 **Files:**
-- Modify: `camfrog_autodj/commands.py:304-320`, `camfrog_autodj/engine.py:440-460`
+- Modify: `autodj/commands.py:304-320`, `autodj/engine.py:440-460`
 - Test: `tests/test_voteskip_consistency.py` (new)
 
 **Interfaces:**
@@ -939,10 +939,10 @@ git commit -m "fix: participant_count now properly tracks active room users"
 - [ ] **Step 1: Write failing test for voteskip consistency**
 ```python
 def test_voteskip_single_implementation():
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.adapters import NullAdapter
-    from camfrog_autodj.adapters.base import ChatMessage
+    from autodj.engine import Engine
+    from autodj.config import Config
+    from autodj.adapters import NullAdapter
+    from autodj.adapters.base import ChatMessage
     
     cfg = Config()
     cfg.voteskip_threshold = 2
@@ -984,7 +984,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/engine.py camfrog_autodj/commands.py tests/test_voteskip_consistency.py
+git add autodj/engine.py autodj/commands.py tests/test_voteskip_consistency.py
 git commit -m "refactor: consolidate voteskip logic in Engine, Router delegates"
 ```
 
@@ -1032,7 +1032,7 @@ git commit -m "ci: add gh release create step to release workflow"
 ### Task 17: Fix Config Version Drift
 
 **Files:**
-- Modify: `AGENTS.md`, `pyproject.toml`, `version_info.txt`, `installer.nsi`, `install.bat`, `install.ps1`, `camfrog_autodj/__init__.py`
+- Modify: `AGENTS.md`, `pyproject.toml`, `version_info.txt`, `installer.nsi`, `install.bat`, `install.ps1`, `autodj/__init__.py`
 - Test: `tests/test_version_consistency.py` (new)
 
 **Interfaces:**
@@ -1050,7 +1050,7 @@ def test_version_consistency():
     pyproject_version = re.search(r'version = "([^"]+)"', pyproject).group(1)
     
     # Read from __init__.py
-    init = Path("camfrog_autodj/__init__.py").read_text()
+    init = Path("autodj/__init__.py").read_text()
     init_version = re.search(r'__version__ = "([^"]+)"', init).group(1)
     
     # Read from version_info.txt
@@ -1078,7 +1078,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add AGENTS.md pyproject.toml version_info.txt installer.nsi install.bat install.ps1 camfrog_autodj/__init__.py tests/test_version_consistency.py
+git add AGENTS.md pyproject.toml version_info.txt installer.nsi install.bat install.ps1 autodj/__init__.py tests/test_version_consistency.py
 git commit -m "chore: sync version to 0.3.0 across all artifacts"
 ```
 
@@ -1087,7 +1087,7 @@ git commit -m "chore: sync version to 0.3.0 across all artifacts"
 ### Task 18: Apply Performance Optimizations from PERFORMANCE_OPTIMIZATION_PLAN
 
 **Files:**
-- Modify: `camfrog_autodj/player.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/commands.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/library.py`
+- Modify: `autodj/player.py`, `autodj/engine.py`, `autodj/commands.py`, `autodj/gui.py`, `autodj/library.py`
 - Test: Existing tests + performance benchmarks
 
 **Interfaces:**
@@ -1114,12 +1114,12 @@ Run: `pytest -q -p no:faulthandler -p no:cacheprovider`
 Expected: 485 passed after each step
 
 - [ ] **Step 7: Run lint/typecheck/format**
-Run: `ruff check camfrog_autodj tests tools && ruff format --check camfrog_autodj tests tools && mypy camfrog_autodj`
+Run: `ruff check autodj tests tools && ruff format --check autodj tests tools && mypy autodj`
 Expected: Clean
 
 - [ ] **Step 8: Commit**
 ```bash
-git add camfrog_autodj/player.py camfrog_autodj/engine.py camfrog_autodj/commands.py camfrog_autodj/gui.py camfrog_autodj/library.py
+git add autodj/player.py autodj/engine.py autodj/commands.py autodj/gui.py autodj/library.py
 git commit -m "perf: apply 5 key optimizations from PERFORMANCE_OPTIMIZATION_PLAN"
 ```
 
@@ -1153,7 +1153,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/playlist.py camfrog_autodj/engine.py
+git add autodj/playlist.py autodj/engine.py
 git commit -m "refactor: address tech debt items (playlist backup, thread usage, busy-wait)"
 ```
 
@@ -1162,8 +1162,8 @@ git commit -m "refactor: address tech debt items (playlist backup, thread usage,
 ### Task 20: Improve Type Safety
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`, `camfrog_autodj/library.py`, `camfrog_autodj/config.py`, `camfrog_autodj/discover.py`, `camfrog_autodj/doctor.py`
-- Test: `mypy camfrog_autodj`
+- Modify: `autodj/engine.py`, `autodj/gui.py`, `autodj/library.py`, `autodj/config.py`, `autodj/discover.py`, `autodj/doctor.py`
+- Test: `mypy autodj`
 
 **Interfaces:**
 - Consumes: Untyped parameters
@@ -1178,7 +1178,7 @@ Reduce `# type: ignore` comments
 - [ ] **Step 3: Add missing type annotations to library.py, config.py, discover.py, doctor.py**
 
 - [ ] **Step 4: Run mypy**
-Run: `mypy camfrog_autodj`
+Run: `mypy autodj`
 Expected: Success (no issues found)
 
 - [ ] **Step 5: Run full test suite**
@@ -1187,7 +1187,7 @@ Expected: 485 passed
 
 - [ ] **Step 6: Commit**
 ```bash
-git add camfrog_autodj/engine.py camfrog_autodj/gui.py camfrog_autodj/library.py camfrog_autodj/config.py camfrog_autodj/discover.py camfrog_autodj/doctor.py
+git add autodj/engine.py autodj/gui.py autodj/library.py autodj/config.py autodj/discover.py autodj/doctor.py
 git commit -m "types: add missing type annotations across codebase"
 ```
 
@@ -1205,11 +1205,11 @@ git commit -m "types: add missing type annotations across codebase"
 
 - [ ] **Step 1: Run all validation gates**
 ```bash
-python -m compileall -q camfrog_autodj tests tools
+python -m compileall -q autodj tests tools
 python -m pytest -q -p no:faulthandler -p no:cacheprovider
-ruff check camfrog_autodj tests tools
-ruff format --check camfrog_autodj tests tools
-mypy camfrog_autodj
+ruff check autodj tests tools
+ruff format --check autodj tests tools
+mypy autodj
 shellcheck scripts/*.sh tools/*.sh
 ```
 Expected: All pass

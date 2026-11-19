@@ -23,7 +23,7 @@ No open pull requests require action. All closed-not-merged and closed-draft PRs
 | MPV subprocess (arg lists, no shell) | REVIEWED | player.py uses subprocess arg lists; CREATE_NO_WINDOW on Windows |
 | GUI thread safety | REVIEWED | GUI marshals all callbacks via `tk.after(0, ...)` |
 | Config validation (ranges, choices, regexes) | PASS | config.py `_validate` |
-| Ruff lint | PASS | `ruff check camfrog_autodj tests tools` |
+| Ruff lint | PASS | `ruff check autodj tests tools` |
 | ShellCheck (Linux .sh) | Minor warnings only | scripts/build_installer_linux.sh SC2181; gh-switch scripts SC2034 |
 | GPG signing as cvsz | BLOCKED | `GPG_PASSPHRASE` not set; no TTY (see gpg-review-merge-evidence.md) |
 | Windows build / NSIS / installer | VERIFIED | Windows 11 host — evidence `validation-evidence-20261111-175639.json` (installer build, code signing, UIA, TTS, E2E all PASS) |
@@ -36,3 +36,4 @@ No open pull requests require action. All closed-not-merged and closed-draft PRs
 ## Residual risks
 
 Documented in docs/audit/residual-risks.md. No Critical or High security findings are unresolved.
+

@@ -1,9 +1,9 @@
 """Test that _pop_next_track prioritizes user requests over autoplay pool."""
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.models import Track
+from autodj.adapters import NullAdapter
+from autodj.config import Config
+from autodj.engine import Engine
+from autodj.models import Track
 
 
 def test_pop_next_track_requests_take_priority():
@@ -67,3 +67,4 @@ def test_pop_next_track_exhausts_requests_then_pool():
     t = eng._pop_next_track()
     assert t is not None, "Should fall back to pool after requests exhausted"
     assert t.source == "pool1", f"Expected pool1, got {t.source}"
+

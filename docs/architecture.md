@@ -8,24 +8,24 @@ CamfrogAutoDJ is a music bot for Camfrog rooms. It plays YouTube tracks and loca
 
 ```
 AutoDJ.exe (frozen PyInstaller binary)
-├── camfrog_autodj/__main__.py   — CLI entry point: --check, --discover, --windows, --dump, --say, --gui, --console
-├── camfrog_autodj/engine.py     — Engine: chat loop, player loop, command router, autoplay pool
-├── camfrog_autodj/commands.py   — Router: command registration, admin authorization, cooldowns, rate limits
-├── camfrog_autodj/config.py     — Config: TOML loading, validation, defaults
-├── camfrog_autodj/player.py     — MpvPlayer: one mpv process per track, IPC control, fade in/out
-├── camfrog_autodj/library.py    — Library: yt-dlp lookups (exe or module), local file scanning, URL parsing
-├── camfrog_autodj/playlist.py   — PlaylistStore: persistent playlist.json (atomic write, dedup by source)
-├── camfrog_autodj/playqueue.py  — PlayQueue: requests-first queue + looping autoplay pool (shuffle bag), shuffle/repeat
-├── camfrog_autodj/discover.py   — Auto-discover: finds Camfrog room window and chat controls
-├── camfrog_autodj/adapters/     — Chat adapters: uia (UI Automation), webchat (embedded web panes), console
-├── camfrog_autodj/gui.py        — GUI: Tk-based studio window with queue/history/chat/TTS
-├── camfrog_autodj/doctor.py     --check: plain-language setup diagnostics
-├── camfrog_autodj/messages.py   — All user-facing strings (English + Thai)
-├── camfrog_autodj/textutil.py   — Text sanitisation (control characters stripped)
-├── camfrog_autodj/tts.py        — Text-to-speech via pyttsx3 (SAPI)
-├── camfrog_autodj/paths.py      — Executable path resolution (explicit > beside mpv > PATH)
-├── camfrog_autodj/windows.py    — Window enumeration and resolution for Camfrog discovery
-└── camfrog_autodj/winmsg.py     — Windows message posting for background chat sending
+├── autodj/__main__.py   — CLI entry point: --check, --discover, --windows, --dump, --say, --gui, --console
+├── autodj/engine.py     — Engine: chat loop, player loop, command router, autoplay pool
+├── autodj/commands.py   — Router: command registration, admin authorization, cooldowns, rate limits
+├── autodj/config.py     — Config: TOML loading, validation, defaults
+├── autodj/player.py     — MpvPlayer: one mpv process per track, IPC control, fade in/out
+├── autodj/library.py    — Library: yt-dlp lookups (exe or module), local file scanning, URL parsing
+├── autodj/playlist.py   — PlaylistStore: persistent playlist.json (atomic write, dedup by source)
+├── autodj/playqueue.py  — PlayQueue: requests-first queue + looping autoplay pool (shuffle bag), shuffle/repeat
+├── autodj/discover.py   — Auto-discover: finds Camfrog room window and chat controls
+├── autodj/adapters/     — Chat adapters: uia (UI Automation), webchat (embedded web panes), console
+├── autodj/gui.py        — GUI: Tk-based studio window with queue/history/chat/TTS
+├── autodj/doctor.py     --check: plain-language setup diagnostics
+├── autodj/messages.py   — All user-facing strings (English + Thai)
+├── autodj/textutil.py   — Text sanitisation (control characters stripped)
+├── autodj/tts.py        — Text-to-speech via pyttsx3 (SAPI)
+├── autodj/paths.py      — Executable path resolution (explicit > beside mpv > PATH)
+├── autodj/windows.py    — Window enumeration and resolution for Camfrog discovery
+└── autodj/winmsg.py     — Windows message posting for background chat sending
 ```
 
 ## Runtime layers
@@ -144,3 +144,4 @@ return msg.local or msg.user.lower() in self.e.admins
 - `build.ps1` execution
 - Windows launch/URI handling
 - On-screen GUI appearance (Tk smoke test runs where a display exists)
+

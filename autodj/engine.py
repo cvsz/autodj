@@ -1992,7 +1992,7 @@ class Engine:
                     self.t(
                         "update_available",
                         version=release["tag"],
-                        current=__import__("camfrog_autodj", fromlist=["__version__"]).__version__,
+                        current=__import__("autodj", fromlist=["__version__"]).__version__,
                         url=release["html_url"],
                     )
                 )
@@ -2455,3 +2455,4 @@ class Engine:
         for t in self._threads:
             if t.is_alive():
                 t.join(timeout=5.0)
+

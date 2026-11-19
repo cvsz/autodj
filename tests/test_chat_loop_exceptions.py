@@ -2,10 +2,10 @@
 
 from unittest.mock import MagicMock
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.exceptions import ChatAdapterError
+from autodj.adapters import NullAdapter
+from autodj.config import Config
+from autodj.engine import Engine
+from autodj.exceptions import ChatAdapterError
 
 
 def test_chat_loop_catches_os_error():
@@ -68,3 +68,4 @@ def test_chat_loop_does_not_mask_errors_in_tests():
     # (the current implementation catches all exceptions)
     eng._chat_loop()
     assert eng.chat_done.is_set()
+

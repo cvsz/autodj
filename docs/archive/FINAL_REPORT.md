@@ -78,10 +78,10 @@ The `docs/optimize.md` master cleanup plan was executed across all 8 phases. The
 | Gate | Command | Result |
 |------|---------|--------|
 | Unit/integration tests | `python -m pytest -q -p no:faulthandler -p no:cacheprovider` | 524 passed, 3 skipped |
-| Lint | `python -m ruff check camfrog_autodj tests tools` | All checks passed |
-| Format | `python -m ruff format --check camfrog_autodj tests tools` | 98 files formatted |
-| Type check | `python -m mypy camfrog_autodj` | 44 source files, no issues |
-| Compile | `python -m compileall -q camfrog_autodj tests tools` | exit 0 |
+| Lint | `python -m ruff check autodj tests tools` | All checks passed |
+| Format | `python -m ruff format --check autodj tests tools` | 98 files formatted |
+| Type check | `python -m mypy autodj` | 44 source files, no issues |
+| Compile | `python -m compileall -q autodj tests tools` | exit 0 |
 | Shell scripts | `shellcheck scripts/*.sh tools/*.sh` | Clean |
 | Secrets scan | `git ls-files \| grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)'` | Empty (no secrets) |
 | Installer validation | `python tools/validate_installer.py` | exit 0 |
@@ -120,3 +120,4 @@ The `docs/optimize.md` master cleanup plan was executed across all 8 phases. The
 ## Conclusion
 
 The `docs/optimize.md` master cleanup plan has been fully executed. The CamfrogAutoDJ repository is clean, secure, and production-ready. All quality gates pass with zero defects. All section 13 deliverables have been produced. No unverified production-readiness claims remain.
+

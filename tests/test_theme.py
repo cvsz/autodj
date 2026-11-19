@@ -6,9 +6,9 @@ import re
 
 import pytest
 
-from camfrog_autodj.config import Config
-from camfrog_autodj.exceptions import ConfigError
-from camfrog_autodj.theme import THEMES, ZPLAYER_DARK, Theme, shade
+from autodj.config import Config
+from autodj.exceptions import ConfigError
+from autodj.theme import THEMES, ZPLAYER_DARK, Theme, shade
 
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 _COLOR_FIELDS = (
@@ -47,7 +47,7 @@ def test_from_name_falls_back_to_dark():
 
 
 def test_shade_and_button_styles_follow_palette():
-    from camfrog_autodj.gui import PillButton
+    from autodj.gui import PillButton
 
     assert shade("#000000", 0.5) == "#808080"
     assert shade("#ffffff", -0.5) == "#808080"
@@ -69,7 +69,7 @@ def test_saved_values_are_validated_before_write():
 
 
 def test_palette_rebinds_dashboard_colours():
-    from camfrog_autodj import gui
+    from autodj import gui
 
     try:
         gui._apply_palette_to_module(THEMES["zplayer-light"])
@@ -102,3 +102,4 @@ def test_welcome_message_delay_range(tmp_path):
     config_file.write_text("welcome_message_delay = 5000\n", encoding="utf-8")
     with pytest.raises(ConfigError, match="welcome_message_delay"):
         Config.load(str(config_file))
+

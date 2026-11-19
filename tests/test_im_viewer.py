@@ -11,10 +11,10 @@ import threading
 import time
 from types import SimpleNamespace
 
-from camfrog_autodj.adapters import NullAdapter, uia
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
+from autodj.adapters import NullAdapter, uia
+from autodj.adapters.base import ChatMessage
+from autodj.config import Config
+from autodj.engine import Engine
 
 
 def _stamp(offset_s: float = 0.0) -> str:
@@ -26,7 +26,7 @@ def _adapter(monkeypatch, panes: dict[int, list[str] | None], wins):
     a.cfg = SimpleNamespace(process_re="")
     a.handle = 1
     a.com_lock = threading.RLock()
-    import camfrog_autodj.windows as w
+    import autodj.windows as w
 
     monkeypatch.setattr(w, "candidates", lambda *a_, **k: wins)
     reads: list[int] = []
@@ -86,3 +86,4 @@ def test_im_message_reaches_the_viewer_snapshot():
     assert done.wait(3), "IM handling deadlocked"
     seq, _ver, entries = e.im_snapshot()
     assert seq == 1 and entries == [("zdevz", "hello")]
+

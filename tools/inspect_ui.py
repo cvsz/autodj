@@ -8,7 +8,7 @@ import sys
 
 from pywinauto import Desktop
 
-from camfrog_autodj.windows import candidates
+from autodj.windows import candidates
 
 args = [a for a in sys.argv[1:] if a != "--list"]
 pat = args[0] if args else ".*Camfrog.*"
@@ -18,3 +18,4 @@ for i, c in enumerate(cs):
 if "--list" not in sys.argv:
     n = int(args[1]) if len(args) > 1 else 0
     Desktop(backend="uia").window(handle=cs[n].handle).print_control_identifiers()
+

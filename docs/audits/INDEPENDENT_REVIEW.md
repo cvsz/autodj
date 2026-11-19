@@ -29,7 +29,7 @@ This is an independent review of the `feat/autodj-enhancements-and-fixes` branch
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| A-01 | P2 | `camfrog_autodj/engine.py:834-869` | `_auto_reply_loop` is started via `_start_loop` (a plain `threading.Thread`, daemon=True) but runs `self.say(msg)` synchronously on that thread. If `say()` blocks (e.g. adapter send blocks on IPC), the loop cannot send the next message and the thread may not exit promptly on shutdown. |
+| A-01 | P2 | `autodj/engine.py:834-869` | `_auto_reply_loop` is started via `_start_loop` (a plain `threading.Thread`, daemon=True) but runs `self.say(msg)` synchronously on that thread. If `say()` blocks (e.g. adapter send blocks on IPC), the loop cannot send the next message and the thread may not exit promptly on shutdown. |
 
 **Reproduction:** Set `auto_reply_enabled=true`, `auto_reply_interval=60`, attach an adapter whose `send()` blocks (e.g. waits on a full queue). The loop stalls at `self.say(msg)`; `stop_evt.wait(interval)` is not reached, so shutdown waits up to the thread's natural exit (daemon thread, killed at process exit, but not clean).
 
@@ -47,7 +47,7 @@ This is an independent review of the `feat/autodj-enhancements-and-fixes` branch
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| A-02 | P3 | `camfrog_autodj/engine.py:848` | `idx` is a local variable initialized to 0 on each loop start. On restart, the rotation restarts from message 0; no state is persisted. |
+| A-02 | P3 | `autodj/engine.py:848` | `idx` is a local variable initialized to 0 on each loop start. On restart, the rotation restarts from message 0; no state is persisted. |
 
 **Reproduction:** Enable auto-reply with 3 messages, let it send messages 1–3, restart the engine, verify it sends message 1 again (not message 4→1).
 
@@ -63,7 +63,7 @@ This is an independent review of the `feat/autodj-enhancements-and-fixes` branch
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| A-03 | P2 | `camfrog_autodj/gui.py` | `save_settings()` writes `youtube_cookies_file`, `youtube_cookies_browser`, `youtube_ca_bundle`, `audio_fade_*`, `audio_normalize`, `voteskip_dynamic_*`, `user_request_limit`, `rate_limit_window` to TOML, but `open_settings()` does not render controls for them. They cannot be changed through the GUI. |
+| A-03 | P2 | `autodj/gui.py` | `save_settings()` writes `youtube_cookies_file`, `youtube_cookies_browser`, `youtube_ca_bundle`, `audio_fade_*`, `audio_normalize`, `voteskip_dynamic_*`, `user_request_limit`, `rate_limit_window` to TOML, but `open_settings()` does not render controls for them. They cannot be changed through the GUI. |
 
 **Reproduction:** Open Settings dialog, look for `youtube_ca_bundle` or `voteskip_dynamic_threshold` — absent. Edit `config.toml` directly, open GUI — values load but no UI control.
 
@@ -79,7 +79,7 @@ This is an independent review of the `feat/autodj-enhancements-and-fixes` branch
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| A-04 | P1 | `camfrog_autodj/commands.py:39-50` | IM messages look up `COMMANDS` by the first whitespace-delimited token without requiring the prefix. This is intentional per the feature spec. Cooldown and rate limits still apply. Admin commands (`need_admin=True`) still require `is_admin()`. |
+| A-04 | P1 | `autodj/commands.py:39-50` | IM messages look up `COMMANDS` by the first whitespace-delimited token without requiring the prefix. This is intentional per the feature spec. Cooldown and rate limits still apply. Admin commands (`need_admin=True`) still require `is_admin()`. |
 
 **Reproduction:** Send IM `pause` from an admin nick → `Router.handle` processes it without `!`. Send IM `pause` from non-admin → `admin_only` reply. Verified by `test_im_command_without_prefix` and `test_im_command_requires_admin_for_admin_cmd`.
 
@@ -95,7 +95,7 @@ This is an independent review of the `feat/autodj-enhancements-and-fixes` branch
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| A-05 | P3 | `camfrog_autodj/commands.py:37` | `Router.handle` uses `getattr(msg, "is_im", False)` rather than direct attribute access. This is defensive for test doubles/mocks that may not set `is_im`. |
+| A-05 | P3 | `autodj/commands.py:37` | `Router.handle` uses `getattr(msg, "is_im", False)` rather than direct attribute access. This is defensive for test doubles/mocks that may not set `is_im`. |
 
 **Recommended remediation:** None. This is good defensive programming. `ChatMessage` dataclass defaults `is_im=False`, so real messages always have it.
 
@@ -118,7 +118,7 @@ The architecture is sound: separation of concerns is preserved, dependency direc
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| B-01 | P2 | `camfrog_autodj/commands.py:31-32` | `is_admin()` returns `msg.local or msg.user.lower() in self.e.admins`. Camfrog UI Automation exposes only display nicks, not cryptographic identities. Anyone who can display the same nick (look-alike Unicode, nick freed by disconnect) gains admin rights. |
+| B-01 | P2 | `autodj/commands.py:31-32` | `is_admin()` returns `msg.local or msg.user.lower() in self.e.admins`. Camfrog UI Automation exposes only display nicks, not cryptographic identities. Anyone who can display the same nick (look-alike Unicode, nick freed by disconnect) gains admin rights. |
 
 **Reproduction:** Without a real Camfrog client this cannot be reproduced here. The limitation is documented in `AUDIT.md` O1, `SECURITY.md`, and `README.md` caveats.
 
@@ -134,7 +134,7 @@ The architecture is sound: separation of concerns is preserved, dependency direc
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| B-02 | P3 | `camfrog_autodj/commands.py:70-72` | Blocked users return before any reply, including `admin_only`. Blocked users cannot block admins (`_block` checks `nick.lower() in e.admins`). |
+| B-02 | P3 | `autodj/commands.py:70-72` | Blocked users return before any reply, including `admin_only`. Blocked users cannot block admins (`_block` checks `nick.lower() in e.admins`). |
 
 **Impact:** Correct — prevents blocked users from generating room noise or probing admin status.
 
@@ -148,7 +148,7 @@ The architecture is sound: separation of concerns is preserved, dependency direc
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| B-03 | P3 | `camfrog_autodj/textutil.py` | `clean_text()` strips control characters and collapses whitespace. Wrapped continuations prefixed with `…` so they never look like commands. |
+| B-03 | P3 | `autodj/textutil.py` | `clean_text()` strips control characters and collapses whitespace. Wrapped continuations prefixed with `…` so they never look like commands. |
 
 **Impact:** Prevents control-character injection and command injection via wrapped text.
 
@@ -162,7 +162,7 @@ The architecture is sound: separation of concerns is preserved, dependency direc
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| B-04 | P3 | `camfrog_autodj/library.py` / `commands.py` | `!load` is admin-only. Absolute paths must be within `music_dirs`. |
+| B-04 | P3 | `autodj/library.py` / `commands.py` | `!load` is admin-only. Absolute paths must be within `music_dirs`. |
 
 **Impact:** Prevents path traversal to arbitrary filesystem locations.
 
@@ -192,7 +192,7 @@ The architecture is sound: separation of concerns is preserved, dependency direc
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| B-06 | P3 | `camfrog_autodj/commands.py:76-103` | IM commands skip the prefix check but still hit cooldown (`e.cfg.cooldown`) and sliding-window request limits. Verified by `test_im_cooldown_still_applies`. |
+| B-06 | P3 | `autodj/commands.py:76-103` | IM commands skip the prefix check but still hit cooldown (`e.cfg.cooldown`) and sliding-window request limits. Verified by `test_im_cooldown_still_applies`. |
 
 **Impact:** IM cannot be used to flood commands.
 
@@ -217,7 +217,7 @@ Security controls are appropriate for the platform. No P0/P1 security defects. T
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| C-01 | P2 | `camfrog_autodj/engine.py:829-832` (inferred `_start_loop`) | `_auto_reply_loop` runs on a daemon thread started by `_start_loop`. Daemon threads are killed at process exit without `join()`, so in-flight `self.say(msg)` may be interrupted mid-send. |
+| C-01 | P2 | `autodj/engine.py:829-832` (inferred `_start_loop`) | `_auto_reply_loop` runs on a daemon thread started by `_start_loop`. Daemon threads are killed at process exit without `join()`, so in-flight `self.say(msg)` may be interrupted mid-send. |
 
 **Reproduction:** Enable auto-reply, trigger shutdown while `self.say(msg)` is in progress, observe whether the message completes.
 
@@ -235,7 +235,7 @@ Security controls are appropriate for the platform. No P0/P1 security defects. T
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| C-02 | P3 | `camfrog_autodj/playqueue.py:20-30` | `self.lock = threading.RLock()`; all `add_request`, `add_pool`, `pop`, `remove`, `peek` acquire the lock. |
+| C-02 | P3 | `autodj/playqueue.py:20-30` | `self.lock = threading.RLock()`; all `add_request`, `add_pool`, `pop`, `remove`, `peek` acquire the lock. |
 
 **Impact:** Concurrent queue modifications from multiple command handlers and the player loop are safe.
 
@@ -249,7 +249,7 @@ Security controls are appropriate for the platform. No P0/P1 security defects. T
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| C-03 | P3 | `camfrog_autodj/player.py` | `play_file()`/`play()` spawn one mpv process per track with IPC server. `_stop()` terminates the process and cleans the IPC pipe. `play_file()` for TTS WAV also creates a process. |
+| C-03 | P3 | `autodj/player.py` | `play_file()`/`play()` spawn one mpv process per track with IPC server. `_stop()` terminates the process and cleans the IPC pipe. `play_file()` for TTS WAV also creates a process. |
 
 **Impact:** No orphaned mpv processes under normal operation. Process lifecycle is managed.
 
@@ -263,7 +263,7 @@ Security controls are appropriate for the platform. No P0/P1 security defects. T
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| C-04 | P3 | `camfrog_autodj/library.py` | `scan_folder()` wraps per-file processing in try/except so one unreadable file does not abort the scan. `local_track()` catches all exceptions from `mutagen`. |
+| C-04 | P3 | `autodj/library.py` | `scan_folder()` wraps per-file processing in try/except so one unreadable file does not abort the scan. `local_track()` catches all exceptions from `mutagen`. |
 
 **Impact:** Folder loading is resilient to corrupt media files. Fixes the "unable load music folder" defect.
 
@@ -277,7 +277,7 @@ Security controls are appropriate for the platform. No P0/P1 security defects. T
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| C-05 | P3 | `camfrog_autodj/engine.py` | `MAX_FAIL_ANNOUNCE = 3`, `MAX_BACKOFF = 30.0`, exponential backoff on consecutive failures. Prevents retry storms and room flooding. |
+| C-05 | P3 | `autodj/engine.py` | `MAX_FAIL_ANNOUNCE = 3`, `MAX_BACKOFF = 30.0`, exponential backoff on consecutive failures. Prevents retry storms and room flooding. |
 
 **Impact:** A broken track cannot flood the room. Fixes F2 from AUDIT.md.
 
@@ -302,7 +302,7 @@ Reliability is strong. The only P2 is C-01 (auto-reply thread not cleanly joined
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| D-01 | P2 | `camfrog_autodj/gui.py:1940-2009` | `save_settings()` rebuilds `config.toml` from scratch line-by-line. Comments and user formatting are lost. It does parse-back-validate with `tomllib.loads`, so output is syntactically valid. |
+| D-01 | P2 | `autodj/gui.py:1940-2009` | `save_settings()` rebuilds `config.toml` from scratch line-by-line. Comments and user formatting are lost. It does parse-back-validate with `tomllib.loads`, so output is syntactically valid. |
 
 **Reproduction:** Edit `config.toml` with comments, open Settings, change one value, save, inspect `config.toml` — comments are gone.
 
@@ -318,7 +318,7 @@ Reliability is strong. The only P2 is C-01 (auto-reply thread not cleanly joined
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| D-02 | P3 | `camfrog_autodj/gui.py` | Toggle + interval + file entries added to Settings dialog. `save_settings()` writes all three to TOML (verified fix from T-01/T-02). |
+| D-02 | P3 | `autodj/gui.py` | Toggle + interval + file entries added to Settings dialog. `save_settings()` writes all three to TOML (verified fix from T-01/T-02). |
 
 **Reproduction:** Open Settings, verify auto-reply toggle, interval spinbox, file entry exist and save to `config.toml`.
 
@@ -466,7 +466,7 @@ Test coverage is strong for the scoped features (27 new regression tests). Full 
 
 | ID | Severity | File | Root cause |
 |----|----------|------|------------|
-| F-02 | P3 | `camfrog_autodj/__init__.py` | `__version__ = "0.2.6"`. No version bump for the enhancement branch. |
+| F-02 | P3 | `autodj/__init__.py` | `__version__ = "0.2.6"`. No version bump for the enhancement branch. |
 
 **Impact:** Version remains 0.2.6. Acceptable for a feature branch; bump at release.
 

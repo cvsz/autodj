@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from camfrog_autodj.config import Config, ConfigError
-from camfrog_autodj.config_watcher import ConfigWatcher
+from autodj.config import Config, ConfigError
+from autodj.config_watcher import ConfigWatcher
 
 
 class TestConfigReload:
@@ -321,7 +321,7 @@ class TestConfigWatcherIntegration:
 def test_config_watcher_import_without_watchdog(monkeypatch):
     """Test that importing config_watcher doesn't fail without watchdog."""
     # This test verifies the module can be imported
-    import camfrog_autodj.config_watcher as cw
+    import autodj.config_watcher as cw
 
     assert hasattr(cw, "ConfigWatcher")
     assert hasattr(cw, "WATCHDOG_AVAILABLE")
@@ -329,3 +329,4 @@ def test_config_watcher_import_without_watchdog(monkeypatch):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+

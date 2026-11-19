@@ -141,7 +141,7 @@ No release was created or published during this audit.
 
 ### P2-4: Strict Typecheck Enforcement
 
-**Fix:** Removed `|| true` from `ruff check .` and `mypy camfrog_autodj` steps  
+**Fix:** Removed `|| true` from `ruff check .` and `mypy autodj` steps  
 **Verification Status:** VERIFIED  
 **Evidence:** Lint and typecheck failures now cause the release validation job to fail.
 
@@ -219,3 +219,4 @@ All P1 findings from PR #79 are independently revalidated as remediated. All tes
 **Overall Revalidation Status: VERIFIED**
 
 No release was created or published during this audit.
+

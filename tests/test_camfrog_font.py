@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import camfrog_autodj.camfrog_font as cf
-from camfrog_autodj.config import MessageStyle
+import autodj.camfrog_font as cf
+from autodj.config import MessageStyle
 
 # ---------------------------------------------------------------------------
 # is_windows
@@ -253,3 +253,4 @@ def test_module_imports_on_non_windows():
     assert callable(cf.read_camfrog_font_settings)
     assert callable(cf.write_camfrog_font_settings)
     assert callable(cf.sync_message_style_to_camfrog)
+

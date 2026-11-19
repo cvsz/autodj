@@ -13,7 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import JSONResponse, Response
 
 if TYPE_CHECKING:
-    from camfrog_autodj.webhook.models import WebhookConfig
+    from autodj.webhook.models import WebhookConfig
 
 # Key for storing raw body in request.state
 _RAW_BODY_KEY = "_webhook_raw_body"
@@ -212,3 +212,4 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 async def verify_signature_dep(req: Request) -> bool:
     """FastAPI dependency for signature verification."""
     return await verify_webhook_signature(req)
+

@@ -92,8 +92,8 @@ Six independent reviewers (A: Architecture, B: Security, C: Reliability, D: Wind
 
 | Commit | File | Change |
 |--------|------|--------|
-| `b75f257` | `camfrog_autodj/gui.py` | Fix settings persistence: write `auto_reply_*` fields to TOML; refresh `self.e.admins`/`self.e.blocked` |
-| `2c2f6f2` | `camfrog_autodj/engine.py`, `config.py` | Fix auto-reply path resolution (config dir); add `auto_reply_interval` range validation (60–86400s) |
+| `b75f257` | `autodj/gui.py` | Fix settings persistence: write `auto_reply_*` fields to TOML; refresh `self.e.admins`/`self.e.blocked` |
+| `2c2f6f2` | `autodj/engine.py`, `config.py` | Fix auto-reply path resolution (config dir); add `auto_reply_interval` range validation (60–86400s) |
 | `221c8bc` | `tests/test_autodj_enhancements.py` + 3 audit docs | 27 regression tests + baseline/technical/security audits |
 | `a918e68` | `docs/audits/INDEPENDENT_REVIEW.md` | Independent reviewer report (6 reviewers) |
 | `79d610e` | 4 audit docs | Implementation, release readiness, Windows qualification, upgrade reports |

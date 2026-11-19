@@ -1,9 +1,9 @@
 """An IM is acted on only when its sender is in the room."""
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
+from autodj.adapters import NullAdapter
+from autodj.adapters.base import ChatMessage
+from autodj.config import Config
+from autodj.engine import Engine
 
 
 def _engine():
@@ -49,3 +49,4 @@ def test_presence_check_can_be_disabled():
     e.cfg.im_require_room_presence = False
     e._handle_im(_im("stranger", "play x"))
     assert routed == ["play x"]
+

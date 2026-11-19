@@ -226,7 +226,7 @@ if ($pyCmd) {
     $code = Invoke-CommandWithCode -Command "& $pyCmd -m ruff check ." -Description "Run ruff lint"
     if ($code -ne 0) { $script:OverallExitCode = 1 }
 
-    $code = Invoke-CommandWithCode -Command "& $pyCmd -m mypy camfrog_autodj" -Description "Run mypy strict typecheck"
+    $code = Invoke-CommandWithCode -Command "& $pyCmd -m mypy autodj" -Description "Run mypy strict typecheck"
     if ($code -ne 0) { $script:OverallExitCode = 1 }
 }
 

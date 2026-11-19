@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from camfrog_autodj.doctor import _count_media_files
+from autodj.doctor import _count_media_files
 
 
 def test_doctor_skips_symlinks():
@@ -54,3 +54,4 @@ def test_doctor_skips_symlink_directories():
         # Count should only include real.mp3, not files in symlink directory
         count = _count_media_files(music_dir)
         assert count == 1, f"Expected 1 file, got {count}"
+

@@ -8,7 +8,7 @@ This document describes how AutoDJ releases are built, validated, and published.
 
 AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.3.5`, declared in:
 - `pyproject.toml` (`version = "0.3.5"`)
-- `camfrog_autodj/__init__.py` (`__version__ = "0.3.5"`)
+- `autodj/__init__.py` (`__version__ = "0.3.5"`)
 - `version_info.txt` (Windows file version resource)
 - `CHANGELOG.md` (changelog entries)
 
@@ -25,9 +25,9 @@ Must pass before any build artifact is produced:
 1. **Checkout** the exact tag commit
 2. **Install dependencies** (`-e .`, pytest, ruff, mypy)
 3. **Run unit tests** — `python -m pytest -q -p no:faulthandler -p no:cacheprovider` (baseline: 414 passed)
-4. **Lint** — `ruff check camfrog_autodj tests tools`
-5. **Format check** — `ruff format --check camfrog_autodj tests tools`
-6. **Strict typecheck** — `mypy camfrog_autodj`
+4. **Lint** — `ruff check autodj tests tools`
+5. **Format check** — `ruff format --check autodj tests tools`
+6. **Strict typecheck** — `mypy autodj`
 7. **Shell lint** — `shellcheck scripts/*.sh tools/*.sh`
 8. **Secret scan** — rejects any tracked `.env`, `id_rsa`, `id_ed25519`, `*.pem`, `*.key` (except `.env.example`)
 
@@ -76,3 +76,4 @@ Release authorization and production readiness are distinct. A maintainer may au
 - Backup/restore drill
 - Load/capacity testing
 - Incident response drill
+

@@ -117,11 +117,11 @@ This repository is a **production-ready DJ automation platform**, not a template
 - [ ] Links and placeholders resolve
 - [x] No committed secrets (`git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' | grep -v '\.env.example$'`)
 - [ ] Consistency between README, config.example.toml, CHANGELOG, docs/
-- [ ] `python -m compileall -q camfrog_autodj tests tools`
+- [ ] `python -m compileall -q autodj tests tools`
 - [ ] `python -m pytest -q -p no:faulthandler -p no:cacheprovider`
-- [ ] `ruff check camfrog_autodj tests tools`
-- [ ] `ruff format --check camfrog_autodj tests tools`
-- [ ] `mypy camfrog_autodj`
+- [ ] `ruff check autodj tests tools`
+- [ ] `ruff format --check autodj tests tools`
+- [ ] `mypy autodj`
 - [ ] `shellcheck scripts/*.sh tools/*.sh`
 
 ---
@@ -216,9 +216,9 @@ git checkout -b feat/autodj-<feature-name>
 # Develop: fix bugs, add features, update docs
 # Run validation gates
 python -m pytest -q -p no:faulthandler -p no:cacheprovider
-ruff check camfrog_autodj tests tools
-ruff format --check camfrog_autodj tests tools
-mypy camfrog_autodj
+ruff check autodj tests tools
+ruff format --check autodj tests tools
+mypy autodj
 
 # GPG-signed commit
 git add -A

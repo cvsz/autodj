@@ -43,7 +43,7 @@ Modified 7 files to consistent version:
 | File | Change |
 |---|---|
 | `pyproject.toml` | `version = "0.2.8"` |
-| `camfrog_autodj/__init__.py` | `__version__ = "0.2.8"` |
+| `autodj/__init__.py` | `__version__ = "0.2.8"` |
 | `version_info.txt` | `filevers=(0, 2, 8, 0)`, `prodvers=(0, 2, 8, 0)`, `FileVersion='0.2.8.0'`, `ProductVersion='0.2.8.0'` |
 | `scripts/build_installer_linux.sh` | `VERSION="${1:-0.2.8}"` |
 | `tests/test_version_and_release.py` | All version assertions updated to `0.2.8` |
@@ -127,7 +127,7 @@ SOURCE VALIDATION PASSED for v0.2.8
 ### Rollback to 0.2.7
 
 1. Restore `version = "0.2.7"` in `pyproject.toml`
-2. Restore `__version__ = "0.2.7"` in `camfrog_autodj/__init__.py`
+2. Restore `__version__ = "0.2.7"` in `autodj/__init__.py`
 3. Restore `filevers=(0, 2, 7, 0)`, `prodvers=(0, 2, 7, 0)` in `version_info.txt`
 4. Restore `VERSION="${1:-0.2.7}"` in `scripts/build_installer_linux.sh`
 5. Restore all version assertions in `tests/test_version_and_release.py`

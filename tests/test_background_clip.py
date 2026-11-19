@@ -1,5 +1,5 @@
-from camfrog_autodj.clipkeys import clip_action
-from camfrog_autodj.winmsg import make_lparam, pick_child, utf16_units
+from autodj.clipkeys import clip_action
+from autodj.winmsg import make_lparam, pick_child, utf16_units
 
 
 def test_utf16_units_thai_and_emoji():
@@ -32,3 +32,4 @@ def test_clip_thai_layout_only():
     assert clip_action(86, "v") is None and clip_action(67, "C") is None
     assert clip_action(45, "Insert") == "copy" and clip_action(45, "Insert", shift=True) == "paste"
     assert clip_action(86, "Thai_phophan", windows=False) is None
+

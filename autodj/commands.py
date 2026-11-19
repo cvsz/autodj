@@ -811,7 +811,7 @@ def _update_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     Usage: !update           — check for updates
            !update apply    — download and stage AutoDJ.exe.next (admin only)
     """
-    from camfrog_autodj import __version__ as _version
+    from autodj import __version__ as _version
 
     arg = a.strip().lower()
     if arg == "apply":
@@ -936,3 +936,4 @@ def _myfavp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
         return
     lines = " | ".join(f"{i + 1}) {it['title']}" for i, it in enumerate(items[:10]))
     e.say(e.t("myfavp_list", list=lines))
+

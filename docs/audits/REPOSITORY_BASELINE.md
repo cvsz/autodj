@@ -5,7 +5,7 @@
 **HEAD SHA:** `79372556e26ab4c24f57f8b7b3eba8fe47dc4729`  
 **Default branch:** `main` (up to date with `origin/main`)  
 **Remote:** `git@github.com:cvsz/zcamfrog-autodj.git` (origin)  
-**Application version:** `0.2.6` (`camfrog_autodj/__init__.py`)
+**Application version:** `0.2.6` (`autodj/__init__.py`)
 
 ## Working-tree state
 
@@ -42,7 +42,7 @@ Local branches:
 
 ## Source inventory
 
-### Application source (`camfrog_autodj/`)
+### Application source (`autodj/`)
 
 | File | Purpose |
 |------|---------|
@@ -150,7 +150,7 @@ Local branches:
 
 ## Verification evidence
 
-- `python -m ruff check camfrog_autodj/` — **passed** (0 errors)
+- `python -m ruff check autodj/` — **passed** (0 errors)
 - `python -m pytest tests/ -q` — **288 passed, 3 subtests passed**
 
 ## Currently implemented features on this branch (from prior work session)
@@ -169,3 +169,4 @@ Local branches:
 12. `console.py`: `im nick: text` format for IM messages
 13. `logtail.py` / `uia.py`: IM detection via `[IM]` tag or `IM ` prefix
 14. Message keys for auto-reply settings in `messages.py` (en/th)
+

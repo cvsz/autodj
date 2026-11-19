@@ -48,7 +48,7 @@ This report documents all implementation work performed on the CamfrogAutoDJ rep
 
 ### Commit `b75f257` — fix: settings persistence
 
-**File:** `camfrog_autodj/gui.py` (+6/-0)
+**File:** `autodj/gui.py` (+6/-0)
 
 **Root cause:** `save_settings()` read `auto_reply_enabled`, `auto_reply_interval`, `auto_reply_file` into the config object but never wrote them back to `config.toml`. It also replaced `self.e.cfg` with a reloaded config but did not refresh `self.e.admins` / `self.e.blocked`. Settings changed via the GUI were lost on restart, and admin/blocklist changes took no effect until restart.
 
@@ -62,7 +62,7 @@ This report documents all implementation work performed on the CamfrogAutoDJ rep
 
 ### Commit `2c2f6f2` — fix: auto-reply path resolution and config validation
 
-**Files:** `camfrog_autodj/engine.py` (+3/-0), `camfrog_autodj/config.py` (+2/-0)
+**Files:** `autodj/engine.py` (+3/-0), `autodj/config.py` (+2/-0)
 
 **Root cause 1:** `auto_reply_file` (`ads-list.json`) was treated as a path resolved against the current working directory. If the working directory changed (e.g., installed to Program Files), the file would not be found.
 
@@ -144,9 +144,9 @@ These were implemented in earlier commits on the branch and are documented here 
 
 | File | Change type | Lines |
 |------|-------------|-------|
-| `camfrog_autodj/gui.py` | Fix settings persistence | +6 |
-| `camfrog_autodj/engine.py` | Fix auto-reply path resolution | +3 |
-| `camfrog_autodj/config.py` | Add `auto_reply_interval` range validation | +2 |
+| `autodj/gui.py` | Fix settings persistence | +6 |
+| `autodj/engine.py` | Fix auto-reply path resolution | +3 |
+| `autodj/config.py` | Add `auto_reply_interval` range validation | +2 |
 | `tests/test_autodj_enhancements.py` | New regression tests | +269 |
 | `docs/audits/REPOSITORY_BASELINE.md` | New audit document | +~200 |
 | `docs/audits/TECHNICAL_AUDIT.md` | New audit document | +~250 |
@@ -159,10 +159,10 @@ These were implemented in earlier commits on the branch and are documented here 
 
 | Check | Command | Result |
 |-------|---------|--------|
-| Compile all | `python -m compileall -q camfrog_autodj tests tools` | OK |
-| Ruff | `ruff check camfrog_autodj tests tools` | All checks passed |
-| Format | `ruff format --check camfrog_autodj tests tools` | 63 files already formatted |
-| MyPy | `mypy camfrog_autodj` | No issues in 32 source files |
+| Compile all | `python -m compileall -q autodj tests tools` | OK |
+| Ruff | `ruff check autodj tests tools` | All checks passed |
+| Format | `ruff format --check autodj tests tools` | 63 files already formatted |
+| MyPy | `mypy autodj` | No issues in 32 source files |
 | Shellcheck | `shellcheck scripts/*.sh tools/*.sh` | Clean |
 | Full test suite | `python -m pytest -q -p no:faulthandler -p no:cacheprovider` | 414 passed, 3 subtests passed |
 | Repo validator | `python3 scripts/validate_repo.py` | Repository structure and links valid |

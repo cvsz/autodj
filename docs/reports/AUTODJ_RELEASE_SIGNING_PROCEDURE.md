@@ -39,7 +39,7 @@ This document defines the policy and procedure for GPG-signing annotated Git tag
 
 ### 2.4 Version Consistency
 
-- The tag name must match the project version in `pyproject.toml`, `camfrog_autodj/__init__.py`, and `version_info.txt`
+- The tag name must match the project version in `pyproject.toml`, `autodj/__init__.py`, and `version_info.txt`
 - Version consistency is verified by `tests/test_version_and_release.py::test_versions_agree`
 - Tag name format: `v{version}` (e.g., `v0.2.7` for version `0.2.7`)
 
@@ -150,3 +150,4 @@ If a signed tag is created in error:
 2. Notify all consumers that the tag should not be trusted
 3. Create a new tag with a different version number for the corrected release
 4. Document the superseded tag in the release notes
+

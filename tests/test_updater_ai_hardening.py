@@ -7,9 +7,9 @@ import io
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from camfrog_autodj.ai import AIClient
-from camfrog_autodj.config import Config
-from camfrog_autodj.updater import Updater, is_newer
+from autodj.ai import AIClient
+from autodj.config import Config
+from autodj.updater import Updater, is_newer
 
 
 def _cfg(**kw):
@@ -66,7 +66,7 @@ def test_download_refused_without_digest(tmp_path):
     up = Updater(_cfg())
     up._latest = {"assets": []}
     asset = {"name": "AutoDJ.exe", "browser_download_url": "https://github.com/cvsz/autodj/x"}
-    with patch("camfrog_autodj.updater.urlopen") as uo:
+    with patch("autodj.updater.urlopen") as uo:
         assert up.download_asset(asset, tmp_path / "AutoDJ.next.exe") is False
         uo.assert_not_called()
 
@@ -80,7 +80,7 @@ def test_download_rejects_digest_mismatch(tmp_path):
         "digest": "sha256:" + "0" * 64,
     }
     dest = tmp_path / "AutoDJ.next.exe"
-    with patch("camfrog_autodj.updater.urlopen", return_value=_Resp(b"tampered")):
+    with patch("autodj.updater.urlopen", return_value=_Resp(b"tampered")):
         assert up.download_asset(asset, dest) is False
     assert not dest.exists()
     assert not (tmp_path / "AutoDJ.next.exe.part").exists()
@@ -96,7 +96,7 @@ def test_download_accepts_matching_digest(tmp_path):
         "digest": "sha256:" + hashlib.sha256(data).hexdigest(),
     }
     dest = tmp_path / "AutoDJ.next.exe"
-    with patch("camfrog_autodj.updater.urlopen", return_value=_Resp(data)):
+    with patch("autodj.updater.urlopen", return_value=_Resp(data)):
         assert up.download_asset(asset, dest) is True
     assert dest.read_bytes() == data
 
@@ -123,7 +123,7 @@ def test_ai_post_reaches_configured_provider():
     cfg = SimpleNamespace(ai_enabled=True, ai_api_key="k", ai_base_url="https://api.openai.com/v1")
     client = AIClient(cfg)
     body = b'{"choices":[{"message":{"content":"hi"}}]}'
-    with patch("camfrog_autodj.ai.urlopen", return_value=_Resp(body)) as uo:
+    with patch("autodj.ai.urlopen", return_value=_Resp(body)) as uo:
         assert client.chat("hello") == "hi"
     assert uo.call_args[0][0].full_url == "https://api.openai.com/v1/chat/completions"
 
@@ -131,7 +131,7 @@ def test_ai_post_reaches_configured_provider():
 def test_ai_never_answers_private_messages_in_public_room():
     from unittest.mock import Mock
 
-    from camfrog_autodj.engine import Engine
+    from autodj.engine import Engine
 
     fake = Mock()
     fake.ai.is_enabled.return_value = True
@@ -155,7 +155,7 @@ def _fake_ai_engine():
 
 
 def test_ai_room_reply_is_async_and_cooldown_gated():
-    from camfrog_autodj.engine import Engine
+    from autodj.engine import Engine
 
     fake = _fake_ai_engine()
     Engine._ai_handle_room(fake, SimpleNamespace(user="bob", text="hello"))
@@ -171,7 +171,7 @@ def test_ai_room_reply_is_async_and_cooldown_gated():
 
 
 def test_ai_skips_blocked_users_and_caps_inflight_calls():
-    from camfrog_autodj.engine import AI_MAX_INFLIGHT, Engine
+    from autodj.engine import AI_MAX_INFLIGHT, Engine
 
     fake = _fake_ai_engine()
     fake.blocked = {"troll"}
@@ -191,10 +191,11 @@ def test_ai_skips_blocked_users_and_caps_inflight_calls():
 def test_ai_numeric_settings_are_range_checked(tmp_path):
     import pytest
 
-    from camfrog_autodj.config import Config, ConfigError
+    from autodj.config import Config, ConfigError
 
     for line in ("ai_user_cooldown = -5", "ai_max_chars = 0"):
         p = tmp_path / "config.toml"
         p.write_text(line + "\n", encoding="utf-8")
         with pytest.raises(ConfigError):
             Config.load(str(p))
+

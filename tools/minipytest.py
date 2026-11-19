@@ -120,7 +120,7 @@ def main(argv):
     files = [root] if root.is_file() else sorted(root.glob("test_*.py"))
     tests_dir = root.parent if root.is_file() else root
     sys.path.insert(0, str(tests_dir))
-    sys.path.insert(0, str(tests_dir.parent))  # project root, for `import camfrog_autodj`
+    sys.path.insert(0, str(tests_dir.parent))  # project root, for `import autodj`
     ok = fail = skip = 0
     for f in files:
         m = _load_module(f)
@@ -210,3 +210,4 @@ def _run_case(fn, m, kw, file_name, func_name):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
+

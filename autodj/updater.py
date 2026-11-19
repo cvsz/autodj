@@ -197,7 +197,7 @@ class Updater:
 
         tag_name = data.get("tag_name", "") or ""
         latest = tag_name.lstrip("v")
-        current = __import__("camfrog_autodj", fromlist=["__version__"]).__version__
+        current = __import__("autodj", fromlist=["__version__"]).__version__
 
         with self._lock:
             self._last_check = time.monotonic()
@@ -476,3 +476,4 @@ class Updater:
     def last_check(self) -> float:
         """Monotonic time of the last check, or 0 if never checked."""
         return self._last_check
+

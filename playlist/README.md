@@ -3,7 +3,7 @@
 This pack contains genre-separated JSON playlist files for `cvsz/autodj`.
 
 ## Files
-Each `*.json` file follows the `version: 1` / `tracks: [...]` structure read by `camfrog_autodj/playlist.py`.
+Each `*.json` file follows the `version: 1` / `tracks: [...]` structure read by `autodj/playlist.py`.
 The pack includes Thai and international pop, rock, country, hip-hop, R&B, jazz, EDM, K-pop, J-pop, C-pop, classical, instrumental, ambient, workout, karaoke, and more.
 
 ## Converting the search entries to real YouTube URLs
@@ -46,3 +46,4 @@ The console summary reports resolved/skipped/failed counts and the failure categ
 
 `playlist_file` is a single configured playlist store. These genre files are alternatives; the current app does not automatically merge all `*.json` files into one playlist.
 The app may append requested tracks to the configured file, so keep a backup if you want the starter list unchanged.
+

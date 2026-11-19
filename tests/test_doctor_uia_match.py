@@ -1,6 +1,6 @@
 """Test that doctor.py uses exact match for uia."""
 
-from camfrog_autodj.config import Config
+from autodj.config import Config
 
 
 def test_doctor_exact_uia_match_logic():
@@ -41,3 +41,4 @@ def test_doctor_exact_uia_match_logic():
     cfg.chat_reader = "console"
     cfg.chat_sender = "logtail"
     assert is_uia_enabled(cfg) is False
+

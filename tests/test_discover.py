@@ -1,12 +1,12 @@
-"""Tests for camfrog_autodj/discover.py — auto-discovery of Camfrog room window
+"""Tests for autodj/discover.py — auto-discovery of Camfrog room window
 and safe config.toml editing (backup, atomic write, TOML re-validation)."""
 
 from __future__ import annotations
 
 import re
 
-from camfrog_autodj.config import Config
-from camfrog_autodj.discover import (
+from autodj.config import Config
+from autodj.discover import (
     Ctl,
     Found,
     choose_input,
@@ -75,7 +75,7 @@ def test_score_window_returns_none_when_no_view():
 
 # ------------------------------------------------------------ score_web ---
 def test_score_web_returns_none_when_no_panes(monkeypatch):
-    from camfrog_autodj import webchat
+    from autodj import webchat
 
     monkeypatch.setattr(webchat, "find_web_panes", lambda win, vt, it: (None, None))
     cfg = Config()
@@ -156,7 +156,7 @@ def test_save_config_atomic_and_backup(tmp_path):
 
 
 def test_save_config_refuses_invalid_toml(tmp_path):
-    from camfrog_autodj.discover import save_config
+    from autodj.discover import save_config
 
     p = tmp_path / "config.toml"
     p.write_text('bot_nick = "X"\n', "utf-8")
@@ -170,3 +170,4 @@ def test_save_config_no_change_returns_false(tmp_path):
     p = tmp_path / "config.toml"
     p.write_text("bot_nick = 'X'\nlog_file = 'autodj.log'\n", "utf-8")
     assert save_config(str(p), {"log_file": "autodj.log"}) is False
+

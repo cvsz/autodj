@@ -6,12 +6,12 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from camfrog_autodj.config import Config
+    from autodj.config import Config
 
 if TYPE_CHECKING:
-    from camfrog_autodj.adapters.base import ChatMessage
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.models import Track
+    from autodj.adapters.base import ChatMessage
+    from autodj.engine import Engine
+    from autodj.models import Track
 
 
 class PluginInterface:
@@ -155,3 +155,4 @@ class Plugin(ABC):
     def on_track_failed(self, track: "Track", error: str) -> None:  # noqa: B027
         """Called when a track fails to play. Override if needed."""
         pass
+

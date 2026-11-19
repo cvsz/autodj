@@ -1,17 +1,17 @@
 import re
 import time
 
-from camfrog_autodj.adapters.base import (
+from autodj.adapters.base import (
     ChatAdapter,
     ChatMessage,
     diff_lines,
     parse_line,
 )
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.library import LocalIndex, host_ok
-from camfrog_autodj.models import Track
-from camfrog_autodj.playqueue import PlayQueue
+from autodj.config import Config
+from autodj.engine import Engine
+from autodj.library import LocalIndex, host_ok
+from autodj.models import Track
+from autodj.playqueue import PlayQueue
 
 
 def T(n, u="AutoDJ", d=60):
@@ -53,7 +53,7 @@ def test_diff_lines():
 
 
 def test_parse_im_marker_is_stripped_from_nick():
-    from camfrog_autodj.config import Config
+    from autodj.config import Config
 
     rx = __import__("re").compile(Config().line_regex)
     m = parse_line("IM mika: สวัสดี", rx, is_im=True)
@@ -237,7 +237,7 @@ def test_local_index_find_preserves_substring_semantics_with_precomputed_hay():
     avoiding rebuilding the lowercase search string on every call."""
     from pathlib import Path
 
-    from camfrog_autodj.library import LocalIndex
+    from autodj.library import LocalIndex
 
     index = LocalIndex(["/music"])
     index.tracks = [
@@ -259,7 +259,7 @@ def test_local_index_find_preserves_substring_semantics_with_precomputed_hay():
 
 def test_playqueue_version_bumps_on_every_mutation():
     """The queue exposes a monotonic version so GUI polls can skip rebuilds when unchanged."""
-    from camfrog_autodj.playqueue import PlayQueue
+    from autodj.playqueue import PlayQueue
 
     q = PlayQueue(shuffle=False)
     v0 = q.version
@@ -289,9 +289,9 @@ def test_playqueue_version_bumps_on_every_mutation():
 
 def test_engine_chat_and_im_snapshot_versions():
     """Engine chat_snapshot and im_snapshot return version counters for efficient GUI polling."""
-    from camfrog_autodj.adapters import NullAdapter
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.engine import Engine
+    from autodj.adapters import NullAdapter
+    from autodj.config import Config
+    from autodj.engine import Engine
 
     class FakePlayer:
         skipped = False
@@ -337,7 +337,7 @@ def test_engine_chat_and_im_snapshot_versions():
     assert ver3 == 2
 
     # IM log
-    from camfrog_autodj.adapters.base import ChatMessage
+    from autodj.adapters.base import ChatMessage
 
     eng._log_im_message(ChatMessage("user1", "private msg", is_im=True))
     im_seq2, im_ver2, im_logs2 = eng.im_snapshot()
@@ -354,3 +354,4 @@ def test_engine_chat_and_im_snapshot_versions():
     im_seq3, im_ver3, _ = eng.im_snapshot()
     assert im_seq3 == 1
     assert im_ver3 == 1  # version unchanged
+

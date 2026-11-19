@@ -2,10 +2,10 @@
 
 from unittest.mock import MagicMock, patch
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.player import MpvPlayer
+from autodj.adapters import NullAdapter
+from autodj.config import Config
+from autodj.engine import Engine
+from autodj.player import MpvPlayer
 
 
 def test_tts_ducks_music_volume_real_player():
@@ -56,7 +56,7 @@ def test_tts_ducks_music_volume_real_player():
     eng.player = mock_player
     eng.volume = 70
 
-    with patch("camfrog_autodj.tts.synth"):
+    with patch("autodj.tts.synth"):
         with patch("tempfile.gettempdir", return_value="/tmp"):
             eng.speak("test")
 
@@ -76,3 +76,4 @@ def test_tts_ducks_music_volume_real_player():
     assert calls[-1][0][0] == 70, (
         f"Expected last call to be restored volume (70), got {calls[-1][0][0]}"
     )
+

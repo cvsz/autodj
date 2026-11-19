@@ -3502,7 +3502,7 @@ class App(tk.Tk):
         """Run auto-discovery (saves the room window/controls to config.toml).
 
         In the shipped PyInstaller exe ``sys.executable`` *is* AutoDJ.exe, so
-        the old ``AutoDJ.exe -m camfrog_autodj --discover`` was rejected by
+        the old ``AutoDJ.exe -m autodj --discover`` was rejected by
         argparse and the button silently did nothing.  It also ran on the Tk
         main thread, freezing the window for the whole scan.
         """
@@ -3515,7 +3515,7 @@ class App(tk.Tk):
         base = (
             [sys.executable]
             if getattr(sys, "frozen", False)
-            else [sys.executable, "-m", "camfrog_autodj"]
+            else [sys.executable, "-m", "autodj"]
         )
         argv = [*base, "--discover", "-c", cfg_path]
 
@@ -3547,7 +3547,7 @@ class App(tk.Tk):
     def do_check(self):
         """Run setup diagnostics in the GUI and show the report in a dialog.
 
-        The old implementation spawned ``python -m camfrog_autodj --check``
+        The old implementation spawned ``python -m autodj --check``
         with no console attached, so the report never appeared anywhere.
         Work runs on a daemon thread; Tk is only touched via ``after(0, ...)``.
         """
@@ -4132,3 +4132,4 @@ class App(tk.Tk):
             self.chat.see("end")
             self.chat.configure(state="disabled")
         self._seen = seq
+

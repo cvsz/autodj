@@ -14,9 +14,9 @@
 | 2 | CODEOWNERS creation | `CODEOWNERS` | ✅ Complete | 7 security-sensitive paths require `@policedbc` review |
 | 3 | CHANGELOG promotion | `CHANGELOG.md` | ✅ Complete | `## 0.3.0` entry with release notes |
 | 4 | Full validation suite | `Makefile:full-validation` | ✅ Complete | 414 passed, 3 subtests |
-| 5 | Ruff check | `ruff check camfrog_autodj tests tools` | ✅ Complete | All checks passed |
+| 5 | Ruff check | `ruff check autodj tests tools` | ✅ Complete | All checks passed |
 | 6 | Ruff format check | `ruff format --check` | ✅ Complete | 63 files already formatted |
-| 7 | MyPy type check | `mypy camfrog_autodj` | ✅ Complete | No issues in 32 source files |
+| 7 | MyPy type check | `mypy autodj` | ✅ Complete | No issues in 32 source files |
 | 8 | Shellcheck | `shellcheck scripts/*.sh tools/*.sh` | ✅ Complete | Clean |
 | 9 | Playlist validation | `tools/validate_playlists.py` | ✅ Complete | 274 tracks across 34 files, 0 invalid |
 | 10 | Config validity | `config.toml` | ✅ Complete | Valid TOML with 76 keys |

@@ -8,7 +8,7 @@ current.
 
 import time
 
-from camfrog_autodj.player import _POS_CACHE_TTL, MpvPlayer
+from autodj.player import _POS_CACHE_TTL, MpvPlayer
 
 
 class _Cfg:
@@ -72,7 +72,7 @@ def test_hang_after_track_ended_is_not_a_failure(monkeypatch):
     )()
     player = MpvPlayer(cfg)
     proc = _Proc()
-    monkeypatch.setattr("camfrog_autodj.player.subprocess.Popen", lambda *a, **k: proc)
+    monkeypatch.setattr("autodj.player.subprocess.Popen", lambda *a, **k: proc)
     monkeypatch.setattr(player, "_wait_for_mpv_end", lambda *a: (None, True))
     monkeypatch.setattr(player, "get_time_pos", lambda: 59.0)
     monkeypatch.setattr(MpvPlayer, "_report", lambda *a: None)
@@ -93,3 +93,4 @@ def test_get_time_pos_invalidated_on_seek_stop(monkeypatch):
     player.stop()
     assert player.get_time_pos() == 30.0
     assert len(calls) == 3
+

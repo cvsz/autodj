@@ -19,7 +19,7 @@ The CamfrogAutoDJ repository is well-organized, with clear separation of concern
 
 | Category | Count | Examples |
 |----------|-------|----------|
-| Python source (camfrog_autodj/) | ~35 | engine.py, player.py, config.py, gui.py, commands.py, library.py |
+| Python source (autodj/) | ~35 | engine.py, player.py, config.py, gui.py, commands.py, library.py |
 | Python source (webhook/, plugins/, adapters/) | 9 | webhook/server.py, plugins/manager.py, adapters/uia.py |
 | Test files (tests/) | 48 | test_core.py, test_play_flow.py, test_hardening.py, etc. |
 | Build/install scripts | 10 | build.ps1, installer.nsi, install.ps1, build_exe.bat, etc. |
@@ -75,7 +75,7 @@ None identified. All similarly-named files are in different packages (e.g., `ada
 
 ## Structural Observations
 
-- **Source layout:** Flat `camfrog_autodj/` package with subpackages (`adapters/`, `plugins/`, `webhook/`). Clean, no circular dependencies.
+- **Source layout:** Flat `autodj/` package with subpackages (`adapters/`, `plugins/`, `webhook/`). Clean, no circular dependencies.
 - **Build scripts:** Thin wrappers (`build_exe.bat` → `build.ps1`, `install.bat` → `install.ps1`). No duplication of logic.
 - **Documentation:** Extensive (100+ docs files) with some overlap between root-level plans (`PLAN.md`, `IMPLEMENTATION_PLAN.md`, `ENTERPRISE_IMPLEMENTATION_PLAN.md`) and docs/ subdirectories. Historical reports preserved as evidence.
 - **Configuration:** Single `config.example.toml` template with fail-closed validation in `config.py`.
@@ -98,3 +98,4 @@ None identified. All similarly-named files are in different packages (e.g., `ada
 ## Conclusion
 
 The repository is structurally sound with no duplicate implementations, no circular dependencies, and no exposed secrets. All quality gates pass. Two fixes were applied (installer validation cross-platform support, Docker credential exclusion). No further structural changes are required.
+

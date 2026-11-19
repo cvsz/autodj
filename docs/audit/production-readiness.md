@@ -1,7 +1,7 @@
 # Production Readiness — CamfrogAutoDJ
 
 **Repository:** github.com/cvsz/autodj  
-**Version:** 0.2.8 (`pyproject.toml`, `camfrog_autodj/__init__.py`)  
+**Version:** 0.2.8 (`pyproject.toml`, `autodj/__init__.py`)  
 **Baseline SHA:** `fb5e99a`  
 **Platform:** Linux audit host; Windows runtime/installer VERIFIED on Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped)
 
@@ -10,7 +10,7 @@
 | Gate | Criterion | Status | Evidence |
 |------|-----------|--------|----------|
 | Tests | pytest passes | PASS | 336 passed, 3 subtests |
-| Lint | ruff check passes | PASS | `ruff check camfrog_autodj tests tools` |
+| Lint | ruff check passes | PASS | `ruff check autodj tests tools` |
 | Format | ruff format --check | PASS | 57 files formatted |
 | Config validation | invalid values rejected explicitly | PASS | `config.py:_validate` |
 | Library scan | symlink/reparse safe, limits enforced | PASS + 11 new tests | `tests/test_library_scan_safety.py` |
@@ -36,3 +36,4 @@ Linux unit/test validation passes. All validation gates pass on Linux (441 tests
 - E2E Integration — PASS
 
 Real Camfrog integration and real mpv/yt-dlp playback remain NOT IMPLEMENTED (mocks only; no authorized live test environment).
+

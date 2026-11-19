@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import threading
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
+from autodj.adapters import NullAdapter
+from autodj.adapters.base import ChatMessage
+from autodj.config import Config
+from autodj.engine import Engine
 
 
 def _engine() -> Engine:
@@ -43,3 +43,4 @@ def test_im_auto_reply_respects_cooldown():
     for _ in range(2):  # timeout-guarded: a regression must fail, not hang the suite
         assert _run_with_timeout(lambda: e._handle_im_message(msg)), "chat loop deadlocked"
     assert len(e.sent_ims) == 1  # type: ignore[attr-defined]
+

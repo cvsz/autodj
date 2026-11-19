@@ -2,9 +2,9 @@
 
 from unittest.mock import MagicMock
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
+from autodj.adapters import NullAdapter
+from autodj.config import Config
+from autodj.engine import Engine
 
 
 def test_pause_fails_when_ipc_unavailable():
@@ -67,3 +67,4 @@ def test_resume_succeeds_when_ipc_available():
     eng.resume()
     assert eng.paused is False
     assert eng._paused_at is None
+

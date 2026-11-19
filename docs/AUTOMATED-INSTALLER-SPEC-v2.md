@@ -142,7 +142,7 @@ winget install NSIS.NSIS
 ├── dist\AutoDJ.exe           # Main executable
 ├── config.toml               # User configuration
 ├── uninstall.ps1             # Generated uninstaller
-├── camfrog_autodj\           # Python source
+├── autodj\           # Python source
 └── (other project files)
 
 Shortcuts:
@@ -208,7 +208,7 @@ dist\Camfrog-AutoDJ-Setup-0.2.5.exe  (~35 MB)
 ```nsis
 Section "!MainProgram" SEC_MAIN        ; Required - core files
 Section "Documentation" SEC_DOCS       ; Optional - docs/*.md
-Section "Python Scripts (Source)" SEC_SRC  ; Optional - camfrog_autodj/
+Section "Python Scripts (Source)" SEC_SRC  ; Optional - autodj/
 Section "Tools & Scripts" SEC_TOOLS    ; Optional - tools/
 Section "Tests (Development)" SEC_TESTS    ; Optional - tests/
 Section "Install Scripts" SEC_SCRIPTS  ; Optional - install.ps1, uninstall.ps1
@@ -248,7 +248,7 @@ $pyi = @(
     "--icon", "app.ico",
     "--version-file", "version_info.txt",
     "--add-data", "app.ico;.",      # Include icon in exe
-    "--collect-submodules", "camfrog_autodj",
+    "--collect-submodules", "autodj",
     "--collect-submodules", "pywinauto",
     "--collect-submodules", "pyttsx3",
     "--collect-all", "yt_dlp",      # All yt-dlp extractors

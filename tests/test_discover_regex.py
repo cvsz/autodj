@@ -1,6 +1,6 @@
 """Test that discover.py config parsing is robust."""
 
-from camfrog_autodj.discover import update_config_text
+from autodj.discover import update_config_text
 
 
 def test_update_config_text_unquoted_value():
@@ -51,3 +51,4 @@ def test_update_config_text_handles_spaces():
     updates = {"key": "new"}
     result = update_config_text(text, updates)
     assert "key = 'new'" in result
+

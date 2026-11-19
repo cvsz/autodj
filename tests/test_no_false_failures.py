@@ -3,11 +3,11 @@
 import time
 from types import SimpleNamespace
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.models import Track
-from camfrog_autodj.player import MpvPlayer
+from autodj.adapters import NullAdapter
+from autodj.config import Config
+from autodj.engine import Engine
+from autodj.models import Track
+from autodj.player import MpvPlayer
 
 
 def _player(monkeypatch, played_s: float, rc: int):
@@ -20,7 +20,7 @@ def _player(monkeypatch, played_s: float, rc: int):
         def wait(self, timeout=None):
             return rc
 
-    import camfrog_autodj.player as player_mod
+    import autodj.player as player_mod
 
     monkeypatch.setattr(player_mod.subprocess, "Popen", lambda *a, **k: _Proc())
     monkeypatch.setattr(p, "_wait_for_mpv_end", lambda proc, started, limit: (rc, False))
@@ -46,3 +46,4 @@ def test_failed_track_is_not_announced_in_room():
     e._track_failed(Track("u", "Song", 10, "amy"), 1)
     assert not any("Song" in s for s in said)
     assert time.monotonic() <= e._backoff_until + 60  # back-off still applied
+

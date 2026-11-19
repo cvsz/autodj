@@ -73,7 +73,7 @@ Added to `tests/test_hardening.py`:
   - Checkout, Setup Python, Install deps (pytest, ruff, mypy)
   - Run unit tests
   - Ruff lint (`ruff check .`)
-  - Strict mypy typecheck (`mypy camfrog_autodj`)
+  - Strict mypy typecheck (`mypy autodj`)
   - Secret file scan
   - Outputs `go=true` only if all pass
 - **Job 2 — `build-installer`** (windows-latest, `needs: validate-release`):
@@ -122,7 +122,7 @@ This confirms:
 
 ### Version Consistency (`test_versions_agree`)
 
-Verifies that `pyproject.toml`, `camfrog_autodj/__init__.py`, and `version_info.txt` all declare the same version (`0.2.6`).
+Verifies that `pyproject.toml`, `autodj/__init__.py`, and `version_info.txt` all declare the same version (`0.2.6`).
 
 **Result:** PASSED
 
@@ -198,3 +198,4 @@ Parametrized test rejecting:
 | Secret scan | PASSED | No tracked secret files |
 | Dependabot | UPDATED | pip ecosystem added |
 | CODEOWNERS | UPDATED | Independent review for security-sensitive paths |
+

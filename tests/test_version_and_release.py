@@ -1,11 +1,11 @@
 import tomllib
 from pathlib import Path
 
-import camfrog_autodj
+import autodj
 
 
 def test_version_consistency():
-    version = camfrog_autodj.__version__
+    version = autodj.__version__
 
     # pyproject.toml
     root = Path(__file__).resolve().parent.parent
@@ -61,3 +61,4 @@ def test_version_consistency():
     assert (
         "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9" in release_yml
     )  # v7.0.2
+

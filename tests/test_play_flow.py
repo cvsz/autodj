@@ -16,14 +16,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from camfrog_autodj.commands import COMMANDS
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.exceptions import UserError
-from camfrog_autodj.messages import tr
-from camfrog_autodj.models import Track
-from camfrog_autodj.player import MpvPlayer
-from camfrog_autodj.playlist import PlaylistStore, load_playlist
+from autodj.commands import COMMANDS
+from autodj.config import Config
+from autodj.engine import Engine
+from autodj.exceptions import UserError
+from autodj.messages import tr
+from autodj.models import Track
+from autodj.player import MpvPlayer
+from autodj.playlist import PlaylistStore, load_playlist
 
 
 class FakeIndex:
@@ -116,8 +116,8 @@ def test_play_includes_resolved_ytdlp_hook_even_when_ytdlp_path_empty(monkeypatc
         return proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
-    monkeypatch.setattr("camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe")
+    monkeypatch.setattr("autodj.player._is_windows", lambda: True)
+    monkeypatch.setattr("autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe")
 
     cfg = Config(mpv_path="mpv", ytdlp_path="")
     assert MpvPlayer(cfg).play("https://youtu.be/abc", 80) is True
@@ -131,7 +131,7 @@ def test_play_terminates_hung_mpv_after_timeout(monkeypatch):
     """mpv that never exits must be terminated after mpv_timeout, not block the player loop forever."""
     import time
 
-    from camfrog_autodj.player import MpvPlayer
+    from autodj.player import MpvPlayer
 
     killed = []
     fake_proc = MagicMock()
@@ -153,8 +153,8 @@ def test_play_terminates_hung_mpv_after_timeout(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
-    monkeypatch.setattr("camfrog_autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe")
+    monkeypatch.setattr("autodj.player._is_windows", lambda: True)
+    monkeypatch.setattr("autodj.player.find_ytdlp", lambda *a, **kw: "D:/tools/yt-dlp.exe")
 
     cfg = Config(mpv_path="mpv", ytdlp_path="", mpv_timeout=1)
     player = MpvPlayer(cfg)
@@ -213,3 +213,4 @@ def test_thai_messages_have_requested_keys():
     assert tr("th", "last_head") == "ขอเพลงล่าสุด: "
     assert tr("en", "requested_none") == "No requests saved yet."
     assert tr("en", "last_head") == "Recently requested: "
+

@@ -3,11 +3,11 @@ import time
 import pytest
 from test_core import make, out
 
-from camfrog_autodj import launcher
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.config import Config
-from camfrog_autodj.messages import STR
-from camfrog_autodj.models import Track
+from autodj import launcher
+from autodj.adapters.base import ChatMessage
+from autodj.config import Config
+from autodj.messages import STR
+from autodj.models import Track
 
 
 def test_en_th_same_keys():
@@ -125,7 +125,7 @@ def test_gui_smoke():
     except tk.TclError:
         pytest.skip("no display")
 
-    from camfrog_autodj.gui import App
+    from autodj.gui import App
 
     e = make()
     e.current = Track("s", "Midnight City", 243, "bob")
@@ -162,7 +162,7 @@ def test_settings_dialog_visible_saves_and_reopens(tmp_path):
     except tk.TclError:
         pytest.skip("no display")
 
-    from camfrog_autodj.gui import App
+    from autodj.gui import App
 
     cfg_file = tmp_path / "config.toml"
     cfg_file.write_text('bot_nick = "AutoDJ"\n', encoding="utf-8")
@@ -220,7 +220,7 @@ def test_settings_dialog_visible_saves_and_reopens(tmp_path):
 
 
 def test_window_pick():
-    from camfrog_autodj.windows import Cand, pick
+    from autodj.windows import Cand, pick
 
     cs = [
         Cand(1, "Camfrog Video Chat", "A", 10),
@@ -239,7 +239,7 @@ def test_window_pick():
 
 
 def test_window_pick_prefers_main_client_over_room_list_dialog():
-    from camfrog_autodj.windows import Cand, pick
+    from autodj.windows import Cand, pick
 
     cs = [
         Cand(1, "รายชื่อห้องสนทนา", "#32770", 10),  # room-list dialog
@@ -252,7 +252,7 @@ def test_window_pick_prefers_main_client_over_room_list_dialog():
 def test_discover_pick_and_config(tmp_path):
     import re
 
-    from camfrog_autodj.discover import (
+    from autodj.discover import (
         Ctl,
         best_room,
         save_config,
@@ -284,7 +284,7 @@ def test_discover_pick_and_config(tmp_path):
 
 
 def test_window_pick_by_process():
-    from camfrog_autodj.windows import Cand, pick
+    from autodj.windows import Cand, pick
 
     cs = [
         Cand(
@@ -306,8 +306,8 @@ def test_window_pick_by_process():
 def test_webchat_lines():
     import re
 
-    from camfrog_autodj.adapters.base import parse_line
-    from camfrog_autodj.webchat import tokens_to_lines
+    from autodj.adapters.base import parse_line
+    from autodj.webchat import tokens_to_lines
 
     toks = [
         "date header",
@@ -345,7 +345,8 @@ def test_webchat_lines():
 
 
 def test_discover_web_updates():
-    from camfrog_autodj.discover import Ctl, Found, to_updates
+    from autodj.discover import Ctl, Found, to_updates
 
     ups = to_updates(Found("ZeaZDev: x", Ctl("Pane", 0), Ctl("Pane", 0), 3, web=True))
     assert ups["view_kind"] == "web" and "window_title_re" in ups
+

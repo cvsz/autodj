@@ -11,14 +11,14 @@ import time
 import pytest
 from test_core import FakeAdapter, FakePlayer, make, out
 
-from camfrog_autodj import __version__
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.commands import COMMANDS
-from camfrog_autodj.config import Config, ConfigError
-from camfrog_autodj.exceptions import UserError
-from camfrog_autodj.messages import STR
-from camfrog_autodj.models import Track
-from camfrog_autodj.playqueue import PlayQueue
+from autodj import __version__
+from autodj.adapters.base import ChatMessage
+from autodj.commands import COMMANDS
+from autodj.config import Config, ConfigError
+from autodj.exceptions import UserError
+from autodj.messages import STR
+from autodj.models import Track
+from autodj.playqueue import PlayQueue
 
 
 def T(n, u="AutoDJ", d=60):
@@ -223,7 +223,7 @@ def test_block_and_unblock():
 
 def test_command_aliases_unique():
     with pytest.raises(ValueError):
-        from camfrog_autodj.commands import command
+        from autodj.commands import command
 
         command("play")(lambda *a: None)
     assert "history" in COMMANDS and "block" in COMMANDS
@@ -352,7 +352,7 @@ def test_valid_config_still_loads_and_normalises(tmp_path):
 
 def test_config_rejects_duplicate_keys(tmp_path):
     """ConfigLoader should reject duplicate keys in TOML."""
-    from camfrog_autodj.config import Config, ConfigError
+    from autodj.config import Config, ConfigError
 
     p = tmp_path / "config.toml"
     p.write_text('bot_nick = "AutoDJ"\nbot_nick = "Other"\n', "utf-8")
@@ -370,7 +370,7 @@ def test_shipped_example_config_is_valid():
 
 
 def test_save_config_never_writes_invalid_toml(tmp_path):
-    from camfrog_autodj.discover import save_config
+    from autodj.discover import save_config
 
     p = tmp_path / "config.toml"
     p.write_text('bot_nick = "X"\n', "utf-8")
@@ -415,7 +415,7 @@ SEARCH_JSON = {
 
 
 def test_parse_ytdlp_info_playlist_and_single():
-    from camfrog_autodj.library import parse_ytdlp_info
+    from autodj.library import parse_ytdlp_info
 
     t = parse_ytdlp_info(SEARCH_JSON, "amy")
     assert [x.title for x in t] == ["Song A", "Live"]
@@ -431,7 +431,7 @@ def test_parse_ytdlp_info_playlist_and_single():
 
 def test_parse_ytdlp_info_rejects_invalid_urls():
     """parse_ytdlp_info should skip entries with invalid or missing URLs."""
-    from camfrog_autodj.library import parse_ytdlp_info
+    from autodj.library import parse_ytdlp_info
 
     # Entry with no URL and no ID should be skipped
     info = {"entries": [{"title": "No URL", "duration": 100}]}
@@ -497,7 +497,7 @@ def test_remote_tracks_falls_back_to_exe_when_module_missing(monkeypatch, tmp_pa
     import builtins
     import subprocess
 
-    from camfrog_autodj import library
+    from autodj import library
 
     real_import = builtins.__import__
 
@@ -528,8 +528,8 @@ def test_remote_tracks_falls_back_to_exe_when_module_missing(monkeypatch, tmp_pa
 def test_remote_tracks_clear_error_when_nothing_available(monkeypatch):
     import builtins
 
-    from camfrog_autodj import library
-    from camfrog_autodj.models import UserError
+    from autodj import library
+    from autodj.models import UserError
 
     real_import = builtins.__import__
     monkeypatch.setattr(
@@ -551,7 +551,7 @@ def test_remote_tracks_clear_error_when_nothing_available(monkeypatch):
 
 
 def test_clean_text():
-    from camfrog_autodj.textutil import clean_text
+    from autodj.textutil import clean_text
 
     assert clean_text("a\tb\r\nc\x00d\x1b[31m") == "a b c d [31m"
     assert clean_text("  ไทย  ok ") == "ไทย ok"
@@ -570,7 +570,7 @@ def test_versions_agree():
 
 
 def test_doctor_reports_missing_mpv_and_ok_dirs(monkeypatch, tmp_path):
-    from camfrog_autodj import doctor
+    from autodj import doctor
 
     monkeypatch.setattr(doctor.shutil, "which", lambda x: None)
     cfg = Config(
@@ -590,12 +590,12 @@ def test_doctor_reports_missing_mpv_and_ok_dirs(monkeypatch, tmp_path):
 def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path, monkeypatch):
     import os
 
-    from camfrog_autodj.library import find_ytdlp
+    from autodj.library import find_ytdlp
 
     nt = os.name == "nt"
     real_which = shutil.which
     monkeypatch.setattr(
-        "camfrog_autodj.paths.shutil.which",
+        "autodj.paths.shutil.which",
         lambda command: None if command == "yt-dlp" else real_which(command),
     )
     mpv = tmp_path / ("mpv.exe" if nt else "mpv")
@@ -615,10 +615,10 @@ def test_find_ytdlp_prefers_the_one_next_to_mpv(tmp_path, monkeypatch):
 
 
 def test_find_ytdlp_falls_back_to_path(monkeypatch):
-    from camfrog_autodj.library import find_ytdlp
+    from autodj.library import find_ytdlp
 
     monkeypatch.setattr(
-        "camfrog_autodj.paths.shutil.which",
+        "autodj.paths.shutil.which",
         lambda command: "/opt/bin/yt-dlp" if command == "yt-dlp" else None,
     )
     assert find_ytdlp("", "missing-mpv") == "/opt/bin/yt-dlp"
@@ -628,7 +628,7 @@ def test_remote_tracks_uses_module_when_no_exe(monkeypatch):
     import sys
     import types
 
-    from camfrog_autodj import library
+    from autodj import library
 
     class FakeYDL:
         opts: dict = {}
@@ -660,7 +660,7 @@ def test_remote_tracks_uses_module_when_no_exe(monkeypatch):
 
 
 def test_visual_colour_helpers():
-    from camfrog_autodj.visuals import gradient, hex_to_rgb, lerp_color, rgb_to_hex
+    from autodj.visuals import gradient, hex_to_rgb, lerp_color, rgb_to_hex
 
     assert hex_to_rgb("#ff3d9a") == (255, 61, 154) and rgb_to_hex(255, 61, 154) == "#ff3d9a"
     assert lerp_color("#000000", "#ffffff", 0.5) == "#808080"
@@ -670,7 +670,7 @@ def test_visual_colour_helpers():
 
 
 def test_equaliser_is_bounded_and_quiet_when_paused():
-    from camfrog_autodj.visuals import bar_heights, ease
+    from autodj.visuals import bar_heights, ease
 
     for t in (0.0, 1.3, 77.7):
         live, quiet = bar_heights(t, 32, 1.0), bar_heights(t, 32, 0.08)
@@ -680,7 +680,7 @@ def test_equaliser_is_bounded_and_quiet_when_paused():
 
 
 def test_aurora_and_particles_and_confetti_are_stable_and_bounded():
-    from camfrog_autodj.visuals import (
+    from autodj.visuals import (
         aurora_offset,
         confetti_burst,
         confetti_pos,
@@ -710,7 +710,7 @@ def test_aurora_and_particles_and_confetti_are_stable_and_bounded():
 
 
 def test_vinyl_and_pulse_and_roundrect():
-    from camfrog_autodj.visuals import pulse, round_rect_points, vinyl_angle
+    from autodj.visuals import pulse, round_rect_points, vinyl_angle
 
     assert vinyl_angle(0) == 0 and abs(vinyl_angle(60) - (33.3 * 360) % 360) < 1e-6
     assert (
@@ -752,8 +752,8 @@ def test_play_saves_to_playlist_json(tmp_path):
     song_path = str(tmp_path / "song one.mp3")  # cross-platform absolute path
     e = make()
     e.playlist_file = str(playlist_path)
-    from camfrog_autodj.library import local_track
-    from camfrog_autodj.playlist import PlaylistStore
+    from autodj.library import local_track
+    from autodj.playlist import PlaylistStore
 
     e.playlist = PlaylistStore(str(playlist_path))
 
@@ -801,7 +801,7 @@ def test_playlist_loads_into_history_on_startup(tmp_path):
     e = make()
     e.playlist_file = str(playlist_path)
     e.playlist = None
-    from camfrog_autodj.playlist import PlaylistStore
+    from autodj.playlist import PlaylistStore
 
     e.playlist = PlaylistStore(str(playlist_path))
 
@@ -818,7 +818,7 @@ def test_tts_synth_works_with_default_voice(tmp_path, monkeypatch):
     import sys
     import types
 
-    from camfrog_autodj import tts
+    from autodj import tts
 
     # Fake pyttsx3 that writes a dummy WAV
     class FakeVoice:
@@ -855,7 +855,7 @@ def test_tts_raises_clear_error_when_pyttsx3_missing(monkeypatch, tmp_path):
     """When pyttsx3 is not installed, synth() raises a clear error."""
     import builtins
 
-    from camfrog_autodj import tts
+    from autodj import tts
 
     # Block pyttsx3 import
     real_import = builtins.__import__
@@ -894,7 +894,7 @@ def test_updater_loop_honours_disable_on_reload():
     and re-enabling must not spawn a second loop."""
     from types import SimpleNamespace
 
-    from camfrog_autodj.updater import Updater
+    from autodj.updater import Updater
 
     u = Updater(SimpleNamespace(auto_update_enabled=True, auto_update_check_interval=300))
     checks: list[int] = []
@@ -916,3 +916,4 @@ def test_updater_loop_honours_disable_on_reload():
         assert u._thread is first
     finally:
         u.stop()
+

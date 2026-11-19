@@ -40,11 +40,11 @@ $exe = "dist\$Name.exe"
 function Step($t) { Write-Host "`n== $t" -ForegroundColor Cyan }
 
 # ---------- 0. sanity -------------------------------------------------------------------------------
-foreach ($f in "run_autodj.py", "app.ico", "version_info.txt", "camfrog_autodj\__init__.py") {
+foreach ($f in "run_autodj.py", "app.ico", "version_info.txt", "autodj\__init__.py") {
   if (-not (Test-Path $f)) { throw "missing $f" }
 }
-if (Select-String -Path "camfrog_autodj\__init__.py" -Pattern "from \.base" -Quiet) {
-  throw "camfrog_autodj\__init__.py contains the adapters __init__ content (from .base ...); it must only hold __version__"
+if (Select-String -Path "autodj\__init__.py" -Pattern "from \.base" -Quiet) {
+  throw "autodj\__init__.py contains the adapters __init__ content (from .base ...); it must only hold __version__"
 }
 # Kill any existing AutoDJ.exe processes before starting (leftover from previous runs)
 Get-Process -Name $Name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -354,3 +354,4 @@ if ($v.Status -eq "HashMismatch") {
 "timestamp: $($v.TimeStamperCertificate.Subject)"
 "sha256:    $([BitConverter]::ToString(([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.IO.File]::ReadAllBytes($exe)))).Replace('-','').ToLower())"
 if ($v.Status -ne "Valid") { Write-Warning "not 'Valid': expected for a self-signed cert on a PC that has not imported autodj-codesign.cer" }
+

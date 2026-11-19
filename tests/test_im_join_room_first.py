@@ -1,9 +1,9 @@
 """IMs from outside the room get a private 'join the room first' notice; nothing reaches the room."""
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
+from autodj.adapters import NullAdapter
+from autodj.adapters.base import ChatMessage
+from autodj.config import Config
+from autodj.engine import Engine
 
 
 def _engine(lang: str = "th"):
@@ -48,3 +48,4 @@ def test_no_private_channel_means_no_reply_anywhere():
     e.say = lambda text, *a, **k: room.append(text) or True  # type: ignore[method-assign]
     e._handle_im(ChatMessage("zdevz", "!play x", is_im=True))
     assert room == []
+

@@ -6,9 +6,9 @@ import time
 
 from test_core import make, out
 
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.models import Track
-from camfrog_autodj.playqueue import PlayQueue
+from autodj.adapters.base import ChatMessage
+from autodj.models import Track
+from autodj.playqueue import PlayQueue
 
 
 def _pool(n: int) -> list[Track]:
@@ -97,8 +97,8 @@ def test_repeat_one_announces_only_once():
 
 
 def test_settings_writer_keeps_keys_missing_from_the_hand_list():
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.gui import _append_remaining_keys
+    from autodj.config import Config
+    from autodj.gui import _append_remaining_keys
 
     cfg = Config()
     cfg.ai_api_key = "sk-test"
@@ -314,7 +314,7 @@ def test_cooldown_survives_cleanup_when_longer_than_window():
 
 
 def test_favorites_concurrent_stores_do_not_lose_entries(tmp_path):
-    from camfrog_autodj.favorites import FavoritesStore
+    from autodj.favorites import FavoritesStore
 
     cfgp = str(tmp_path / "config.toml")
     a, b = FavoritesStore(cfgp), FavoritesStore(cfgp)  # created before either saves
@@ -331,7 +331,7 @@ def test_punishbot_cannot_target_admin():
 
 
 def test_welcome_cooldown_independent_of_machine_uptime(monkeypatch):
-    import camfrog_autodj.engine as eng
+    import autodj.engine as eng
 
     e = make()
     e.cfg.room = "ZeaZDev"
@@ -344,7 +344,7 @@ def test_welcome_cooldown_independent_of_machine_uptime(monkeypatch):
 def test_unknown_command_reaches_plugins(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)  # the stats plugin keeps plugin_stats.json in the CWD
     e = make()
-    from camfrog_autodj.plugins.manager import PluginManager
+    from autodj.plugins.manager import PluginManager
 
     e._plugin_manager = PluginManager(e, ["builtin.stats"])
     e._plugin_manager.load_plugins()
@@ -355,13 +355,13 @@ def test_unknown_command_reaches_plugins(tmp_path, monkeypatch):
 def test_tts_play_file_ducks_and_restores_music(monkeypatch):
     import threading
 
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.player import MpvPlayer
+    from autodj.config import Config
+    from autodj.player import MpvPlayer
 
     p = MpvPlayer(Config(), threading.Event())
     vols: list[int] = []
     monkeypatch.setattr(p, "set_volume", lambda v: vols.append(v) or True)
-    monkeypatch.setattr("camfrog_autodj.player.subprocess.run", lambda *a, **k: None)
+    monkeypatch.setattr("autodj.player.subprocess.run", lambda *a, **k: None)
     p.play_file("tts.wav", duck_volume=20, restore_volume=70)
     assert vols == [20, 70]
 
@@ -369,8 +369,8 @@ def test_tts_play_file_ducks_and_restores_music(monkeypatch):
 def test_player_never_starts_mpv_after_shutdown(monkeypatch):
     import threading
 
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.player import MpvPlayer
+    from autodj.config import Config
+    from autodj.player import MpvPlayer
 
     stop = threading.Event()
     stop.set()
@@ -379,7 +379,7 @@ def test_player_never_starts_mpv_after_shutdown(monkeypatch):
     def no_popen(*a, **k):
         raise AssertionError("mpv started during shutdown")
 
-    monkeypatch.setattr("camfrog_autodj.player.subprocess.Popen", no_popen)
+    monkeypatch.setattr("autodj.player.subprocess.Popen", no_popen)
     assert p.play("https://youtu.be/x", 50, 10.0) is True
 
 
@@ -469,3 +469,4 @@ def test_end_to_end_request_flow_on_the_real_player_thread():
     assert log[1][2] == "end" and log[1][1] >= 0.75  # A was NOT cut by ben's request
     assert log[2][2] == "end"  # B played to its end
     # (starts[3]) after the queue emptied and >= 1 s without requests, default returned
+

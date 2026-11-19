@@ -1,9 +1,9 @@
 """Test that participant_count is properly tracked."""
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
+from autodj.adapters import NullAdapter
+from autodj.adapters.base import ChatMessage
+from autodj.config import Config
+from autodj.engine import Engine
 
 
 def test_participant_count_tracked():
@@ -34,3 +34,4 @@ def test_participant_count_initial_zero():
 
     assert eng.participant_count == 0
     assert eng._active_room_users == set()
+

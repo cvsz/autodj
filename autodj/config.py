@@ -68,7 +68,7 @@ class MessageStyle:
 
 
 # ConfigError is re-exported from exceptions so that config.py and
-# tests using `from camfrog_autodj.exceptions import ConfigError` refer
+# tests using `from autodj.exceptions import ConfigError` refer
 # to the same class.
 
 
@@ -543,3 +543,4 @@ def _validate_regex(cfg: Config, k: str, where: str) -> None:
             f"{where}: '{k}' is not a valid regular expression ({ex}). "
             "Tip: write regexes in 'single quotes' so backslashes stay as they are."
         ) from None
+

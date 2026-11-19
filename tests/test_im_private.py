@@ -1,9 +1,9 @@
 """IM traffic never reaches the room: not the room chat log, not a room post."""
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
+from autodj.adapters import NullAdapter
+from autodj.adapters.base import ChatMessage
+from autodj.config import Config
+from autodj.engine import Engine
 
 
 def _im(user: str, text: str) -> ChatMessage:
@@ -32,3 +32,4 @@ def test_im_auto_reply_uses_private_channel_when_available():
     e._handle_im(_im("zdevz", "hi"))
     assert sent == [("zdevz", "away")]
     assert room == []
+

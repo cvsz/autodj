@@ -35,8 +35,8 @@
 
 **Files:**
 - Modify: `pyproject.toml` (add watchdog to optional deps)
-- Create: `camfrog_autodj/config_watcher.py`
-- Modify: `camfrog_autodj/config.py` (add reload callback support)
+- Create: `autodj/config_watcher.py`
+- Modify: `autodj/config.py` (add reload callback support)
 - Test: `tests/test_config_hot_reload.py`
 
 **Interfaces:**
@@ -65,7 +65,7 @@ def test_config_watcher_detects_change(tmp_path):
 Run: `pytest tests/test_config_hot_reload.py::test_config_watcher_detects_change -v`
 Expected: FAIL - ConfigWatcher not defined
 
-- [ ] **Step 3: Implement ConfigWatcher in camfrog_autodj/config_watcher.py**
+- [ ] **Step 3: Implement ConfigWatcher in autodj/config_watcher.py**
 
 - Use watchdog.Observer with PatternMatchingEventHandler
 - Debounce rapid writes (500ms)
@@ -79,7 +79,7 @@ Expected: PASS
 
 - [ ] **Step 5: Add Config.reload() method and callback registry**
 
-Modify: `camfrog_autodj/config.py`
+Modify: `autodj/config.py`
 - Add `Config.reload() -> Config` class method
 - Add `Config.register_reload_callback(callback)` / `unregister_reload_callback()`
 - Callbacks receive new Config instance after validation
@@ -101,9 +101,9 @@ def test_config_reload_invalid_keeps_old(tmp_path):
 ### Task 2: Integrate ConfigWatcher into Engine and GUI
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py` (add config watcher, handle reload)
-- Modify: `camfrog_autodj/gui.py` (trigger reload on settings save)
-- Modify: `camfrog_autodj/__main__.py` (start watcher in GUI mode)
+- Modify: `autodj/engine.py` (add config watcher, handle reload)
+- Modify: `autodj/gui.py` (trigger reload on settings save)
+- Modify: `autodj/__main__.py` (start watcher in GUI mode)
 - Test: `tests/test_engine_config_reload.py`
 
 **Interfaces:**
@@ -144,9 +144,9 @@ def test_engine_reload_updates_volume(engine, tmp_path):
 ### Task 3: JSON Structured Logging Formatter
 
 **Files:**
-- Create: `camfrog_autodj/logging_json.py`
-- Modify: `camfrog_autodj/__main__.py` (add --log-json flag, configure formatter)
-- Modify: `camfrog_autodj/config.py` (add log_json, log_json_fields settings)
+- Create: `autodj/logging_json.py`
+- Modify: `autodj/__main__.py` (add --log-json flag, configure formatter)
+- Modify: `autodj/config.py` (add log_json, log_json_fields settings)
 - Test: `tests/test_json_logging.py`
 
 **Interfaces:**
@@ -168,7 +168,7 @@ def test_json_formatter_includes_structured_fields():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-- [ ] **Step 3: Implement JsonFormatter in camfrog_autodj/logging_json.py**
+- [ ] **Step 3: Implement JsonFormatter in autodj/logging_json.py**
 
 - Extend logging.Formatter
 - Include: timestamp, level, logger, message, request_id, delivery_id, user, track_id, generation
@@ -194,10 +194,10 @@ def test_json_logging_to_file(tmp_path):
 ### Task 4: Graceful Degradation - Fallback Chat Adapters
 
 **Files:**
-- Modify: `camfrog_autodj/adapters/__init__.py` (add fallback chain logic)
-- Modify: `camfrog_autodj/adapters/uia.py` (improve error handling)
-- Create: `camfrog_autodj/adapters/logtail.py` (enhance for fallback)
-- Modify: `camfrog_autodj/__main__.py` (auto-fallback logic)
+- Modify: `autodj/adapters/__init__.py` (add fallback chain logic)
+- Modify: `autodj/adapters/uia.py` (improve error handling)
+- Create: `autodj/adapters/logtail.py` (enhance for fallback)
+- Modify: `autodj/__main__.py` (auto-fallback logic)
 - Test: `tests/test_adapter_fallback.py`
 
 **Interfaces:**
@@ -236,7 +236,7 @@ def test_uia_failure_falls_back_to_logtail(monkeypatch):
 ### Task 5: Engine Health Check Enhancements
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py` (enhance health_check())
+- Modify: `autodj/engine.py` (enhance health_check())
 - Test: `tests/test_health_check.py`
 
 **Interfaces:**

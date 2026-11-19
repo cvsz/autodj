@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from .base import Plugin, PluginInterface
 
 if TYPE_CHECKING:
-    from camfrog_autodj.engine import Engine
+    from autodj.engine import Engine
 
 log = logging.getLogger("autodj.plugins")
 
@@ -39,7 +39,7 @@ class PluginManager:
 
         try:
             if name.startswith("builtin."):
-                mod = importlib.import_module(f"camfrog_autodj.plugins.builtin.{name[8:]}")
+                mod = importlib.import_module(f"autodj.plugins.builtin.{name[8:]}")
             else:
                 mod = importlib.import_module(name)
 
@@ -92,3 +92,4 @@ class PluginManager:
             }
             for p in self.plugins.values()
         ]
+

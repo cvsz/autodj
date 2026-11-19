@@ -8,11 +8,11 @@ import types
 
 from test_gui_logic import _app
 
-from camfrog_autodj.models import Track
+from autodj.models import Track
 
 
 def _cleanup():
-    sys.modules.pop("camfrog_autodj.gui", None)
+    sys.modules.pop("autodj.gui", None)
 
 
 def test_queued_hint_reports_real_position(monkeypatch):
@@ -127,9 +127,10 @@ def test_discover_uses_exe_directly_when_frozen(monkeypatch):
 
 
 def test_cli_discover_without_uia_does_not_start_the_bot(capsys):
-    from camfrog_autodj.__main__ import _auto_discover
+    from autodj.__main__ import _auto_discover
 
     a = types.SimpleNamespace(discover=True, no_discover=False, config="config.toml")
     cfg = types.SimpleNamespace(chat_reader="console", chat_sender="console", auto_discover=False)
     assert _auto_discover(a, cfg) is True  # True = "handled, exit"
     assert "needs chat_reader" in capsys.readouterr().out
+

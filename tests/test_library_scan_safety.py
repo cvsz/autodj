@@ -20,7 +20,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from camfrog_autodj.library import MEDIA, LocalIndex, scan_folder
+from autodj.library import MEDIA, LocalIndex, scan_folder
 
 
 def _media(root: str, name: str, content: bytes = b"fake audio") -> str:
@@ -169,3 +169,4 @@ def test_scan_never_follows_symlink_cycle(tmp_path):
     os.symlink(str(root), str(root / "cycle"))
 
     assert _sources(scan_folder(str(root))) == [str(root / "keep.mp3")]
+

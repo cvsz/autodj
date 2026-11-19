@@ -6,7 +6,7 @@ Implemented 9 key performance optimizations targeting the highest-impact areas i
 ## Optimizations Implemented
 
 ### 1. Persistent IPC Connection for mpv (HIGH IMPACT)
-**File:** `camfrog_autodj/player.py`
+**File:** `autodj/player.py`
 
 **Problem:** Each `get_time_pos()`, `seek()`, `pause()`, `volume()`, `resume()` call opened and closed a new IPC connection (named pipe on Windows, Unix socket on Linux). The GUI polls position every 500ms, causing significant IPC overhead.
 
@@ -22,7 +22,7 @@ Implemented 9 key performance optimizations targeting the highest-impact areas i
 - Improves GUI progress bar responsiveness
 
 ### 2. Separate Locks for Circuit Breaker vs Send Failures (HIGH IMPACT)
-**File:** `camfrog_autodj/engine.py`
+**File:** `autodj/engine.py`
 
 **Problem:** Circuit breaker state and chat send failure tracking shared the same lock (`_send_failure_lock`), causing unnecessary contention between unrelated operations.
 
@@ -37,7 +37,7 @@ Implemented 9 key performance optimizations targeting the highest-impact areas i
 - More maintainable locking strategy
 
 ### 3. Batch Rate Limit Cleanup (MEDIUM IMPACT)
-**Files:** `camfrog_autodj/commands.py`, `camfrog_autodj/engine.py`
+**Files:** `autodj/commands.py`, `autodj/engine.py`
 
 **Problem:** `_within_limits()` performed O(N) cleanup of expired rate limit entries on EVERY command, scanning all users' request histories and cooldown entries.
 
@@ -53,7 +53,7 @@ Implemented 9 key performance optimizations targeting the highest-impact areas i
 - More predictable command response times
 
 ### 4. Adaptive GUI Polling (MEDIUM IMPACT)
-**File:** `camfrog_autodj/gui.py`
+**File:** `autodj/gui.py`
 
 **Problem:** Fixed 500ms data polling and 33ms animation polling regardless of playback state.
 
@@ -74,7 +74,7 @@ Implemented 9 key performance optimizations targeting the highest-impact areas i
 - Maintains responsive UI when actively playing
 
 ### 5. Faster Library Scanning with os.scandir (LOW IMPACT - Startup Only)
-**File:** `camfrog_autodj/library.py`
+**File:** `autodj/library.py`
 
 **Problem:** `Path.iterdir()` creates Path objects and requires separate `stat()` calls for each entry.
 
@@ -89,7 +89,7 @@ Implemented 9 key performance optimizations targeting the highest-impact areas i
 - No behavioral changes
 
 ### 6. Metadata Caching with mtime Validation (LOW IMPACT - Startup/Rescan)
-**File:** `camfrog_autodj/library.py`
+**File:** `autodj/library.py`
 
 **Problem:** `mutagen` metadata extraction runs on every file during every library scan, even for unchanged files.
 
@@ -106,7 +106,7 @@ Implemented 9 key performance optimizations targeting the highest-impact areas i
 - Cache survives application restarts
 
 ### 7. Parallel Directory Scanning (LOW IMPACT - Startup Only)
-**File:** `camfrog_autodj/library.py`
+**File:** `autodj/library.py`
 
 **Problem:** Library scanning was single-threaded, not utilizing multiple CPU cores.
 
@@ -121,7 +121,7 @@ Implemented 9 key performance optimizations targeting the highest-impact areas i
 - Maintains all safety guarantees (symlinks, permissions, budgets)
 
 ### 8. yt-dlp Connection Pooling (MEDIUM IMPACT)
-**File:** `camfrog_autodj/library.py`
+**File:** `autodj/library.py`
 
 **Problem:** Each `remote_tracks()` call spawns a new yt-dlp process, causing process startup overhead.
 
@@ -135,7 +135,7 @@ Implemented 9 key performance optimizations targeting the highest-impact areas i
 - Better resource utilization under load
 
 ### 9. GUI Canvas Rendering Optimization (MEDIUM IMPACT)
-**File:** `camfrog_autodj/gui.py`
+**File:** `autodj/gui.py`
 
 **Problem:** Animation loop redrew all elements every frame (30fps) regardless of playback state, with redundant canvas operations.
 
@@ -176,11 +176,11 @@ Implemented 9 key performance optimizations targeting the highest-impact areas i
 
 ## Files Modified
 
-1. `camfrog_autodj/player.py` - Persistent IPC connections
-2. `camfrog_autodj/engine.py` - Separate locks, rate limit cleanup loop
-3. `camfrog_autodj/commands.py` - Batched cleanup, removed per-command cleanup
-4. `camfrog_autodj/gui.py` - Adaptive polling intervals, canvas rendering optimization
-5. `camfrog_autodj/library.py` - os.scandir, metadata caching, parallel scanning, yt-dlp pooling
+1. `autodj/player.py` - Persistent IPC connections
+2. `autodj/engine.py` - Separate locks, rate limit cleanup loop
+3. `autodj/commands.py` - Batched cleanup, removed per-command cleanup
+4. `autodj/gui.py` - Adaptive polling intervals, canvas rendering optimization
+5. `autodj/library.py` - os.scandir, metadata caching, parallel scanning, yt-dlp pooling
 
 ## Backward Compatibility
 

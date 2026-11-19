@@ -19,12 +19,12 @@ All functional engineering requirements, audio engine upgrades, bot moderation i
 
 | Requirement | Evidence | Exact Commit SHA | Status |
 |---|---|---|---|
-| Audio Fade-In/Out Transitions | `camfrog_autodj/player.py`, `tests/test_v030_fixes.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
-| Dynamic Loudness Normalization | `camfrog_autodj/player.py`, `tests/test_v030_fixes.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
-| YouTube Auth & Cookie Masking | `camfrog_autodj/library.py`, `tests/test_v030_fixes.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
-| Dynamic Vote-Skip Thresholds | `camfrog_autodj/commands.py`, `tests/test_v030_fixes.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
-| Anti-Spam Sliding-Window Cooldowns | `camfrog_autodj/commands.py`, `tests/test_v030_fixes.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
-| Windows Hi-DPI & GUI Modernization | `camfrog_autodj/gui/`, `tests/test_gui_*.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
+| Audio Fade-In/Out Transitions | `autodj/player.py`, `tests/test_v030_fixes.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
+| Dynamic Loudness Normalization | `autodj/player.py`, `tests/test_v030_fixes.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
+| YouTube Auth & Cookie Masking | `autodj/library.py`, `tests/test_v030_fixes.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
+| Dynamic Vote-Skip Thresholds | `autodj/commands.py`, `tests/test_v030_fixes.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
+| Anti-Spam Sliding-Window Cooldowns | `autodj/commands.py`, `tests/test_v030_fixes.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
+| Windows Hi-DPI & GUI Modernization | `autodj/gui/`, `tests/test_gui_*.py` | `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79` | `COMPLETED_VERIFIED` |
 | Windows NSIS Installer (.exe) | `installer.nsi`, Actions Run #41285640249 | `4c7c4d366271bd3ab7726923d0128168181c2c4e` | `COMPLETED_VERIFIED` |
 | CycloneDX SBOM Generation | `Camfrog-AutoDJ-v0.2.5.cdx.json`, Actions Run #41285640249 | `4c7c4d366271bd3ab7726923d0128168181c2c4e` | `COMPLETED_VERIFIED` |
 | Sigstore Build Provenance Attestation | Rekor index `3623647793`, attestation ID `62283016` | `4c7c4d366271bd3ab7726923d0128168181c2c4e` | `COMPLETED_VERIFIED` |
@@ -49,3 +49,4 @@ To complete official publication without violating GitHub governance or force-up
 ## 4. Final Classification
 
 `IMPLEMENTATION_COMPLETE_RELEASE_BLOCKED`
+

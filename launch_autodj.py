@@ -14,7 +14,7 @@ CamfrogAutoDJ - Launcher
 from __future__ import annotations
 
 import argparse
-import subprocess  # nosec B404 B603 - fixed argv list (sys.executable -m camfrog_autodj), no shell
+import subprocess  # nosec B404 B603 - fixed argv list (sys.executable -m autodj), no shell
 import sys
 from pathlib import Path
 
@@ -82,7 +82,7 @@ def main() -> None:
     print("-" * 60)
 
     try:
-        subprocess.run(cmd, check=False)  # nosec B404 B603 - fixed argv list (sys.executable -m camfrog_autodj), no shell
+        subprocess.run(cmd, check=False)  # nosec B404 B603 - fixed argv list (sys.executable -m autodj), no shell
     except KeyboardInterrupt:
         print("\n[AUTO DJ] ผู้ใช้หยุดการทำงาน")
     except Exception as exc:  # noqa: BLE001
@@ -93,8 +93,8 @@ def main() -> None:
 
 
 def _build_launch_command(args, config_path: Path) -> list[str]:
-    """Build the `python -m camfrog_autodj` command line from parsed args."""
-    cmd = [sys.executable, "-m", "camfrog_autodj", "-c", str(config_path)]
+    """Build the `python -m autodj` command line from parsed args."""
+    cmd = [sys.executable, "-m", "autodj", "-c", str(config_path)]
     if args.lang:
         cmd.extend(["--lang", args.lang])
     if args.check:
@@ -114,3 +114,4 @@ def _build_launch_command(args, config_path: Path) -> list[str]:
 
 if __name__ == "__main__":
     main()
+
