@@ -105,7 +105,7 @@ This manual covers administrative features, configuration, and operational proce
 admins = ["YourNick", "BackupAdmin"]
 
 # Bot's own nickname in the room (for echo detection)
-bot_nick = "AutoDJ"
+bot_nick = "AutoDJBot"
 
 # Command prefix
 prefix = "!"

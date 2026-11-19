@@ -59,7 +59,7 @@ copy config.example.toml config.toml
 แก้ไข `config.toml` ให้ตรงกับสภาพแวดล้อมของคุณ:
 
 ```toml
-bot_nick = "AutoDJ"
+bot_nick = "AutoDJBot"
 admins = ["YourNick"]
 prefix = "!"
 lang = "th"

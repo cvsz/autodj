@@ -326,7 +326,7 @@ Key settings in `config.toml`:
 # Core
 prefix = "!"
 lang = "en"
-bot_nick = "AutoDJ"
+bot_nick = "AutoDJBot"
 admins = ["admin_nick"]  # case-insensitive
 
 # Chat

@@ -936,7 +936,7 @@ camfrog-autodj/
 
 ```toml
 # Identity
-bot_nick = "AutoDJ"
+bot_nick = "AutoDJBot"
 prefix = "!"
 lang = "en"
 

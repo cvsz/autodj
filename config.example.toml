@@ -13,7 +13,7 @@
 # See autodj/config.py for the complete validation logic.
 
 # --- Core Bot Identity --------------------------------------------------------
-bot_nick = "AutoDJ"                 # Nickname the bot uses in the room (its own lines are ignored)
+bot_nick = "AutoDJBot"              # Nickname the bot uses in the room (its own lines are ignored)
 admins = []                         # Case-insensitive list of admin nicks (no default; configure operator nicks only)
 # WARNING: Nickname-based authorization is spoofable. Prefer immutable authenticated
 # account identifiers where the chat protocol supports them.

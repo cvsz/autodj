@@ -12,6 +12,7 @@ import shutil
 import subprocess  # nosec B404
 from pathlib import Path
 
+from .config import DEFAULT_BOT_NICK
 from .library import MEDIA, find_ytdlp
 from .paths import resolve_executable
 
@@ -167,11 +168,11 @@ def _check_admin_bot_nick_audio(cfg, out: list[Result]) -> None:
         )
     else:
         _add(out, "OK", "admins: " + ", ".join(cfg.admins))
-    if cfg.bot_nick == "AutoDJ":
+    if cfg.bot_nick == DEFAULT_BOT_NICK:
         _add(
             out,
             "INFO",
-            "bot_nick is the default 'AutoDJ'. Lines the bot posts are recognised by their text anyway, "
+            f"bot_nick is the default {DEFAULT_BOT_NICK!r}. Lines the bot posts are recognised by their text anyway, "
             "but set bot_nick to the nickname it chats as so the GUI log labels them correctly.",
         )
     if not cfg.audio_device:

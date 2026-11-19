@@ -72,9 +72,14 @@ class MessageStyle:
 # to the same class.
 
 
+# Shipped default nick: the setup check (doctor) asks to replace it with the
+# nickname the bot really chats as.
+DEFAULT_BOT_NICK = "AutoDJBot"
+
+
 @dataclass
 class Config:
-    bot_nick: str = "AutoDJ"
+    bot_nick: str = DEFAULT_BOT_NICK
     admins: list[str] = field(default_factory=list)
     prefix: str = "!"
     lang: str = "en"  # en | th (bot replies and GUI)

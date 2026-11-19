@@ -105,7 +105,7 @@
 admins = ["YourNick", "BackupAdmin"]
 
 # ชื่อของบอทในห้อง (สำหรับตรวจจับข้อความตัวเอง)
-bot_nick = "AutoDJ"
+bot_nick = "AutoDJBot"
 
 # คำนำหน้าคำสั่ง
 prefix = "!"

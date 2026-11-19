@@ -350,7 +350,7 @@
 # หลัก
 prefix = "!"
 lang = "th"
-bot_nick = "AutoDJ"
+bot_nick = "AutoDJBot"
 admins = ["admin_nick"]  # ไม่สนใจตัวพิมพ์เล็ก/ใหญ่
 
 # แชท

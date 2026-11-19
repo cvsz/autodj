@@ -1,5 +1,7 @@
 ## 0.3.9 — 2026-11-20
 
+- **Default `bot_nick` is now `AutoDJBot`** (Config, config.example.toml, installers, docs). The setup check's INFO ("bot_nick is the default ...") now fires only for that shipped default, so a bot that really chats as "AutoDJ" is no longer told to change it.
+- **Interactive install.ps1 saved only the bot nick** — its `admins` and `music_dirs` edits looked for values the example never had (`["Seaza"]`, `["D:/Music"]` vs `[]`), so the admin and music folder typed during setup were silently dropped. Each key is now matched whatever its value, and the input is escaped for TOML.
 - **Installer closes a running AutoDJ first** — an upgrade while AutoDJ was running stopped with "Error opening file for writing" (the exe is locked) and an uninstall left files behind. Install and uninstall now stop AutoDJ.exe / mpv.exe started from the install folder (matched by path: another copy or the user's own mpv is untouched).
 - **Makefile** — `PROJECT` pointed at the pre-rename `camfrog_autodj/` (make lint/fmt/typecheck broken), and on Windows without Git Bash `make lint` silently fell back to py_compile and passed; it now stops with setup instructions.
 - **No more false status announcements** — `status_indicator_enabled` (default on) matched a bare substring anywhere in room chat, so "anyway" announced "X is now away" and a quote mentioning an "owner" announced "X is the room owner" (7 times in the live log). Only a whole status-notice line ("bob is now away", "bob is an admin") is announced now.
