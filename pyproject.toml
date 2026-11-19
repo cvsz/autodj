@@ -19,7 +19,7 @@ webhook = [
   # its extractors can keep up with site changes.
   "fastapi>=0.100,<1",
   "uvicorn>=0.23,<1",
-  "pydantic>=2.5,<3",
+  "pydantic>=2.14.3,<3",
   "httpx>=0.25,<1",
 ]
 [project.scripts]
