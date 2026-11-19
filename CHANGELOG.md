@@ -1,5 +1,11 @@
 ## Unreleased
 
+- **GUI freezes** — Skip, Prev and Ctrl+Right ran `MpvPlayer.stop()` (fade-out plus up to 5 s waiting for mpv) on the Tk main thread; they now run in the background.
+- **Discover button did nothing in the installed exe** — it ran `AutoDJ.exe -m camfrog_autodj --discover`, which argparse rejects in a PyInstaller build, and it blocked the window while running. It now calls the exe directly, runs in the background and shows the result.
+- **`--discover` without UIA started the bot** — with `chat_reader`/`chat_sender` not set to `uia`, the flag fell through and launched AutoDJ normally; it now explains the requirement and exits.
+- **Add files could leave the Add button disabled** — completion was counted with an unsynchronised `-= 1` from several worker threads; counting now happens on the Tk thread. The "queued" hint now shows the real queue position instead of always "#1".
+- **Double-clicking a queued song could drop it** — moving it to the front was refused by the duplicate check after the song had been removed. The room announcement now names the real requester instead of "you".
+- Engine callbacks that arrive after the window closed no longer raise in worker threads.
 - **Dependencies** — consolidates the open Dependabot updates: webhook extra floors raised to `fastapi>=0.163.1`, `uvicorn>=0.54.0`, `pydantic>=2.14.3`, `httpx>=0.28.1`; hot-reload extra moves to `watchdog>=7.1.0,<8` (#236-#240). `github/codeql-action` 4.39.1 -> 4.39.3 (#186). `softprops/action-gh-release` 2.0.8 -> 3.0.4, moving the release step off the deprecated Node 20 runtime (#235). All pinned by commit SHA (verified against the release tags).
 - **Audit Docker image** — base image `python:3.12-slim` -> `python:3.15-slim` (#185), and the image now installs the `webhook` and `hotreload` extras: with `[dev]` alone its build-time self-test failed at collection (`tests/test_webhook_server.py` needs fastapi) on any Python version.
 
