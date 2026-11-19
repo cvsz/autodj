@@ -146,7 +146,10 @@ class TestConfigWatcher:
         cfg_file = tmp_path / "config.toml"
         cfg_file.write_text('bot_nick = "Test"\nadmins = []\n', encoding="utf-8")
 
-        watcher = ConfigWatcher(str(cfg_file), debounce_ms=200, polling_interval=0.1)
+        # The five writes span ~250 ms and polling adds up to 100 ms: a 600 ms
+        # debounce keeps them inside one window even on a slow CI runner (200 ms
+        # was flaky there - two reloads is correct when writes are >200 ms apart).
+        watcher = ConfigWatcher(str(cfg_file), debounce_ms=600, polling_interval=0.1)
         changes = []
 
         def callback(cfg: Config):
@@ -161,7 +164,7 @@ class TestConfigWatcher:
                 cfg_file.write_text(f'bot_nick = "Test{i}"\nadmins = []\n', encoding="utf-8")
                 time.sleep(0.05)
 
-            time.sleep(1.0)  # Wait for polling + debounce
+            time.sleep(2.0)  # Wait for polling + debounce
 
             # Should only fire once with the last value
             assert len(changes) == 1
