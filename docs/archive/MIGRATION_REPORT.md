@@ -8,13 +8,13 @@
 
 ## Executive Summary
 
-No breaking migrations were required for this release. The codebase is backward-compatible with existing `config.toml` files. Configuration migration support exists in `camfrog_autodj/migrate.py` for upgrading from older versions (placeholder detection and path discovery).
+No breaking migrations were required for this release. The codebase is backward-compatible with existing `config.toml` files. Configuration migration support exists in `autodj/migrate.py` for upgrading from older versions (placeholder detection and path discovery).
 
 ---
 
 ## Configuration Migration Support
 
-The `camfrog_autodj/migrate.py` module provides migration for existing installations:
+The `autodj/migrate.py` module provides migration for existing installations:
 
 | Feature | Description |
 |---------|-------------|
@@ -42,7 +42,7 @@ The following changes in v0.3.0 are backward-compatible and require no user acti
 
 ## Configuration Schema Stability
 
-The `Config` dataclass in `camfrog_autodj/config.py` is stable. All fields have sensible defaults. New fields added in v0.3.0 include:
+The `Config` dataclass in `autodj/config.py` is stable. All fields have sensible defaults. New fields added in v0.3.0 include:
 
 - `webhook_cors_origins` (default: `["*"]`)
 - All RE integration toggles (default: `true`)
@@ -74,3 +74,4 @@ All 9 migration tests pass.
 1. **No user migration required.** Existing installations can upgrade to v0.3.0 without config changes.
 2. **Placeholder detection runs at startup.** Installer placeholders are automatically detected and reported; unresolvable placeholders are preserved.
 3. **Backup before upgrade.** As always, users should back up `config.toml` and `playlist.json` before upgrading (atomic writes with `.bak` backup are already implemented).
+

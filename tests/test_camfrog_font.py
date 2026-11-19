@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import camfrog_autodj.camfrog_font as cf
-from camfrog_autodj.config import MessageStyle
+import autodj.camfrog_font as cf
+from autodj.config import MessageStyle
 
 # ---------------------------------------------------------------------------
 # is_windows

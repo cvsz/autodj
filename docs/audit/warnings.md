@@ -5,7 +5,7 @@
 
 ## Lint warnings
 
-- `ruff check camfrog_autodj tests tools`: **pass, no warnings.**
+- `ruff check autodj tests tools`: **pass, no warnings.**
 - `ruff format --check`: **pass, 57 files formatted.**
 - One import-sort fix applied to the new test file (`ruff check --fix`); re-verified clean.
 
@@ -20,3 +20,4 @@ These are pre-existing style notes in multi-repo tooling scripts, outside the ap
 ## mypy
 
 Not executed as a gate (CI mypy step tolerates pre-existing issues due to missing stubs for pywinauto/pyttsx3/mutagen/yt_dlp/pyperclip). `mypy ignore_missing_imports = true` in `pyproject.toml`.
+

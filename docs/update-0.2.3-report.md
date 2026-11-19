@@ -17,13 +17,13 @@ Working-tree v0.3.0 fixes were applied ~Oct 28 06:25, cert/sign tooling redesign
 
 | File | Working tree | Zip 0.2.3 | Verdict |
 | --- | --- | --- | --- |
-| `camfrog_autodj/config.py` | has `search_limit` field + `(1,50)` range validation | older, no `search_limit` | **keep tree** (N-cfg-1) |
-| `camfrog_autodj/library.py` | `remote_tracks(..., search_limit=...)`, `ytsearch{n}:` | hard-coded `ytsearch1:` | **keep tree** (N-lib-1) |
-| `camfrog_autodj/engine.py` | `_remote(..., search_limit=None)` wired from config | no param | **keep tree** (N-eng-1) |
-| `camfrog_autodj/player.py` | `play_file` sets `creationflags=CREATE_NO_WINDOW` on `nt` | plain `subprocess.run` (console flash) | **keep tree** (N-player-1) |
-| `camfrog_autodj/tts.py` | thread-safe single-engine worker via dedicated thread + queue | naive `pyttsx3.init()` per call (COM STA, not thread-safe) | **keep tree** (N-tts-1) |
-| `camfrog_autodj/webchat.py` | `find_web_panes` debug-logs when the view pane is absent | silent `None` return | **keep tree** (N-web-1) |
-| `camfrog_autodj/messages.py` | `error` = real sentence (EN/TH) | `error` = bare word "error" | **keep tree** (N-msg-1) |
+| `autodj/config.py` | has `search_limit` field + `(1,50)` range validation | older, no `search_limit` | **keep tree** (N-cfg-1) |
+| `autodj/library.py` | `remote_tracks(..., search_limit=...)`, `ytsearch{n}:` | hard-coded `ytsearch1:` | **keep tree** (N-lib-1) |
+| `autodj/engine.py` | `_remote(..., search_limit=None)` wired from config | no param | **keep tree** (N-eng-1) |
+| `autodj/player.py` | `play_file` sets `creationflags=CREATE_NO_WINDOW` on `nt` | plain `subprocess.run` (console flash) | **keep tree** (N-player-1) |
+| `autodj/tts.py` | thread-safe single-engine worker via dedicated thread + queue | naive `pyttsx3.init()` per call (COM STA, not thread-safe) | **keep tree** (N-tts-1) |
+| `autodj/webchat.py` | `find_web_panes` debug-logs when the view pane is absent | silent `None` return | **keep tree** (N-web-1) |
+| `autodj/messages.py` | `error` = real sentence (EN/TH) | `error` = bare word "error" | **keep tree** (N-msg-1) |
 | `config.example.toml` | documents `search_limit` | older | **keep tree** |
 | `tests/test_v030_fixes.py` | 15 regression tests | absent | **keep tree** (local-only file) |
 | `build.ps1`, `tools/sign_exe.ps1`, `tools/make_cert.ps1`, `.gitignore` | cert lives in `cert/`, `sign_exe` auto-finds/creates self-signed cert + 3 timestamp-server fallbacks | `.cer` in project root, `sign_exe` demands `-Pfx`/`-Thumbprint`, single timestamp server | **keep tree** (newer redesign) |
@@ -41,7 +41,7 @@ Knock-on files fixed at the same time (all equivalent to the zip's intent):
 
 - `make version` prints `0.2.3`; `make changelog-check` passes; `CHANGELOG.md` has the release entry.
 - `python3 -m pytest tests/ -q -p no:faulthandler -p no:cacheprovider` → **130 passed, 1 skipped** (includes the fifteen v0.3.0 regression tests plus unreleased bug-fix coverage).
-- No stale `0.2.2` references remain in `pyproject.toml`, `version_info.txt`, `camfrog_autodj/`.
+- No stale `0.2.2` references remain in `pyproject.toml`, `version_info.txt`, `autodj/`.
 
 ## Caveat / recommendation
 
@@ -54,3 +54,4 @@ debug log) plus the cert/sign redesign. Two honest options going forward:
    (the candidates are already itemised in `tests/test_v030_fixes.py` N-tts-1/N-player-1/N-lib-1/N-cfg-1/N-msg-1/N-web-1/N-eng-1).
 
 Recommended: option 2.
+

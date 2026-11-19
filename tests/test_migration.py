@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from camfrog_autodj.migrate import detect_placeholders, migrate_config, migration_needed
+from autodj.migrate import detect_placeholders, migrate_config, migration_needed
 
 
 def _write_config(tmp_path, text):
@@ -60,7 +60,7 @@ def test_migrate_mpv_path_placeholder(tmp_path, monkeypatch):
     assert any("mpv_path" in c and "replaced" in c for c in changes), changes
 
     # Verify the config was updated
-    from camfrog_autodj.config import Config
+    from autodj.config import Config
 
     cfg = Config.load(str(p))
     assert "mpv.exe" in cfg.mpv_path
@@ -80,7 +80,7 @@ def test_migrate_ytdlp_path_placeholder(tmp_path, monkeypatch):
     changes = migrate_config(str(p))
     assert any("ytdlp_path" in c and "replaced" in c for c in changes), changes
 
-    from camfrog_autodj.config import Config
+    from autodj.config import Config
 
     cfg = Config.load(str(p))
     assert "yt-dlp.exe" in cfg.ytdlp_path
@@ -110,7 +110,7 @@ def test_custom_values_preserved(tmp_path, monkeypatch):
     assert any("ytdlp_path" in c and "replaced" in c for c in changes), changes
     assert not any("mpv_path" in c and "replaced" in c for c in changes), changes
 
-    from camfrog_autodj.config import Config
+    from autodj.config import Config
 
     cfg = Config.load(str(p))
     assert cfg.mpv_path == "C:/Custom/Path/mpv.exe"  # preserved
@@ -125,7 +125,7 @@ def test_custom_values_preserved(tmp_path, monkeypatch):
 def test_placeholder_kept_when_no_valid_path(tmp_path, monkeypatch):
     """When no valid executable can be discovered, placeholder is kept."""
     # No mpv.exe anywhere: mock application_dir to return empty dir
-    import camfrog_autodj.migrate as migrate_mod
+    import autodj.migrate as migrate_mod
 
     monkeypatch.setattr(migrate_mod, "application_dir", lambda: Path(tmp_path / "no-exe-here"))
     monkeypatch.setattr(migrate_mod, "COMMON_WINDOWS_PATHS", {})
@@ -140,7 +140,7 @@ def test_placeholder_kept_when_no_valid_path(tmp_path, monkeypatch):
     assert any("kept" in c for c in changes), changes
 
     # Config should be unchanged
-    from camfrog_autodj.config import Config
+    from autodj.config import Config
 
     cfg = Config.load(str(p))
     assert cfg.mpv_path == "REPLACE_ME"
@@ -222,7 +222,7 @@ def test_migrate_without_registry_values(tmp_path, monkeypatch):
     changes = migrate_config(str(p))
     assert any("replaced" in c for c in changes), changes
 
-    from camfrog_autodj.config import Config
+    from autodj.config import Config
 
     cfg = Config.load(str(p))
     assert "mpv.exe" in cfg.mpv_path

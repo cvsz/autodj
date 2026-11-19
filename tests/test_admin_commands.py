@@ -1,8 +1,8 @@
 """Test that admin kick/ban/punish/delete commands work."""
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
+from autodj.adapters import NullAdapter
+from autodj.config import Config
+from autodj.engine import Engine
 
 
 def test_kick_user_queues_command():

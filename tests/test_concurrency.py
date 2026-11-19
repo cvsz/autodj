@@ -12,10 +12,10 @@ import time
 
 from test_core import FakeAdapter, FakePlayer, T, make, out
 
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.playqueue import PlayQueue
+from autodj.adapters.base import ChatMessage
+from autodj.config import Config
+from autodj.engine import Engine
+from autodj.playqueue import PlayQueue
 
 # ============================================================================
 # PlayQueue concurrency

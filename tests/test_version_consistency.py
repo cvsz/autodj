@@ -12,7 +12,7 @@ def test_version_consistency():
     assert re.fullmatch(r"\d+\.\d+\.\d+", pyproject_version), pyproject_version
 
     # Read from __init__.py
-    init = Path("camfrog_autodj/__init__.py").read_text()
+    init = Path("autodj/__init__.py").read_text()
     init_version = re.search(r'__version__ = "([^"]+)"', init).group(1)
     assert init_version == pyproject_version, f"__init__.py: {init_version}"
 

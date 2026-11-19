@@ -1,5 +1,5 @@
-from camfrog_autodj.clipkeys import clip_action
-from camfrog_autodj.winmsg import make_lparam, pick_child, utf16_units
+from autodj.clipkeys import clip_action
+from autodj.winmsg import make_lparam, pick_child, utf16_units
 
 
 def test_utf16_units_thai_and_emoji():

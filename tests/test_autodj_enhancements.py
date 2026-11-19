@@ -10,12 +10,12 @@ import os
 import pytest
 from test_core import FakeAdapter, FakePlayer, T, make, out
 
-from camfrog_autodj.adapters.base import ChatMessage
-from camfrog_autodj.config import Config, ConfigError
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.gui import _toml_str
-from camfrog_autodj.models import Track
-from camfrog_autodj.playqueue import PlayQueue
+from autodj.adapters.base import ChatMessage
+from autodj.config import Config, ConfigError
+from autodj.engine import Engine
+from autodj.gui import _toml_str
+from autodj.models import Track
+from autodj.playqueue import PlayQueue
 
 # ============================================================================
 # Auto-reply loop
@@ -252,7 +252,7 @@ def test_engine_seek_no_current_track():
 
 def test_player_seek_returns_bool():
     """MpvPlayer.seek() delegates to _cmd and returns bool."""
-    from camfrog_autodj.player import MpvPlayer
+    from autodj.player import MpvPlayer
 
     cfg = Config(mpv_path="mpv")
     player = MpvPlayer(cfg)

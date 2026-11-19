@@ -1,4 +1,4 @@
-# Architecture — CamfrogAutoDJ v0.3.7
+# Architecture — CamfrogAutoDJ v0.3.8
 
 **Date:** 2026-11-16  
 **Branch:** main (HEAD: fecc053)  
@@ -18,26 +18,26 @@ The architecture is documented in detail at `docs/architecture.md`. This file pr
 
 ```
 AutoDJ.exe (frozen PyInstaller binary)
-├── camfrog_autodj/__main__.py   — CLI entry point
-├── camfrog_autodj/engine.py     — Engine: chat loop, player loop, command router, autoplay pool
-├── camfrog_autodj/commands.py   — Router: command registration, admin auth, cooldowns, rate limits
-├── camfrog_autodj/config.py     — Config: TOML loading, fail-closed validation, defaults
-├── camfrog_autodj/player.py     — MpvPlayer: one mpv per track, IPC control, fade in/out
-├── camfrog_autodj/library.py    — Library: yt-dlp lookups, local file scanning, URL parsing
-├── camfrog_autodj/playlist.py   — PlaylistStore: persistent playlist.json (atomic write, dedup)
-├── camfrog_autodj/playqueue.py  — PlayQueue: requests-first queue + autoplay pool, shuffle/repeat
-├── camfrog_autodj/discover.py   — Auto-discover: finds Camfrog window and chat controls
-├── camfrog_autodj/adapters/     — Chat adapters: uia, webchat, console, null
-├── camfrog_autodj/gui.py        — GUI: Tk studio window with queue/history/chat/TTS
-├── camfrog_autodj/doctor.py     --check: plain-language setup diagnostics
-├── camfrog_autodj/messages.py   — All user-facing strings (EN + TH)
-├── camfrog_autodj/textutil.py   — Text sanitisation
-├── camfrog_autodj/tts.py        — Text-to-speech via pyttsx3 (SAPI)
-├── camfrog_autodj/paths.py      — Executable path resolution
-├── camfrog_autodj/windows.py    — Window enumeration for Camfrog discovery
-├── camfrog_autodj/winmsg.py     — Windows message posting for background chat
-├── camfrog_autodj/webhook/      — FastAPI webhook server with HMAC verification
-└── camfrog_autodj/plugins/      — Plugin system (stats, help builtins)
+├── autodj/__main__.py   — CLI entry point
+├── autodj/engine.py     — Engine: chat loop, player loop, command router, autoplay pool
+├── autodj/commands.py   — Router: command registration, admin auth, cooldowns, rate limits
+├── autodj/config.py     — Config: TOML loading, fail-closed validation, defaults
+├── autodj/player.py     — MpvPlayer: one mpv per track, IPC control, fade in/out
+├── autodj/library.py    — Library: yt-dlp lookups, local file scanning, URL parsing
+├── autodj/playlist.py   — PlaylistStore: persistent playlist.json (atomic write, dedup)
+├── autodj/playqueue.py  — PlayQueue: requests-first queue + autoplay pool, shuffle/repeat
+├── autodj/discover.py   — Auto-discover: finds Camfrog window and chat controls
+├── autodj/adapters/     — Chat adapters: uia, webchat, console, null
+├── autodj/gui.py        — GUI: Tk studio window with queue/history/chat/TTS
+├── autodj/doctor.py     --check: plain-language setup diagnostics
+├── autodj/messages.py   — All user-facing strings (EN + TH)
+├── autodj/textutil.py   — Text sanitisation
+├── autodj/tts.py        — Text-to-speech via pyttsx3 (SAPI)
+├── autodj/paths.py      — Executable path resolution
+├── autodj/windows.py    — Window enumeration for Camfrog discovery
+├── autodj/winmsg.py     — Windows message posting for background chat
+├── autodj/webhook/      — FastAPI webhook server with HMAC verification
+└── autodj/plugins/      — Plugin system (stats, help builtins)
 ```
 
 ---
@@ -109,3 +109,4 @@ AutoDJ.exe (frozen PyInstaller binary)
 - `docs/architecture.md` — Detailed architecture documentation
 - `docs/adr/` — Architecture decision records
 - `docs/protocols/` — Reverse-engineering evidence (Camfrog font logic, UIA behavior)
+

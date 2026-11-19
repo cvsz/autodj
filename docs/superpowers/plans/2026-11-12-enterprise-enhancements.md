@@ -39,11 +39,11 @@
 ### Task 1: Webhook/API Integration - Core Server
 
 **Files:**
-- Create: `camfrog_autodj/webhook/server.py`
-- Create: `camfrog_autodj/webhook/__init__.py`
-- Create: `camfrog_autodj/webhook/models.py`
-- Create: `camfrog_autodj/webhook/auth.py`
-- Modify: `camfrog_autodj/config.py` (add webhook config fields)
+- Create: `autodj/webhook/server.py`
+- Create: `autodj/webhook/__init__.py`
+- Create: `autodj/webhook/models.py`
+- Create: `autodj/webhook/auth.py`
+- Modify: `autodj/config.py` (add webhook config fields)
 - Test: `tests/test_webhook_server.py`
 
 **Interfaces:**
@@ -56,8 +56,8 @@
 # tests/test_webhook_server.py
 import pytest
 from fastapi.testclient import TestClient
-from camfrog_autodj.webhook.server import create_webhook_app
-from camfrog_autodj.webhook.models import WebhookConfig
+from autodj.webhook.server import create_webhook_app
+from autodj.webhook.models import WebhookConfig
 
 def test_webhook_health_endpoint():
     config = WebhookConfig(enabled=True, port=0, secret="test-secret")
@@ -92,7 +92,7 @@ Expected: FAIL (module not found)
 
 - [ ] **Step 3: Implement webhook models and config**
 
-Create `camfrog_autodj/webhook/models.py`:
+Create `autodj/webhook/models.py`:
 ```python
 from dataclasses import dataclass, field
 from typing import Optional
@@ -107,7 +107,7 @@ class WebhookConfig:
     cors_origins: list[str] = field(default_factory=lambda: ["*"])
 ```
 
-Add to `camfrog_autodj/config.py`:
+Add to `autodj/config.py`:
 ```python
 # In Config dataclass, add:
 webhook_enabled: bool = False
@@ -119,12 +119,12 @@ webhook_rate_limit_per_ip: int = 60
 
 - [ ] **Step 4: Implement HMAC authentication**
 
-Create `camfrog_autodj/webhook/auth.py`:
+Create `autodj/webhook/auth.py`:
 ```python
 import hmac
 import hashlib
 from fastapi import Request, HTTPException, Depends
-from camfrog_autodj.webhook.models import WebhookConfig
+from autodj.webhook.models import WebhookConfig
 
 async def verify_webhook_signature(request: Request, config: WebhookConfig):
     if not config.enabled:
@@ -141,13 +141,13 @@ async def verify_webhook_signature(request: Request, config: WebhookConfig):
 
 - [ ] **Step 5: Implement FastAPI webhook server**
 
-Create `camfrog_autodj/webhook/server.py`:
+Create `autodj/webhook/server.py`:
 ```python
 from fastapi import FastAPI, Depends, HTTPException, Request
 from contextlib import asynccontextmanager
-from camfrog_autodj.webhook.models import WebhookConfig
-from camfrog_autodj.webhook.auth import verify_webhook_signature
-from camfrog_autodj.engine import Engine
+from autodj.webhook.models import WebhookConfig
+from autodj.webhook.auth import verify_webhook_signature
+from autodj.engine import Engine
 
 _engine: Engine | None = None
 _config: WebhookConfig | None = None
@@ -246,7 +246,7 @@ Expected: PASS
 
 - [ ] **Step 7: Add webhook integration to Engine**
 
-Modify `camfrog_autodj/engine.py`:
+Modify `autodj/engine.py`:
 - Add `webhook_server` attribute
 - Add `start_webhook()` and `stop_webhook()` methods
 - Start webhook server in `start()` if config.webhook_enabled
@@ -259,7 +259,7 @@ Expected: 472+ tests pass
 - [ ] **Step 9: Commit**
 
 ```bash
-git add camfrog_autodj/webhook/ camfrog_autodj/config.py camfrog_autodj/engine.py tests/test_webhook_server.py
+git add autodj/webhook/ autodj/config.py autodj/engine.py tests/test_webhook_server.py
 git commit -m "feat: add webhook/API integration (Phase 3)"
 ```
 
@@ -268,13 +268,13 @@ git commit -m "feat: add webhook/API integration (Phase 3)"
 ### Task 2: Plugin System Architecture
 
 **Files:**
-- Create: `camfrog_autodj/plugins/__init__.py`
-- Create: `camfrog_autodj/plugins/base.py`
-- Create: `camfrog_autodj/plugins/manager.py`
-- Create: `camfrog_autodj/plugins/builtin/stats.py`
-- Create: `camfrog_autodj/plugins/builtin/__init__.py`
-- Modify: `camfrog_autodj/config.py` (add plugins config)
-- Modify: `camfrog_autodj/engine.py` (integrate plugin manager)
+- Create: `autodj/plugins/__init__.py`
+- Create: `autodj/plugins/base.py`
+- Create: `autodj/plugins/manager.py`
+- Create: `autodj/plugins/builtin/stats.py`
+- Create: `autodj/plugins/builtin/__init__.py`
+- Modify: `autodj/config.py` (add plugins config)
+- Modify: `autodj/engine.py` (integrate plugin manager)
 - Test: `tests/test_plugin_system.py`
 
 **Interfaces:**
@@ -286,8 +286,8 @@ git commit -m "feat: add webhook/API integration (Phase 3)"
 ```python
 # tests/test_plugin_system.py
 import pytest
-from camfrog_autodj.plugins.manager import PluginManager
-from camfrog_autodj.plugins.base import Plugin, PluginInterface
+from autodj.plugins.manager import PluginManager
+from autodj.plugins.base import Plugin, PluginInterface
 
 class TestPlugin(Plugin):
     name = "test_plugin"
@@ -326,7 +326,7 @@ Expected: FAIL
 
 - [ ] **Step 3: Implement plugin base interface**
 
-Create `camfrog_autodj/plugins/base.py`:
+Create `autodj/plugins/base.py`:
 ```python
 from abc import ABC, abstractmethod
 from typing import Any
@@ -375,13 +375,13 @@ class Plugin(ABC):
 
 - [ ] **Step 4: Implement plugin manager**
 
-Create `camfrog_autodj/plugins/manager.py`:
+Create `autodj/plugins/manager.py`:
 ```python
 import importlib
 import logging
 from typing import Any
-from camfrog_autodj.plugins.base import Plugin, PluginInterface
-from camfrog_autodj.engine import Engine
+from autodj.plugins.base import Plugin, PluginInterface
+from autodj.engine import Engine
 
 log = logging.getLogger("autodj.plugins")
 
@@ -428,7 +428,7 @@ class PluginManager:
             return
         try:
             if name.startswith("builtin."):
-                mod = importlib.import_module(f"camfrog_autodj.plugins.builtin.{name[8:]}")
+                mod = importlib.import_module(f"autodj.plugins.builtin.{name[8:]}")
             else:
                 mod = importlib.import_module(name)
             # Find Plugin subclass
@@ -471,14 +471,14 @@ class PluginManager:
 
 - [ ] **Step 5: Implement built-in stats plugin**
 
-Create `camfrog_autodj/plugins/builtin/stats.py`:
+Create `autodj/plugins/builtin/stats.py`:
 ```python
 import json
 import logging
 from pathlib import Path
 from collections import Counter
-from camfrog_autodj.plugins.base import Plugin
-from camfrog_autodj.models import Track
+from autodj.plugins.base import Plugin
+from autodj.models import Track
 
 log = logging.getLogger("autodj.plugins.stats")
 
@@ -542,7 +542,7 @@ class StatsPlugin(Plugin):
 
 - [ ] **Step 6: Add plugin config to Config class**
 
-Modify `camfrog_autodj/config.py`:
+Modify `autodj/config.py`:
 ```python
 # In Config dataclass, add:
 plugins: list[str] = field(default_factory=lambda: ["builtin.stats"])
@@ -550,7 +550,7 @@ plugins: list[str] = field(default_factory=lambda: ["builtin.stats"])
 
 - [ ] **Step 7: Integrate plugin manager into Engine**
 
-Modify `camfrog_autodj/engine.py`:
+Modify `autodj/engine.py`:
 - Import `PluginManager`
 - In `__init__`: `self.plugin_manager = PluginManager(self, cfg.plugins)`
 - In `start()`: `self.plugin_manager.load_plugins()`
@@ -570,7 +570,7 @@ Expected: All tests pass
 - [ ] **Step 10: Commit**
 
 ```bash
-git add camfrog_autodj/plugins/ camfrog_autodj/config.py camfrog_autodj/engine.py tests/test_plugin_system.py
+git add autodj/plugins/ autodj/config.py autodj/engine.py tests/test_plugin_system.py
 git commit -m "feat: add plugin system architecture (Phase 4)"
 ```
 
@@ -579,8 +579,8 @@ git commit -m "feat: add plugin system architecture (Phase 4)"
 ### Task 3: Performance Optimizations - Persistent IPC Connection
 
 **Files:**
-- Modify: `camfrog_autodj/player.py` (persistent IPC)
-- Modify: `camfrog_autodj/engine.py` (separate locks, batch rate limit cleanup)
+- Modify: `autodj/player.py` (persistent IPC)
+- Modify: `autodj/engine.py` (separate locks, batch rate limit cleanup)
 - Test: `tests/test_player_ipc_performance.py`, `tests/test_lock_contention.py`
 
 **Interfaces:**
@@ -594,8 +594,8 @@ git commit -m "feat: add plugin system architecture (Phase 4)"
 import time
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from camfrog_autodj.player import MpvPlayer
-from camfrog_autodj.config import Config
+from autodj.player import MpvPlayer
+from autodj.config import Config
 
 def test_ipc_connection_reused_for_multiple_commands():
     """Verify IPC connection is reused, not recreated for each command."""
@@ -645,7 +645,7 @@ Expected: FAIL
 
 - [ ] **Step 3: Implement persistent IPC in MpvPlayer**
 
-Modify `camfrog_autodj/player.py`:
+Modify `autodj/player.py`:
 - Keep IPC connection open during track playback
 - Store IPC handle/connection in `_ipc_handle` 
 - Reuse for `get_time_pos`, `seek`, `set_pause`, `set_volume`
@@ -700,7 +700,7 @@ def _cmd_get(self, *cmd) -> float | None:
 
 - [ ] **Step 4: Implement separate locks in Engine**
 
-Modify `camfrog_autodj/engine.py`:
+Modify `autodj/engine.py`:
 - Split `_send_failure_lock` into:
   - `_circuit_breaker_lock` for circuit breaker state
   - `_send_failure_lock` for send failures only
@@ -710,7 +710,7 @@ Modify `camfrog_autodj/engine.py`:
 
 - [ ] **Step 5: Implement batch rate limit cleanup**
 
-Modify `camfrog_autodj/engine.py`:
+Modify `autodj/engine.py`:
 - Add `_rate_limit_cleanup_task()` method that runs every 60s
 - Move cleanup logic from `_within_limits` to this periodic task
 - Use `ThreadPoolExecutor` to submit cleanup task in `start()`
@@ -729,7 +729,7 @@ Expected: All tests pass
 - [ ] **Step 8: Commit**
 
 ```bash
-git add camfrog_autodj/player.py camfrog_autodj/engine.py tests/test_player_ipc_performance.py tests/test_lock_contention.py
+git add autodj/player.py autodj/engine.py tests/test_player_ipc_performance.py tests/test_lock_contention.py
 git commit -m "perf: persistent IPC connection, separate locks, batch rate limit cleanup"
 ```
 
@@ -738,10 +738,10 @@ git commit -m "perf: persistent IPC connection, separate locks, batch rate limit
 ### Task 4: Enhanced Audit Logging
 
 **Files:**
-- Create: `camfrog_autodj/audit.py`
-- Modify: `camfrog_autodj/config.py` (add audit config)
-- Modify: `camfrog_autodj/engine.py` (emit audit events)
-- Modify: `camfrog_autodj/commands.py` (audit admin commands)
+- Create: `autodj/audit.py`
+- Modify: `autodj/config.py` (add audit config)
+- Modify: `autodj/engine.py` (emit audit events)
+- Modify: `autodj/commands.py` (audit admin commands)
 - Test: `tests/test_audit_logging.py`
 
 **Interfaces:**
@@ -755,7 +755,7 @@ git commit -m "perf: persistent IPC connection, separate locks, batch rate limit
 import json
 import tempfile
 from pathlib import Path
-from camfrog_autodj.audit import AuditLogger, AuditEvent
+from autodj.audit import AuditLogger, AuditEvent
 
 def test_audit_log_writes_structured_events():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -821,7 +821,7 @@ Expected: FAIL
 
 - [ ] **Step 3: Implement AuditLogger**
 
-Create `camfrog_autodj/audit.py`:
+Create `autodj/audit.py`:
 ```python
 import hashlib
 import json
@@ -931,7 +931,7 @@ class AuditLogger:
 
 - [ ] **Step 4: Add audit config to Config**
 
-Modify `camfrog_autodj/config.py`:
+Modify `autodj/config.py`:
 ```python
 # In Config dataclass, add:
 audit_log_enabled: bool = True
@@ -942,7 +942,7 @@ audit_log_backup_count: int = 3
 
 - [ ] **Step 5: Integrate audit logging into Engine**
 
-Modify `camfrog_autodj/engine.py`:
+Modify `autodj/engine.py`:
 - Import `AuditLogger`
 - In `__init__`: `self.audit = AuditLogger(cfg.audit_log_path, cfg.audit_log_max_size, cfg.audit_log_backup_count) if cfg.audit_log_enabled else None`
 - Add `audit_event()` helper method
@@ -950,7 +950,7 @@ Modify `camfrog_autodj/engine.py`:
 
 - [ ] **Step 6: Integrate audit logging into commands**
 
-Modify `camfrog_autodj/commands.py`:
+Modify `autodj/commands.py`:
 - In `_dispatch_command`, after successful admin command, emit audit event
 - Event types: `admin_command`, `user_blocked`, `user_unblocked`, `user_banned`, `user_unbanned`, `user_kicked`, `user_punished`, `bot_blocked`, `bot_unblocked`, `message_deleted`
 
@@ -967,7 +967,7 @@ Expected: All tests pass
 - [ ] **Step 9: Commit**
 
 ```bash
-git add camfrog_autodj/audit.py camfrog_autodj/config.py camfrog_autodj/engine.py camfrog_autodj/commands.py tests/test_audit_logging.py
+git add autodj/audit.py autodj/config.py autodj/engine.py autodj/commands.py tests/test_audit_logging.py
 git commit -m "feat: add tamper-evident audit logging (Phase 5)"
 ```
 
@@ -976,9 +976,9 @@ git commit -m "feat: add tamper-evident audit logging (Phase 5)"
 ### Task 5: Dead Letter Queue (DLQ)
 
 **Files:**
-- Create: `camfrog_autodj/dlq.py`
-- Modify: `camfrog_autodj/engine.py` (integrate DLQ)
-- Modify: `camfrog_autodj/config.py` (DLQ config)
+- Create: `autodj/dlq.py`
+- Modify: `autodj/engine.py` (integrate DLQ)
+- Modify: `autodj/config.py` (DLQ config)
 - Test: `tests/test_dlq.py`
 
 **Interfaces:**
@@ -991,8 +991,8 @@ git commit -m "feat: add tamper-evident audit logging (Phase 5)"
 # tests/test_dlq.py
 import tempfile
 from pathlib import Path
-from camfrog_autodj.dlq import DeadLetterQueue
-from camfrog_autodj.models import Track
+from autodj.dlq import DeadLetterQueue
+from autodj.models import Track
 
 def test_dlq_adds_failed_tracks():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -1039,7 +1039,7 @@ Expected: FAIL
 
 - [ ] **Step 3: Implement DeadLetterQueue**
 
-Create `camfrog_autodj/dlq.py`:
+Create `autodj/dlq.py`:
 ```python
 import json
 import logging
@@ -1142,7 +1142,7 @@ class DeadLetterQueue:
 
 - [ ] **Step 4: Add DLQ config**
 
-Modify `camfrog_autodj/config.py`:
+Modify `autodj/config.py`:
 ```python
 # In Config dataclass, add:
 dlq_enabled: bool = True
@@ -1153,7 +1153,7 @@ dlq_ttl_hours: int = 24
 
 - [ ] **Step 5: Integrate DLQ into Engine**
 
-Modify `camfrog_autodj/engine.py`:
+Modify `autodj/engine.py`:
 - In `__init__`: `self.dlq = DeadLetterQueue(Path(cfg.dlq_path), cfg.dlq_max_size, cfg.dlq_ttl_hours) if cfg.dlq_enabled else None`
 - In `_track_failed`: `self.dlq.add(t, error, fails)` when max retries exceeded
 - Add admin command `!dlq` to list/retry/clear DLQ (in commands.py)
@@ -1171,7 +1171,7 @@ Expected: All tests pass
 - [ ] **Step 8: Commit**
 
 ```bash
-git add camfrog_autodj/dlq.py camfrog_autodj/config.py camfrog_autodj/engine.py camfrog_autodj/commands.py tests/test_dlq.py
+git add autodj/dlq.py autodj/config.py autodj/engine.py autodj/commands.py tests/test_dlq.py
 git commit -m "feat: add dead letter queue for failed tracks (Phase 7)"
 ```
 
@@ -1180,8 +1180,8 @@ git commit -m "feat: add dead letter queue for failed tracks (Phase 7)"
 ### Task 6: Enhanced Circuit Breakers
 
 **Files:**
-- Modify: `camfrog_autodj/engine.py` (separate breakers per failure type)
-- Modify: `camfrog_autodj/config.py` (circuit breaker config)
+- Modify: `autodj/engine.py` (separate breakers per failure type)
+- Modify: `autodj/config.py` (circuit breaker config)
 - Test: `tests/test_circuit_breaker_enhanced.py`
 
 **Interfaces:**
@@ -1192,7 +1192,7 @@ git commit -m "feat: add dead letter queue for failed tracks (Phase 7)"
 
 ```python
 # tests/test_circuit_breaker_enhanced.py
-from camfrog_autodj.engine import Engine
+from autodj.engine import Engine
 
 def test_separate_circuit_breakers():
     """Test that resolve, playback, and chat have separate breakers."""
@@ -1214,7 +1214,7 @@ def test_admin_circuit_breaker_reset():
 
 - [ ] **Step 3: Implement separate circuit breakers**
 
-Modify `camfrog_autodj/engine.py`:
+Modify `autodj/engine.py`:
 - Replace single `_circuit_breaker_failures` with dict: `{"resolve": 0, "playback": 0, "chat": 0}`
 - Replace single `_circuit_breaker_open_until` with dict per failure type
 - Add config fields: `cb_resolve_threshold`, `cb_playback_threshold`, `cb_chat_threshold`, `cb_reset_timeout`
@@ -1224,7 +1224,7 @@ Modify `camfrog_autodj/engine.py`:
 
 - [ ] **Step 4: Add admin command for circuit breaker reset**
 
-Modify `camfrog_autodj/commands.py`:
+Modify `autodj/commands.py`:
 - Add `!circuitbreaker reset <type>` command (admin only)
 - Types: resolve, playback, chat, all
 
@@ -1235,7 +1235,7 @@ Modify `camfrog_autodj/commands.py`:
 - [ ] **Step 7: Commit**
 
 ```bash
-git add camfrog_autodj/engine.py camfrog_autodj/config.py camfrog_autodj/commands.py tests/test_circuit_breaker_enhanced.py
+git add autodj/engine.py autodj/config.py autodj/commands.py tests/test_circuit_breaker_enhanced.py
 git commit -m "feat: enhanced circuit breakers per failure type (Phase 7)"
 ```
 
@@ -1302,10 +1302,10 @@ git commit -m "docs: update documentation for v0.4.0 enterprise features"
 
 ```bash
 # All verification checks
-python -m compileall -q camfrog_autodj tests tools
-ruff check camfrog_autodj tests tools
-ruff format --check camfrog_autodj tests tools
-mypy camfrog_autodj
+python -m compileall -q autodj tests tools
+ruff check autodj tests tools
+ruff format --check autodj tests tools
+mypy autodj
 shellcheck scripts/*.sh tools/*.sh
 python -m pytest -q -p no:faulthandler -p no:cacheprovider
 ```
@@ -1323,7 +1323,7 @@ Expected: 0 secrets, 0 vulnerabilities in declared deps
 
 - [ ] **Step 3: Bump version**
 
-Update `pyproject.toml`, `camfrog_autodj/__init__.py`, `version_info.txt`, `installer.nsi`, `install.ps1`, `install.bat` to 0.4.0
+Update `pyproject.toml`, `autodj/__init__.py`, `version_info.txt`, `installer.nsi`, `install.ps1`, `install.bat` to 0.4.0
 
 - [ ] **Step 4: Build and test**
 

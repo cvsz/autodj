@@ -13,7 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import JSONResponse, Response
 
 if TYPE_CHECKING:
-    from camfrog_autodj.webhook.models import WebhookConfig
+    from autodj.webhook.models import WebhookConfig
 
 # Key for storing raw body in request.state
 _RAW_BODY_KEY = "_webhook_raw_body"

@@ -359,7 +359,7 @@ status_alert_enabled = true
 
 ```toml
 welcome_message_enabled = true     # ทักทายทุกคนที่เข้าห้อง
-welcome_message_message = "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"   # {user}, {room}
+welcome_message_message = "ยินดีต้อนรับ {user} เข้าสู่ {room} สถานีเพลง อัตโนมัติ 24/7 ชั่วโมง"   # {user}, {room}
 welcome_message_cooldown = 3600.0   # วินาทีระหว่างการทักทายคนเดิม (1 ชั่วโมง)
 join_line_regex = '...'             # ข้อความแจ้ง "X เข้าห้อง" ต้องมี (?P<user>...) ; "" = ทักเมื่อพิมพ์ครั้งแรก
 ```

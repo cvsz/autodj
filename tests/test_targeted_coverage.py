@@ -9,9 +9,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from camfrog_autodj.config import Config, ConfigError, MessageStyle
-from camfrog_autodj.doctor import run_checks
-from camfrog_autodj.exceptions import (
+from autodj.config import Config, ConfigError, MessageStyle
+from autodj.doctor import run_checks
+from autodj.exceptions import (
     AutoDJError,
     BlockedUserError,
     ChatAdapterError,
@@ -34,25 +34,25 @@ from camfrog_autodj.exceptions import (
     UnauthorizedError,
     YtdlpMissingError,
 )
-from camfrog_autodj.exceptions import (
+from autodj.exceptions import (
     ConfigError as ExcConfigError,
 )
-from camfrog_autodj.library import (
+from autodj.library import (
     host_ok,
     is_url,
     local_track,
     parse_ytdlp_info,
 )
-from camfrog_autodj.migrate import (
+from autodj.migrate import (
     _expand_environment,
     _read_registry_values,
     detect_placeholders,
     migrate_config,
 )
-from camfrog_autodj.playlist import load_playlist
-from camfrog_autodj.renderer import MessageRenderer, RenderedMessage, get_renderer
-from camfrog_autodj.tts import synth
-from camfrog_autodj.webchat import tokens_to_lines
+from autodj.playlist import load_playlist
+from autodj.renderer import MessageRenderer, RenderedMessage, get_renderer
+from autodj.tts import synth
+from autodj.webchat import tokens_to_lines
 
 
 class TestConfigUncoveredLines:
@@ -214,7 +214,7 @@ class TestMigrateUncoveredLines:
         cfg_file = tmp_path / "config.toml"
         cfg_file.write_text('mpv_path = "REPLACE_ME"\n')
 
-        with patch("camfrog_autodj.migrate._discover_path", return_value="/usr/bin/mpv"):
+        with patch("autodj.migrate._discover_path", return_value="/usr/bin/mpv"):
             changes = migrate_config(str(cfg_file))
 
         assert any("mpv_path" in c for c in changes)
@@ -226,7 +226,7 @@ class TestMigrateUncoveredLines:
         cfg_file = tmp_path / "config.toml"
         cfg_file.write_text('mpv_path = "REPLACE_ME"\n')
 
-        with patch("camfrog_autodj.migrate._discover_path", return_value="/usr/bin/mpv"):
+        with patch("autodj.migrate._discover_path", return_value="/usr/bin/mpv"):
             migrate_config(str(cfg_file))
 
         bak = tmp_path / "config.toml.bak"
@@ -336,7 +336,7 @@ class TestRendererUncoveredLines:
     def test_renderer_basic(self):
         """Test MessageRenderer basic functionality."""
         renderer = MessageRenderer()
-        from camfrog_autodj.config import MessageStyle
+        from autodj.config import MessageStyle
 
         # render takes (style, text) not (text, style)
         result = renderer.render(MessageStyle(), "Hello")
@@ -348,7 +348,7 @@ class TestRendererUncoveredLines:
     def test_renderer_with_style(self):
         """Test renderer with style for preview."""
         renderer = MessageRenderer()
-        from camfrog_autodj.config import MessageStyle
+        from autodj.config import MessageStyle
 
         style = MessageStyle(font_family="Arial", font_size=16, font_color="#FF0000", bold=True)
         result = renderer.render(style, "Hello")
@@ -420,7 +420,7 @@ class TestModelsUncovered:
     """Test models.py uncovered line (line 10)."""
 
     def test_fmt_time_edge_cases(self):
-        from camfrog_autodj.models import fmt_time
+        from autodj.models import fmt_time
 
         assert fmt_time(None) == "?"
         assert fmt_time(0) == "?"
@@ -533,13 +533,13 @@ class TestPathsUncovered:
     """Test paths.py uncovered lines."""
 
     def test_application_dir(self):
-        from camfrog_autodj.paths import application_dir
+        from autodj.paths import application_dir
 
         path = application_dir()
         assert isinstance(path, Path)
 
     def test_resolve_executable(self):
-        from camfrog_autodj.paths import resolve_executable
+        from autodj.paths import resolve_executable
 
         # Non-existent
         result = resolve_executable("/nonexistent/path")
@@ -554,7 +554,7 @@ class TestPlayQueueUncovered:
     """Test playqueue.py uncovered lines."""
 
     def test_play_queue_edge_cases(self):
-        from camfrog_autodj.playqueue import PlayQueue
+        from autodj.playqueue import PlayQueue
 
         q = PlayQueue(shuffle=False)
 
@@ -573,7 +573,7 @@ class TestVisualsUncovered:
     """Test visuals.py uncovered line."""
 
     def test_visual_helpers(self):
-        from camfrog_autodj.visuals import gradient, hex_to_rgb, lerp_color, rgb_to_hex
+        from autodj.visuals import gradient, hex_to_rgb, lerp_color, rgb_to_hex
 
         assert hex_to_rgb("#FF0000") == (255, 0, 0)
         assert rgb_to_hex(255, 0, 0) == "#ff0000"

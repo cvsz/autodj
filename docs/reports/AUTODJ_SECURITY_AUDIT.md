@@ -76,7 +76,7 @@ Security audit of the AutoDJ codebase identified P1 (critical) and P2 (security/
 
 ### P2-4: Strict Typecheck Enforcement (FIXED)
 
-**Finding:** `mypy camfrog_autodj || true` and `ruff check . || true` masked failures.
+**Finding:** `mypy autodj || true` and `ruff check . || true` masked failures.
 
 **Fix:** Removed `|| true` from both steps in `.github/workflows/release.yml`.
 
@@ -145,11 +145,11 @@ python -m pytest -q -p no:faulthandler -p no:cacheprovider
 # Expected: 175 passed, 3 subtests passed
 
 # Verify no default admin
-python -c "from camfrog_autodj.config import Config; c = Config.load('config.example.toml'); assert c.admins == []"
+python -c "from autodj.config import Config; c = Config.load('config.example.toml'); assert c.admins == []"
 
 # Verify config validation rejects bad values
 python -c "
-from camfrog_autodj.config import Config, ConfigError
+from autodj.config import Config, ConfigError
 try:
     Config.load('config.toml')  # if present
 except ConfigError as e:
@@ -157,7 +157,7 @@ except ConfigError as e:
 "
 
 # Run --check diagnostics
-python -m camfrog_autodj --check
+python -m autodj --check
 # Expected: FAIL for mpv (not installed in this env), WARN for missing deps, OK for config structure
 ```
 
@@ -173,3 +173,4 @@ python -m camfrog_autodj --check
 | Unreviewed security change | Medium | Medium | FIXED — CODEOWNERS requires @policedbc |
 | Dependency vulnerability | Medium | Medium | PARTIAL — Dependabot pip coverage added |
 | Committed secrets | Low | Critical | VERIFIED — CI scan passes, none found |
+

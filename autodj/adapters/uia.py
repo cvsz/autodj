@@ -157,8 +157,28 @@ class UiaAdapter(ChatAdapter):
             log.debug("IM pane read failed for %r: %s", w.title, ex)
             return None
 
-    def _im_window_messages(self, w) -> list[ChatMessage]:
-        """New messages from one private-chat window (the first read is a baseline)."""
+    @staticmethod
+    def _is_recent(stamp: str, now: float | None = None, window_s: float = 180.0) -> bool:
+        """True if an IM line's ``HH:MM[:SS]`` stamp is within *window_s* of now (local time)."""
+        try:
+            parts = [int(x) for x in stamp.split(":")]
+        except ValueError:
+            return False
+        lt = time.localtime(now)
+        msg_s = parts[0] * 3600 + parts[1] * 60 + (parts[2] if len(parts) > 2 else 0)
+        now_s = lt.tm_hour * 3600 + lt.tm_min * 60 + lt.tm_sec
+        age = (now_s - msg_s) % 86400  # wraps across midnight
+        return age <= window_s
+
+    def _im_window_messages(self, w, first_scan: bool = False) -> list[ChatMessage]:
+        """New messages from one private-chat window.
+
+        Windows open when AutoDJ starts are a baseline (history is never
+        replayed).  A window that appears later is a NEW conversation whose
+        first message is already in it: the old code baselined that too, so
+        the first IM of every chat was silently dropped.  Lines from a new
+        window are delivered when their timestamp is recent.
+        """
         lock = getattr(self, "com_lock", None)
         if lock is not None:
             with lock:  # UIA is COM-based: never race the sender thread
@@ -166,14 +186,22 @@ class UiaAdapter(ChatAdapter):
         else:
             got = self._read_im_window(w)
         if got is None:
+            self._im_not_im.add(w.handle)  # no IM pane: stop re-scanning this window
             return []
         lines, nick = got
+        if not hasattr(self, "_im_handles"):
+            self._im_handles: dict[str, int] = {}
+        self._im_handles[nick.lower()] = w.handle  # where send_im() answers this user
         prev = self._im_prev.get(w.handle)
         self._im_prev[w.handle] = lines
         if prev is None:
-            return []  # baseline: never replay old history
+            if first_scan:
+                return []  # baseline: never replay old history
+            new_lines = [raw for raw in lines if self._is_recent(raw.split("|", 1)[0])]
+        else:
+            new_lines = diff_lines(prev, lines)
         out: list[ChatMessage] = []
-        for raw in diff_lines(prev, lines):
+        for raw in new_lines:
             _time, text = raw.split("|", 1)
             if text:
                 out.append(ChatMessage(nick, text, is_im=True))
@@ -182,8 +210,11 @@ class UiaAdapter(ChatAdapter):
     def _im_lines(self) -> list[ChatMessage]:
         """Read new private messages from Camfrog IM panes (one per open chat)."""
         out: list[ChatMessage] = []
-        if not hasattr(self, "_im_prev"):
+        first_scan = not hasattr(self, "_im_prev")
+        if first_scan:
             self._im_prev: dict[int, list[str]] = {}
+        if not hasattr(self, "_im_not_im"):
+            self._im_not_im: set[int] = set()  # windows without an IM pane (room list, ...)
         try:
             from ..windows import candidates
 
@@ -200,10 +231,13 @@ class UiaAdapter(ChatAdapter):
             if w.pid == own_pid or w.handle == main_handle:
                 continue
             live.add(w.handle)
-            out.extend(self._im_window_messages(w))
-        # Forget baselines of closed chat windows (handles are reused by Windows).
+            if w.handle in self._im_not_im:
+                continue
+            out.extend(self._im_window_messages(w, first_scan))
+        # Forget closed windows (handles are reused by Windows).
         for gone in [h for h in self._im_prev if h not in live]:
             del self._im_prev[gone]
+        self._im_not_im &= live
         return out
 
     def messages(self):
@@ -364,6 +398,82 @@ class UiaAdapter(ChatAdapter):
                     pass  # clipboard restore is best-effort
             if prev and prev != int(self.win.handle):
                 winmsg.restore_foreground(prev)  # give the user their window back
+
+    def send_im(self, user: str, text: str) -> None:
+        """Answer *user* privately in their open Camfrog IM window.
+
+        Background send first (posted messages, no focus change), verified by
+        reading the IM history back; if the line does not show up, falls back to
+        focus + paste + Enter and gives the user their foreground window back.
+        Raises RuntimeError when there is no IM window for *user*.
+        """
+        from pywinauto import Desktop
+
+        from .. import winmsg
+        from ..webchat import find_web_panes, read_items
+
+        with self.com_lock:
+            handle = getattr(self, "_im_handles", {}).get(user.lower())
+            if handle is None:
+                raise RuntimeError(f"no open IM window for {user!r}")
+            win = Desktop(backend="uia").window(handle=handle)
+            view, inp = find_web_panes(win, "wb-log-im-data", self.cfg.web_input_title)
+            if view is None or inp is None:
+                raise RuntimeError(f"IM window for {user!r} has no message box")
+
+            def shown() -> int:
+                lines = self._im_pane_lines(read_items(view, tail=60))
+                return sum(1 for ln in lines if ln.split("|", 1)[-1].strip() == text.strip())
+
+            before = shown()
+            winmsg.show_noactivate(handle)
+            r = inp.rectangle()
+            pt = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
+            try:
+                winmsg.post_text_rich(handle, pt, text, enter=True, click=True)
+            except (OSError, RuntimeError) as e:
+                log.debug("IM background send failed: %s", e)
+            for _ in range(10):
+                time.sleep(0.2)
+                if shown() > before:
+                    log.debug("IM sent to %s (background)", user)
+                    return
+            self._send_im_fg(win, inp, text)
+            log.debug("IM sent to %s (foreground)", user)
+
+    @staticmethod
+    def _send_im_fg(win, inp, text: str) -> None:
+        import pyperclip
+        from pywinauto.keyboard import send_keys
+
+        from .. import winmsg
+
+        prev = winmsg.foreground()
+        try:
+            old_clip = pyperclip.paste()
+        except (pyperclip.PyperclipException, OSError):
+            old_clip = None
+        try:
+            try:
+                if win.is_minimized():
+                    win.restore()
+            except (RuntimeError, AttributeError):
+                pass
+            win.set_focus()
+            inp.click_input()  # web editor: only a click focuses it
+            pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
+            send_keys("^v")
+            time.sleep(0.15)
+            send_keys("{ENTER}")
+        finally:
+            time.sleep(0.1)
+            if old_clip is not None:
+                try:
+                    pyperclip.copy(old_clip)
+                except (pyperclip.PyperclipException, OSError):
+                    pass
+            if prev and prev != int(win.handle):
+                winmsg.restore_foreground(prev)
 
     def send(self, text):
         """Serialized entry point. UIA is COM-based: the reader thread and the sender thread must never

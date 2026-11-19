@@ -104,7 +104,7 @@ $ScriptDir = $PSScriptRoot
 $RepoRoot = Join-Path $PSScriptRoot ".."
 $RepoRoot = Resolve-Path $RepoRoot
 $RepoUrl = "git@github.com:cvsz/autodj.git"
-$RequiredVersion = "0.3.7"
+$RequiredVersion = "0.3.8"
 
 # Output setup
 $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -233,7 +233,7 @@ function Validate-SourceIntegrity {
     Write-Log "Working tree is clean" "SUCCESS" "SOURCE"
 
     Step "Verifying version metadata"
-    $initFile = Join-Path $WorktreeDir "camfrog_autodj\__init__.py"
+    $initFile = Join-Path $WorktreeDir "autodj\__init__.py"
     if (Test-Path $initFile) {
         $version = Get-Content $initFile | Select-String '__version__\s*=\s*"([^"]+)"'
         if ($version -and $version.Matches[0].Groups[1].Value -eq $RequiredVersion) {
@@ -242,7 +242,7 @@ function Validate-SourceIntegrity {
             throw "Version mismatch in __init__.py. Expected $RequiredVersion"
         }
     } else {
-        throw "camfrog_autodj\__init__.py not found"
+        throw "autodj\__init__.py not found"
     }
 
     Step "Recording source provenance"
@@ -874,7 +874,7 @@ try {
     # Create evidence directories FIRST (before any logging)
     New-EvidenceDirs
 
-    Write-Log "=== AUTO DJ 0.3.7 WINDOWS 11 REPRODUCIBLE BUILD STARTED ===" "INFO" "MAIN"
+    Write-Log "=== AUTO DJ 0.3.8 WINDOWS 11 REPRODUCIBLE BUILD STARTED ===" "INFO" "MAIN"
     Write-Log "Build ID: $BuildId" "INFO" "MAIN"
     Write-Log "Approved SHA: $ApprovedSha" "INFO" "MAIN"
     Write-Log "Output Root: $OutputRoot" "INFO" "MAIN"

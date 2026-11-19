@@ -5,9 +5,9 @@ Scanner: CodeQL
 
 | Rule ID | Severity | File | Line | Status |
 |---------|----------|------|------|--------|
-| py/clear-text-storage-sensitive-data | High | camfrog_autodj/gui.py | 3293 | OPEN |
-| py/clear-text-storage-sensitive-data | High | camfrog_autodj/gui.py | 3280 | OPEN |
-| py/stack-trace-exposure | Medium | camfrog_autodj/webhook/server.py | 163 | OPEN |
+| py/clear-text-storage-sensitive-data | High | autodj/gui.py | 3293 | OPEN |
+| py/clear-text-storage-sensitive-data | High | autodj/gui.py | 3280 | OPEN |
+| py/stack-trace-exposure | Medium | autodj/webhook/server.py | 163 | OPEN |
 
 ## Finding 1: py/clear-text-storage-sensitive-data (High) - gui.py:3293
 
@@ -28,3 +28,4 @@ Scanner: CodeQL
 **Root cause:** Exception details exposed in HTTP response body: `f"# Error generating metrics: {ex}\n"`. This leaks implementation details that could aid attackers.
 
 **Fix applied:** Return generic error message instead of exception details; log details server-side only.
+

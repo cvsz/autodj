@@ -9,14 +9,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from camfrog_autodj import commands
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.models import Track
-from camfrog_autodj.player import _MISSING, MpvPlayer, _ipc_reply
-from camfrog_autodj.playqueue import PlayQueue
-from camfrog_autodj.updater import Updater
+from autodj import commands
+from autodj.adapters import NullAdapter
+from autodj.config import Config
+from autodj.engine import Engine
+from autodj.models import Track
+from autodj.player import _MISSING, MpvPlayer, _ipc_reply
+from autodj.playqueue import PlayQueue
+from autodj.updater import Updater
 
 
 def _engine(tmp_path=None) -> Engine:
@@ -181,7 +181,7 @@ def test_cmd_get_handles_event_before_reply(monkeypatch):
 
 
 def test_is_link_detects_junction_like_entries():
-    from camfrog_autodj.library import _is_link
+    from autodj.library import _is_link
 
     class E:
         def __init__(self, sym, junc):
@@ -218,7 +218,7 @@ fastapi = pytest.importorskip("fastapi")
 
 
 def test_raw_body_middleware_stops_on_disconnect_and_caps_size():
-    from camfrog_autodj.webhook.auth import MAX_BODY_BYTES, RawBodyMiddleware
+    from autodj.webhook.auth import MAX_BODY_BYTES, RawBodyMiddleware
 
     async def app(scope, receive, send):  # pragma: no cover - must not be reached
         raise AssertionError("downstream app reached")
@@ -272,8 +272,8 @@ def test_request_body_endpoints_accept_valid_calls():
     """/say, /shuffle and /repeat used to answer every call with 422."""
     from fastapi.testclient import TestClient
 
-    from camfrog_autodj.webhook.models import WebhookConfig
-    from camfrog_autodj.webhook.server import create_webhook_app
+    from autodj.webhook.models import WebhookConfig
+    from autodj.webhook.server import create_webhook_app
 
     said: list[str] = []
     shuffles: list[bool] = []
@@ -295,8 +295,8 @@ def test_say_endpoint_rejects_huge_text():
 
     from fastapi.testclient import TestClient
 
-    from camfrog_autodj.webhook.models import WebhookConfig
-    from camfrog_autodj.webhook.server import MAX_SAY_CHARS, create_webhook_app
+    from autodj.webhook.models import WebhookConfig
+    from autodj.webhook.server import MAX_SAY_CHARS, create_webhook_app
 
     secret = "test-secret-key-12345"  # noqa: S105
     said = []
@@ -316,7 +316,7 @@ def test_say_endpoint_rejects_huge_text():
 
 
 def test_uia_im_scan_skips_own_and_room_windows(monkeypatch):
-    from camfrog_autodj.adapters import uia
+    from autodj.adapters import uia
 
     a = uia.UiaAdapter.__new__(uia.UiaAdapter)
     a.cfg = SimpleNamespace(process_re="")
@@ -328,7 +328,7 @@ def test_uia_im_scan_skips_own_and_room_windows(monkeypatch):
         SimpleNamespace(handle=200, pid=os.getpid(), title="mine"),
         SimpleNamespace(handle=300, pid=2, title="Bob (IM)"),
     ]
-    import camfrog_autodj.windows as w
+    import autodj.windows as w
 
     monkeypatch.setattr(w, "candidates", lambda *a, **k: wins)
     monkeypatch.setattr(a, "_read_im_window", lambda win: read.append(win.handle) or ([], "Bob"))
@@ -344,7 +344,7 @@ def test_uia_im_scan_skips_own_and_room_windows(monkeypatch):
 def test_parse_line_im_marker_needs_separate_word():
     import re
 
-    from camfrog_autodj.adapters.base import parse_line
+    from autodj.adapters.base import parse_line
 
     rx = re.compile(r"(?P<user>[^:]+?):\s*(?P<text>.*)")
     m = parse_line("[IM] Bob: !np", rx)

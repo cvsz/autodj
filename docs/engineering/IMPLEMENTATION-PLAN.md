@@ -12,31 +12,31 @@
 ## Phase 1: Audit & Gap Analysis (COMPLETE)
 
 All source files read and understood:
-- `camfrog_autodj/engine.py` — Core engine with chat loop, player loop, RE integrations
-- `camfrog_autodj/gui.py` — Tkinter GUI with settings, chat, queue, history, IM viewer
-- `camfrog_autodj/commands.py` — Command router with admin/IM security
-- `camfrog_autodj/config.py` — Config dataclass with fail-closed validation
-- `camfrog_autodj/player.py` — mpv player with IPC, IPC log cleanup, fade
-- `camfrog_autodj/library.py` — yt-dlp extraction, local index, folder scanning
-- `camfrog_autodj/commands.py` — Router with TOCTOU protection, rate limiting
-- `camfrog_autodj/adapters/uia.py` — Windows UI Automation chat reader/sender
-- `camfrog_autodj/adapters/base.py` — ChatMessage dataclass, ChatAdapter ABC
-- `camfrog_autodj/messages.py` — EN/TH i18n strings
-- `camfrog_autodj/renderer.py` — Message rendering (plain text only for sending)
-- `camfrog_autodj/textutil.py` — clean_text, norm helpers
-- `camfrog_autodj/visuals.py` — Pure animation helpers (no tkinter)
-- `camfrog_autodj/tts.py` — Serialized TTS worker (COM STA thread safety)
-- `camfrog_autodj/paths.py` — Executable path resolution
-- `camfrog_autodj/windows.py` — Camfrog window enumeration/filtering
-- `camfrog_autodj/winmsg.py` — Win32 posted message sender
-- `camfrog_autodj/migrate.py` — Config migration with atomic writes
-- `camfrog_autodj/doctor.py` — --check diagnostics
-- `camfrog_autodj/discover.py` — Auto-discover room window and controls
-- `camfrog_autodj/launcher.py` — Camfrog auto-launch
-- `camfrog_autodj/playlist.py` — Persistent playlist.json with atomic writes
-- `camfrog_autodj/playqueue.py` — Requests-first, pool-second play queue
-- `camfrog_autodj/camfrog_font.py` — Camfrog registry font read/write
-- `camfrog_autodj/clipkeys.py` — Tk-free clipboard key mapping
+- `autodj/engine.py` — Core engine with chat loop, player loop, RE integrations
+- `autodj/gui.py` — Tkinter GUI with settings, chat, queue, history, IM viewer
+- `autodj/commands.py` — Command router with admin/IM security
+- `autodj/config.py` — Config dataclass with fail-closed validation
+- `autodj/player.py` — mpv player with IPC, IPC log cleanup, fade
+- `autodj/library.py` — yt-dlp extraction, local index, folder scanning
+- `autodj/commands.py` — Router with TOCTOU protection, rate limiting
+- `autodj/adapters/uia.py` — Windows UI Automation chat reader/sender
+- `autodj/adapters/base.py` — ChatMessage dataclass, ChatAdapter ABC
+- `autodj/messages.py` — EN/TH i18n strings
+- `autodj/renderer.py` — Message rendering (plain text only for sending)
+- `autodj/textutil.py` — clean_text, norm helpers
+- `autodj/visuals.py` — Pure animation helpers (no tkinter)
+- `autodj/tts.py` — Serialized TTS worker (COM STA thread safety)
+- `autodj/paths.py` — Executable path resolution
+- `autodj/windows.py` — Camfrog window enumeration/filtering
+- `autodj/winmsg.py` — Win32 posted message sender
+- `autodj/migrate.py` — Config migration with atomic writes
+- `autodj/doctor.py` — --check diagnostics
+- `autodj/discover.py` — Auto-discover room window and controls
+- `autodj/launcher.py` — Camfrog auto-launch
+- `autodj/playlist.py` — Persistent playlist.json with atomic writes
+- `autodj/playqueue.py` — Requests-first, pool-second play queue
+- `autodj/camfrog_font.py` — Camfrog registry font read/write
+- `autodj/clipkeys.py` — Tk-free clipboard key mapping
 
 **Current validation state:** 414 tests pass, ruff/mypy/format/shellcheck clean.
 
@@ -91,10 +91,10 @@ All source files read and understood:
 ## Phase 3: Validation & Testing (COMPLETE)
 
 All gates pass:
-- `python -m compileall -q camfrog_autodj tests tools` ✅ OK
-- `ruff check camfrog_autodj tests tools` ✅ All checks passed
-- `ruff format --check camfrog_autodj tests tools` ✅ 63 files formatted
-- `mypy camfrog_autodj` ✅ No issues in 32 source files
+- `python -m compileall -q autodj tests tools` ✅ OK
+- `ruff check autodj tests tools` ✅ All checks passed
+- `ruff format --check autodj tests tools` ✅ 63 files formatted
+- `mypy autodj` ✅ No issues in 32 source files
 - `python -m pytest -q -p no:faulthandler -p no:cacheprovider` ✅ 414 passed
 - `shellcheck scripts/*.sh tools/*.sh` ✅ Clean
 - Integration tests pass ✅ (mock-based)

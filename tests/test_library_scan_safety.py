@@ -20,7 +20,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from camfrog_autodj.library import MEDIA, LocalIndex, scan_folder
+from autodj.library import MEDIA, LocalIndex, scan_folder
 
 
 def _media(root: str, name: str, content: bytes = b"fake audio") -> str:

@@ -1,11 +1,11 @@
 import tomllib
 from pathlib import Path
 
-import camfrog_autodj
+import autodj
 
 
 def test_version_consistency():
-    version = camfrog_autodj.__version__
+    version = autodj.__version__
 
     # pyproject.toml
     root = Path(__file__).resolve().parent.parent

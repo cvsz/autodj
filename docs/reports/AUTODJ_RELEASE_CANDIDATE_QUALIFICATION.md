@@ -23,7 +23,7 @@ Release candidate qualification was performed without creating or publishing a r
 | File | Expected Version | Actual | Status |
 |------|-----------------|--------|--------|
 | `pyproject.toml` | `0.2.6` | `version = "0.2.6"` | ✅ |
-| `camfrog_autodj/__init__.py` | `0.2.6` | `__version__ = "0.2.6"` | ✅ |
+| `autodj/__init__.py` | `0.2.6` | `__version__ = "0.2.6"` | ✅ |
 | `version_info.txt` | `0.2.6.0` | `filevers=(0, 2, 6, 0)`, `prodvers=(0, 2, 6, 0)` | ✅ |
 | `installer.nsi` | `0.2.6` | `!define APP_VERSION "0.2.6"` | ✅ |
 
@@ -225,3 +225,4 @@ The v0.2.6 tag is **unsigned** and **must remain unchanged** per task instructio
 6. Create GPG-signed annotated tag following `AUTODJ_RELEASE_SIGNING_PROCEDURE.md`
 7. Independent reviewer (`policedbc`) verifies tag signature
 8. Maintainer (`cvsz`) creates release manually with artifacts, SBOM, checksums
+

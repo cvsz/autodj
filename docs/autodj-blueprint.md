@@ -804,11 +804,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1
 ```make
 full-validation: lint typecheck validate-playlists test changelog-check config-check validate-installer
 
-lint: ruff check camfrog_autodj tests tools
-typecheck: mypy --check-untyped-defs camfrog_autodj tests tools
+lint: ruff check autodj tests tools
+typecheck: mypy --check-untyped-defs autodj tests tools
 validate-playlists: python tools/validate_playlists.py
 test: pytest -q -p no:faulthandler -p no:cacheprovider
-config-check: python -c "from camfrog_autodj.config import Config; Config.load('config.toml')"
+config-check: python -c "from autodj.config import Config; Config.load('config.toml')"
 validate-installer: python tools/validate_installer.py
 ```
 
@@ -875,7 +875,7 @@ validate-installer: python tools/validate_installer.py
 
 ```
 camfrog-autodj/
-├── camfrog_autodj/
+├── autodj/
 │   ├── adapters/
 │   │   ├── __init__.py     # Composite, NullAdapter, build_adapter
 │   │   ├── base.py         # ChatAdapter, ChatMessage, parse_line

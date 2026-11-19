@@ -1295,7 +1295,9 @@ class Engine:
 
     def _announce_playback_failure(self, t: Track, fails: int) -> None:
         if fails <= MAX_FAIL_ANNOUNCE:
-            self.say(self.t("cannot_play", title=t.title))
+            # Logged only: the room is never told "cannot play" (owner request;
+            # the player simply moves on to the next song).
+            log.warning("cannot play %r (%s)", t.title, t.source)
         elif fails == MAX_FAIL_ANNOUNCE + 1:
             log.warning(
                 "%d tracks in a row failed to play: not announcing further failures in the room "
@@ -1442,9 +1444,20 @@ class Engine:
         return norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text)
 
     def _handle_im(self, msg: ChatMessage) -> None:
-        """Handle an instant/private message."""
-        self.log_chat(msg.user, msg.text)
+        """Handle an instant/private message.
+
+        IMs go to the IM viewer only: they are never added to the room chat log
+        and never echoed into the room.
+
+        With ``im_require_room_presence`` (default on) an IM is only acted on
+        (auto-reply, plugins, commands) when its sender is in the room, admins
+        included: the nickname alone is spoofable from outside the room.
+        """
         self._log_im_message(msg)
+        if self.cfg.im_require_room_presence and msg.user.lower() not in self._active_room_users:
+            log.info("IM from %s not acted on: not in the room", msg.user)
+            self._im_join_room_notice(msg.user)
+            return
         if self.cfg.im_auto_reply_enabled:
             self._handle_im_message(msg)
         # Emit chat event for plugins
@@ -1454,6 +1467,55 @@ class Engine:
         self.exec.submit(self.router.handle, msg)
         # AI: reply to non-command IM messages
         self._ai_handle_im(msg)
+
+    def _im_join_room_notice(self, user: str) -> None:
+        """Tell an IM sender outside the room, privately, to join the room first.
+
+        Once per ``im_auto_reply_cooldown`` per user, so a stream of IMs gets one
+        answer (our own reply is also read back from the IM window as an echo).
+        """
+        now = time.monotonic()
+        key = f"join:{user.lower()}"
+        with self._chat_lock:
+            if (
+                now - self._im_reply_cooldowns.get(key, float("-inf"))
+                < self.cfg.im_auto_reply_cooldown
+            ):
+                return
+            self._im_reply_cooldowns[key] = now
+        text = self.t("im_join_room_first", room=self.cfg.room or "")
+        while "  " in text:  # no room name configured: no double space
+            text = text.replace("  ", " ")
+        self.send_im(user, text)
+
+    def send_im(self, user: str, text: str) -> bool:
+        """Send *text* privately to *user* (never to the room).
+
+        Needs an adapter with ``send_im(user, text)``; otherwise nothing is sent.
+        The text is remembered for echo detection, because the IM window shows our
+        own reply back without a sender name, and it is shown in the IM viewer.
+        """
+        text = clean_text(text)
+        send = getattr(self.adapter, "send_im", None)
+        if not text:
+            return False
+        if not callable(send):
+            log.info("IM to %s not sent: chat adapter cannot send IMs", user)
+            return False
+        self._remember_sent(text)
+        try:
+            send(user, text)
+        except Exception:
+            log.exception("Failed to send IM to %s", user)
+            return False
+        with self._chat_lock:  # IM viewer: outgoing line, same bookkeeping as _log_im_message
+            self.im_log.append((f"{self.cfg.bot_nick} → {user}", text))
+            if len(self.im_log) > 300:
+                del self.im_log[:-300]
+            self.im_seq += 1
+            self._im_version += 1
+        log.info("IM >> %s: %s", user, text)
+        return True
 
     def _ai_handle_im(self, msg: ChatMessage) -> None:
         """AI replies to private messages are intentionally disabled.
@@ -1563,11 +1625,12 @@ class Engine:
 
     def _log_im_message(self, msg: ChatMessage) -> None:
         """Log an IM / private message for the IM viewer GUI (read-only)."""
-        self.im_log.append((msg.user, msg.text))
-        if len(self.im_log) > 300:  # bounded: the IM viewer only shows recent history
-            del self.im_log[:-300]
-        self.im_seq += 1
-        self._im_version += 1
+        with self._chat_lock:  # im_snapshot() reads these under the same lock
+            self.im_log.append((msg.user, msg.text))
+            if len(self.im_log) > 300:  # bounded: the IM viewer only shows recent history
+                del self.im_log[:-300]
+            self.im_seq += 1
+            self._im_version += 1
 
     def _handle_room_join(self, msg: ChatMessage) -> None:
         """A user entered the room (``join_line_regex`` matched a room notice)."""
@@ -1578,7 +1641,10 @@ class Engine:
 
     def _greet_user(self, user: str) -> bool:
         """Greet *user* once per cooldown: admins get the admin greeting, everyone else
-        the welcome message. Returns True if a greeting was sent."""
+        the welcome message. Blocked users are never greeted (they are
+        silently ignored everywhere else). Returns True if a greeting was sent."""
+        if user.lower() in self.blocked:
+            return False
         if user.lower() in self.admins and self.cfg.admin_greeting_enabled:
             return self._handle_admin_greeting(ChatMessage(user, ""))
         return self._handle_welcome_message(ChatMessage(user, ""))
@@ -1778,6 +1844,10 @@ class Engine:
                 welcome_text = _fill(
                     self.cfg.welcome_message_message, user=msg.user, room=self.cfg.room
                 )
+                if not self.cfg.room:  # no room name configured: no "into  station" gap
+                    while "  " in welcome_text:
+                        welcome_text = welcome_text.replace("  ", " ")
+                    welcome_text = welcome_text.strip()
                 should_send = True
                 self._welcome_cooldowns[key] = now
         if should_send:
@@ -1922,7 +1992,7 @@ class Engine:
                     self.t(
                         "update_available",
                         version=release["tag"],
-                        current=__import__("camfrog_autodj", fromlist=["__version__"]).__version__,
+                        current=__import__("autodj", fromlist=["__version__"]).__version__,
                         url=release["html_url"],
                     )
                 )
@@ -2056,9 +2126,9 @@ class Engine:
     def _handle_im_message(self, msg: ChatMessage):
         """Handle incoming IM (private message) and send auto-reply if enabled.
 
-        Note: Current ChatAdapter interface only supports sending to room chat.
-        IM auto-reply posts to the room with an [IM] prefix as a fallback.
-        For true IM replies, a future enhancement would need IM sending support.
+        The reply is sent privately through the adapter's optional
+        ``send_im(user, text)``. Adapters without a private channel get no reply:
+        an IM conversation is never posted into the room.
         """
         if not self.cfg.im_auto_reply_enabled:
             return
@@ -2066,23 +2136,21 @@ class Engine:
             return
         user = msg.user.lower()
         now = time.monotonic()
+        reply_text = self.cfg.im_auto_reply_message
+        if not reply_text:
+            return
+        # Decide and claim the cooldown under the lock, but send OUTSIDE it:
+        # say() -> log_chat() takes the same non-reentrant _chat_lock, so
+        # calling it here deadlocked the chat loop on the first IM, and the
+        # GUI (chat_snapshot) froze with it.
         with self._chat_lock:  # protect _im_reply_cooldowns across chat loop and cleanup loop
             last_reply = self._im_reply_cooldowns.get(user, float("-inf"))  # never replied
             if now - last_reply < self.cfg.im_auto_reply_cooldown:
                 log.debug("IM auto-reply on cooldown for %s", user)
                 return
-            # Send auto-reply (currently posts to room as fallback)
-            reply_text = self.cfg.im_auto_reply_message
-            if reply_text:
-                try:
-                    # Design limit: ChatAdapter has no private send channel, so the
-                    # fixed (operator-written) reply is posted to the room. Only the
-                    # canned text is sent — never the content of the user's IM.
-                    self.say(f"[IM auto-reply to {msg.user}] {reply_text}")
-                    self._im_reply_cooldowns[user] = time.monotonic()
-                    log.info("Sent IM auto-reply notification to room for %s", msg.user)
-                except Exception:
-                    log.exception("Failed to send IM auto-reply notification for %s", msg.user)
+            self._im_reply_cooldowns[user] = now
+        if self.send_im(msg.user, reply_text):
+            log.info("Sent IM auto-reply to %s", msg.user)
 
     def _rate_limit_cleanup_loop(self):
         """Periodically clean up expired rate limit entries in the Router.

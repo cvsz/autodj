@@ -141,7 +141,7 @@ All PRs in the v0.2.5 cycle underwent peer review and administrative merge adher
 The CycloneDX SBOM generation was verified from the workflow logs:
 - **Generator:** `cyclonedx-py environment --pyproject pyproject.toml -o Camfrog-AutoDJ-v0.2.5.cdx.json`
 - **Specification Version:** CycloneDX Specification 1.6
-- **Package Identity:** `camfrog-autodj` version `0.2.5` (wheel `camfrog_autodj-0.2.5-0.editable-py3-none-any.whl`)
+- **Package Identity:** `camfrog-autodj` version `0.2.5` (wheel `autodj-0.2.5-0.editable-py3-none-any.whl`)
 - **Dependencies Scanned & Included:**
   `yt-dlp` (2026.10.26), `pyinstaller` (6.22.3), `pywinauto` (0.6.9), `pyttsx3` (2.99), `mutagen` (1.48.1), `comtypes` (1.4.17), `pyperclip` (1.11.0), `jsonschema` (4.26.0), `cyclonedx-bom` (7.6.0), and all transitive dependencies.
 - **Verification Status:** Conforms to CycloneDX schema standards and is referenced by cryptographic digest `5119a8cef0fb613ccd0cd929bda79375ab33323045cfc074f7fd683f27dc170b`.
@@ -210,7 +210,7 @@ GitHub's Immutable Releases mechanism stores a tombstone/reservation for any tag
   - Clean git ref with zero collision or immutable tag locks.
   - Pushing tag `v0.2.6` triggers `.github/workflows/release.yml` with the fixed asset pattern `Camfrog-AutoDJ-Setup-*.exe` (from PR #50).
   - Automatically compiles `AutoDJ.exe`, packages `Camfrog-AutoDJ-Setup-0.2.6.exe`, generates CycloneDX SBOM, publishes Sigstore provenance attestations, and attaches all assets to the official GitHub Release.
-- **Prerequisite:** Requires updating version strings across the codebase (`pyproject.toml`, `camfrog_autodj/__init__.py`, `installer.nsi`, `version_info.txt`, etc.) and obtaining explicit user approval before publishing.
+- **Prerequisite:** Requires updating version strings across the codebase (`pyproject.toml`, `autodj/__init__.py`, `installer.nsi`, `version_info.txt`, etc.) and obtaining explicit user approval before publishing.
 
 ---
 
@@ -243,7 +243,7 @@ GitHub's Immutable Releases mechanism stores a tombstone/reservation for any tag
 If the user authorizes proceeding with **Option B (`v0.2.6`)**:
 1. Create PR updating version from `0.2.5` to `0.2.6` across:
    - `pyproject.toml`
-   - `camfrog_autodj/__init__.py`
+   - `autodj/__init__.py`
    - `installer.nsi`
    - `version_info.txt`
    - `install.ps1`, `install.bat`
@@ -266,3 +266,4 @@ FINAL CLASSIFICATION: IMPLEMENTATION_COMPLETE_RELEASE_BLOCKED
 
 ### Rationale
 All code implementation, architectural requirements, test suites (143/143 passing), CI status checks, CycloneDX SBOM generation, and cryptographic build provenance attestations are complete and verified on `main`. However, official GitHub Release publication remains blocked by GitHub's immutable tag restriction on `v0.2.5`. In strict accordance with ZEAZ Master Prompt governance rules, automatic publication of an unapproved version is prohibited. Awaiting user authorization to initiate the `v0.2.6` release path.
+

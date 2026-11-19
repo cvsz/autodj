@@ -72,7 +72,7 @@ function Invoke-AutoDJ {
     # Windows PowerShell 5.1 turns native stderr into terminating errors under 'Stop'.
     $prev = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
-    try { $out = & python -m camfrog_autodj @CliArgs 2>&1 | ForEach-Object { "$_" } }
+    try { $out = & python -m autodj @CliArgs 2>&1 | ForEach-Object { "$_" } }
     finally { $ErrorActionPreference = $prev }
     return @($out)
 }
@@ -335,3 +335,4 @@ $passed = @($Results.results.Values | Where-Object { $_.status -eq "PASS" }).Cou
 $skipped = @($Results.results.Values | Where-Object { $_.status -eq "SKIPPED" }).Count
 Write-Host "Summary: $passed passed, $failed failed, $skipped skipped"
 if ($failed -gt 0) { exit 1 }
+

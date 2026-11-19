@@ -8,7 +8,7 @@ import sys
 
 from pywinauto import Desktop
 
-from camfrog_autodj.windows import candidates
+from autodj.windows import candidates
 
 args = [a for a in sys.argv[1:] if a != "--list"]
 pat = args[0] if args else ".*Camfrog.*"

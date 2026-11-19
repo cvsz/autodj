@@ -21,11 +21,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from camfrog_autodj.config import Config, ConfigError
-from camfrog_autodj.library import remote_tracks
-from camfrog_autodj.messages import tr
-from camfrog_autodj.models import Track
-from camfrog_autodj.player import MpvPlayer
+from autodj.config import Config, ConfigError
+from autodj.library import remote_tracks
+from autodj.messages import tr
+from autodj.models import Track
+from autodj.player import MpvPlayer
 
 
 # ---------------------------------------------------------------------------
@@ -89,9 +89,9 @@ def test_remote_tracks_uses_search_limit_for_plain_query(monkeypatch):
         captured["target"] = target
         return {"entries": [{"webpage_url": "https://youtu.be/x", "title": "T", "duration": 60}]}
 
-    monkeypatch.setattr("camfrog_autodj.library._extract_exe", fake_extract_exe)
-    monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **kw: "")
+    monkeypatch.setattr("autodj.library._extract_exe", fake_extract_exe)
+    monkeypatch.setattr("autodj.library._extract_module", fake_extract_module)
+    monkeypatch.setattr("autodj.library.find_ytdlp", lambda *a, **kw: "")
 
     remote_tracks("some song", search_limit=3)
     assert captured["target"] == "ytsearch3:some song"
@@ -105,11 +105,11 @@ def test_remote_tracks_search_limit_default_is_one(monkeypatch):
         return {"entries": [{"webpage_url": "https://youtu.be/x", "title": "T", "duration": 60}]}
 
     monkeypatch.setattr(
-        "camfrog_autodj.library._extract_exe",
+        "autodj.library._extract_exe",
         lambda *a: (_ for _ in ()).throw(OSError()),
     )
-    monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **kw: "")
+    monkeypatch.setattr("autodj.library._extract_module", fake_extract_module)
+    monkeypatch.setattr("autodj.library.find_ytdlp", lambda *a, **kw: "")
 
     remote_tracks("artist name")
     assert captured["target"] == "ytsearch1:artist name"
@@ -123,8 +123,8 @@ def test_remote_tracks_url_not_prefixed_with_ytsearch(monkeypatch):
         captured["target"] = target
         return {"entries": [{"webpage_url": "https://youtu.be/abc", "title": "T", "duration": 60}]}
 
-    monkeypatch.setattr("camfrog_autodj.library._extract_module", fake_extract_module)
-    monkeypatch.setattr("camfrog_autodj.library.find_ytdlp", lambda *a, **kw: "")
+    monkeypatch.setattr("autodj.library._extract_module", fake_extract_module)
+    monkeypatch.setattr("autodj.library.find_ytdlp", lambda *a, **kw: "")
 
     remote_tracks("https://youtu.be/abc", search_limit=5)
     assert captured["target"] == "https://youtu.be/abc"
@@ -141,7 +141,7 @@ def test_play_file_uses_create_no_window_on_windows(monkeypatch):
         captured_kw.update(kw)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
+    monkeypatch.setattr("autodj.player._is_windows", lambda: True)
 
     cfg = Config(mpv_path="mpv")
     p = MpvPlayer(cfg)
@@ -159,7 +159,7 @@ def test_play_file_no_creationflags_on_posix(monkeypatch):
         captured_kw.update(kw)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: False)
+    monkeypatch.setattr("autodj.player._is_windows", lambda: False)
 
     cfg = Config(mpv_path="mpv")
     p = MpvPlayer(cfg)
@@ -183,7 +183,7 @@ def test_play_hidden_console_on_windows(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
+    monkeypatch.setattr("autodj.player._is_windows", lambda: True)
 
     # Keep this test focused on process flags; avoid platform-dependent yt-dlp path discovery.
     cfg = Config(mpv_path="mpv", ytdlp_path="D:/tools/yt-dlp.exe", audio_device="")
@@ -205,10 +205,10 @@ def test_play_no_creationflags_on_posix(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: False)
+    monkeypatch.setattr("autodj.player._is_windows", lambda: False)
     # Mock IPC to avoid Unix socket calls on Windows CI
-    monkeypatch.setattr("camfrog_autodj.player.MpvPlayer._cmd", lambda *a, **k: True)
-    monkeypatch.setattr("camfrog_autodj.player.MpvPlayer._fade_volume", lambda *a, **k: None)
+    monkeypatch.setattr("autodj.player.MpvPlayer._cmd", lambda *a, **k: True)
+    monkeypatch.setattr("autodj.player.MpvPlayer._fade_volume", lambda *a, **k: None)
 
     # Keep this test focused on POSIX flags; avoid platform-dependent yt-dlp path discovery.
     cfg = Config(mpv_path="mpv", ytdlp_path="yt-dlp", audio_device="")
@@ -224,7 +224,7 @@ def test_play_no_creationflags_on_posix(monkeypatch):
 # over the GUI.  Command-line options always beat config files in mpv.
 # ---------------------------------------------------------------------------
 def test_mpv_base_forces_no_window():
-    from camfrog_autodj.player import MpvPlayer
+    from autodj.player import MpvPlayer
 
     cfg = Config(mpv_path="mpv", audio_device="")
     base = " ".join(MpvPlayer(cfg)._base())
@@ -242,7 +242,7 @@ def test_play_cmd_includes_no_window_flags(monkeypatch):
         return fake_proc
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setattr("camfrog_autodj.player._is_windows", lambda: True)
+    monkeypatch.setattr("autodj.player._is_windows", lambda: True)
 
     # Keep this test focused on window flags; yt-dlp discovery is covered separately.
     cfg = Config(mpv_path="mpv", ytdlp_path="D:/tools/yt-dlp.exe", audio_device="")
@@ -261,7 +261,7 @@ def test_tts_synth_is_callable_and_thread_safe(monkeypatch):
     """synth() must be importable and have the expected signature; the worker
     must serialise concurrent callers (smoke test: two threads call synth
     with a fake pyttsx3 that would corrupt state if called concurrently)."""
-    from camfrog_autodj import tts
+    from autodj import tts
 
     results = []
     errors = []
@@ -328,7 +328,7 @@ def test_tts_synth_is_callable_and_thread_safe(monkeypatch):
 # N-web-1: find_web_panes logs a debug message when view pane is not found
 # ---------------------------------------------------------------------------
 def test_find_web_panes_logs_when_not_found(caplog):
-    from camfrog_autodj.webchat import find_web_panes
+    from autodj.webchat import find_web_panes
 
     # Build a fake pywinauto window with no matching panes
     fake_pane = MagicMock()
@@ -349,7 +349,7 @@ def test_find_web_panes_logs_when_not_found(caplog):
 
 
 def test_find_web_panes_returns_matching_panes():
-    from camfrog_autodj.webchat import find_web_panes
+    from autodj.webchat import find_web_panes
 
     view_pane = MagicMock()
     view_pane.element_info.name = "camfrog://wb-log-room-data.inside/"
@@ -370,9 +370,9 @@ def test_find_web_panes_returns_matching_panes():
 # ---------------------------------------------------------------------------
 def test_engine_remote_uses_config_search_limit(monkeypatch):
     """Engine._remote must pass cfg.search_limit to remote_tracks."""
-    from camfrog_autodj.adapters.base import ChatAdapter
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.library import LocalIndex
+    from autodj.adapters.base import ChatAdapter
+    from autodj.engine import Engine
+    from autodj.library import LocalIndex
 
     class FakeAdapter(ChatAdapter):
         def messages(self):
@@ -412,7 +412,7 @@ def test_engine_remote_uses_config_search_limit(monkeypatch):
         captured["search_limit"] = search_limit
         return [Track("https://youtu.be/x", "T", 60, requester)]
 
-    monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote_tracks)
+    monkeypatch.setattr("autodj.engine.remote_tracks", fake_remote_tracks)
 
     cfg = Config(search_limit=7)
     e = Engine(cfg, FakeAdapter(), player=FakePlayer(), index=LocalIndex([]))
@@ -424,9 +424,9 @@ def test_engine_remote_uses_config_search_limit(monkeypatch):
 
 
 def test_player_loop_dynamically_resolves_ytsearch_tracks(monkeypatch):
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.models import Track
+    from autodj.config import Config
+    from autodj.engine import Engine
+    from autodj.models import Track
 
     class FakeAdapter:
         def messages(self):
@@ -472,7 +472,7 @@ def test_player_loop_dynamically_resolves_ytsearch_tracks(monkeypatch):
             ]
         return [Track("https://www.youtube.com/watch?v=fallback", "Fallback", 100, requester)]
 
-    monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote_tracks)
+    monkeypatch.setattr("autodj.engine.remote_tracks", fake_remote_tracks)
 
     cfg = Config()
     e = Engine(cfg, FakeAdapter(), player=FakePlayer())
@@ -490,8 +490,8 @@ def test_player_loop_dynamically_resolves_ytsearch_tracks(monkeypatch):
 
 
 def test_playlist_store_update_source(tmp_path):
-    from camfrog_autodj.models import Track
-    from camfrog_autodj.playlist import PlaylistStore, save_playlist
+    from autodj.models import Track
+    from autodj.playlist import PlaylistStore, save_playlist
 
     p = tmp_path / "playlist.json"
     initial = [
@@ -516,9 +516,9 @@ def test_playlist_store_update_source(tmp_path):
 
 
 def test_preload_search_tracks_updates_queue(monkeypatch):
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.models import Track
+    from autodj.config import Config
+    from autodj.engine import Engine
+    from autodj.models import Track
 
     class FakeAdapter:
         def messages(self):
@@ -542,7 +542,7 @@ def test_preload_search_tracks_updates_queue(monkeypatch):
             return [Track("https://youtube.com/watch?v=id1", "Title 1", 100, requester)]
         return [Track("https://youtube.com/watch?v=id2", "Title 2", 200, requester)]
 
-    monkeypatch.setattr("camfrog_autodj.engine.remote_tracks", fake_remote_tracks)
+    monkeypatch.setattr("autodj.engine.remote_tracks", fake_remote_tracks)
 
     cfg = Config()
     e = Engine(cfg, FakeAdapter(), player=FakePlayer())
@@ -563,8 +563,8 @@ def test_preload_search_tracks_updates_queue(monkeypatch):
 
 
 def test_audio_normalization_and_fade_configuration():
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.player import MpvPlayer
+    from autodj.config import Config
+    from autodj.player import MpvPlayer
 
     cfg = Config(audio_fade=True, audio_fade_in_sec=1.5, audio_normalize=True)
     player = MpvPlayer(cfg)
@@ -575,9 +575,9 @@ def test_audio_normalization_and_fade_configuration():
 def test_dynamic_voteskip_threshold():  # noqa: C901
     from collections import namedtuple
 
-    from camfrog_autodj.commands import Router
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.models import Track
+    from autodj.commands import Router
+    from autodj.config import Config
+    from autodj.models import Track
 
     Msg = namedtuple("Msg", ["user", "text", "local"], defaults=["", "", False])
 
@@ -633,9 +633,9 @@ def test_dynamic_voteskip_threshold():  # noqa: C901
 def test_user_request_rate_limit():
     from collections import namedtuple
 
-    from camfrog_autodj.commands import Router
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.models import Track
+    from autodj.commands import Router
+    from autodj.config import Config
+    from autodj.models import Track
 
     Msg = namedtuple("Msg", ["user", "text", "is_im", "local"], defaults=["", "", False, False])
 

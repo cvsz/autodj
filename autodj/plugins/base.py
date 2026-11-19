@@ -6,12 +6,12 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from camfrog_autodj.config import Config
+    from autodj.config import Config
 
 if TYPE_CHECKING:
-    from camfrog_autodj.adapters.base import ChatMessage
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.models import Track
+    from autodj.adapters.base import ChatMessage
+    from autodj.engine import Engine
+    from autodj.models import Track
 
 
 class PluginInterface:

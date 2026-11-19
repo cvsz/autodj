@@ -11,8 +11,8 @@ from unittest.mock import Mock
 import pytest
 from fastapi.testclient import TestClient
 
-from camfrog_autodj.webhook.models import WebhookConfig
-from camfrog_autodj.webhook.server import WebhookServer, create_webhook_app
+from autodj.webhook.models import WebhookConfig
+from autodj.webhook.server import WebhookServer, create_webhook_app
 
 
 def _signed(

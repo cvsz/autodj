@@ -2,10 +2,10 @@
 
 import time
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.models import Track
+from autodj.adapters import NullAdapter
+from autodj.config import Config
+from autodj.engine import Engine
+from autodj.models import Track
 
 
 def test_backoff_does_not_block_player_loop():

@@ -13,7 +13,7 @@
 ### 1.1 Package Structure
 
 ```
-camfrog_autodj/
+autodj/
 ├── __init__.          # __version__ = "0.2.8"
 ├── __main__.py        # Entry point
 ├── commands.py        # CLI command routing

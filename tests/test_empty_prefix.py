@@ -3,8 +3,8 @@
 import os
 import tempfile
 
-from camfrog_autodj.config import Config
-from camfrog_autodj.exceptions import ConfigError
+from autodj.config import Config
+from autodj.exceptions import ConfigError
 
 
 def test_empty_prefix_rejected_at_config():

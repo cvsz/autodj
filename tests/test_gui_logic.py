@@ -10,10 +10,10 @@ from pathlib import Path
 import fake_tk
 from test_core import make, out
 
-import camfrog_autodj  # cache invalidation for _gui() (clears the cached `gui` attribute)
-from camfrog_autodj.config import Config
-from camfrog_autodj.gui import _toml_str
-from camfrog_autodj.models import Track
+import autodj  # cache invalidation for _gui() (clears the cached `gui` attribute)
+from autodj.config import Config
+from autodj.gui import _toml_str
+from autodj.models import Track
 
 
 def _tk_module():
@@ -48,9 +48,9 @@ def _gui(monkeypatch):
     # test without monkeypatching), then re-import so `gui` binds to the fake-Tk
     # version below. Clearing sys.modules alone is not enough: `from package
     # import module` also reads the package's cached attribute.
-    sys.modules.pop("camfrog_autodj.gui", None)
-    camfrog_autodj.__dict__.pop("gui", None)
-    from camfrog_autodj import gui
+    sys.modules.pop("autodj.gui", None)
+    autodj.__dict__.pop("gui", None)
+    from autodj import gui
 
     return gui
 
@@ -80,7 +80,7 @@ def test_builds_and_shows_state(monkeypatch):
         assert app.v_title.cget("text") == "Nothing playing"
         assert app.b_pause.cget("text") == "Pause"
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        sys.modules.pop("autodj.gui", None)
 
 
 def test_language_switch_relabels_everything(monkeypatch):
@@ -91,7 +91,7 @@ def test_language_switch_relabels_everything(monkeypatch):
         assert app.tabs["history"].cget("text") == "ประวัติ"
         assert app.b_lang["th"]._active and not app.b_lang["en"]._active
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        sys.modules.pop("autodj.gui", None)
 
 
 def test_playing_state_drives_animation_and_progress(monkeypatch):
@@ -119,7 +119,7 @@ def test_playing_state_drives_animation_and_progress(monkeypatch):
             and app.b_pause._icon == "▶"
         )
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        sys.modules.pop("autodj.gui", None)
 
 
 def test_buttons_do_what_they_say(monkeypatch):
@@ -148,7 +148,7 @@ def test_buttons_do_what_they_say(monkeypatch):
         app.vol._release(types.SimpleNamespace(x=450))  # drag the volume knob to the middle
         assert 40 <= e.volume <= 60
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        sys.modules.pop("autodj.gui", None)
 
 
 def test_missing_mpv_shows_banner(monkeypatch):
@@ -157,7 +157,7 @@ def test_missing_mpv_shows_banner(monkeypatch):
         texts = [w.cget("text") for w, _k in app._labels]
         assert any("mpv not found" in t for t in texts)
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        sys.modules.pop("autodj.gui", None)
 
 
 def test_refresh_survives_an_error_and_keeps_polling(monkeypatch):
@@ -168,7 +168,7 @@ def test_refresh_survives_an_error_and_keeps_polling(monkeypatch):
         app.refresh()
         assert len(app._after) == n + 1  # rescheduled despite the exception
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        sys.modules.pop("autodj.gui", None)
 
 
 def test_settings_dialog_opens_and_saves(monkeypatch, tmp_path):
@@ -178,7 +178,7 @@ def test_settings_dialog_opens_and_saves(monkeypatch, tmp_path):
         cfg_path = str(tmp_path / "config.toml")
         e.cfg_path = cfg_path
         # Write a starter config so save_settings has something to write
-        from camfrog_autodj.config import Config
+        from autodj.config import Config
 
         starter = Config()
         starter.music_dirs = []
@@ -252,7 +252,7 @@ def test_settings_dialog_opens_and_saves(monkeypatch, tmp_path):
         app._settings_close()
         assert app._settings_win is None
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        sys.modules.pop("autodj.gui", None)
 
 
 def test_settings_dialog_rejects_bad_int(monkeypatch):
@@ -267,7 +267,7 @@ def test_settings_dialog_rejects_bad_int(monkeypatch):
         assert e.volume == 70
         app._settings_close()
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        sys.modules.pop("autodj.gui", None)
 
 
 def test_settings_save_preserves_all_fields(monkeypatch, tmp_path):
@@ -416,7 +416,7 @@ def test_settings_save_preserves_all_fields(monkeypatch, tmp_path):
             assert got == want, f"{key}: expected {want!r}, got {got!r}"
         app._settings_close()
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        sys.modules.pop("autodj.gui", None)
 
 
 def test_load_folder_gives_visible_feedback(monkeypatch, tmp_path):
@@ -432,7 +432,7 @@ def test_load_folder_gives_visible_feedback(monkeypatch, tmp_path):
         sub.mkdir()
         (sub / "song two.flac").write_bytes(b"not-a-real-flac")
         monkeypatch.setattr(
-            __import__("camfrog_autodj.gui", fromlist=["filedialog"]).filedialog,
+            __import__("autodj.gui", fromlist=["filedialog"]).filedialog,
             "askdirectory",
             lambda **k: str(music),
         )
@@ -453,7 +453,7 @@ def test_load_folder_gives_visible_feedback(monkeypatch, tmp_path):
         assert ok, f"pool={pool} hint={hint!r}"
         assert not any("notes" in t.title for t in e.queue.pool)
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        sys.modules.pop("autodj.gui", None)
 
 
 def test_load_folder_empty_shows_loaded_zero(monkeypatch, tmp_path):
@@ -463,7 +463,7 @@ def test_load_folder_empty_shows_loaded_zero(monkeypatch, tmp_path):
         empty = tmp_path / "empty"
         empty.mkdir()
         monkeypatch.setattr(
-            __import__("camfrog_autodj.gui", fromlist=["filedialog"]).filedialog,
+            __import__("autodj.gui", fromlist=["filedialog"]).filedialog,
             "askdirectory",
             lambda **k: str(empty),
         )
@@ -477,4 +477,4 @@ def test_load_folder_empty_shows_loaded_zero(monkeypatch, tmp_path):
             time.sleep(0.05)
         assert "Loaded 0 tracks" in seen, f"hint={seen!r}"
     finally:
-        sys.modules.pop("camfrog_autodj.gui", None)
+        sys.modules.pop("autodj.gui", None)

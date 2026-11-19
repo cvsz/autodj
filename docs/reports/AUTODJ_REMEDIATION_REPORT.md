@@ -139,7 +139,7 @@ No release was created or published during remediation. No unsigned commits were
 
 ### P2-4: Strict Typecheck Did Not Fail on mypy Errors
 
-**Fix:** `.github/workflows/release.yml` — Removed `|| true` from `ruff check .` and `mypy camfrog_autodj` steps so failures cause the job to fail.
+**Fix:** `.github/workflows/release.yml` — Removed `|| true` from `ruff check .` and `mypy autodj` steps so failures cause the job to fail.
 
 **Status:** CODE COMPLETE, CI UNVERIFIED
 
@@ -192,10 +192,10 @@ python -m pytest -q -p no:faulthandler -p no:cacheprovider
 # Expected: 175 passed, 3 subtests passed
 
 # 4. Verify config validation (no default admin)
-python -c "from camfrog_autodj.config import Config; c = Config.load('config.example.toml'); assert c.admins == []"
+python -c "from autodj.config import Config; c = Config.load('config.example.toml'); assert c.admins == []"
 
 # 5. Run --check diagnostics
-python -m camfrog_autodj --check
+python -m autodj --check
 ```
 
 ---
@@ -206,3 +206,4 @@ python -m camfrog_autodj --check
 - CodeQL, Dependabot, and CI checks cannot be triggered without pushing to the remote repository.
 - No code-signing certificate is configured; `build.ps1 -NoSign` is used.
 - No release tag was created; no GitHub Release was published.
+

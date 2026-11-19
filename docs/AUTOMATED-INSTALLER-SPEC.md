@@ -80,7 +80,7 @@ camfrog-autodj/
 │   ├── install.ps1
 │   ├── uninstall.ps1
 │   └── run_autodj.py
-├── camfrog_autodj/            # Python package
+├── autodj/            # Python package
 ├── tools/                     # Build/dev tools
 ├── tests/                     # Test suite
 └── docs/                      # Documentation
@@ -186,7 +186,7 @@ Committed to repo - reference template for manual setups and documentation.
 - `--onefile` - Single executable
 - `--noupx` - No UPX (fewer AV false positives)
 - `--collect-all yt_dlp` - Include all yt-dlp extractors
-- `--collect-submodules pywinauto, pyttsx3, camfrog_autodj`
+- `--collect-submodules pywinauto, pyttsx3, autodj`
 - `--hidden-import comtypes, pyperclip, mutagen`
 - `--version-file version_info.txt` - Embed version metadata
 - `--icon app.ico` - Application icon

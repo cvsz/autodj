@@ -4,9 +4,9 @@
 
 All items below have been implemented and validated. Verified via:
 - `python -m pytest -q -p no:faulthandler -p no:cacheprovider` → 414 passed
-- `ruff check camfrog_autodj tests tools` → All checks passed
-- `ruff format --check camfrog_autodj tests tools` → 63 files already formatted
-- `mypy camfrog_autodj` → Success: no issues found in 32 source files
+- `ruff check autodj tests tools` → All checks passed
+- `ruff format --check autodj tests tools` → 63 files already formatted
+- `mypy autodj` → Success: no issues found in 32 source files
 - `shellcheck scripts/*.sh tools/*.sh` → clean
 
 ## Phase 1: Critical Bug Fixes (security + correctness) — COMPLETE
@@ -106,3 +106,4 @@ All items below have been implemented and validated. Verified via:
 - UIA Adapter Runtime Validation — Camfrog client on Windows, UIA adapter attached to Camfrog room (VERIFIED — evidence `evidence/validation-evidence-20261111-175639.json`)
 - TTS Runtime Validation — Windows SAPI, 2 voices, WAV created (VERIFIED — evidence `evidence/validation-evidence-20261111-175639.json`)
 - End-to-End Integration Test — Camfrog room "ZeaZDev" + bot account, all prerequisites met (VERIFIED — evidence `evidence/validation-evidence-20261111-175639.json`)
+

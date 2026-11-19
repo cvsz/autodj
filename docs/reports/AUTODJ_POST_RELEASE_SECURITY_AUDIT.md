@@ -19,11 +19,11 @@
 ## 2. In-Depth Application Security Findings
 
 ### 2.1 Process Execution & Shell Injection
-- **Inspection:** All invocations of `mpv` and `yt-dlp` in `camfrog_autodj/player.py` and `camfrog_autodj/library.py` use list arguments (`subprocess.Popen(cmd_list, shell=False)`), preventing shell command injection.
+- **Inspection:** All invocations of `mpv` and `yt-dlp` in `autodj/player.py` and `autodj/library.py` use list arguments (`subprocess.Popen(cmd_list, shell=False)`), preventing shell command injection.
 - **Rating:** `LOW` / Secure by design.
 
 ### 2.2 Path Traversal Guard
-- **Inspection:** The `!load` command in `camfrog_autodj/commands.py` contains path normalization and directory restriction guards preventing directory traversal outside configured music directories.
+- **Inspection:** The `!load` command in `autodj/commands.py` contains path normalization and directory restriction guards preventing directory traversal outside configured music directories.
 - **Rating:** `INFORMATIONAL` / Remediated in v0.2.5 cycle.
 
 ### 2.3 YouTube Cookie Credential Handling
@@ -39,3 +39,4 @@
 - **MEDIUM:** 0
 - **LOW:** 0
 - **INFORMATIONAL:** 2 (documented and verified secure)
+

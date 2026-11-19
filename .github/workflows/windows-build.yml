@@ -35,11 +35,11 @@ jobs:
 
       - name: Lint (ruff)
         run: |
-          ruff check camfrog_autodj tests tools
-          ruff format --check camfrog_autodj tests tools
+          ruff check autodj tests tools
+          ruff format --check autodj tests tools
 
       - name: Typecheck (mypy)
-        run: mypy camfrog_autodj
+        run: mypy autodj
 
       - name: Install NSIS
         run: |
@@ -93,3 +93,4 @@ jobs:
             dist/AutoDJ.exe
             dist/Camfrog-AutoDJ-Setup-*.exe
           retention-days: 30
+

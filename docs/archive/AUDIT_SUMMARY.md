@@ -78,7 +78,7 @@ After a comprehensive deep-dive audit of the entire codebase (44 Python source f
 | `AGENTS.md` | 0.3.0 | ✅ |
 | `pyproject.toml` | 0.3.0 | ✅ |
 | `installer.nsi` | 0.3.0 | ✅ |
-| `camfrog_autodj/__init__.py` | 0.3.0 | ✅ |
+| `autodj/__init__.py` | 0.3.0 | ✅ |
 | CLI `--version` | 0.3.0 | ✅ |
 
 ---

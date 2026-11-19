@@ -41,7 +41,7 @@ camfrog-autodj/
 │   └── PULL_REQUEST_TEMPLATE/
 ├── .superpowers/
 ├── artifacts/
-├── camfrog_autodj/
+├── autodj/
 │   ├── core/
 │   ├── audio/
 │   ├── playback/

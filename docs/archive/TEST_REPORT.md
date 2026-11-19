@@ -86,10 +86,10 @@ python -m pytest -q -p no:faulthandler -p no:cacheprovider
 
 | Gate | Command | Result |
 |------|---------|--------|
-| Lint (ruff) | `python -m ruff check camfrog_autodj tests tools` | All checks passed |
-| Format (ruff) | `python -m ruff format --check camfrog_autodj tests tools` | 98 files already formatted |
-| Type check (mypy) | `python -m mypy camfrog_autodj` | Success: no issues in 44 source files |
-| Compile (compileall) | `python -m compileall -q camfrog_autodj tests tools` | exit 0 (no syntax errors) |
+| Lint (ruff) | `python -m ruff check autodj tests tools` | All checks passed |
+| Format (ruff) | `python -m ruff format --check autodj tests tools` | 98 files already formatted |
+| Type check (mypy) | `python -m mypy autodj` | Success: no issues in 44 source files |
+| Compile (compileall) | `python -m compileall -q autodj tests tools` | exit 0 (no syntax errors) |
 | Shell scripts (shellcheck) | `shellcheck scripts/*.sh tools/*.sh` | Clean |
 
 ---
@@ -113,3 +113,4 @@ Low coverage in platform-specific adapters and builtin plugins is expected — t
 ## Regressions
 
 No unexplained test regressions. All tests that passed in the previous baseline continue to pass.
+

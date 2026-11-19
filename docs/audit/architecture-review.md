@@ -6,7 +6,7 @@
 
 ## Package structure
 
-`camfrog_autodj/` — `__init__.py` (version only), `__main__.py` (CLI + orchestration), `config.py`, `models.py`, `paths.py`, `library.py`, `playlist.py`, `playqueue.py`, `player.py`, `engine.py`, `commands.py`, `messages.py`, `migrate.py`, `discover.py`, `doctor.py`, `launcher.py`, `tts.py`, `textutil.py`, `clipkeys.py`, `visuals.py`, `webchat.py`, `gui.py`, `adapters/{base,console,logtail,uia}.py`, `windows.py`, `winmsg.py`.
+`autodj/` — `__init__.py` (version only), `__main__.py` (CLI + orchestration), `config.py`, `models.py`, `paths.py`, `library.py`, `playlist.py`, `playqueue.py`, `player.py`, `engine.py`, `commands.py`, `messages.py`, `migrate.py`, `discover.py`, `doctor.py`, `launcher.py`, `tts.py`, `textutil.py`, `clipkeys.py`, `visuals.py`, `webchat.py`, `gui.py`, `adapters/{base,console,logtail,uia}.py`, `windows.py`, `winmsg.py`.
 
 ## Module boundaries
 
@@ -27,3 +27,4 @@ None found. `adapters/uia.py` imports `..windows` and `..webchat` lazily inside 
 ## Conclusion
 
 Maintain the existing architecture. No unnecessary rewrite. The one test gap (library scan symlink safety) was closed with `tests/test_library_scan_safety.py` without changing architecture.
+

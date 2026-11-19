@@ -2,10 +2,10 @@
 
 from unittest.mock import MagicMock
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.exceptions import ChatAdapterError
+from autodj.adapters import NullAdapter
+from autodj.config import Config
+from autodj.engine import Engine
+from autodj.exceptions import ChatAdapterError
 
 
 def test_chat_loop_catches_os_error():

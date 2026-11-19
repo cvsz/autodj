@@ -1,7 +1,7 @@
 import os
 
-from camfrog_autodj import paths
-from camfrog_autodj.library import find_ytdlp
+from autodj import paths
+from autodj.library import find_ytdlp
 
 
 def test_resolve_expands_windows_environment_variables(monkeypatch, tmp_path):
@@ -62,10 +62,10 @@ def test_only_exe_asks_path_for_exe(monkeypatch, tmp_path):
 
 
 def test_player_never_launches_mpv_com(monkeypatch):
-    from camfrog_autodj.config import Config
-    from camfrog_autodj.player import MpvPlayer
+    from autodj.config import Config
+    from autodj.player import MpvPlayer
 
-    monkeypatch.setattr("camfrog_autodj.player.resolve_executable", lambda *_a, **_k: "")
+    monkeypatch.setattr("autodj.player.resolve_executable", lambda *_a, **_k: "")
     configured = "D:/tools/mpv.com" if os.name == "nt" else "/tools/mpv.com"
     player = MpvPlayer(Config(mpv_path=configured))
     if os.name == "nt":

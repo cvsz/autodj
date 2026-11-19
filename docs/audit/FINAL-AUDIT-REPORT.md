@@ -104,9 +104,9 @@ Exact commands and exit codes executed on this Linux host (Python 3.14.4), basel
 | Check | Command | Exit code | Result |
 |-------|---------|-----------|--------|
 | pytest | `python3 -m pytest -q -p no:cacheprovider` | 0 | **336 passed, 3 subtests passed** (325 baseline + 11 new) |
-| compileall | `python3 -m compileall -q camfrog_autodj tests tools` | 0 | All compile |
-| Ruff lint | `ruff check camfrog_autodj tests tools` | 0 | **All checks passed** |
-| Ruff format | `ruff format --check camfrog_autodj tests tools` | 0 | **57 files already formatted** |
+| compileall | `python3 -m compileall -q autodj tests tools` | 0 | All compile |
+| Ruff lint | `ruff check autodj tests tools` | 0 | **All checks passed** |
+| Ruff format | `ruff format --check autodj tests tools` | 0 | **57 files already formatted** |
 | mypy | not run as gate (missing stubs tolerated; `ignore_missing_imports=true`) | — | pre-existing config |
 | ShellCheck | `shellcheck scripts/*.sh tools/*.sh` | 0 (warnings) | Style notes only: SC2181 (`build_installer_linux.sh:77`), SC2034 (gh-switch scripts) — no defects |
 | bash -n | not run (no bash syntax failures) | — | — |
@@ -173,3 +173,4 @@ Also updated: CHANGELOG.md (Unreleased entry).
 | Production readiness | **READY for all Linux-executable gates** (336 tests, lint, format, config, GPG signing, independent review, controlled merge). **Not releasable on Windows** until PyInstaller/NSIS/real-mpv/real-Camfrog gates executed on a Windows 11 host. **No zero-error claim** where a required test could not run — all Windows/live-integration items explicitly BLOCKED/NOT IMPLEMENTED with recorded reasons. |
 
 No results were fabricated; every check either passed with direct evidence or is explicitly BLOCKED / NOT IMPLEMENTED / NOT APPLICABLE with a recorded reason.
+

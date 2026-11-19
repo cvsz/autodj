@@ -10,9 +10,9 @@
 | Command | Exit code | Result |
 |---------|-----------|--------|
 | `python3 -m pytest -q -p no:cacheprovider` | 0 | **336 passed, 3 subtests passed** |
-| `ruff check camfrog_autodj tests tools` | 0 | **All checks passed** |
-| `ruff format --check camfrog_autodj tests tools` | 0 | **57 files already formatted** |
-| `python3 -m compileall -q camfrog_autodj tests tools` | 0 | **Compiled cleanly** |
+| `ruff check autodj tests tools` | 0 | **All checks passed** |
+| `ruff format --check autodj tests tools` | 0 | **57 files already formatted** |
+| `python3 -m compileall -q autodj tests tools` | 0 | **Compiled cleanly** |
 | `shellcheck scripts/*.sh tools/*.sh` | 0 (warnings) | Minor style warnings only (SC2181, SC2034) |
 
 ## Test detail
@@ -48,3 +48,4 @@ None are defects; all are pre-existing style notes in multi-repo/tooling scripts
 ## New regression test added
 
 `tests/test_library_scan_safety.py` — 11 tests pinning `scan_folder`/`LocalIndex` symlink safety (Phase 3 critical regression tests: symlink cycles, reparse-point cycles, broken symlinks, unreadable directories, limits, Unicode).
+

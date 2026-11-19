@@ -259,48 +259,48 @@
 Overall Coverage: 68% (7130 statements, 2248 missed)
 
 High Coverage Modules (≥80%):
-├── camfrog_autodj/__init__.py          100%
-├── camfrog_autodj/exceptions.py        100%
-├── camfrog_autodj/models.py            100%
-├── camfrog_autodj/textutil.py          100%
-├── camfrog_autodj/messages.py          100%
-├── camfrog_autodj/visuals.py           99%
-├── camfrog_autodj/config.py            99%
-├── camfrog_autodj/playqueue.py         98%
-├── camfrog_autodj/logging_json.py      97%
-├── camfrog_autodj/clipkeys.py          100%
-├── camfrog_autodj/base.py              100%
-├── camfrog_autodj/webhook/models.py    100%
-├── camfrog_autodj/webhook/__init__.py  100%
-├── camfrog_autodj/playlist.py          84%
-├── camfrog_autodj/migrate.py           85%
-├── camfrog_autodj/config_watcher.py    85%
-├── camfrog_autodj/renderer.py          85%
-├── camfrog_autodj/gui.py               85%
-├── camfrog_autodj/camfrog_font.py      82%
-├── camfrog_autodj/paths.py             89%
-├── camfrog_autodj/webhook/auth.py      91%
-├── camfrog_autodj/discover.py          78%
-├── camfrog_autodj/doctor.py            74%
-├── camfrog_autodj/tts.py               74%
-├── camfrog_autodj/library.py           71%
-├── camfrog_autodj/player.py            69%
-├── camfrog_autodj/webchat.py           69%
-├── camfrog_autodj/launcher.py          69%
-├── camfrog_autodj/commands.py          63%
-├── camfrog_autodj/engine.py            64%
-├── camfrog_autodj/webhook/server.py    65%
+├── autodj/__init__.py          100%
+├── autodj/exceptions.py        100%
+├── autodj/models.py            100%
+├── autodj/textutil.py          100%
+├── autodj/messages.py          100%
+├── autodj/visuals.py           99%
+├── autodj/config.py            99%
+├── autodj/playqueue.py         98%
+├── autodj/logging_json.py      97%
+├── autodj/clipkeys.py          100%
+├── autodj/base.py              100%
+├── autodj/webhook/models.py    100%
+├── autodj/webhook/__init__.py  100%
+├── autodj/playlist.py          84%
+├── autodj/migrate.py           85%
+├── autodj/config_watcher.py    85%
+├── autodj/renderer.py          85%
+├── autodj/gui.py               85%
+├── autodj/camfrog_font.py      82%
+├── autodj/paths.py             89%
+├── autodj/webhook/auth.py      91%
+├── autodj/discover.py          78%
+├── autodj/doctor.py            74%
+├── autodj/tts.py               74%
+├── autodj/library.py           71%
+├── autodj/player.py            69%
+├── autodj/webchat.py           69%
+├── autodj/launcher.py          69%
+├── autodj/commands.py          63%
+├── autodj/engine.py            64%
+├── autodj/webhook/server.py    65%
 
 Low Coverage Modules (platform-specific/integration-heavy):
-├── camfrog_autodj/adapters/uia.py      15%  (Windows UIA only)
-├── camfrog_autodj/adapters/console.py  0%   (integration)
-├── camfrog_autodj/adapters/logtail.py  0%   (integration)
-├── camfrog_autodj/adapters/__init__.py 34%  (dispatcher)
-├── camfrog_autodj/windows.py           46%  (Windows only)
-├── camfrog_autodj/winmsg.py            24%  (Windows only)
-├── camfrog_autodj/plugins/manager.py   36%  (plugin system)
-├── camfrog_autodj/plugins/base.py      54%  (base classes)
-├── camfrog_autodj/plugins/builtin/*.py 0%   (builtin plugins)
+├── autodj/adapters/uia.py      15%  (Windows UIA only)
+├── autodj/adapters/console.py  0%   (integration)
+├── autodj/adapters/logtail.py  0%   (integration)
+├── autodj/adapters/__init__.py 34%  (dispatcher)
+├── autodj/windows.py           46%  (Windows only)
+├── autodj/winmsg.py            24%  (Windows only)
+├── autodj/plugins/manager.py   36%  (plugin system)
+├── autodj/plugins/base.py      54%  (base classes)
+├── autodj/plugins/builtin/*.py 0%   (builtin plugins)
 ```
 
 *Note: Low coverage in platform-specific adapters and builtin plugins is expected — these are integration points tested manually on Windows.*
@@ -328,10 +328,10 @@ Low Coverage Modules (platform-specific/integration-heavy):
 
 ### CLI Help & Version
 ```
-$ python -m camfrog_autodj --version
+$ python -m autodj --version
 AutoDJ 0.3.0
 
-$ python -m camfrog_autodj --help
+$ python -m autodj --help
 (shows all options correctly)
 ```
 

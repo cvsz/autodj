@@ -14,12 +14,12 @@
 
 | Requirement | Implementation Evidence | Test / Audit Evidence | Status |
 |---|---|---|---|
-| Audio Fade-In/Out Transitions | `camfrog_autodj/player.py` | `tests/test_v030_fixes.py` | `COMPLETED_VERIFIED` |
-| Dynamic Loudness Normalization | `camfrog_autodj/player.py` | `tests/test_v030_fixes.py` | `COMPLETED_VERIFIED` |
-| YouTube Auth & Cookie Masking | `camfrog_autodj/library.py` | `tests/test_v030_fixes.py` | `COMPLETED_VERIFIED` |
-| Dynamic Vote-Skip Thresholds | `camfrog_autodj/commands.py` | `tests/test_v030_fixes.py` | `COMPLETED_VERIFIED` |
-| Anti-Spam Sliding-Window Cooldowns | `camfrog_autodj/commands.py` | `tests/test_v030_fixes.py` | `COMPLETED_VERIFIED` |
-| Windows Hi-DPI & GUI Modernization | `camfrog_autodj/gui/` | `tests/test_gui_*.py` | `COMPLETED_VERIFIED` |
+| Audio Fade-In/Out Transitions | `autodj/player.py` | `tests/test_v030_fixes.py` | `COMPLETED_VERIFIED` |
+| Dynamic Loudness Normalization | `autodj/player.py` | `tests/test_v030_fixes.py` | `COMPLETED_VERIFIED` |
+| YouTube Auth & Cookie Masking | `autodj/library.py` | `tests/test_v030_fixes.py` | `COMPLETED_VERIFIED` |
+| Dynamic Vote-Skip Thresholds | `autodj/commands.py` | `tests/test_v030_fixes.py` | `COMPLETED_VERIFIED` |
+| Anti-Spam Sliding-Window Cooldowns | `autodj/commands.py` | `tests/test_v030_fixes.py` | `COMPLETED_VERIFIED` |
+| Windows Hi-DPI & GUI Modernization | `autodj/gui/` | `tests/test_gui_*.py` | `COMPLETED_VERIFIED` |
 | Version Consistency Across Codebase | `pyproject.toml`, `version_info.txt`, `installer.nsi` | `tests/test_version_and_release.py` | `COMPLETED_VERIFIED` |
 | Regression Test Suite Passing | 144 unit/integration tests | `pytest` 144 passed in 3.62s | `COMPLETED_VERIFIED` |
 | PR Governance & Two-Party Sign-Off | PR #54 approved by `policedbc`, merged by `cvsz` | GitHub PR API & Checks | `COMPLETED_VERIFIED` |
@@ -40,3 +40,4 @@ FINAL CLASSIFICATION: RELEASE_ACCEPTED
 ================================================================================
 ```
 The official `v0.2.6` release is published, the tag resolves to the exact verified source commit, all binary and metadata assets are downloadable, SHA-256 digests match exactly, all SLSA provenance attestations pass verification, and governance gates are fully satisfied.
+

@@ -202,11 +202,11 @@ This report documents the complete enterprise engineering audit and validation c
 
 | Check | Command | Exit Code | Result |
 |-------|---------|-----------|--------|
-| Python compile | `python -m compileall -q camfrog_autodj tests tools` | 0 | All compile |
+| Python compile | `python -m compileall -q autodj tests tools` | 0 | All compile |
 | pytest | `python -m pytest -q -p no:faulthandler -p no:cacheprovider` | 0 | **336 passed, 3 subtests** |
-| Ruff lint | `ruff check camfrog_autodj tests tools` | 0 | **All checks passed** |
-| Ruff format | `ruff format --check camfrog_autodj tests tools` | 0 | **212 files already formatted** |
-| mypy | `mypy camfrog_autodj` | 0 | **Success (ignore_missing_imports=true)** |
+| Ruff lint | `ruff check autodj tests tools` | 0 | **All checks passed** |
+| Ruff format | `ruff format --check autodj tests tools` | 0 | **212 files already formatted** |
+| mypy | `mypy autodj` | 0 | **Success (ignore_missing_imports=true)** |
 | ShellCheck | `shellcheck scripts/*.sh tools/*.sh` | 0 | Style notes only (SC2181, SC2034) |
 | Secret scan | `git ls-files | grep -E '(\.env\|id_rsa\|.*\.pem\|.*\.key$)'` | 0 | No secrets tracked |
 | GPG verify | `git verify-commit HEAD` | 0 | Good signature (cvsz) |
@@ -434,11 +434,11 @@ source .venv/bin/activate
 pip install -e .[dev,build]
 
 # Validation
-python -m compileall -q camfrog_autodj tests tools
+python -m compileall -q autodj tests tools
 python -m pytest -q -p no:faulthandler -p no:cacheprovider
-ruff check camfrog_autodj tests tools
-ruff format --check camfrog_autodj tests tools
-mypy camfrog_autodj
+ruff check autodj tests tools
+ruff format --check autodj tests tools
+mypy autodj
 shellcheck scripts/*.sh tools/*.sh
 
 # Security

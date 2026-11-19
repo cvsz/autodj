@@ -35,11 +35,11 @@ jobs:
 
       - name: Lint (ruff)
         run: |
-          ruff check camfrog_autodj tests tools
-          ruff format --check camfrog_autodj tests tools
+          ruff check autodj tests tools
+          ruff format --check autodj tests tools
 
       - name: Typecheck (mypy)
-        run: mypy camfrog_autodj
+        run: mypy autodj
 
       - name: Install Linux GUI test dependencies
         if: runner.os == 'Linux'
@@ -52,3 +52,4 @@ jobs:
       - name: Run tests on Windows
         if: runner.os == 'Windows'
         run: python -m pytest -q -p no:faulthandler -p no:cacheprovider
+

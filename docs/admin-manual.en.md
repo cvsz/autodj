@@ -359,7 +359,7 @@ status_alert_enabled = true
 
 ```toml
 welcome_message_enabled = true     # greet every user who enters the room
-welcome_message_message = "สวัสดีครับคุณ {user} ยินดีต้อนรับเข้าห้องครับ"   # {user}, {room}
+welcome_message_message = "ยินดีต้อนรับ {user} เข้าสู่ {room} สถานีเพลง อัตโนมัติ 24/7 ชั่วโมง"   # {user}, {room}
 welcome_message_cooldown = 3600.0   # seconds between greetings for the same user (1 hour)
 join_line_regex = '...'             # room "X has joined" notice, must contain (?P<user>...); "" = greet on first message
 ```

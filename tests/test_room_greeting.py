@@ -4,8 +4,8 @@ import threading
 
 from test_core import make, out
 
-from camfrog_autodj.adapters.base import ChatMessage, compile_join_rx, parse_join
-from camfrog_autodj.config import Config
+from autodj.adapters.base import ChatMessage, compile_join_rx, parse_join
+from autodj.config import Config
 
 
 def _join(user: str) -> ChatMessage:

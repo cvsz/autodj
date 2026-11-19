@@ -34,8 +34,8 @@
 ### Task 1: Core Type System & Protocols
 
 **Files:**
-- Create: `camfrog_autodj/protocols.py`
-- Modify: `camfrog_autodj/__init__.py:1-50`
+- Create: `autodj/protocols.py`
+- Modify: `autodj/__init__.py:1-50`
 - Test: `tests/test_protocols.py`
 
 **Interfaces:**
@@ -46,18 +46,18 @@
 
 ```python
 def test_chat_adapter_protocol():
-    from camfrog_autodj.protocols import ChatAdapter
+    from autodj.protocols import ChatAdapter
     # Verify base classes implement protocol
-    from camfrog_autodj.adapters.uia import UiaAdapter
-    from camfrog_autodj.adapters.console import ConsoleAdapter
-    from camfrog_autodj.adapters.logtail import LogTailAdapter
-    from camfrog_autodj.adapters import NullAdapter
+    from autodj.adapters.uia import UiaAdapter
+    from autodj.adapters.console import ConsoleAdapter
+    from autodj.adapters.logtail import LogTailAdapter
+    from autodj.adapters import NullAdapter
     for cls in (UiaAdapter, ConsoleAdapter, LogTailAdapter, NullAdapter):
         assert issubclass(cls, ChatAdapter)
 
 def test_player_protocol():
-    from camfrog_autodj.protocols import Player
-    from camfrog_autodj.player import MpvPlayer
+    from autodj.protocols import Player
+    from autodj.player import MpvPlayer
     assert issubclass(MpvPlayer, Player)
 ```
 
@@ -66,7 +66,7 @@ def test_player_protocol():
 Run: `pytest tests/test_protocols.py -v`
 Expected: FAIL - protocols.py doesn't exist
 
-- [ ] **Step 3: Create `camfrog_autodj/protocols.py` with Protocol definitions**
+- [ ] **Step 3: Create `autodj/protocols.py` with Protocol definitions**
 
 ```python
 from __future__ import annotations
@@ -125,7 +125,7 @@ __all__ = [..., "ChatAdapter", "Player", "PlaylistStore", "LocalIndex", "Rendere
 - [ ] **Step 6: Commit**
 
 ```bash
-git add camfrog_autodj/protocols.py camfrog_autodj/__init__.py tests/test_protocols.py
+git add autodj/protocols.py autodj/__init__.py tests/test_protocols.py
 git commit -m "feat: add Protocol interfaces for core abstractions"
 ```
 
@@ -134,8 +134,8 @@ git commit -m "feat: add Protocol interfaces for core abstractions"
 ### Task 2: Structured Exception Hierarchy Enhancement
 
 **Files:**
-- Modify: `camfrog_autodj/exceptions.py:1-333`
-- Create: `camfrog_autodj/exceptions/context.py`
+- Modify: `autodj/exceptions.py:1-333`
+- Create: `autodj/exceptions/context.py`
 - Test: `tests/test_exceptions.py`
 
 **Interfaces:**
@@ -146,14 +146,14 @@ git commit -m "feat: add Protocol interfaces for core abstractions"
 
 ```python
 def test_exception_context_serialization():
-    from camfrog_autodj.exceptions import PlayerHungError
+    from autodj.exceptions import PlayerHungError
     exc = PlayerHungError("track hung", details="mpv timeout", context={"source": "yt", "duration": 300})
     assert exc.code == "player.hung"
     assert exc.context["source"] == "yt"
     assert exc.to_dict() == {"code": "...", "message": "...", "details": "...", "context": {...}}
 
 def test_exception_recovery_hints():
-    from camfrog_autodj.exceptions import ConfigValidationError
+    from autodj.exceptions import ConfigValidationError
     exc = ConfigValidationError("bad value", field="volume")
     assert exc.recovery_hint == "Set volume to 0-100 in config.toml"
 ```
@@ -200,7 +200,7 @@ Expected: PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-git add camfrog_autodj/exceptions.py tests/test_exceptions.py
+git add autodj/exceptions.py tests/test_exceptions.py
 git commit -m "feat: enhance exception hierarchy with serialization and recovery hints"
 ```
 
@@ -209,13 +209,13 @@ git commit -m "feat: enhance exception hierarchy with serialization and recovery
 ### Task 3: Engine Modularization — Split into Focused Modules
 
 **Files:**
-- Create: `camfrog_autodj/engine/player_loop.py`
-- Create: `camfrog_autodj/engine/chat_loop.py`
-- Create: `camfrog_autodj/engine/queue_manager.py`
-- Create: `camfrog_autodj/engine/autoplay_manager.py`
-- Create: `camfrog_autodj/engine/health.py`
-- Create: `camfrog_autodj/engine/__init__.py`
-- Modify: `camfrog_autodj/engine.py` (refactor to delegate)
+- Create: `autodj/engine/player_loop.py`
+- Create: `autodj/engine/chat_loop.py`
+- Create: `autodj/engine/queue_manager.py`
+- Create: `autodj/engine/autoplay_manager.py`
+- Create: `autodj/engine/health.py`
+- Create: `autodj/engine/__init__.py`
+- Modify: `autodj/engine.py` (refactor to delegate)
 - Test: `tests/test_engine_modular.py`
 
 **Interfaces:**
@@ -226,12 +226,12 @@ git commit -m "feat: enhance exception hierarchy with serialization and recovery
 
 ```python
 def test_player_loop_isolated():
-    from camfrog_autodj.engine.player_loop import PlayerLoop
+    from autodj.engine.player_loop import PlayerLoop
     loop = PlayerLoop(...)
     # Test single track playback logic in isolation
 
 def test_chat_loop_isolated():
-    from camfrog_autodj.engine.chat_loop import ChatLoop
+    from autodj.engine.chat_loop import ChatLoop
     loop = ChatLoop(...)
     # Test message handling in isolation
 ```
@@ -285,7 +285,7 @@ Expected: PASS
 - [ ] **Step 10: Commit**
 
 ```bash
-git add camfrog_autodj/engine/ camfrog_autodj/engine.py tests/test_engine_modular.py
+git add autodj/engine/ autodj/engine.py tests/test_engine_modular.py
 git commit -m "refactor: split Engine into modular components (player_loop, chat_loop, queue_manager, autoplay_manager, health)"
 ```
 
@@ -294,15 +294,15 @@ git commit -m "refactor: split Engine into modular components (player_loop, chat
 ### Task 4: GUI Modularization — Split into Focused Modules
 
 **Files:**
-- Create: `camfrog_autodj/gui/now_playing.py`
-- Create: `camfrog_autodj/gui/queue_panel.py`
-- Create: `camfrog_autodj/gui/history_panel.py`
-- Create: `camfrog_autodj/gui/chat_panel.py`
-- Create: `camfrog_autodj/gui/im_panel.py`
-- Create: `camfrog_autodj/gui/settings_dialog.py`
-- Create: `camfrog_autodj/gui/animations.py`
-- Create: `camfrog_autodj/gui/__init__.py`
-- Modify: `camfrog_autodj/gui.py` (refactor to delegate)
+- Create: `autodj/gui/now_playing.py`
+- Create: `autodj/gui/queue_panel.py`
+- Create: `autodj/gui/history_panel.py`
+- Create: `autodj/gui/chat_panel.py`
+- Create: `autodj/gui/im_panel.py`
+- Create: `autodj/gui/settings_dialog.py`
+- Create: `autodj/gui/animations.py`
+- Create: `autodj/gui/__init__.py`
+- Modify: `autodj/gui.py` (refactor to delegate)
 - Test: `tests/test_gui_modular.py`
 
 **Interfaces:**
@@ -313,7 +313,7 @@ git commit -m "refactor: split Engine into modular components (player_loop, chat
 
 ```python
 def test_now_playing_widget():
-    from camfrog_autodj.gui.now_playing import NowPlayingWidget
+    from autodj.gui.now_playing import NowPlayingWidget
     widget = NowPlayingWidget(...)
     widget.update(track, position, paused)
     # Verify rendering
@@ -374,7 +374,7 @@ Expected: PASS
 - [ ] **Step 12: Commit**
 
 ```bash
-git add camfrog_autodj/gui/ camfrog_autodj/gui.py tests/test_gui_modular.py
+git add autodj/gui/ autodj/gui.py tests/test_gui_modular.py
 git commit -m "refactor: split GUI into modular widgets (now_playing, queue_panel, history_panel, chat_panel, im_panel, settings_dialog, animations)"
 ```
 
@@ -383,9 +383,9 @@ git commit -m "refactor: split GUI into modular widgets (now_playing, queue_pane
 ### Task 5: Enhanced Observability — Structured Logging & Metrics
 
 **Files:**
-- Create: `camfrog_autodj/observability.py`
-- Create: `camfrog_autodj/metrics.py`
-- Modify: `camfrog_autodj/engine.py` (integrate metrics)
+- Create: `autodj/observability.py`
+- Create: `autodj/metrics.py`
+- Modify: `autodj/engine.py` (integrate metrics)
 - Test: `tests/test_observability.py`
 
 **Interfaces:**
@@ -396,13 +396,13 @@ git commit -m "refactor: split GUI into modular widgets (now_playing, queue_pane
 
 ```python
 def test_structured_logging():
-    from camfrog_autodj.observability import StructuredLogger
+    from autodj.observability import StructuredLogger
     logger = StructuredLogger("test")
     logger.info("track_played", track_id="123", duration=180.5, source="youtube")
     # Verify JSON output
 
 def test_metrics_collection():
-    from camfrog_autodj.metrics import MetricsCollector
+    from autodj.metrics import MetricsCollector
     m = MetricsCollector()
     m.increment("tracks_played")
     m.histogram("track_duration", 180.5)
@@ -490,7 +490,7 @@ Expected: PASS
 - [ ] **Step 8: Commit**
 
 ```bash
-git add camfrog_autodj/observability.py camfrog_autodj/metrics.py camfrog_autodj/engine.py tests/test_observability.py
+git add autodj/observability.py autodj/metrics.py autodj/engine.py tests/test_observability.py
 git commit -m "feat: add structured logging and metrics collection"
 ```
 
@@ -499,8 +499,8 @@ git commit -m "feat: add structured logging and metrics collection"
 ### Task 6: Performance Optimization — IPC Connection Pool & Caching
 
 **Files:**
-- Modify: `camfrog_autodj/player.py:1-497`
-- Modify: `camfrog_autodj/engine.py` (position caching)
+- Modify: `autodj/player.py:1-497`
+- Modify: `autodj/engine.py` (position caching)
 - Test: `tests/test_performance.py`
 
 **Interfaces:**
@@ -511,12 +511,12 @@ git commit -m "feat: add structured logging and metrics collection"
 
 ```python
 def test_ipc_connection_reuse():
-    from camfrog_autodj.player import MpvPlayer
+    from autodj.player import MpvPlayer
     # Verify connections are pooled and reused
     # Measure syscall reduction
 
 def test_position_cache_hit_rate():
-    from camfrog_autodj.engine import Engine
+    from autodj.engine import Engine
     # Verify cache hits reduce IPC calls by >80%
 ```
 
@@ -573,7 +573,7 @@ Expected: PASS
 - [ ] **Step 7: Commit**
 
 ```bash
-git add camfrog_autodj/player.py camfrog_autodj/engine.py tests/test_performance.py
+git add autodj/player.py autodj/engine.py tests/test_performance.py
 git commit -m "perf: optimize IPC connection pooling and position caching"
 ```
 
@@ -582,8 +582,8 @@ git commit -m "perf: optimize IPC connection pooling and position caching"
 ### Task 7: Configuration System Hardening
 
 **Files:**
-- Modify: `camfrog_autodj/config.py:1-394`
-- Create: `camfrog_autodj/config/schema.py`
+- Modify: `autodj/config.py:1-394`
+- Create: `autodj/config/schema.py`
 - Test: `tests/test_config_hardening.py`
 
 **Interfaces:**
@@ -594,13 +594,13 @@ git commit -m "perf: optimize IPC connection pooling and position caching"
 
 ```python
 def test_schema_validation():
-    from camfrog_autodj.config.schema import ConfigSchema
+    from autodj.config.schema import ConfigSchema
     schema = ConfigSchema()
     # Valid config passes
     # Invalid config raises ConfigValidationError with field path
 
 def test_config_migration():
-    from camfrog_autodj.config import migrate_config
+    from autodj.config import migrate_config
     # Old config v1 -> v2 migration works
     # Invalid migrations are rejected
 ```
@@ -646,7 +646,7 @@ Expected: PASS
 - [ ] **Step 7: Commit**
 
 ```bash
-git add camfrog_autodj/config.py camfrog_autodj/config/schema.py tests/test_config_hardening.py
+git add autodj/config.py autodj/config/schema.py tests/test_config_hardening.py
 git commit -m "feat: add schema-driven config validation and migration framework"
 ```
 
@@ -655,9 +655,9 @@ git commit -m "feat: add schema-driven config validation and migration framework
 ### Task 8: Security Hardening — Input Validation & Rate Limiting
 
 **Files:**
-- Modify: `camfrog_autodj/commands.py:1-658`
-- Modify: `camfrog_autodj/engine.py` (rate limiting)
-- Create: `camfrog_autodj/security.py`
+- Modify: `autodj/commands.py:1-658`
+- Modify: `autodj/engine.py` (rate limiting)
+- Create: `autodj/security.py`
 - Test: `tests/test_security.py`
 
 **Interfaces:**
@@ -668,11 +668,11 @@ git commit -m "feat: add schema-driven config validation and migration framework
 
 ```python
 def test_command_injection_prevention():
-    from camfrog_autodj.commands import Router
+    from autodj.commands import Router
     # Verify no shell injection via track titles, user input
 
 def test_rate_limiting_enforcement():
-    from camfrog_autodj.security import RateLimiter
+    from autodj.security import RateLimiter
     # Verify per-user, per-command, global limits
 ```
 
@@ -722,7 +722,7 @@ Expected: PASS
 - [ ] **Step 7: Commit**
 
 ```bash
-git add camfrog_autodj/security.py camfrog_autodj/commands.py camfrog_autodj/engine.py tests/test_security.py
+git add autodj/security.py autodj/commands.py autodj/engine.py tests/test_security.py
 git commit -m "feat: security hardening - input validation, rate limiting, audit logging"
 ```
 
@@ -777,7 +777,7 @@ def test_concurrent_gui_updates():
 
 - [ ] **Step 4: Run tests and measure coverage**
 
-Run: `pytest tests/ -v --cov=camfrog_autodj --cov-report=term-missing`
+Run: `pytest tests/ -v --cov=autodj --cov-report=term-missing`
 Expected: >90% coverage
 
 - [ ] **Step 5: Commit**
@@ -854,9 +854,9 @@ Expected: PASS
 
 ```bash
 python -m pytest -q -p no:faulthandler -p no:cacheprovider
-ruff check camfrog_autodj tests tools
-ruff format --check camfrog_autodj tests tools
-mypy camfrog_autodj
+ruff check autodj tests tools
+ruff format --check autodj tests tools
+mypy autodj
 shellcheck scripts/*.sh tools/*.sh
 ```
 

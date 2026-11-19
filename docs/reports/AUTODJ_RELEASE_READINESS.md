@@ -70,7 +70,7 @@ All 12 checks passing:
 - All commits on the remediation branch are GPG signed
 
 ### Version Consistency
-`tests/test_version_and_release.py::test_versions_agree` passes — `pyproject.toml`, `camfrog_autodj/__init__.py`, and `version_info.txt` all declare version `0.2.6`.
+`tests/test_version_and_release.py::test_versions_agree` passes — `pyproject.toml`, `autodj/__init__.py`, and `version_info.txt` all declare version `0.2.6`.
 
 ---
 
@@ -130,3 +130,4 @@ If a release candidate is created and issues are discovered:
 The repository is conditionally ready for a release candidate. All code-level remediation is complete, all tests pass, all CI checks pass, and Git governance was followed correctly. The remaining blockers are external: code-signing certificate, repository security settings verification, and Windows build execution. These do not block code readiness but are required for a trustworthy public release.
 
 **This is NOT a declaration of production readiness.** Production readiness requires deployment verification, backup/restore drills, load testing, and incident response validation — none of which have been performed.
+

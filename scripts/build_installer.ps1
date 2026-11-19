@@ -89,7 +89,7 @@ foreach ($file in $requiredFiles) {
 }
 
 # Check for optional directories
-$optionalDirs = @("camfrog_autodj", "docs", "tools", "tests")
+$optionalDirs = @("autodj", "docs", "tools", "tests")
 foreach ($dir in $optionalDirs) {
     $path = Join-Path (Get-Location) $dir
     if (Test-Path $path) {

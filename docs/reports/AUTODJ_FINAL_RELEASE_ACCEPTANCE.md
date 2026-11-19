@@ -22,7 +22,7 @@ AutoDJ has undergone comprehensive P1 remediation (all 5 findings fixed and veri
 |------|-------|--------|
 | HEAD commit | `12f0d69545185df9b662bd945f6b3edbd82dd872` | VERIFIED |
 | origin/main | `12f0d69545185df9b662bd945f6b3edbd82dd872` | SYNCED |
-| Working tree | Clean (uncommitted GUI fix in `camfrog_autodj/gui.py`) | — |
+| Working tree | Clean (uncommitted GUI fix in `autodj/gui.py`) | — |
 | Merge PR #86 | MERGED, Review: APPROVED | VERIFIED |
 | GPG signature (commit `e105ab8`) | `G` = good | VERIFIED |
 | GPG signature (merge commits) | `E` = GitHub server-signed | VERIFIED |
@@ -268,3 +268,4 @@ If a release candidate is created and issues are discovered:
 **The Windows Qualification Kit is complete and ready to execute on a Windows host.** All scripts, documentation, and evidence schemas are in place. Once the three external blockers are resolved, the kit can be executed to produce verifiable evidence for production qualification.
 
 **No release was created or published. No tag was created or modified.**
+

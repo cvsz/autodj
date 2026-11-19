@@ -32,19 +32,19 @@ def run_cmd(cmd, **kwargs):
 def lint():
     """Run ruff or fallback to py_compile."""
     if has_module("ruff") or has_command("ruff"):
-        run_cmd([sys.executable, "-m", "ruff", "check", "camfrog_autodj", "tests", "tools"])
+        run_cmd([sys.executable, "-m", "ruff", "check", "autodj", "tests", "tools"])
     else:
         print(
             "ruff not installed -- falling back to py_compile (pip install ruff for real linting)"
         )
-        [py_compile.compile(f) for f in glob.glob("camfrog_autodj/**/*.py", recursive=True)]
+        [py_compile.compile(f) for f in glob.glob("autodj/**/*.py", recursive=True)]
 
 
 def lint_src():
     """Run ruff on source + tools only."""
     if has_module("ruff") or has_command("ruff"):
         result = run_cmd(
-            [sys.executable, "-m", "ruff", "check", "camfrog_autodj", "tools"], capture_output=True
+            [sys.executable, "-m", "ruff", "check", "autodj", "tools"], capture_output=True
         )
         if result.returncode != 0:
             print("NOTE: pre-existing ruff warnings (defensive patterns)")
@@ -52,7 +52,7 @@ def lint_src():
         print(
             "ruff not installed -- falling back to py_compile (pip install ruff for real linting)"
         )
-        [py_compile.compile(f) for f in glob.glob("camfrog_autodj/**/*.py", recursive=True)]
+        [py_compile.compile(f) for f in glob.glob("autodj/**/*.py", recursive=True)]
 
 
 def fmt():
@@ -60,11 +60,9 @@ def fmt():
     for cmd in ["ruff", "black"]:
         if has_command(cmd) or (cmd == "ruff" and has_module("ruff")):
             if cmd == "ruff":
-                run_cmd(
-                    [sys.executable, "-m", "ruff", "format", "camfrog_autodj", "tests", "tools"]
-                )
+                run_cmd([sys.executable, "-m", "ruff", "format", "autodj", "tests", "tools"])
             else:
-                run_cmd([cmd, "camfrog_autodj", "tests", "tools"])
+                run_cmd([cmd, "autodj", "tests", "tools"])
             return
     print("no formatter installed (pip install ruff or black)")
 
@@ -72,9 +70,7 @@ def fmt():
 def fmt_check():
     """Check formatting with ruff."""
     if has_command("ruff") or has_module("ruff"):
-        run_cmd(
-            [sys.executable, "-m", "ruff", "format", "--check", "camfrog_autodj", "tests", "tools"]
-        )
+        run_cmd([sys.executable, "-m", "ruff", "format", "--check", "autodj", "tests", "tools"])
     else:
         print("ruff not installed -- skipping format check (pip install ruff)")
 
@@ -82,7 +78,7 @@ def fmt_check():
 def typecheck():
     """Type-check with mypy."""
     if has_module("mypy"):
-        run_cmd([sys.executable, "-m", "mypy", "camfrog_autodj"])
+        run_cmd([sys.executable, "-m", "mypy", "autodj"])
     else:
         print("mypy not installed (pip install mypy)")
 

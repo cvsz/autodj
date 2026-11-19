@@ -38,17 +38,17 @@ None found.
 
 | ID | Severity | File | Finding | Impact | Recommendation |
 |----|----------|------|---------|--------|----------------|
-| S-01 | P2 | `camfrog_autodj/commands.py:31-32` | Admin authorization is nickname-based only (`msg.user.lower() in self.e.admins`). Camfrog UI Automation exposes display nicks, not cryptographic identities. | Anyone who can display the same nick (look-alike Unicode, nick freed by disconnect) gains admin rights. | Document clearly (already in AUDIT.md O1 and README caveats). Keep `admins` list short. Use unique nicks. |
-| S-02 | P2 | `camfrog_autodj/build.ps1` | Copies live `config.toml` into `dist\` directory. | If `dist\` is shared, admin nicks and other settings are exposed. | Already documented in AUDIT.md O7 and README. Use `AUTODJ_PFX_PASSWORD` env var instead of `-Password`. |
-| S-03 | P2 | `camfrog_autodj/player.py:90-94` | mpv IPC pipe name is predictable: `\\.\pipe\camfrog-autodj-{pid}-{n}`. | Any local process of the same user could send IPC commands to mpv (pause, seek, volume). | Low risk on a personal PC (already documented as O9 in AUDIT.md). |
+| S-01 | P2 | `autodj/commands.py:31-32` | Admin authorization is nickname-based only (`msg.user.lower() in self.e.admins`). Camfrog UI Automation exposes display nicks, not cryptographic identities. | Anyone who can display the same nick (look-alike Unicode, nick freed by disconnect) gains admin rights. | Document clearly (already in AUDIT.md O1 and README caveats). Keep `admins` list short. Use unique nicks. |
+| S-02 | P2 | `autodj/build.ps1` | Copies live `config.toml` into `dist\` directory. | If `dist\` is shared, admin nicks and other settings are exposed. | Already documented in AUDIT.md O7 and README. Use `AUTODJ_PFX_PASSWORD` env var instead of `-Password`. |
+| S-03 | P2 | `autodj/player.py:90-94` | mpv IPC pipe name is predictable: `\\.\pipe\camfrog-autodj-{pid}-{n}`. | Any local process of the same user could send IPC commands to mpv (pause, seek, volume). | Low risk on a personal PC (already documented as O9 in AUDIT.md). |
 
 ### P3 — Optional security improvements
 
 | ID | Severity | File | Finding | Recommendation |
 |----|----------|------|---------|----------------|
-| S-04 | P3 | `camfrog_autodj/adapters/uia.py` | UIA reader walks ~600 child controls twice a second (CPU). | Already documented as O2. `poll_interval` is the knob (default 0.5s). |
-| S-05 | P3 | `camfrog_autodj/engine.py` | `_auto_reply_loop` sends messages even when adapter is `NullAdapter`. | Acceptable — `NullAdapter.send()` is a no-op, messages are silently dropped. |
-| S-06 | P3 | `camfrog_autodj/commands.py` | IM commands bypass the prefix requirement but still apply cooldown/rate limits. | Intentional design. Cooldown/rate limits provide basic abuse protection. |
+| S-04 | P3 | `autodj/adapters/uia.py` | UIA reader walks ~600 child controls twice a second (CPU). | Already documented as O2. `poll_interval` is the knob (default 0.5s). |
+| S-05 | P3 | `autodj/engine.py` | `_auto_reply_loop` sends messages even when adapter is `NullAdapter`. | Acceptable — `NullAdapter.send()` is a no-op, messages are silently dropped. |
+| S-06 | P3 | `autodj/commands.py` | IM commands bypass the prefix requirement but still apply cooldown/rate limits. | Intentional design. Cooldown/rate limits provide basic abuse protection. |
 
 ## Authentication / Authorization analysis
 
@@ -126,3 +126,4 @@ blocked: set of lowercase nicks whose commands are ignored silently
 - Real mpv (IPC pipe predictability cannot be tested without it)
 - Windows-only code paths (UIA, winmsg, launcher, tts)
 - Build/sign process (`build.ps1`)
+

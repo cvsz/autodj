@@ -22,10 +22,10 @@ Camfrog live runtime acceptance testing cannot be performed in this environment.
 
 | Adapter | Transport | Platform | File |
 |---------|-----------|----------|------|
-| `uia` | Windows UI Automation (pywinauto) | Windows only | `camfrog_autodj/adapters/uia.py` |
-| `webchat` | Embedded web view panes | Windows (via uia) | `camfrog_autodj/adapters/webchat.py` |
-| `console` | stdin/stdout | Cross-platform | `camfrog_autodj/adapters/__init__.py` |
-| `NullAdapter` | Silent fallback | Cross-platform | `camfrog_autodj/adapters/__init__.py` |
+| `uia` | Windows UI Automation (pywinauto) | Windows only | `autodj/adapters/uia.py` |
+| `webchat` | Embedded web view panes | Windows (via uia) | `autodj/adapters/webchat.py` |
+| `console` | stdin/stdout | Cross-platform | `autodj/adapters/__init__.py` |
+| `NullAdapter` | Silent fallback | Cross-platform | `autodj/adapters/__init__.py` |
 
 ### 2.2 Authentication / Identity
 
@@ -134,3 +134,4 @@ Camfrog live runtime acceptance testing cannot be performed in this environment.
 | Message echo misinterpreted as command | Medium | VERIFIED — `_is_echo()` with text normalization |
 | Rapid command flood | Medium | VERIFIED — cooldown + rate limiting |
 | Room disconnect mid-session | Medium | Code reviewed — reconnection logic exists but untested live |
+

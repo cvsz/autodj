@@ -42,7 +42,7 @@ class TestGenerateSpec:
             '"app.ico"',
             '"version_info.txt"',
             'collect_all("yt_dlp")',
-            'collect_submodules("camfrog_autodj")',
+            'collect_submodules("autodj")',
             'collect_submodules("pywinauto")',
             'collect_submodules("pyttsx3")',
             '"comtypes"',

@@ -1,6 +1,6 @@
 """Test that discover.py config parsing is robust."""
 
-from camfrog_autodj.discover import update_config_text
+from autodj.discover import update_config_text
 
 
 def test_update_config_text_unquoted_value():

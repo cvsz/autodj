@@ -17,27 +17,27 @@ All 140 unit and integration tests are passing cleanly on Python 3.14 / 3.11 / 3
 
 ## 2. Current Architecture & Component Inspection
 
-### 2.1 Core Runtime & Engine (`camfrog_autodj/engine.py`)
+### 2.1 Core Runtime & Engine (`autodj/engine.py`)
 - **Queue & Playback Management:** `Queue` manages request queues (`requests`) and autoplay pools (`pool`). Playback loop (`_player_loop`) pops tracks and streams via `player.play()`.
 - **Dynamic Search Resolution (Added in PR #42):** Search-backed queries (`ytsearch1:...`) from playlist files are resolved asynchronously via lookahead preloading (`_preload_search_tracks`) and just-in-time in `_player_loop`.
 - **Concurrency & Threads:** Multi-threaded architecture utilizing daemon worker threads tracked in `self._threads` (`_sender`, `_player_loop`, `_load_all`, `_chat_loop`).
 
-### 2.2 Player Layer (`camfrog_autodj/player.py`)
+### 2.2 Player Layer (`autodj/player.py`)
 - Subprocesses `mpv` with IPC pipes / socket command interface.
 - Volume management: volume set via IPC property write `set_property volume`.
 - Missing capabilities: Audio fade-in / fade-out, crossfade, and automated dynamic audio normalization filters (`loudnorm` / `dynaudnorm`).
 
-### 2.3 Library & YouTube Integration (`camfrog_autodj/library.py`)
+### 2.3 Library & YouTube Integration (`autodj/library.py`)
 - Resolves queries via `yt-dlp` CLI subprocess (`--dump-single-json`, `--flat-playlist`).
 - Missing capabilities: YouTube cookies / authentication (`--cookies`, `--cookies-from-browser`).
 
-### 2.4 Camfrog Chat & Bot Automation (`camfrog_autodj/commands.py` & `adapters/uia.py`)
+### 2.4 Camfrog Chat & Bot Automation (`autodj/commands.py` & `adapters/uia.py`)
 - Windows UI Automation (`uia.py`) attaches to Camfrog Desktop room window, reads chat, and sends messages.
 - Command router implements `!play`, `!voteskip`, `!queue`, `!np`, `!last`, `!cooldown`.
 - Cooldown model: Single timestamp per user `now - last[who] < cooldown`.
 - Voteskip: Basic count against static threshold `len(votes) >= voteskip_threshold`. Dynamic quorum based on room count is absent.
 
-### 2.5 Desktop GUI (`camfrog_autodj/gui.py`)
+### 2.5 Desktop GUI (`autodj/gui.py`)
 - Modernized Tkinter application with custom dark canvas widgets (glow bars, confetti, tabbed views for Queue, History, Chat, and Settings).
 - Missing capabilities: In-GUI YouTube search & quick add, Light/Dark theme toggle.
 
@@ -69,3 +69,4 @@ All 140 unit and integration tests are passing cleanly on Python 3.14 / 3.11 / 3
 - **Verification Strategy:** Feature branches -> Local pytest -> GPG Commit -> PR -> policedbc review -> cvsz merge -> Tag `v0.2.5`.
 
 ---
+

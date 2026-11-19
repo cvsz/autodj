@@ -37,8 +37,8 @@ above remain explicit release gates and are not claimed as verified.
 
 | Feature | Evidence |
 |---|---|
-| zPlayer theme system (dark/neon/light), TkinterEP-inspired and GPL-safe | `camfrog_autodj/theme.py` (palettes, `shade()`, lazy Tk imports) |
-| Redesigned now-playing dashboard + Previous transport (`Engine.prev()`) | `camfrog_autodj/gui.py`, `camfrog_autodj/engine.py`, `messages.py` EN/TH labels |
+| zPlayer theme system (dark/neon/light), TkinterEP-inspired and GPL-safe | `autodj/theme.py` (palettes, `shade()`, lazy Tk imports) |
+| Redesigned now-playing dashboard + Previous transport (`Engine.prev()`) | `autodj/gui.py`, `autodj/engine.py`, `messages.py` EN/TH labels |
 | `ui_theme` and `welcome_message_delay` settings, validated and documented | `config.py` (`_CHOICES`, `_RANGES`, `validate_values`), `config.example.toml`, GUI Settings |
 | Live theme switching of the open window | `App._retheme`, `_colour_mapping`, `_recolor_tree`, `PillButton.set_palette` |
 | Actionable stale-install GUI import error; PyInstaller hidden imports for GUI + optional extras | `__main__.py`, `tools/generate_spec.py` |
@@ -82,17 +82,17 @@ evidence. No finding was silently dismissed.
 
 | Gate | Command | Result |
 |---|---|---|
-| Syntax | `python -m compileall -q camfrog_autodj tests tools` | **PASS** |
+| Syntax | `python -m compileall -q autodj tests tools` | **PASS** |
 | Tests | `python -m pytest -q -p no:faulthandler -p no:cacheprovider` | **PASS — 604 passed, 0 skipped, 3 subtests, 0 warnings** |
-| Lint | `python -m ruff check camfrog_autodj tests tools` | **PASS — 0 issues** |
-| Format | `python -m ruff format --check camfrog_autodj tests tools` | **PASS — 109 files** |
-| Types | `python -m mypy camfrog_autodj` | **PASS — 48 files, 0 issues** |
+| Lint | `python -m ruff check autodj tests tools` | **PASS — 0 issues** |
+| Format | `python -m ruff format --check autodj tests tools` | **PASS — 109 files** |
+| Types | `python -m mypy autodj` | **PASS — 48 files, 0 issues** |
 | Shell | `shellcheck` on all tracked `scripts/*.sh tools/*.sh` | **PASS — 0 issues** |
 | Build assembly | `python tools/generate_spec.py` | **PASS — AutoDJ.spec generated** |
 | Installer validation | `python tools/validate_installer.py` | **PASS** (optional mpv bundle absent → informational) |
 | Repository validation | `python scripts/validate_repo.py` | **PASS — structure and local Markdown links valid** |
 | Missing-deps / connection test | `tests/test_version_and_release.py`, `tests/test_version_consistency.py`, `tests/test_installer_version_substitution.py`, `tests/test_build_cross_platform.py`, `tests/test_linux_builder_cli.py` | **PASS — versions and build/env wiring consistent** |
-| Security scan | `python -m bandit -c pyproject.toml -r camfrog_autodj` | **PASS — 0 issues, 0 warnings** |
+| Security scan | `python -m bandit -c pyproject.toml -r autodj` | **PASS — 0 issues, 0 warnings** |
 
 Bandit metrics (the requested zero metrics, reproduced verbatim):
 
@@ -178,12 +178,12 @@ Everything is enterprise-ready to the level the local evidence supports; the two
 
 | Gate | Command | Result |
 |---|---|---|
-| Syntax | `python -m compileall -q camfrog_autodj tests tools` | ✅ OK |
+| Syntax | `python -m compileall -q autodj tests tools` | ✅ OK |
 | Unit + integration tests | `python -m pytest -q -p no:faulthandler -p no:cacheprovider -W error::DeprecationWarning` | ✅ **554 passed**, 1 skipped (Linux-only display check), 0 warnings |
 | New tests | `tests/test_now_playing.py` (9), `tests/test_updater_ai_hardening.py` (12), webhook hardening (5) | ✅ |
 | Lint | `ruff check .` | ✅ 0 |
-| Format | `ruff format --check camfrog_autodj tests tools scripts` | ✅ 0 (only Python snippets inside 7 Markdown docs are flagged) |
-| Types | `mypy camfrog_autodj` | ✅ 0 issues / 47 files |
+| Format | `ruff format --check autodj tests tools scripts` | ✅ 0 (only Python snippets inside 7 Markdown docs are flagged) |
+| Types | `mypy autodj` | ✅ 0 issues / 47 files |
 | Shell | `shellcheck` on all 12 tracked `*.sh` | ✅ 0 |
 | Build | `uv build` → wheel + sdist; clean venv install `[webhook,hotreload]` | ✅ imports `plugins.builtin`, `webhook.server`, `engine` |
 | Missing deps | `uv pip check` | ✅ all 22 packages compatible |
@@ -248,3 +248,4 @@ Validation (clean tree copy):
 - **IM auto-reply** posts the operator's fixed text to the room, because the adapter has no private send channel; IM content is never echoed.
 - **Step 5 (signed commit, PR, independent review, merge): BLOCKED in this session.** The session machine has no `gh` CLI, no `/home/cvsz` credential store, no GPG secret key (`commit.gpgsign=true` is required) and no SSH egress for `git@github.com`. In addition, `CLAUDE.md` forbids self-approval; the approval must come from the policedbc reviewer, not from the author's session. Run Phase A–C from `CLAUDE.md` on the cvsz workstation: `feat/autodj-np-room-and-hardening`, `git add` of the 44 modified and 2 new files listed by `git status`, then `git commit -S`.
 - Local hygiene, recommended: rotate the tokens in `.git-credentials` and `.config/gh/.git-credentials` (git-ignored, never committed), and move `docs/rea/` malware samples off the dev tree.
+

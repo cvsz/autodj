@@ -1,7 +1,15 @@
-## Unreleased
+## 0.3.8 — 2026-11-19
 
+- **Private IM replies; join the room first** — the UIA adapter can now answer in the sender's open Camfrog IM window (`send_im`: background send verified by reading the IM history back, foreground paste as fallback). An IM from someone who is not in the room (`im_require_room_presence`, default on) is answered privately with "กรุณาเข้าห้อง {room} ก่อนถึงสามารถขอเพลงได้" (EN: "Please join room {room} before requesting songs."), at most once per `im_auto_reply_cooldown`; its command is still not executed. Outgoing IMs show in the IM viewer and are filtered as echoes. Presence comes from room activity seen since AutoDJ started (joins and room messages).
+- **IM only from users in the room** — with `im_require_room_presence` (default on) an IM is now ignored entirely (no auto-reply, no plugin event, no command) unless its sender has been seen in the room (join notice or room message); this now applies to admins too, since a nickname alone is spoofable from outside the room. The IM still shows in the IM viewer. Camfrog leave notices are not detected, so a user who left counts as present until AutoDJ restarts.
+- **IMs stay private** — incoming IMs were also written into the GUI room-chat log, and the IM auto-reply was posted into the public room as "[IM auto-reply to <user>] ...". IMs now appear only in the IM viewer; the auto-reply is sent only through an adapter that can send IMs (`send_im`) and is otherwise skipped (logged), never posted to the room.
+- **No more false "cannot play" messages** — mpv often exits with code 1 at the end of a YouTube stream (dropped connection or hook error at EOF) after the whole song played; such tracks were marked FAILED and the room was told "เล่นไม่ได้: <title>". A non-zero exit after playing to within 5 s of the duration now counts as completed. Real failures are still logged and skipped with back-off, but are no longer announced in the room.
+- **Room welcome** — new default `welcome_message_message`: "ยินดีต้อนรับ {user} เข้าสู่ {room} สถานีเพลง อัตโนมัติ 24/7 ชั่วโมง". Greetings still follow permission: admins get `admin_greeting_message`, everyone else the welcome. Blocked users are no longer greeted (they were welcomed on join and on their first message although every other path ignores them).
+- **Freeze on the first private message (P0, found in a live Camfrog test)** — `Engine._handle_im_message` called `say()` while holding the non-reentrant `_chat_lock`; `say()` → `log_chat()` takes the same lock, so the chat loop deadlocked on the first IM and the GUI froze with it (`chat_snapshot`). IM auto-reply is on by default, so every 0.3.7 install was affected once IMs were read. The cooldown is now claimed under the lock and the reply sent outside it.
+- **IM viewer missed the first message of every new chat** — a chat window that opens after startup already contains the first IM, and the reader treated it as old history. Lines from new windows are now delivered when their timestamp is recent (history in windows open at startup is still never replayed). The IM log is also updated under the lock the viewer reads with.
+- Camfrog windows without an IM pane (buddy list, popups) are no longer re-scanned and logged on every poll.
 - **GUI freezes** — Skip, Prev and Ctrl+Right ran `MpvPlayer.stop()` (fade-out plus up to 5 s waiting for mpv) on the Tk main thread; they now run in the background.
-- **Discover button did nothing in the installed exe** — it ran `AutoDJ.exe -m camfrog_autodj --discover`, which argparse rejects in a PyInstaller build, and it blocked the window while running. It now calls the exe directly, runs in the background and shows the result.
+- **Discover button did nothing in the installed exe** — it ran `AutoDJ.exe -m autodj --discover`, which argparse rejects in a PyInstaller build, and it blocked the window while running. It now calls the exe directly, runs in the background and shows the result.
 - **`--discover` without UIA started the bot** — with `chat_reader`/`chat_sender` not set to `uia`, the flag fell through and launched AutoDJ normally; it now explains the requirement and exits.
 - **Add files could leave the Add button disabled** — completion was counted with an unsynchronised `-= 1` from several worker threads; counting now happens on the Tk thread. The "queued" hint now shows the real queue position instead of always "#1".
 - **Double-clicking a queued song could drop it** — moving it to the front was refused by the duplicate check after the song had been removed. The room announcement now names the real requester instead of "you".
@@ -32,7 +40,7 @@
 
 ## 0.3.5 — 2026-11-18
 
-- **Feature: zPlayer GUI theme system** — new `camfrog_autodj/theme.py` provides three palettes (`zplayer-dark` default, `zplayer-neon`, `zplayer-light`) plus font/SVG helpers inspired by the TkinterEP projects (`ttkthemes`, `python-tkextrafont`, `python-tksvg`, `ttkwidgets`). The ideas are reimplemented with the standard library only (no GPL dependency); tkinter is imported lazily so console/headless runs stay tkinter-free. Select the theme with `ui_theme` in `config.toml` or the Settings panel (EN/TH labels included).
+- **Feature: zPlayer GUI theme system** — new `autodj/theme.py` provides three palettes (`zplayer-dark` default, `zplayer-neon`, `zplayer-light`) plus font/SVG helpers inspired by the TkinterEP projects (`ttkthemes`, `python-tkextrafont`, `python-tksvg`, `ttkwidgets`). The ideas are reimplemented with the standard library only (no GPL dependency); tkinter is imported lazily so console/headless runs stay tkinter-free. Select the theme with `ui_theme` in `config.toml` or the Settings panel (EN/TH labels included).
 - **Feature: redesigned now-playing dashboard** — larger track title, dedicated info panel, separate up-next preview, expanded transport controls with a **Previous** button, resizable stage artwork and refreshed progress/volume styling.
 - **Feature: `Engine.prev()`** — replays the most recent history track; wired to the new Previous button (`g_prev` in both languages).
 - **Feature: `welcome_message_delay`** (0–3600 s, default 0) — optionally send the room welcome after a delay using an independent daemon timer (cancelled on shutdown), so it can never starve the shared command pool; configurable in Settings and documented in `config.example.toml`.
@@ -41,7 +49,7 @@
 - **Fix: now-playing card was invisible** — `_card(pad=1)` returned the inner frame, so the caller packed it twice and the outer bordered card (vinyl stage, equaliser, title, transport controls) was never packed. The dashboard is now fully visible; `zplayer-light` was retuned from stark white to a soft cool-slate palette with stronger contrast.
 - **Fix: logs now live in the install folder** — `*.log` files are written to `<install>/logs/autodj.log` (rotating, APPDATA fallback when read-only); `logs/autodj.log` no longer nests as `logs/logs/`; the installer creates `$INSTDIR\logs` and preserves it on upgrade.
 - **Fix: demo playlists no longer auto-load** — new `playlist_dir_autoload = false` gate stops `playlist/*.json` from filling the live request queue on startup; the main `playlist.json` behaviour is unchanged.
-- **Fix: actionable GUI startup error** — `python -m camfrog_autodj --gui` now explains stale pip installs that shadow the bundled `gui.py`; `camfrog_autodj.gui` is listed explicitly in the PyInstaller hidden imports.
+- **Fix: actionable GUI startup error** — `python -m autodj --gui` now explains stale pip installs that shadow the bundled `gui.py`; `autodj.gui` is listed explicitly in the PyInstaller hidden imports.
 - **Feature: one-step client update on startup** — with `auto_update_enabled` and `auto_update_apply_on_start` (default true), running AutoDJ.exe checks GitHub, downloads the newest verified `AutoDJ.exe`, stages it and launches `autodj_update.bat` to replace the installed binary before the bot starts.
 - **Release: full client build archive** — tagged releases now also ship `Camfrog-AutoDJ-Full-<version>.zip` (exe, installer, config example, bundled mpv when staged) with SHA-256 checksums and attestation.
 - **Fix: `--log-json` was inert and silenced all console logging** — `_configure_logging()` is now actually called from startup and a console handler is always installed before the format is switched to JSON.
@@ -87,14 +95,14 @@ Release-only follow-up to 0.3.2 (no application code change).
 - **Fix: sender adapter fallback** — a sender that was created but failed its self-test was kept when every candidate failed, instead of falling back to `NullAdapter`. (`adapters/__init__.py`)
 - **Fix: `.github/scripts/post-review-comment.sh` missing closing `fi`** — the audit-comment workflow step died with a syntax error.
 - **Hardening: bandit 0 issues** (`bandit -c pyproject.toml -r .`, config in `[tool.bandit]`) — runtime `assert`s replaced with explicit checks (stripped under `python -O`), swallowed exceptions now logged, `gh`/`powershell` resolved to absolute paths; remaining subprocess/urlopen sites carry reviewed `# nosec <id> - reason` notes. shellcheck clean on all tracked scripts. Third-party `starlette.testclient` deprecation filtered in pytest config.
-- **Security: auto-update now verifies SHA-256 before staging `AutoDJ.exe.next`** — the digest comes from GitHub's per-asset `digest` field or a `<asset>.sha256` / `SHA256SUMS` release asset; downloads with no published digest or a mismatch are refused and the partial file deleted. (`camfrog_autodj/updater.py`)
+- **Security: auto-update now verifies SHA-256 before staging `AutoDJ.exe.next`** — the digest comes from GitHub's per-asset `digest` field or a `<asset>.sha256` / `SHA256SUMS` release asset; downloads with no published digest or a mismatch are refused and the partial file deleted. (`autodj/updater.py`)
 - **Fix: updater offered downgrades** — any tag different from the running version counted as "new"; now only a strictly newer semantic version does. Exact asset-name match (so `AutoDJ.exe` never resolves to `AutoDJ.exe.sha256`), `auto_update_repo` restricted to `owner/name`, check interval floored at 300 s, settings read live from config.
 - **Fix: frozen-exe path** — `apply_update()` defaulted to `<_MEIPASS>/../AutoDJ.exe` in PyInstaller builds; now uses `sys.executable`. The generated `autodj_update.bat` aborts/rolls back if a rename fails instead of deleting the old exe.
 - **Privacy: no GitHub call when auto-update is disabled** — the engine ran a startup release check even with `auto_update_enabled = false`. Update announcements now come from the updater loop (once per tag).
-- **Fix: AI replies never worked** — `AIClient._post_json` reused the updater's github.com-only URL guard, so every real provider was rejected. Now requires `https://` (plain `http://` only for loopback) and rejects URLs with embedded credentials. (`camfrog_autodj/ai.py`)
+- **Fix: AI replies never worked** — `AIClient._post_json` reused the updater's github.com-only URL guard, so every real provider was rejected. Now requires `https://` (plain `http://` only for loopback) and rejects URLs with embedded credentials. (`autodj/ai.py`)
 - **Privacy: AI no longer answers IMs in the public room** — the adapter can only post to the room, so replying leaked private-message content. IMs are not sent to the AI provider.
 - **Fix: AI calls blocked the chat loop and ignored cooldown** — room replies now run on the executor and respect `ai_user_cooldown` (`can_reply` was never called). `!ai on/off/model/prompt` and config hot-reload now rebuild the client so changes take effect; model/prompt text keeps its original case.
-- **Security: webhook HMAC hardened** — signature now covers `"<X-Timestamp>.<METHOD>.<path>." + body` with a 300 s window and a one-time replay cache (previously every empty-body request — health/skip/pause/resume — shared one permanent signature). Empty or <16-char secret fails closed (503) instead of HMAC with an empty key. Rate limiter returns a real 429 (was a 500) and prunes idle IPs. JSON fields on shuffle/repeat/say are type-checked. (`camfrog_autodj/webhook/`)
+- **Security: webhook HMAC hardened** — signature now covers `"<X-Timestamp>.<METHOD>.<path>." + body` with a 300 s window and a one-time replay cache (previously every empty-body request — health/skip/pause/resume — shared one permanent signature). Empty or <16-char secret fails closed (503) instead of HMAC with an empty key. Rate limiter returns a real 429 (was a 500) and prunes idle IPs. JSON fields on shuffle/repeat/say are type-checked. (`autodj/webhook/`)
 - **Fix: packaging** — `pyproject.toml` listed packages by hand and omitted `plugins`, `plugins.builtin` and `webhook`; a pip install crashed on import. Switched to `packages.find`.
 - **Fix: `scripts/setup-git-credential-helper.sh`** wrote the plaintext credential store to a relative `D/.git-credentials` (inside whatever repo it ran in). Now uses `$GIT_CRED_FILE` (default `~/.git-credentials`), refuses paths inside the repo, and `chmod 600`s the file.
 - **Security: `.dockerignore`** — the Dockerfile does `COPY . ./` but the context did not exclude `.config/` (gh CLI token store), `cert/`, or `docs/rea/` (malware archives, memory dumps, pcap); a local `docker build` would bake them into the image. Also excludes bundled mpv and runtime state.
@@ -102,7 +110,7 @@ Release-only follow-up to 0.3.2 (no application code change).
 - **CI: Linux test run aborted partway (`Aborted (core dumped)`)** — Tk widgets still referenced when a GUI test returned were finalised by a webhook TestClient worker thread, and Tcl aborts when its interpreter is torn down off the creating thread. New `tests/conftest.py` collects garbage on the main thread after every test. (Also failed on `main`.)
 - **CI: Windows Build / release could not install mpv** — `choco install mpv --version=2024.01.01` does not exist on the Chocolatey feed. Pinned to the published `2024.9.26` and the step now adds the install directory to `PATH` when the package ships no shim. (Also failed on `main`.)
 - **CI: real-Tk GUI tests skip when the runner's Tcl runtime is broken** — hosted Windows/Python 3.13 runners intermittently fail to bootstrap Tcl (`init.tcl` unreadable, `tcl_findLibrary` missing) when creating the App's interpreter; that environment fault now skips instead of failing the run.
-- **Fix: config hot-reload fired twice for one save on Windows** — the polling watcher can see one write as two stat changes (size, then mtime) more than a debounce window apart, so the engine reloaded the same config twice. `ConfigWatcher` now skips a reload when the file's SHA-256 matches the last loaded content. (`camfrog_autodj/config_watcher.py`)
+- **Fix: config hot-reload fired twice for one save on Windows** — the polling watcher can see one write as two stat changes (size, then mtime) more than a debounce window apart, so the engine reloaded the same config twice. `ConfigWatcher` now skips a reload when the file's SHA-256 matches the last loaded content. (`autodj/config_watcher.py`)
 - **Fix: tagged releases could never be signed** — `release.yml` required `AUTODJ_PFX`/`AUTODJ_PFX_PASSWORD` or `AUTODJ_CERT_THUMBPRINT` but never mapped any secret into the step, so every `v*` tag failed the signing gate. The step now reads repository secrets `AUTODJ_PFX_BASE64` (decoded to a runner-temp `.pfx`), `AUTODJ_PFX_PASSWORD` and `AUTODJ_CERT_THUMBPRINT`.
 - **Fix: `auto_update_enabled` hot-reload** — turning it off in a reload left the running loop calling GitHub; turning it on never started the loop. The loop now re-reads the flag every iteration and the reload starts it when newly enabled.
 - **Security: IM room-presence check for plugin commands** — unknown commands went straight to plugins with only the block-list check, bypassing `im_require_room_presence`. Plugin commands now use the same channel rules as built-ins.
@@ -111,7 +119,7 @@ Release-only follow-up to 0.3.2 (no application code change).
 ## 0.3.1
 2026-11-17 (tag `v0.3.1`; package metadata still read 0.3.0 — fixed in 0.3.2)
 
-- Auto-update client for `AutoDJ.exe` from GitHub releases (`camfrog_autodj/updater.py`, `!update`).
+- Auto-update client for `AutoDJ.exe` from GitHub releases (`autodj/updater.py`, `!update`).
 - Type annotations across the codebase; latent errors surfaced by `mypy --check-untyped-defs` fixed.
 
 ## 0.3.0
@@ -124,12 +132,12 @@ Release-only follow-up to 0.3.2 (no application code change).
 ## 0.2.7
 2026-11-07
 
-- **Fix: GUI hangs when clicking Load Folder** — `library.scan_folder()` now skips symlinks (avoids cycle/reparse-point hangs on Windows) and caps returned tracks via a `limit` argument; `gui.load_folder()` disables the folder button while scanning, guards against reentrant clicks, and shows loaded/failed status. (`camfrog_autodj/library.py`, `camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)
-- **Fix: chat-log race condition between engine and GUI poller** — `Engine.chat_log`/`chat_seq` are now guarded by `_chat_lock`; GUI reads via thread-safe `chat_snapshot()`. (`camfrog_autodj/engine.py`, `camfrog_autodj/gui.py`)
-- **Fix: `save_settings()` could leave a half-written `config.toml` on crash** — writes atomically via temp file + `os.replace()` with a `.bak` backup, with `%APPDATA%\\Camfrog AutoDJ\\` relocation fallback. (`camfrog_autodj/gui.py`)
-- **Fix: `MpvPlayer.play_file()` could block forever on a bad WAV** — 30s subprocess timeout. (`camfrog_autodj/player.py`)
-- **Fix: folder scans in autoplay sources and `!load` could scan forever** — capped at 500 tracks. (`camfrog_autodj/engine.py`)
-- **Fix: `Add files` button lacked busy state** — now shows resolving state with a pending counter, matching `Add`. (`camfrog_autodj/gui.py`)
+- **Fix: GUI hangs when clicking Load Folder** — `library.scan_folder()` now skips symlinks (avoids cycle/reparse-point hangs on Windows) and caps returned tracks via a `limit` argument; `gui.load_folder()` disables the folder button while scanning, guards against reentrant clicks, and shows loaded/failed status. (`autodj/library.py`, `autodj/engine.py`, `autodj/gui.py`)
+- **Fix: chat-log race condition between engine and GUI poller** — `Engine.chat_log`/`chat_seq` are now guarded by `_chat_lock`; GUI reads via thread-safe `chat_snapshot()`. (`autodj/engine.py`, `autodj/gui.py`)
+- **Fix: `save_settings()` could leave a half-written `config.toml` on crash** — writes atomically via temp file + `os.replace()` with a `.bak` backup, with `%APPDATA%\\Camfrog AutoDJ\\` relocation fallback. (`autodj/gui.py`)
+- **Fix: `MpvPlayer.play_file()` could block forever on a bad WAV** — 30s subprocess timeout. (`autodj/player.py`)
+- **Fix: folder scans in autoplay sources and `!load` could scan forever** — capped at 500 tracks. (`autodj/engine.py`)
+- **Fix: `Add files` button lacked busy state** — now shows resolving state with a pending counter, matching `Add`. (`autodj/gui.py`)
 - **Fix: Player music time countdown skipping** — The GUI now queries mpv via IPC (`get_property time-pos`) for the actual playback position instead of relying on wall-clock time. Added `MpvPlayer._cmd_get()` and `MpvPlayer.get_time_pos()` in `player.py`; `Engine.position()` in `engine.py` uses real mpv position with wall-clock fallback. Fixes the issue where the time display jumped (e.g., from 00:00 to 0:01) during playback.
 - Resolve MPV and yt-dlp executable paths consistently, including Windows environment variables and app-relative paths.
 - Preserve the user's `config.toml` across installer upgrades and retain user data during uninstall.
@@ -141,8 +149,8 @@ Release-only follow-up to 0.3.2 (no application code change).
 - **Docs: `docs/architecture.md` and `docs/release.md` rewritten** to describe AutoDJ (not the ztemplate template).
 - **Docs: `IMPLEMENTATION-CHECKLIST.md` changed to evidence-based status tracking** (VERIFIED/PARTIALLY VERIFIED/UNVERIFIED/BLOCKED with evidence references).
 - **Infra: replaced placeholder Dockerfile with local audit image `zpostgresql`** — `python:3.11-slim` based image (`zpostgresql:latest` / `zpostgresql:audit`) that installs the project with dev tools and self-verifies (ruff check/format, pytest) at build time; mirrors Linux CI (`git`, `python3-tk`, `xvfb`, `xauth`) and runs as non-root user `autodj`. Replaces the unusable `alpine:3.24` placeholder.
-- **Fix: release typecheck gate** — `mypy camfrog_autodj` (release.yml Gate 1) failed on the release head due to unstubbed third-party dependencies (`pywinauto`, `pyttsx3`, `mutagen`, `yt_dlp`, `pyperclip`); added `[tool.mypy] ignore_missing_imports = true` to `pyproject.toml` so the gate validates AutoDJ's own code.
-- **Fix: unused noqa on blind `Exception` catch** in `camfrog_autodj/__main__.py` — `ruff format` had stranded the `# noqa: BLE001` directive; directive moved onto the `Exception` line so `ruff check` and `ruff format --check` both pass.
+- **Fix: release typecheck gate** — `mypy autodj` (release.yml Gate 1) failed on the release head due to unstubbed third-party dependencies (`pywinauto`, `pyttsx3`, `mutagen`, `yt_dlp`, `pyperclip`); added `[tool.mypy] ignore_missing_imports = true` to `pyproject.toml` so the gate validates AutoDJ's own code.
+- **Fix: unused noqa on blind `Exception` catch** in `autodj/__main__.py` — `ruff format` had stranded the `# noqa: BLE001` directive; directive moved onto the `Exception` line so `ruff check` and `ruff format --check` both pass.
 - **Docs: ADR 0001** — documents the local audit Docker image and mypy CI gate configuration (`docs/adr/0001-local-audit-docker-image-and-mypy-gate.md`).
 
 ## 0.2.6
@@ -163,50 +171,50 @@ Release-only follow-up to 0.3.2 (no application code change).
 - **NSIS Installer**: Per-user install to `%APPDATA%\Camfrog AutoDJ`, HKCU registry, no admin required.
 
 ### Fixed
-- **GUI ไม่ขึ้น (GUI won't open)**: `camfrog_autodj/__main__.py` — auto-discovery (`discover.apply()`) crashed with `ImportError` on `pywinauto.Desktop` before `App(eng).mainloop()` was reached, so the Tk window never appeared. Auto-discovery is now wrapped in `try/except` and logs a warning instead of crashing; `build_adapter()` failures fall back to `NullAdapter` so the GUI still opens without chat (user can run `--check`/`--discover` from inside it).
-- **Camfrog adapter blocks GUI startup**: `camfrog_autodj/adapters/uia.py` `UiaAdapter.__init__()` called `resolve()` which polls up to 30s for a Camfrog window, blocking GUI launch. With `NullAdapter` fallback in `__main__.py`, this no longer blocks.
-- **Playlist not in queue list box**: `camfrog_autodj/engine.py` `_load_all()` added `playlist.json` tracks to the autoplay *pool* (`add_pool`), but the GUI list box only shows the request *queue* (`add_request`). Playlist tracks are now added to `add_request` so they appear in the GUI and play before the autoplay pool. Dedupe against existing requests and history prevents re-queuing on restart.
-- **Thread-safety data race on `e.current`**: `camfrog_autodj/commands.py` `_play()` read `e.current.source` outside `e.queue.lock`, racing with `_player_loop()` which writes `e.current`. Now read under the same lock.
-- **Ungraceful shutdown**: `camfrog_autodj/engine.py` `shutdown()` did not wait for daemon threads. Thread references are now stored in `self._threads` and joined (5s timeout each) on shutdown.
-- **Windows-only code crashes on Linux**: `camfrog_autodj/launcher.py`, `camfrog_autodj/tts.py`, `camfrog_autodj/winmsg.py` now call `_require_windows()` to raise a clear `RuntimeError` instead of crashing with obscure `ctypes`/`pywinauto` errors on non-Windows platforms.
-- **`!load` path traversal**: `camfrog_autodj/commands.py` `_load()` now rejects absolute paths outside `music_dirs` (admin-only guard).
+- **GUI ไม่ขึ้น (GUI won't open)**: `autodj/__main__.py` — auto-discovery (`discover.apply()`) crashed with `ImportError` on `pywinauto.Desktop` before `App(eng).mainloop()` was reached, so the Tk window never appeared. Auto-discovery is now wrapped in `try/except` and logs a warning instead of crashing; `build_adapter()` failures fall back to `NullAdapter` so the GUI still opens without chat (user can run `--check`/`--discover` from inside it).
+- **Camfrog adapter blocks GUI startup**: `autodj/adapters/uia.py` `UiaAdapter.__init__()` called `resolve()` which polls up to 30s for a Camfrog window, blocking GUI launch. With `NullAdapter` fallback in `__main__.py`, this no longer blocks.
+- **Playlist not in queue list box**: `autodj/engine.py` `_load_all()` added `playlist.json` tracks to the autoplay *pool* (`add_pool`), but the GUI list box only shows the request *queue* (`add_request`). Playlist tracks are now added to `add_request` so they appear in the GUI and play before the autoplay pool. Dedupe against existing requests and history prevents re-queuing on restart.
+- **Thread-safety data race on `e.current`**: `autodj/commands.py` `_play()` read `e.current.source` outside `e.queue.lock`, racing with `_player_loop()` which writes `e.current`. Now read under the same lock.
+- **Ungraceful shutdown**: `autodj/engine.py` `shutdown()` did not wait for daemon threads. Thread references are now stored in `self._threads` and joined (5s timeout each) on shutdown.
+- **Windows-only code crashes on Linux**: `autodj/launcher.py`, `autodj/tts.py`, `autodj/winmsg.py` now call `_require_windows()` to raise a clear `RuntimeError` instead of crashing with obscure `ctypes`/`pywinauto` errors on non-Windows platforms.
+- **`!load` path traversal**: `autodj/commands.py` `_load()` now rejects absolute paths outside `music_dirs` (admin-only guard).
 - **NSIS installer warnings**: `installer.nsi` — removed `docs\*.txt` file glob (no such files), removed unused `.onUninstSuccess` function, removed unused `GetDate` function (now called inline via `Call GetDate`), removed duplicate `Uninstall.lnk` shortcut, removed `SEC_SRC` section (Python source not shipped in installer). All 5 NSIS warnings eliminated.
 
 ### Changed
-- `camfrog_autodj/engine.py`: `Engine.__init__` now accepts `cfg_path` (was missing, causing `TypeError` when `_run()` passed it). GUI buttons `do_discover()`/`do_check()` read `self.e.cfg_path`.
+- `autodj/engine.py`: `Engine.__init__` now accepts `cfg_path` (was missing, causing `TypeError` when `_run()` passed it). GUI buttons `do_discover()`/`do_check()` read `self.e.cfg_path`.
 
 ### Added
-- `camfrog_autodj/adapters/__init__.py`: new `NullAdapter` — silent fallback when Camfrog cannot be reached; GUI stays open, chat degrades gracefully.
-- `camfrog_autodj/engine.py`: `_threads` list tracking all daemon threads started by `start()`.
+- `autodj/adapters/__init__.py`: new `NullAdapter` — silent fallback when Camfrog cannot be reached; GUI stays open, chat degrades gracefully.
+- `autodj/engine.py`: `_threads` list tracking all daemon threads started by `start()`.
 
 ## 0.2.4
 
 ### Fixed
-- `camfrog_autodj/adapters/uia.py` `_appeared()`: `norm_l` was referenced outside the `for l in new:` loop. When no new chat lines arrived, `norm_l` was never assigned, causing `UnboundLocalError` on every background chat send — messages retried endlessly (`send failed ... retrying once in 2s`). Moved the `bot_nick` match inside the loop so `norm_l` is always defined before use, and every new line is checked (not just the last one).
-- `camfrog_autodj/adapters/uia.py` `_bg_fails`: consecutive-failure counter was read/written without a lock across reader and sender threads, causing a race condition. Now protected by `_bg_fails_lock`.
-- `camfrog_autodj/adapters/uia.py` `messages()`: `self._view = None` was assigned outside `com_lock`, racing with `_lines()` which reads `self._view` inside the lock. Now assigned inside `com_lock`.
-- `camfrog_autodj/winmsg.py`: three module-level functions were defined twice — `make_lparam` (lines 58 and 256), `pick_child` (lines 62 and 260), `show_noactivate` (lines 117 and 273). The second definition silently shadowed the first. Removed the duplicate block.
-- `camfrog_autodj/webchat.py`: unused unpacked variable `node` → `_node` in `read_items()`.
-- `camfrog_autodj/gui.py`: unused unpacked variables `r`/`lab` → `_r`/`_lab` in three `_vc` unpack sites; removed unnecessary `int(round(...))` in `px()`.
-- `camfrog_autodj/visuals.py`: removed unnecessary `int(round(...))` in `rgb_to_hex()`.
-- `camfrog_autodj/adapters/uia.py`: merged two `endswith()` calls into one with a tuple argument.
-- `camfrog_autodj/doctor.py`: replaced unnecessary `dict(...)` call with a literal.
-- `camfrog_autodj/engine.py`: replaced unnecessary `dict(...)` call with a literal in `snapshot()`.
-- `camfrog_autodj/library.py`: replaced unnecessary `dict(...)` call with a literal in `_extract_exe()`.
-- `camfrog_autodj/gui.py`: `add_files()` and `load_folder()` now check for `$DISPLAY`/`$WAYLAND_DISPLAY` before opening native file dialogs, and wrap in try/except — fixes hang on headless Linux.
-- `camfrog_autodj/installer.nsi`: removed machine-specific `config.toml` from bundle (path hardcoded to one PC); config is now created by `install.ps1` on first run.
-- `camfrog_autodj/tts.py`: **TTS did nothing with default config** — `eng.save_to_file()` and `eng.runAndWait()` were inside `if cfg.tts_voice:`, so with `tts_voice = ""` nothing was synthesised. Moved outside the `if`. Also added `TTS_TIMEOUT` (60s) so `synth()` no longer blocks forever if pyttsx3 is missing or hangs; each job independently imports pyttsx3 so the worker stays alive even if it's not installed.
-- `camfrog_autodj/library.py`: **`ytsearch20:` autoplay sources always failed** — `is_url()` only matches `http://`/`https://`, so `ytsearch20:mandopop` was double-wrapped as `ytsearch1:ytsearch20:mandopop` and failed. Added `SEARCH_PREFIX` regex and `raw_target` parameter so operator-supplied `ytsearchN:` queries pass through unchanged. Also fixed `find_ytdlp()` to fall back to PATH yt-dlp when `mpv_path` is the default `"mpv"` (the previous code refused PATH lookup when mpv_path was set, ignoring a perfectly good yt-dlp on PATH).
-- `camfrog_autodj/commands.py`: **`!play` from chat was not saved to `playlist.json`** — only admin/GUI requests were saved, so `!last` was always empty for chat requests. Added `e.playlist.add(tracks)` for chat requests too. Also fixed cooldown case-dodging (`"Bob"` and `"bob"` are now one person via `.lower()`) and `²` digit bypass in `!remove`/`!vol` (`isascii()` check).
-- `camfrog_autodj/player.py`: **`mpv_timeout` killed every track longer than the timeout** — `p.wait(timeout=120)` capped total play time, cutting any track over 2 minutes. Changed to a grace period: `limit = duration + mpv_timeout`, checked via 0.5s polling loop; pauses are excluded from the countdown; unknown-duration (live) tracks have no limit. Added `POLL` constant and `_played()` helper.
-- `camfrog_autodj/playlist.py`: **corrupt `playlist.json` was silently overwritten** — `load_playlist()` returned `[]` and `save_playlist()` would overwrite the bad file. Added `_unreadable()` check and `PlaylistStore.add()` now saves a `.corrupt-<timestamp>` backup before overwriting.
+- `autodj/adapters/uia.py` `_appeared()`: `norm_l` was referenced outside the `for l in new:` loop. When no new chat lines arrived, `norm_l` was never assigned, causing `UnboundLocalError` on every background chat send — messages retried endlessly (`send failed ... retrying once in 2s`). Moved the `bot_nick` match inside the loop so `norm_l` is always defined before use, and every new line is checked (not just the last one).
+- `autodj/adapters/uia.py` `_bg_fails`: consecutive-failure counter was read/written without a lock across reader and sender threads, causing a race condition. Now protected by `_bg_fails_lock`.
+- `autodj/adapters/uia.py` `messages()`: `self._view = None` was assigned outside `com_lock`, racing with `_lines()` which reads `self._view` inside the lock. Now assigned inside `com_lock`.
+- `autodj/winmsg.py`: three module-level functions were defined twice — `make_lparam` (lines 58 and 256), `pick_child` (lines 62 and 260), `show_noactivate` (lines 117 and 273). The second definition silently shadowed the first. Removed the duplicate block.
+- `autodj/webchat.py`: unused unpacked variable `node` → `_node` in `read_items()`.
+- `autodj/gui.py`: unused unpacked variables `r`/`lab` → `_r`/`_lab` in three `_vc` unpack sites; removed unnecessary `int(round(...))` in `px()`.
+- `autodj/visuals.py`: removed unnecessary `int(round(...))` in `rgb_to_hex()`.
+- `autodj/adapters/uia.py`: merged two `endswith()` calls into one with a tuple argument.
+- `autodj/doctor.py`: replaced unnecessary `dict(...)` call with a literal.
+- `autodj/engine.py`: replaced unnecessary `dict(...)` call with a literal in `snapshot()`.
+- `autodj/library.py`: replaced unnecessary `dict(...)` call with a literal in `_extract_exe()`.
+- `autodj/gui.py`: `add_files()` and `load_folder()` now check for `$DISPLAY`/`$WAYLAND_DISPLAY` before opening native file dialogs, and wrap in try/except — fixes hang on headless Linux.
+- `autodj/installer.nsi`: removed machine-specific `config.toml` from bundle (path hardcoded to one PC); config is now created by `install.ps1` on first run.
+- `autodj/tts.py`: **TTS did nothing with default config** — `eng.save_to_file()` and `eng.runAndWait()` were inside `if cfg.tts_voice:`, so with `tts_voice = ""` nothing was synthesised. Moved outside the `if`. Also added `TTS_TIMEOUT` (60s) so `synth()` no longer blocks forever if pyttsx3 is missing or hangs; each job independently imports pyttsx3 so the worker stays alive even if it's not installed.
+- `autodj/library.py`: **`ytsearch20:` autoplay sources always failed** — `is_url()` only matches `http://`/`https://`, so `ytsearch20:mandopop` was double-wrapped as `ytsearch1:ytsearch20:mandopop` and failed. Added `SEARCH_PREFIX` regex and `raw_target` parameter so operator-supplied `ytsearchN:` queries pass through unchanged. Also fixed `find_ytdlp()` to fall back to PATH yt-dlp when `mpv_path` is the default `"mpv"` (the previous code refused PATH lookup when mpv_path was set, ignoring a perfectly good yt-dlp on PATH).
+- `autodj/commands.py`: **`!play` from chat was not saved to `playlist.json`** — only admin/GUI requests were saved, so `!last` was always empty for chat requests. Added `e.playlist.add(tracks)` for chat requests too. Also fixed cooldown case-dodging (`"Bob"` and `"bob"` are now one person via `.lower()`) and `²` digit bypass in `!remove`/`!vol` (`isascii()` check).
+- `autodj/player.py`: **`mpv_timeout` killed every track longer than the timeout** — `p.wait(timeout=120)` capped total play time, cutting any track over 2 minutes. Changed to a grace period: `limit = duration + mpv_timeout`, checked via 0.5s polling loop; pauses are excluded from the countdown; unknown-duration (live) tracks have no limit. Added `POLL` constant and `_played()` helper.
+- `autodj/playlist.py`: **corrupt `playlist.json` was silently overwritten** — `load_playlist()` returned `[]` and `save_playlist()` would overwrite the bad file. Added `_unreadable()` check and `PlaylistStore.add()` now saves a `.corrupt-<timestamp>` backup before overwriting.
 - `tests/test_hardening.py`: updated `FailingPlayer.play()` and `lambda` mocks to accept the new `duration` parameter on `MpvPlayer.play()`.
 
 ### Added
 - GUI: `--discover` และ `--check` ปุ่มบน now-playing card (`🔍 ค้นหาห้องแชท` / `✓ ตรวจสอบการตั้งค่า`) ให้ผู้ดูแลระบบรัน auto-discovery และวินิจฉัยการตั้งค่าจากหน้าต่างเดสก์ท็อปโดยไม่ต้องเปิดเทอร์มินัล
 - `installer.nsi`: รองรับหลายภาษาในตัวติดตั้ง (English + Thai) ผ่าน `MUI_LANGUAGE` macro; ไฟล์ `thai.nlf` รวมอยู่ใน repo (ต้องติดตั้งที่ `Contrib\Language\` ของ NSIS บนเครื่อง Windows ก่อนคอมไพล์)
-- `camfrog_autodj/engine.py`: `Engine.__init__` no longer takes `cfg_path` (was an experiment, removed). Added `_speak_lock` so only one TTS clip plays at a time (overlapping TTS jobs would un-duck the music early). `load_source()` now recognises `ytsearchN:` queries as raw targets for autoplay sources.
-- `camfrog_autodj/engine.py` shutdown order: `adapter.close()` before `exec.shutdown()` so sender threads release the adapter before it's closed.
+- `autodj/engine.py`: `Engine.__init__` no longer takes `cfg_path` (was an experiment, removed). Added `_speak_lock` so only one TTS clip plays at a time (overlapping TTS jobs would un-duck the music early). `load_source()` now recognises `ytsearchN:` queries as raw targets for autoplay sources.
+- `autodj/engine.py` shutdown order: `adapter.close()` before `exec.shutdown()` so sender threads release the adapter before it's closed.
 
 ### Testing
 - Full suite: **97 passed, 1 skipped** (was 130 passed before test mock updates for the new `duration` parameter on `MpvPlayer.play()`).
@@ -251,50 +259,50 @@ Release-only follow-up to 0.3.2 (no application code change).
 - **Software Supply Chain Security**: Release workflow upgraded with automated CycloneDX SBOM generation and GitHub artifact attestation.
 
 ### Fixed
-- **GUI ไม่ขึ้น (GUI won't open)**: `camfrog_autodj/__main__.py` — auto-discovery (`discover.apply()`) crashed with `ImportError` on `pywinauto.Desktop` before `App(eng).mainloop()` was reached, so the Tk window never appeared. Auto-discovery is now wrapped in `try/except` and logs a warning instead of crashing; `build_adapter()` failures fall back to `NullAdapter` so the GUI still opens without chat (user can run `--check`/`--discover` from inside it).
-- **Camfrog adapter blocks GUI startup**: `camfrog_autodj/adapters/uia.py` `UiaAdapter.__init__()` called `resolve()` which polls up to 30s for a Camfrog window, blocking GUI launch. With `NullAdapter` fallback in `__main__.py`, this no longer blocks.
-- **Playlist not in queue list box**: `camfrog_autodj/engine.py` `_load_all()` added `playlist.json` tracks to the autoplay *pool* (`add_pool`), but the GUI list box only shows the request *queue* (`add_request`). Playlist tracks are now added to `add_request` so they appear in the GUI and play before the autoplay pool. Dedupe against existing requests and history prevents re-queuing on restart.
-- **Thread-safety data race on `e.current`**: `camfrog_autodj/commands.py` `_play()` read `e.current.source` outside `e.queue.lock`, racing with `_player_loop()` which writes `e.current`. Now read under the same lock.
-- **Ungraceful shutdown**: `camfrog_autodj/engine.py` `shutdown()` did not wait for daemon threads. Thread references are now stored in `self._threads` and joined (5s timeout each) on shutdown.
-- **Windows-only code crashes on Linux**: `camfrog_autodj/launcher.py`, `camfrog_autodj/tts.py`, `camfrog_autodj/winmsg.py` now call `_require_windows()` to raise a clear `RuntimeError` instead of crashing with obscure `ctypes`/`pywinauto` errors on non-Windows platforms.
-- **`!load` path traversal**: `camfrog_autodj/commands.py` `_load()` now rejects absolute paths outside `music_dirs` (admin-only guard).
+- **GUI ไม่ขึ้น (GUI won't open)**: `autodj/__main__.py` — auto-discovery (`discover.apply()`) crashed with `ImportError` on `pywinauto.Desktop` before `App(eng).mainloop()` was reached, so the Tk window never appeared. Auto-discovery is now wrapped in `try/except` and logs a warning instead of crashing; `build_adapter()` failures fall back to `NullAdapter` so the GUI still opens without chat (user can run `--check`/`--discover` from inside it).
+- **Camfrog adapter blocks GUI startup**: `autodj/adapters/uia.py` `UiaAdapter.__init__()` called `resolve()` which polls up to 30s for a Camfrog window, blocking GUI launch. With `NullAdapter` fallback in `__main__.py`, this no longer blocks.
+- **Playlist not in queue list box**: `autodj/engine.py` `_load_all()` added `playlist.json` tracks to the autoplay *pool* (`add_pool`), but the GUI list box only shows the request *queue* (`add_request`). Playlist tracks are now added to `add_request` so they appear in the GUI and play before the autoplay pool. Dedupe against existing requests and history prevents re-queuing on restart.
+- **Thread-safety data race on `e.current`**: `autodj/commands.py` `_play()` read `e.current.source` outside `e.queue.lock`, racing with `_player_loop()` which writes `e.current`. Now read under the same lock.
+- **Ungraceful shutdown**: `autodj/engine.py` `shutdown()` did not wait for daemon threads. Thread references are now stored in `self._threads` and joined (5s timeout each) on shutdown.
+- **Windows-only code crashes on Linux**: `autodj/launcher.py`, `autodj/tts.py`, `autodj/winmsg.py` now call `_require_windows()` to raise a clear `RuntimeError` instead of crashing with obscure `ctypes`/`pywinauto` errors on non-Windows platforms.
+- **`!load` path traversal**: `autodj/commands.py` `_load()` now rejects absolute paths outside `music_dirs` (admin-only guard).
 - **NSIS installer warnings**: `installer.nsi` — removed `docs\*.txt` file glob (no such files), removed unused `.onUninstSuccess` function, removed unused `GetDate` function (now called inline via `Call GetDate`), removed duplicate `Uninstall.lnk` shortcut, removed `SEC_SRC` section (Python source not shipped in installer). All 5 NSIS warnings eliminated.
 
 ### Changed
-- `camfrog_autodj/engine.py`: `Engine.__init__` now accepts `cfg_path` (was missing, causing `TypeError` when `_run()` passed it). GUI buttons `do_discover()`/`do_check()` read `self.e.cfg_path`.
+- `autodj/engine.py`: `Engine.__init__` now accepts `cfg_path` (was missing, causing `TypeError` when `_run()` passed it). GUI buttons `do_discover()`/`do_check()` read `self.e.cfg_path`.
 
 ### Added
-- `camfrog_autodj/adapters/__init__.py`: new `NullAdapter` — silent fallback when Camfrog cannot be reached; GUI stays open, chat degrades gracefully.
-- `camfrog_autodj/engine.py`: `_threads` list tracking all daemon threads started by `start()`.
+- `autodj/adapters/__init__.py`: new `NullAdapter` — silent fallback when Camfrog cannot be reached; GUI stays open, chat degrades gracefully.
+- `autodj/engine.py`: `_threads` list tracking all daemon threads started by `start()`.
 
 ## 0.2.4
 
 ### Fixed
-- `camfrog_autodj/adapters/uia.py` `_appeared()`: `norm_l` was referenced outside the `for l in new:` loop. When no new chat lines arrived, `norm_l` was never assigned, causing `UnboundLocalError` on every background chat send — messages retried endlessly (`send failed ... retrying once in 2s`). Moved the `bot_nick` match inside the loop so `norm_l` is always defined before use, and every new line is checked (not just the last one).
-- `camfrog_autodj/adapters/uia.py` `_bg_fails`: consecutive-failure counter was read/written without a lock across reader and sender threads, causing a race condition. Now protected by `_bg_fails_lock`.
-- `camfrog_autodj/adapters/uia.py` `messages()`: `self._view = None` was assigned outside `com_lock`, racing with `_lines()` which reads `self._view` inside the lock. Now assigned inside `com_lock`.
-- `camfrog_autodj/winmsg.py`: three module-level functions were defined twice — `make_lparam` (lines 58 and 256), `pick_child` (lines 62 and 260), `show_noactivate` (lines 117 and 273). The second definition silently shadowed the first. Removed the duplicate block.
-- `camfrog_autodj/webchat.py`: unused unpacked variable `node` → `_node` in `read_items()`.
-- `camfrog_autodj/gui.py`: unused unpacked variables `r`/`lab` → `_r`/`_lab` in three `_vc` unpack sites; removed unnecessary `int(round(...))` in `px()`.
-- `camfrog_autodj/visuals.py`: removed unnecessary `int(round(...))` in `rgb_to_hex()`.
-- `camfrog_autodj/adapters/uia.py`: merged two `endswith()` calls into one with a tuple argument.
-- `camfrog_autodj/doctor.py`: replaced unnecessary `dict(...)` call with a literal.
-- `camfrog_autodj/engine.py`: replaced unnecessary `dict(...)` call with a literal in `snapshot()`.
-- `camfrog_autodj/library.py`: replaced unnecessary `dict(...)` call with a literal in `_extract_exe()`.
-- `camfrog_autodj/gui.py`: `add_files()` and `load_folder()` now check for `$DISPLAY`/`$WAYLAND_DISPLAY` before opening native file dialogs, and wrap in try/except — fixes hang on headless Linux.
-- `camfrog_autodj/installer.nsi`: removed machine-specific `config.toml` from bundle (path hardcoded to one PC); config is now created by `install.ps1` on first run.
-- `camfrog_autodj/tts.py`: **TTS did nothing with default config** — `eng.save_to_file()` and `eng.runAndWait()` were inside `if cfg.tts_voice:`, so with `tts_voice = ""` nothing was synthesised. Moved outside the `if`. Also added `TTS_TIMEOUT` (60s) so `synth()` no longer blocks forever if pyttsx3 is missing or hangs; each job independently imports pyttsx3 so the worker stays alive even if it's not installed.
-- `camfrog_autodj/library.py`: **`ytsearch20:` autoplay sources always failed** — `is_url()` only matches `http://`/`https://`, so `ytsearch20:mandopop` was double-wrapped as `ytsearch1:ytsearch20:mandopop` and failed. Added `SEARCH_PREFIX` regex and `raw_target` parameter so operator-supplied `ytsearchN:` queries pass through unchanged. Also fixed `find_ytdlp()` to fall back to PATH yt-dlp when `mpv_path` is the default `"mpv"` (the previous code refused PATH lookup when mpv_path was set, ignoring a perfectly good yt-dlp on PATH).
-- `camfrog_autodj/commands.py`: **`!play` from chat was not saved to `playlist.json`** — only admin/GUI requests were saved, so `!last` was always empty for chat requests. Added `e.playlist.add(tracks)` for chat requests too. Also fixed cooldown case-dodging (`"Bob"` and `"bob"` are now one person via `.lower()`) and `²` digit bypass in `!remove`/`!vol` (`isascii()` check).
-- `camfrog_autodj/player.py`: **`mpv_timeout` killed every track longer than the timeout** — `p.wait(timeout=120)` capped total play time, cutting any track over 2 minutes. Changed to a grace period: `limit = duration + mpv_timeout`, checked via 0.5s polling loop; pauses are excluded from the countdown; unknown-duration (live) tracks have no limit. Added `POLL` constant and `_played()` helper.
-- `camfrog_autodj/playlist.py`: **corrupt `playlist.json` was silently overwritten** — `load_playlist()` returned `[]` and `save_playlist()` would overwrite the bad file. Added `_unreadable()` check and `PlaylistStore.add()` now saves a `.corrupt-<timestamp>` backup before overwriting.
+- `autodj/adapters/uia.py` `_appeared()`: `norm_l` was referenced outside the `for l in new:` loop. When no new chat lines arrived, `norm_l` was never assigned, causing `UnboundLocalError` on every background chat send — messages retried endlessly (`send failed ... retrying once in 2s`). Moved the `bot_nick` match inside the loop so `norm_l` is always defined before use, and every new line is checked (not just the last one).
+- `autodj/adapters/uia.py` `_bg_fails`: consecutive-failure counter was read/written without a lock across reader and sender threads, causing a race condition. Now protected by `_bg_fails_lock`.
+- `autodj/adapters/uia.py` `messages()`: `self._view = None` was assigned outside `com_lock`, racing with `_lines()` which reads `self._view` inside the lock. Now assigned inside `com_lock`.
+- `autodj/winmsg.py`: three module-level functions were defined twice — `make_lparam` (lines 58 and 256), `pick_child` (lines 62 and 260), `show_noactivate` (lines 117 and 273). The second definition silently shadowed the first. Removed the duplicate block.
+- `autodj/webchat.py`: unused unpacked variable `node` → `_node` in `read_items()`.
+- `autodj/gui.py`: unused unpacked variables `r`/`lab` → `_r`/`_lab` in three `_vc` unpack sites; removed unnecessary `int(round(...))` in `px()`.
+- `autodj/visuals.py`: removed unnecessary `int(round(...))` in `rgb_to_hex()`.
+- `autodj/adapters/uia.py`: merged two `endswith()` calls into one with a tuple argument.
+- `autodj/doctor.py`: replaced unnecessary `dict(...)` call with a literal.
+- `autodj/engine.py`: replaced unnecessary `dict(...)` call with a literal in `snapshot()`.
+- `autodj/library.py`: replaced unnecessary `dict(...)` call with a literal in `_extract_exe()`.
+- `autodj/gui.py`: `add_files()` and `load_folder()` now check for `$DISPLAY`/`$WAYLAND_DISPLAY` before opening native file dialogs, and wrap in try/except — fixes hang on headless Linux.
+- `autodj/installer.nsi`: removed machine-specific `config.toml` from bundle (path hardcoded to one PC); config is now created by `install.ps1` on first run.
+- `autodj/tts.py`: **TTS did nothing with default config** — `eng.save_to_file()` and `eng.runAndWait()` were inside `if cfg.tts_voice:`, so with `tts_voice = ""` nothing was synthesised. Moved outside the `if`. Also added `TTS_TIMEOUT` (60s) so `synth()` no longer blocks forever if pyttsx3 is missing or hangs; each job independently imports pyttsx3 so the worker stays alive even if it's not installed.
+- `autodj/library.py`: **`ytsearch20:` autoplay sources always failed** — `is_url()` only matches `http://`/`https://`, so `ytsearch20:mandopop` was double-wrapped as `ytsearch1:ytsearch20:mandopop` and failed. Added `SEARCH_PREFIX` regex and `raw_target` parameter so operator-supplied `ytsearchN:` queries pass through unchanged. Also fixed `find_ytdlp()` to fall back to PATH yt-dlp when `mpv_path` is the default `"mpv"` (the previous code refused PATH lookup when mpv_path was set, ignoring a perfectly good yt-dlp on PATH).
+- `autodj/commands.py`: **`!play` from chat was not saved to `playlist.json`** — only admin/GUI requests were saved, so `!last` was always empty for chat requests. Added `e.playlist.add(tracks)` for chat requests too. Also fixed cooldown case-dodging (`"Bob"` and `"bob"` are now one person via `.lower()`) and `²` digit bypass in `!remove`/`!vol` (`isascii()` check).
+- `autodj/player.py`: **`mpv_timeout` killed every track longer than the timeout** — `p.wait(timeout=120)` capped total play time, cutting any track over 2 minutes. Changed to a grace period: `limit = duration + mpv_timeout`, checked via 0.5s polling loop; pauses are excluded from the countdown; unknown-duration (live) tracks have no limit. Added `POLL` constant and `_played()` helper.
+- `autodj/playlist.py`: **corrupt `playlist.json` was silently overwritten** — `load_playlist()` returned `[]` and `save_playlist()` would overwrite the bad file. Added `_unreadable()` check and `PlaylistStore.add()` now saves a `.corrupt-<timestamp>` backup before overwriting.
 - `tests/test_hardening.py`: updated `FailingPlayer.play()` and `lambda` mocks to accept the new `duration` parameter on `MpvPlayer.play()`.
 
 ### Added
 - GUI: `--discover` และ `--check` ปุ่มบน now-playing card (`🔍 ค้นหาห้องแชท` / `✓ ตรวจสอบการตั้งค่า`) ให้ผู้ดูแลระบบรัน auto-discovery และวินิจฉัยการตั้งค่าจากหน้าต่างเดสก์ท็อปโดยไม่ต้องเปิดเทอร์มินัล
 - `installer.nsi`: รองรับหลายภาษาในตัวติดตั้ง (English + Thai) ผ่าน `MUI_LANGUAGE` macro; ไฟล์ `thai.nlf` รวมอยู่ใน repo (ต้องติดตั้งที่ `Contrib\Language\` ของ NSIS บนเครื่อง Windows ก่อนคอมไพล์)
-- `camfrog_autodj/engine.py`: `Engine.__init__` no longer takes `cfg_path` (was an experiment, removed). Added `_speak_lock` so only one TTS clip plays at a time (overlapping TTS jobs would un-duck the music early). `load_source()` now recognises `ytsearchN:` queries as raw targets for autoplay sources.
-- `camfrog_autodj/engine.py` shutdown order: `adapter.close()` before `exec.shutdown()` so sender threads release the adapter before it's closed.
+- `autodj/engine.py`: `Engine.__init__` no longer takes `cfg_path` (was an experiment, removed). Added `_speak_lock` so only one TTS clip plays at a time (overlapping TTS jobs would un-duck the music early). `load_source()` now recognises `ytsearchN:` queries as raw targets for autoplay sources.
+- `autodj/engine.py` shutdown order: `adapter.close()` before `exec.shutdown()` so sender threads release the adapter before it's closed.
 
 ### Testing
 - Full suite: **97 passed, 1 skipped** (was 130 passed before test mock updates for the new `duration` parameter on `MpvPlayer.play()`).
@@ -329,7 +337,7 @@ Release-only follow-up to 0.3.2 (no application code change).
 - A burst of ~22 confetti pieces fires from the record whenever a new track starts (including the first).
 - The whole window now has a thin border that glows pink in time with the music while a track plays, and fades out when paused/idle.
 - The AUTODJ wordmark in the header has a soft duplicate-text glow behind it.
-- `camfrog_autodj/visuals.py`: `aurora_offset`, `make_particles`/`particle_pos`, `confetti_burst`/`confetti_pos` (pure functions, unit-tested, no Tk needed to test them).
+- `autodj/visuals.py`: `aurora_offset`, `make_particles`/`particle_pos`, `confetti_burst`/`confetti_pos` (pure functions, unit-tested, no Tk needed to test them).
 
 ### Fixed
 - An internal naming collision: the new window-border-glow state was stored under the same attribute (`self._glow`) already used for the vinyl's halo-ring canvas items, so turning on the border glow crashed the animation loop (`TypeError` mixing a float with a list) every frame while a track played. Caught by `tests/test_gui_logic.py` before release; renamed to `self._border_glow`.
@@ -344,7 +352,7 @@ Dev-convenience `Makefile` (cross-platform: Linux/macOS/WSL/Git-Bash with `make`
 - `tools/package.py`: the zip-building logic `make package` uses.
 
 ### Fixed
-- `tools/minipytest.py` resolved the project root incorrectly when given a single test file (`make test-one T=tests/x.py`): `camfrog_autodj` was not importable. Also did not understand pytest's `file.py::test_name` node-id syntax (silently ran zero tests). Both fixed.
+- `tools/minipytest.py` resolved the project root incorrectly when given a single test file (`make test-one T=tests/x.py`): `autodj` was not importable. Also did not understand pytest's `file.py::test_name` node-id syntax (silently ran zero tests). Both fixed.
 - The Makefile's original `package` target built the zip with a multi-line heredoc inside a recipe; `make` runs each recipe line in its own shell by default, so the heredoc never worked (`make package` failed every time). Moved into `tools/package.py`.
 - `make coverage` printed a raw `No module named coverage` twice instead of a clear message when the optional `coverage` package is not installed.
 
@@ -371,3 +379,4 @@ Audit release (details and evidence in `AUDIT.md`) plus a new GUI.
 
 ### Changed
 - Test fixture `make()` now returns a distinct source per request (the duplicate guard needs it).
+

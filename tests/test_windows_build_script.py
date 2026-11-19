@@ -99,8 +99,8 @@ class TestBuildScriptLogic(unittest.TestCase):
         subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=self.repo_root, check=True)
 
         # Create minimal repo structure
-        (self.repo_root / "camfrog_autodj").mkdir(parents=True)
-        (self.repo_root / "camfrog_autodj" / "__init__.py").write_text('__version__ = "0.2.6"\n')
+        (self.repo_root / "autodj").mkdir(parents=True)
+        (self.repo_root / "autodj" / "__init__.py").write_text('__version__ = "0.2.6"\n')
         (self.repo_root / "run_autodj.py").write_text("print('test')\n")
         (self.repo_root / "app.ico").write_bytes(b"fake_ico")
         (self.repo_root / "version_info.txt").write_text("VSVersionInfo(...)")

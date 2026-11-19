@@ -44,25 +44,25 @@ goto gui
 :gui
 echo.
 echo [AutoDJ] กำลังเปิด GUI...
-python -m camfrog_autodj -c config.toml --lang th --gui
+python -m autodj -c config.toml --lang th --gui
 goto end
 
 :console
 echo.
 echo [AutoDJ] โหมดคอนโซล (พิมพ์ !ช่วยเหลือ เพื่อดูคำสั่ง)
-python -m camfrog_autodj -c config.toml --lang th --console
+python -m autodj -c config.toml --lang th --console
 goto end
 
 :check
 echo.
 echo [AutoDJ] ตรวจสอบการตั้งค่า...
-python -m camfrog_autodj -c config.toml --check
+python -m autodj -c config.toml --check
 goto end
 
 :discover
 echo.
 echo [AutoDJ] ค้นหาห้อง Camfrog...
-python -m camfrog_autodj -c config.toml --discover
+python -m autodj -c config.toml --discover
 goto end
 
 :exit
@@ -73,3 +73,4 @@ goto end
 :end
 echo.
 pause
+

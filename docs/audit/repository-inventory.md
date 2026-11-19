@@ -10,7 +10,7 @@
 
 ## Directories
 
-`camfrog_autodj/` (application package), `camfrog_autodj/adapters/`, `camfrog_autodj/mpv/` (bundled mpv runtime + yt-dlp + VBCable driver + Python stdlib redistributable — Windows binaries, not built here), `cert/` (public codesign cert only), `docs/` (architecture, ADR, AI guides/playbooks/prompts, audit, qualification, reports), `mpv/` (top-level VBCable driver pack), `playlist/` (playlist packs + resolve_urls.py), `plugins.d/`, `scripts/`, `skills/`, `templates/`, `tests/`, `tools/` (+ `tools/windows-qualification/`, `tools/camfrog-qualification/`), `.github/` (workflows, issue/PR templates, CODEOWNERS, dependabot, CodeQL config).
+`autodj/` (application package), `autodj/adapters/`, `autodj/mpv/` (bundled mpv runtime + yt-dlp + VBCable driver + Python stdlib redistributable — Windows binaries, not built here), `cert/` (public codesign cert only), `docs/` (architecture, ADR, AI guides/playbooks/prompts, audit, qualification, reports), `mpv/` (top-level VBCable driver pack), `playlist/` (playlist packs + resolve_urls.py), `plugins.d/`, `scripts/`, `skills/`, `templates/`, `tests/`, `tools/` (+ `tools/windows-qualification/`, `tools/camfrog-qualification/`), `.github/` (workflows, issue/PR templates, CODEOWNERS, dependabot, CodeQL config).
 
 ## Untracked (working tree)
 
@@ -18,4 +18,5 @@
 
 ## Version
 
-`pyproject.toml` version = 0.2.8; `camfrog_autodj/__init__.py` `__version__ = "0.2.8"` (only `__version__`, as build.ps1 requires).
+`pyproject.toml` version = 0.2.8; `autodj/__init__.py` `__version__ = "0.2.8"` (only `__version__`, as build.ps1 requires).
+

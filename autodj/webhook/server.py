@@ -13,8 +13,8 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from camfrog_autodj.engine import Engine
-    from camfrog_autodj.models import Track
+    from autodj.engine import Engine
+    from autodj.models import Track
 
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
@@ -29,12 +29,12 @@ if TYPE_CHECKING:
     import uvicorn
     from fastapi import FastAPI
 
-from camfrog_autodj.webhook.auth import (
+from autodj.webhook.auth import (
     RateLimitMiddleware,
     RawBodyMiddleware,
     verify_signature_dep,
 )
-from camfrog_autodj.webhook.models import WebhookConfig
+from autodj.webhook.models import WebhookConfig
 
 log = logging.getLogger("autodj.webhook")
 

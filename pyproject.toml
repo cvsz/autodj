@@ -1,6 +1,6 @@
 [project]
 name = "camfrog-autodj"
-version = "0.3.7"
+version = "0.3.8"
 requires-python = ">=3.11"
 dependencies = [
   "yt-dlp",
@@ -23,14 +23,14 @@ webhook = [
   "httpx>=0.28.1,<1",
 ]
 [project.scripts]
-camfrog-autodj = "camfrog_autodj.__main__:main"
+camfrog-autodj = "autodj.__main__:main"
 [build-system]
 requires = ["setuptools>=84.2.1"]
 build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 # Previously a hand-written list that omitted plugins/, plugins.builtin/ and
 # webhook/ — a pip-installed AutoDJ crashed on import of the plugin manager.
-include = ["camfrog_autodj*"]
+include = ["autodj*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # pythonpath = ["."]  # removed to avoid path resolution issues on CI
@@ -88,4 +88,5 @@ ignore = [
 # tests/ is excluded: pytest asserts (B101) and fake fixture values (0.0.0.0,
 # /tmp paths, dummy secrets) are intentional there. Vendored binaries and the
 # forensic samples folder are not project source.
-exclude_dirs = ["tests", ".git", "build", "dist", "mpv", "camfrog_autodj/mpv", "docs/rea", ".mypy_cache", ".venv"]
+exclude_dirs = ["tests", ".git", "build", "dist", "mpv", "autodj/mpv", "docs/rea", ".mypy_cache", ".venv"]
+

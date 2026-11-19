@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from camfrog_autodj.doctor import _count_media_files
+from autodj.doctor import _count_media_files
 
 
 def test_doctor_skips_symlinks():

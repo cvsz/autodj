@@ -3,10 +3,10 @@
 import os
 import tempfile
 
-from camfrog_autodj.adapters import NullAdapter
-from camfrog_autodj.config import Config
-from camfrog_autodj.engine import Engine
-from camfrog_autodj.exceptions import UserError
+from autodj.adapters import NullAdapter
+from autodj.config import Config
+from autodj.engine import Engine
+from autodj.exceptions import UserError
 
 
 def test_admin_cannot_escape_music_dirs():
