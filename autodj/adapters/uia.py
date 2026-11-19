@@ -79,6 +79,39 @@ class UiaAdapter(ChatAdapter):
         self._view = self._input = None
         self._web = False
 
+    def _room_line_message(self, line: str) -> ChatMessage | None:
+        """A new room-history line as a ChatMessage (chat line, IM line or join notice)."""
+        # Camfrog builds have used several IM markers over time.  Detect all of
+        # them; a log record makes a new format easy to spot in the startup log.
+        low = line.lower()
+        is_im = (
+            line.startswith(("IM ", "[IM]", "(IM)", "PM ", "Private:", "IM:"))
+            or low.startswith(("im from ", "private message from "))
+            or "[IM]" in line
+            or " (IM) " in line
+        )
+        if is_im:
+            log.info("IM detected: %r", line[:240])
+        m = parse_line(line, self.rx, is_im=is_im)
+        if m is None and not is_im:
+            m = parse_join(line, self.join_rx)  # "<user> has entered the room"
+        return m
+
+    def _recent_nicks(self, lines: list[str], window_s: float = 3 * 3600.0) -> list[str]:
+        """Nicks that spoke or joined in *lines* within *window_s* (by the line's
+        ``H:MM`` stamp; a line without a stamp counts).  Camfrog's user list is a
+        virtual list view whose names cannot be read, so the room history is the
+        presence source at startup."""
+        seen: dict[str, None] = {}
+        for line in lines:
+            stamp = re.match(r"^\s*(\d{1,2}:\d{2}(?::\d{2})?)\b", line)
+            if stamp and not self._is_recent(stamp.group(1), window_s=window_s):
+                continue
+            m = parse_line(line, self.rx) or parse_join(line, self.join_rx)
+            if m and m.user:
+                seen[m.user] = None
+        return list(seen)
+
     def _find(self, ctype, idx):
         """The idx-th control of ctype.  RuntimeError (which messages() retries)
         when it is not there yet -- e.g. a Camfrog window that is still loading.
@@ -266,23 +299,17 @@ class UiaAdapter(ChatAdapter):
                     self._view = self.win = None  # drop everything: the next poll re-attaches fresh
                 time.sleep(1)
                 continue
-            if prev is not None:
+            if prev is None:
+                # First read: the history is a baseline and is never replayed, but
+                # the people in it are (most likely) still in the room.  Without
+                # this, after a restart everyone already present counted as "not
+                # in the room" until they spoke again, and their IM requests were
+                # refused (im_require_room_presence).
+                for nick in self._recent_nicks(lines):
+                    yield ChatMessage(nick, "", event="seen")
+            else:
                 for line in diff_lines(prev, lines):
-                    # Camfrog builds have used several IM markers over time.
-                    # Detect all of them; a debug log record makes a new format
-                    # easy to spot from the normal startup log.
-                    low = line.lower()
-                    is_im = (
-                        line.startswith(("IM ", "[IM]", "(IM)", "PM ", "Private:", "IM:"))
-                        or low.startswith(("im from ", "private message from "))
-                        or "[IM]" in line
-                        or " (IM) " in line
-                    )
-                    if is_im:
-                        log.info("IM detected: %r", line[:240])
-                    m = parse_line(line, self.rx, is_im=is_im)
-                    if m is None and not is_im:
-                        m = parse_join(line, self.join_rx)  # "<user> has entered the room"
+                    m = self._room_line_message(line)
                     if m:
                         yield m
             prev = lines  # first poll only sets the baseline: old history is never replayed

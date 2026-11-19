@@ -1442,15 +1442,9 @@ class Engine:
                 if self.stop_evt.is_set():
                     break
                 # Ignore our own messages: match by normalized nick or by echo detection
-                if norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text):
+                if self._should_ignore_message(msg):
                     continue
-
-                if msg.event == "join":
-                    self._handle_room_join(msg)
-                elif msg.is_im:
-                    self._handle_im(msg)
-                else:
-                    self._handle_room_message(msg)
+                self._dispatch_chat(msg)
         except (OSError, RuntimeError, ChatAdapterError):
             # Expected adapter-level failures at shutdown or COM wedges
             if not self.stop_evt.is_set():
@@ -1461,6 +1455,17 @@ class Engine:
                 log.exception("chat loop ended with unexpected error")
         finally:
             self.chat_done.set()
+
+    def _dispatch_chat(self, msg: ChatMessage) -> None:
+        """Route one incoming chat event to its handler."""
+        if msg.event == "seen":  # in the room history at startup: present, nothing else
+            self._update_participant_count(msg.user)
+        elif msg.event == "join":
+            self._handle_room_join(msg)
+        elif msg.is_im:
+            self._handle_im(msg)
+        else:
+            self._handle_room_message(msg)
 
     def _should_ignore_message(self, msg: ChatMessage) -> bool:
         """Return True if the message should be ignored (echo or own message)."""
@@ -1540,6 +1545,12 @@ class Engine:
             log.info("IM to %s not sent: chat adapter cannot send IMs", user)
             return False
         self._remember_sent(text)
+        # Camfrog renders camfrog:join:<room> / URLs as links and the IM reader keeps
+        # the text before the link: remember that part too, or our own reply comes
+        # back as an IM from the user ("IM received: zdevz: กรุณาเข้าห้อง").
+        visible = re.split(r"camfrog:|https?://", text, maxsplit=1)[0].strip()
+        if visible and visible != text:
+            self._remember_sent(visible)
         try:
             send(user, text)
         except Exception:
