@@ -74,7 +74,16 @@ class UiaAdapter(ChatAdapter):
         self._web = False
 
     def _find(self, ctype, idx):
-        return self.win.descendants(control_type=ctype)[idx]
+        """The idx-th control of ctype.  RuntimeError (which messages() retries)
+        when it is not there yet -- e.g. a Camfrog window that is still loading.
+        A bare IndexError used to escape and end the chat loop for good."""
+        found = self.win.descendants(control_type=ctype)
+        if not -len(found) <= idx < len(found):
+            raise RuntimeError(
+                f"chat control {ctype}[{idx}] not found ({len(found)} present); "
+                "room window not ready yet, or run AutoDJ.exe --discover"
+            )
+        return found[idx]
 
     def _resolve(self):
         """Locate the chat history (and message box) once; remembered until something fails."""
