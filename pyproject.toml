@@ -12,15 +12,15 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest"]
 build = ["pyinstaller"]
-hotreload = ["watchdog>=3.0,<7"]
+hotreload = ["watchdog>=7.1.0,<8"]
 webhook = [
   # Upper bounds prevent a future major release from silently changing the
   # webhook API in a signed build; yt-dlp is intentionally left unbounded so
   # its extractors can keep up with site changes.
-  "fastapi>=0.100,<1",
-  "uvicorn>=0.23,<1",
-  "pydantic>=2.5,<3",
-  "httpx>=0.25,<1",
+  "fastapi>=0.163.1,<1",
+  "uvicorn>=0.54.0,<1",
+  "pydantic>=2.14.3,<3",
+  "httpx>=0.28.1,<1",
 ]
 [project.scripts]
 camfrog-autodj = "camfrog_autodj.__main__:main"
