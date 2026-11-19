@@ -54,10 +54,10 @@ line_regex = '^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):
 # mpv and yt-dlp are installed alongside AutoDJ by the NSIS installer:
 #   $INSTDIR/mpv/mpv.exe        (mpv player)
 #   $INSTDIR/mpv/yt-dlp.exe     (YouTube downloader for mpv + title lookups)
-# Example: mpv_path = "mpv/mpv.exe"  (relative to AutoDJ.exe install dir)
-# Example: ytdlp_path = "mpv/yt-dlp.exe"
-mpv_path = "mpv/mpv.exe"
-ytdlp_path = "mpv/yt-dlp.exe"       # "" = auto: yt-dlp(.exe) next to mpv or on PATH, else bundled Python module
+# Example: mpv_path = "D:/data/autodj/mpv/mpv.exe"  (relative to AutoDJ.exe install dir)
+# Example: ytdlp_path = "D:/data/autodj/mpv/yt-dlp.exe"
+mpv_path = "D:/data/autodj/mpv/mpv.exe"
+ytdlp_path = "D:/data/autodj/mpv/yt-dlp.exe"       # "" = auto: yt-dlp(.exe) next to mpv or on PATH, else bundled Python module
 
 # YouTube authentication (for age-restricted / private content)
 youtube_cookies_file = ""           # Path to Netscape cookies.txt for yt-dlp
@@ -140,7 +140,7 @@ log_json_fields = [                 # Extra fields to include in JSON logs
 ]
 
 # --- Playlist Persistence ----------------------------------------------------
-playlist_file = "playlist.json"     # User-requested tracks (!play / GUI request / !load) are appended here
+playlist_file = ""     # User-requested tracks (!play / GUI request / !load) are appended here
 # (deduplicated) and join the autoplay pool (random); "" = disable persistence
 playlist_dir = ""           # Directory of *.json playlist files auto-loaded at startup; "" = disabled (default off)
 playlist_dir_autoload = false  # Even with playlist_dir set, never auto-load demo playlists unless true
@@ -172,7 +172,7 @@ im_auto_reply_cooldown = 60.0       # Seconds between auto-replies to the same u
 # Default song: plays at startup, and again when the request queue is empty and nobody
 # has requested for autoplay_idle_timeout seconds (repeats until the next request).
 # A request always cuts it; a *requested* song is never cut (later requests queue FIFO).
-default_track = ""                  # e.g. "https://www.youtube.com/watch?v=HhVVVgYsBYw"; "" = autoplay pool only
+default_track = "https://www.youtube.com/watch?v=HhVVVgYsBYw"                  # e.g. "https://www.youtube.com/watch?v=HhVVVgYsBYw"; "" = autoplay pool only
 autoplay_idle_timeout = 30.0        # Seconds with no requests (queue empty) before the default song / autoplay (0-86400)
 
 # --- Admin Greeting ----------------------------------------------------------
@@ -272,5 +272,8 @@ ai_model = "gpt-3.5-turbo"
 ai_system_prompt = "You are AutoDJ, a music bot in a Camfrog room. Keep replies short, friendly, and on-topic. Do not claim to play music unless asked."
 ai_max_chars = 200                       # reply length cap (Camfrog line limit)
 ai_user_cooldown = 30.0                  # seconds between AI replies to the same user
+
+
+
 
 
