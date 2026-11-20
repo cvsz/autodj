@@ -113,6 +113,8 @@ STR = {
         "status_admin": "{nick} is an admin.",
         "status_moderator": "{nick} is a moderator.",
         "status_owner": "{nick} is the room owner.",
+        # Mic / DJ greeting (user receives the room mic; see docs/camfrog-re mic detection)
+        "mic_greeting": "You {user} are now the DJ.",
         # Status alerts (upgrade / payment required; see docs/camfrog-re/07-upgrade-logic.md, 09-payment.md)
         "status_upgrade_required": "Camfrog upgrade required — check the client.",
         "status_payment_required": "Payment required — check the Camfrog store.",
@@ -402,6 +404,8 @@ STR = {
         "status_admin": "{nick} เป็นแอดมิน.",
         "status_moderator": "{nick} เป็นผู้ดูแลระบบ.",
         "status_owner": "{nick} เป็นเจ้าของห้อง.",
+        # Mic / DJ greeting (user receives the room mic; see docs/camfrog-re mic detection)
+        "mic_greeting": "คุณ {user} รับไมค์เป็น DJ ขณะนี้",
         # Status alerts (upgrade / payment required; see docs/camfrog-re/07-upgrade-logic.md, 09-payment.md)
         "status_upgrade_required": "Camfrog ต้องอัปเกรด — กรุณาตรวจสอบไคลเอนต์",
         "status_payment_required": "ต้องชำระเงิน — กรุณาตรวจสอบร้านค้า Camfrog",

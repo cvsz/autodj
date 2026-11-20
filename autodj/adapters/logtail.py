@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from pathlib import Path
@@ -14,7 +15,7 @@ class LogTailAdapter(ChatAdapter):
     """Reads a chat log file as it grows. Read-only: pair with chat_sender="uia"."""
 
     def __init__(self, cfg):
-        self.path = Path(cfg.log_path)
+        self.path = Path(os.path.expandvars(os.path.expanduser(cfg.log_path)))
         self.enc = cfg.log_encoding
         self.rx = re.compile(cfg.line_regex)
         self.join_rx = compile_join_rx(getattr(cfg, "join_line_regex", ""))

@@ -349,8 +349,25 @@ def _auto_discover(a, cfg) -> bool:
 
     try:
         ups = discover.apply(cfg, a.config)
-    except Exception:  # pragma: no cover - defensive; discovery is best-effort
-        logging.getLogger(__name__).exception("auto-discover failed; continuing without it")
+    except Exception as ex:  # pragma: no cover - defensive; discovery is best-effort
+        log = logging.getLogger(__name__)
+        log.exception("auto-discover failed; continuing without it")
+        # A corrupted comtypes_gen cache (SyntaxError in a generated COM module)
+        # breaks pywinauto import.  Offer to clean it so discovery can retry.
+        if "comtypes_gen" in str(ex) or "SyntaxError" in str(ex):
+            try:
+                from comtypes.client import _generate as _cg
+
+                cache_dir = os.path.dirname(_cg.__file__) if hasattr(_cg, "__file__") else None
+                if cache_dir:
+                    shutil.rmtree(cache_dir, ignore_errors=True)
+                    log.warning(
+                        "removed corrupted comtypes_gen cache at %s; "
+                        "restart AutoDJ to regenerate it and retry auto-discover",
+                        cache_dir,
+                    )
+            except Exception:
+                log.debug("could not clean comtypes_gen cache: %s", ex)
         ups = None
     if a.discover:
         print(ups or "nothing found: open the room window and try again")

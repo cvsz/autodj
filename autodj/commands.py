@@ -776,7 +776,10 @@ def _ai_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     raw = a.strip()
     arg = raw.lower()
     if not arg:
-        raise UserError(e.t("usage", p=e.cfg.prefix))
+        # No argument: show current AI status instead of a usage error.
+        state = e.t("ai_enabled") if e.ai.is_enabled() else e.t("ai_disabled")
+        e.say(e.t("ai_status", state=state, model=e.cfg.ai_model, url=e.cfg.ai_base_url))
+        return
 
     if arg == "on":
         e.cfg.ai_enabled = True
