@@ -154,12 +154,9 @@ Section /o "mpv + yt-dlp" SEC_MPV
     SetOutPath "$APPDATA\mpv"
     ; /nonfatal: CI runners have no vendored mpv/ folder (it is not in git); a
     ; missing binary must not abort the whole installer build (SEC_MPV is optional)
-    File /nonfatal "dist\mpv\mpv.exe"
-    File /nonfatal "dist\mpv\yt-dlp.exe"
-    File /nonfatal "dist\mpv\mpv-register.bat"
-    File /nonfatal "dist\mpv\mpv-unregister.bat"
-    SetOutPath "$APPDATA\mpv\_internal"
-    File /nonfatal /r "dist\mpv\_internal\*.*"
+    ; Copy the entire mpv folder (mpv.exe, yt-dlp.exe, _internal, vbcable,
+    ; libbluray, icons, docs, etc.) so the bundled mpv is fully functional.
+    File /nonfatal /r "dist\mpv\*.*"
     ; Register mpv file associations and protocols (optional, requires admin)
     ; Run hidden so user doesn't see command window flash
     IfFileExists "$APPDATA\mpv\mpv-register.bat" do_register skip_register
