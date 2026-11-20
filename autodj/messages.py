@@ -293,6 +293,7 @@ STR = {
         "ai_status": "AI: {state} | model={model} | base_url={url}",
         "ai_model_set": "AI model set to: {model}",
         "ai_prompt_set": "AI system prompt set.",
+        "ai_help": "🤖 AI Commands:\n{p}ai on|off|status|model <name>|prompt <text>\n{p}ai help — show this help via IM\n\n📋 All Commands:\n{base}{admin}\n\n💬 Send IM to {BOT} to use any command privately.",
     },
     "th": {
         "admin_only": "เฉพาะแอดมินเท่านั้น",
@@ -584,6 +585,7 @@ STR = {
         "ai_status": "AI: {state} | model={model} | base_url={url}",
         "ai_model_set": "ตั้งค่าโมเดล AI เป็น: {model}",
         "ai_prompt_set": "ตั้งค่า system prompt ของ AI แล้ว.",
+        "ai_help": "🤖 คำสั่ง AI:\n{p}เอไอ on|off|status|model <ชื่อ>|prompt <ข้อความ>\n{p}เอไอ help — แสดงคำช่วยเหลือนี้ทาง IM\n\n📋 คำสั่งทั้งหมด:\n{base}{admin}\n\n💬 ส่ง IM ไปยัง {BOT} เพื่อใช้คำสั่งส่วนตัวทาง IM",
     },
 }
 
