@@ -960,7 +960,7 @@ function Main {
     Write-Host ""
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
     Write-Host "           Camfrog AutoDJ - Windows 11 Automated Installer" -ForegroundColor $C_CYAN
-    Write-Host "                         Version 0.3.9" -ForegroundColor $C_CYAN
+    Write-Host "                         Version 0.3.10" -ForegroundColor $C_CYAN
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
     Write-Host ""
     Write-Log "=== CamfrogAutoDJ Installer Started ==="
@@ -1029,7 +1029,7 @@ function Main {
                 $mpvExe = Get-ChildItem $mpvPkgDir.FullName -Recurse -Filter "mpv.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
                 if ($mpvExe) {
                     $mpvPath = $mpvExe.FullName -replace '\\', '/'
-                    $content = $content -replace 'mpv_path = "C:/mpv/mpv.exe"', ("mpv_path = `"$mpvPath`"")
+                    $content = $content -replace '(?m)^mpv_path\s*=\s*"[^"]*"', ("mpv_path = `"$mpvPath`"")
                 }
             }
             
@@ -1037,7 +1037,7 @@ function Main {
             $ytDlpLink = "$env:LOCALAPPDATA\Microsoft\WinGet\Links\yt-dlp.EXE"
             if (Test-Path $ytDlpLink) {
                 $ytDlpPath = $ytDlpLink -replace '\\', '/'
-                $content = $content -replace 'ytdlp_path = ""', ("ytdlp_path = `"$ytDlpPath`"")
+                $content = $content -replace '(?m)^ytdlp_path\s*=\s*"[^"]*"', ("ytdlp_path = `"$ytDlpPath`"")
             }
             
             Set-Content $distConfig -Value $content -Encoding utf8

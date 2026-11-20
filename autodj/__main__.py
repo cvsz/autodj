@@ -335,6 +335,47 @@ def _auto_launch(cfg) -> None:
         log.warning("auto-launch failed; continuing without Camfrog: %s", ex)
 
 
+def _clean_comtypes_gen_cache(log: logging.Logger) -> list[str]:
+    """Delete generated COM wrapper modules from comtypes' gen cache.
+
+    Only ``*.py`` files (except ``__init__.py``) and ``__pycache__`` inside
+    ``comtypes.client.gen_dir`` are removed: that is the generated cache
+    comtypes rebuilds on demand.  The comtypes package itself is never touched.
+    Returns the removed paths.
+    """
+    removed: list[str] = []
+    try:
+        import comtypes.client
+
+        gen_dir = getattr(comtypes.client, "gen_dir", None)
+    except Exception as ex:  # noqa: BLE001 -- best-effort cleanup
+        log.debug("could not locate comtypes gen cache: %s", ex)
+        return removed
+    if not gen_dir or not os.path.isdir(gen_dir):
+        return removed
+    gen = Path(gen_dir)
+    for entry in gen.iterdir():
+        if entry.is_symlink():
+            continue
+        try:
+            if entry.is_file() and entry.suffix == ".py" and entry.name != "__init__.py":
+                entry.unlink()
+                removed.append(str(entry))
+            elif entry.is_dir() and entry.name == "__pycache__":
+                shutil.rmtree(entry, ignore_errors=True)
+                removed.append(str(entry))
+        except OSError as ex:
+            log.debug("could not remove %s: %s", entry, ex)
+    if removed:
+        log.warning(
+            "removed %d generated comtypes module(s) from %s; "
+            "restart AutoDJ to regenerate them and retry auto-discover",
+            len(removed),
+            gen,
+        )
+    return removed
+
+
 def _auto_discover(a, cfg) -> bool:
     # Auto-discovery must never prevent the GUI from opening: log the failure
     # and continue with the existing config instead of crashing at startup.
@@ -353,21 +394,9 @@ def _auto_discover(a, cfg) -> bool:
         log = logging.getLogger(__name__)
         log.exception("auto-discover failed; continuing without it")
         # A corrupted comtypes_gen cache (SyntaxError in a generated COM module)
-        # breaks pywinauto import.  Offer to clean it so discovery can retry.
-        if "comtypes_gen" in str(ex) or "SyntaxError" in str(ex):
-            try:
-                from comtypes.client import _generate as _cg
-
-                cache_dir = os.path.dirname(_cg.__file__) if hasattr(_cg, "__file__") else None
-                if cache_dir:
-                    shutil.rmtree(cache_dir, ignore_errors=True)
-                    log.warning(
-                        "removed corrupted comtypes_gen cache at %s; "
-                        "restart AutoDJ to regenerate it and retry auto-discover",
-                        cache_dir,
-                    )
-            except Exception:
-                log.debug("could not clean comtypes_gen cache: %s", ex)
+        # breaks pywinauto import.  Clean it so discovery can retry.
+        if isinstance(ex, SyntaxError) or "comtypes_gen" in str(ex) or "comtypes.gen" in str(ex):
+            _clean_comtypes_gen_cache(log)
         ups = None
     if a.discover:
         print(ups or "nothing found: open the room window and try again")

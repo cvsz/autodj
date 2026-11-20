@@ -1,16 +1,20 @@
-# Checks if PyInstaller is available
-param([int]$MinBuild = 22000)
+# Reports whether PyInstaller is importable by the build's Python.
+# Warning only (exit 0); the pyinstaller-check make target is the hard gate.
+# Output goes to stdout; the Makefile appends it to the build log.
+param([string]$Python = "python")
 
-$pyinstaller_found = $false
-
-# Check if PyInstaller is installed
+$ok = $false
 try {
-    & $(PY) -c "import PyInstaller"
-    Write-Host "  OK: PyInstaller installed"
-    $pyinstaller_found = $true
+    & $Python -c "import PyInstaller" 2>$null
+    # A native command that fails does not throw: check its exit code.
+    $ok = ($LASTEXITCODE -eq 0)
 } catch {
-    Write-Host "WARN: PyInstaller not installed. Run: $(PIP) install pyinstaller"
+    $ok = $false  # $Python itself could not be started
 }
 
-# Output log line
-Write-Output "PyInstaller check completed" >> "$env:BUILD_LOG_DIR\win11-check-$env:BUILD_LOG_TS.log" 2>$null
+if ($ok) {
+    Write-Output "  OK: PyInstaller installed"
+} else {
+    Write-Output "WARN: PyInstaller not installed for '$Python'. Run: $Python -m pip install pyinstaller"
+}
+exit 0

@@ -26,7 +26,7 @@
 ; Metadata (overridable from command line)
 ; -----------------------------------------------------------------------------
 !define /IfNDef APP_NAME "Camfrog AutoDJ"
-!define /IfNDef APP_VERSION "0.3.9"
+!define /IfNDef APP_VERSION "0.3.10"
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
 !define /IfNDef APP_EXE "AutoDJ.exe"
@@ -151,7 +151,10 @@ Section "Playlist Directory" SEC_PLAYLIST
 SectionEnd
 
 Section /o "mpv + yt-dlp" SEC_MPV
-    SetOutPath "$APPDATA\mpv"
+    ; Keep the bundled mpv inside our own install folder.  Never use $APPDATA\mpv:
+    ; that is mpv's per-user config folder (mpv.conf, scripts, input.conf), and the
+    ; uninstaller's RMDir /r would delete the user's own mpv settings.
+    SetOutPath "$INSTDIR\mpv"
     ; /nonfatal: CI runners have no vendored mpv/ folder (it is not in git); a
     ; missing binary must not abort the whole installer build (SEC_MPV is optional)
     ; Copy the entire mpv folder (mpv.exe, yt-dlp.exe, _internal, vbcable,
@@ -159,9 +162,9 @@ Section /o "mpv + yt-dlp" SEC_MPV
     File /nonfatal /r "dist\mpv\*.*"
     ; Register mpv file associations and protocols (optional, requires admin)
     ; Run hidden so user doesn't see command window flash
-    IfFileExists "$APPDATA\mpv\mpv-register.bat" do_register skip_register
+    IfFileExists "$INSTDIR\mpv\mpv-register.bat" do_register skip_register
 do_register:
-    ExecWait '"$APPDATA\mpv\mpv-register.bat"'
+    ExecWait '"$INSTDIR\mpv\mpv-register.bat"'
 skip_register:
 SectionEnd
 
@@ -243,10 +246,10 @@ Section -Post
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "Path" "$INSTDIR"
 
     ; Register bundled media tools only when the optional component is present.
-    IfFileExists "$APPDATA\mpv\mpv.exe" media_tools_present media_tools_absent
+    IfFileExists "$INSTDIR\mpv\mpv.exe" media_tools_present media_tools_absent
 media_tools_present:
-    WriteRegStr HKCU "Software\CamfrogAutoDJ" "mpv_path" "$APPDATA\mpv\mpv.exe"
-    WriteRegStr HKCU "Software\CamfrogAutoDJ" "ytdlp_path" "$APPDATA\mpv\yt-dlp.exe"
+    WriteRegStr HKCU "Software\CamfrogAutoDJ" "mpv_path" "$INSTDIR\mpv\mpv.exe"
+    WriteRegStr HKCU "Software\CamfrogAutoDJ" "ytdlp_path" "$INSTDIR\mpv\yt-dlp.exe"
     Goto media_tools_registry_done
 media_tools_absent:
     DeleteRegValue HKCU "Software\CamfrogAutoDJ" "mpv_path"
@@ -298,7 +301,7 @@ Section Uninstall
     Delete "$INSTDIR\install.bat"
     Delete "$INSTDIR\uninstall.exe"
     Delete "$INSTDIR\ads-list.json"
-    RMDir /r "$APPDATA\mpv"
+    RMDir /r "$INSTDIR\mpv"
     RMDir /r "$INSTDIR\playlist"
     RMDir /r "$INSTDIR\docs"
     RMDir /r "$INSTDIR\tools"
