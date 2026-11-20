@@ -1,26 +1,25 @@
-# Checks if NSIS makensis is available on the system
-param([int]$MinBuild = 22000)
+# Fails (exit 1) unless NSIS makensis.exe is available: the installer cannot be
+# built without it.  Output goes to stdout; the Makefile appends it to the build log.
 
-$nsis_found = $false
-
-# Check common locations
-$nsis_paths = @(
-    "makensis.exe",  # in PATH
-    "C:\Program Files (x86)\NSIS\makensis.exe",
-    "C:\Program Files\NSIS\makensis.exe"
-)
-
-foreach ($path in $nsis_paths) {
-    if (Test-Path $path) {
-        Write-Host "  OK: NSIS makensis found at $path"
-        $nsis_found = $true
-        break
+$found = $null
+$cmd = Get-Command makensis.exe -ErrorAction SilentlyContinue
+if ($cmd) {
+    $found = $cmd.Source
+} else {
+    foreach ($path in @(
+            "C:\Program Files (x86)\NSIS\makensis.exe",
+            (Join-Path $env:ProgramFiles "NSIS\makensis.exe")
+        )) {
+        if ($path -and (Test-Path -LiteralPath $path -PathType Leaf)) {
+            $found = $path
+            break
+        }
     }
 }
 
-if (-not $nsis_found) {
-    Write-Host "ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis) or set SKIP_CHECKS=1 to bypass."
+if ($found) {
+    Write-Output "  OK: NSIS makensis found at $found"
+    exit 0
 }
-
-# Output log line
-Write-Output "NSIS check completed" >> "$env:BUILD_LOG_DIR\win11-check-$env:BUILD_LOG_TS.log" 2>$null
+Write-Output "ERROR: NSIS (makensis) not found. Install NSIS 3.09+ (choco install nsis) or set SKIP_CHECKS=1 to bypass."
+exit 1

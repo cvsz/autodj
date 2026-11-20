@@ -1,6 +1,6 @@
 # AutoDJ Admin Manual — English
 
-**Version:** 0.3.5  
+**Version:** 0.3.10  
 **Audience:** Room administrators and bot operators  
 **Language:** English
 
@@ -71,7 +71,7 @@ This manual covers administrative features, configuration, and operational proce
 
 | Command | Aliases | Description | Example |
 |---------|---------|-------------|---------|
-| `ai` | `เอไอ` | `on` / `off` / `status` / `model <id>` / `prompt <text>` — takes effect immediately (runtime only; edit config.toml to persist) | `!ai status` |
+| `ai` | `เอไอ` | `on` / `off` / `status` / `model <id>` / `prompt <text>` — takes effect immediately (runtime only; edit config.toml to persist). `!ai` alone shows the status; `!ai help` sends the full command list to you by IM | `!ai status` / `!ai help` |
 | `update` | `อัปเดต` | Check GitHub for a strictly newer release; `apply` downloads it (SHA-256 verified) and stages `AutoDJ.next.exe` + `autodj_update.bat` | `!update` / `!update apply` |
 
 ### Information
@@ -105,7 +105,7 @@ This manual covers administrative features, configuration, and operational proce
 admins = ["YourNick", "BackupAdmin"]
 
 # Bot's own nickname in the room (for echo detection)
-bot_nick = "AutoDJBot"
+bot_nick = "AutoDJ"            # shipped default; set the nick the bot really chats as
 
 # Command prefix
 prefix = "!"
@@ -148,7 +148,7 @@ log_encoding = "utf-8"              # log file encoding
 mpv_path = "mpv/mpv.exe"            # or full path: "C:/mpv/mpv.exe"
 
 # yt-dlp path (auto-detected if empty)
-ytdlp_path = "mpv/yt-dlp.exe"       # or "C:/mpv/yt-dlp.exe"
+ytdlp_path = ""                     # "" = auto: next to mpv or on PATH; or "C:/mpv/yt-dlp.exe"
 
 # YouTube authentication (optional)
 youtube_cookies_file = ""           # path to Netscape cookies.txt for yt-dlp
@@ -372,6 +372,22 @@ if your Camfrog client words it differently, copy one join line from the chat an
 Each person gets one greeting per cooldown: admins get `admin_greeting_message`, everyone
 else `welcome_message_message`. Plugins can react with `on_join(user)`.
 
+### Mic / DJ Greeting
+
+```toml
+mic_greeting_enabled = true        # greet a user when the room shows they got the mic
+mic_greeting_message = ""          # {user} = nick; "" = localized default ("{user} is now the DJ.")
+mic_greeting_cooldown = 300.0      # seconds between mic greetings for the same user (0-86400)
+```
+
+Only a whole room line of the form `<nick> <mic phrase>` counts — `Seaza is now speaking`,
+`Seaza has the mic`, `Seaza is the DJ`, `Seaza took the mic`, `Seaza กำลังรับไมค์`,
+`Seaza กำลังพูด` — and only when the line's sender is that nick (or the line has no sender,
+as for a system notice). Ordinary chat such as "who is the dj?" never triggers it, and one
+user cannot get the bot to announce somebody else. Blocked users are skipped. All three
+settings are also in the Settings dialog. Detection against a live Camfrog room is unverified:
+if your client words the notice differently, the greeting will not fire.
+
 ### Admin Command Gating (Config-gated Features)
 
 ```toml
@@ -416,7 +432,7 @@ log_json_fields = [                    # extra fields to include in JSON logs
 ### AI Chat Replies
 
 ```toml
-ai_enabled = false
+ai_enabled = true                  # default on, but AI stays off until ai_api_key is set
 ai_api_key = ""                    # NVIDIA key (nvapi-...) from https://build.nvidia.com/settings
 ai_base_url = "https://integrate.api.nvidia.com/v1"   # any OpenAI-compatible endpoint; https required (http only for localhost/127.0.0.1/::1)
 ai_model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"   # NVIDIA API catalog model id
@@ -427,7 +443,8 @@ ai_user_cooldown = 30.0            # seconds between AI replies to the same user
 
 - AI answers non-command room messages only. It **never** answers private IMs (the bot can only post to the public room, so that would leak the IM).
 - URLs with embedded credentials are rejected. The per-user cooldown is enforced and also bounds API spend.
-- `!ai on|off|status|model <id>|prompt <text>` (admin) take effect immediately; config edits apply on reload.
+- `!ai on|off|status|model <id>|prompt <text>` (admin) take effect immediately; config edits apply on reload. `!ai` alone shows the status and `!ai help` sends the full command list by IM.
+- Once `ai_api_key` is set, non-command room chat is sent to the configured AI endpoint (NVIDIA by default). Set `ai_enabled = false` if that is not wanted.
 
 ### Auto-Update
 
@@ -628,19 +645,25 @@ dist\AutoDJ.exe --check
 ### Build Installer
 
 ```powershell
-# Requires NSIS 3.0+ with MUI2
-makensis installer.nsi
+make installer        # or: powershell -ExecutionPolicy Bypass -File scripts/build_installer.ps1
 ```
+
+Build `dist\AutoDJ.exe` first (`make build`, or `make build-all` for exe + installer).
+`scripts/build_installer.ps1` copies the current `config.example.toml` to `dist\config.toml`
+(plus README, CHANGELOG and LICENSE) on every run, renders `installer.nsi` with the version
+from `pyproject.toml`, then runs `makensis`. Running `makensis installer.nsi` by hand skips that
+staging and can ship a stale config template. A developer's local `config.toml` is never packaged.
 
 ### Installer Features
 
 - Per-user install to `%APPDATA%\CamfrogAutoDJ` (no admin)
-- Installs Python, mpv, yt-dlp, VB-Cable via winget
-- Creates Desktop/Start Menu shortcuts
-- Generates config.toml interactively
-- Optional auto-start on login
-- Runs `AutoDJ.exe --check` verification
-- Uninstaller included
+- Ships `config.toml` from `config.example.toml`; an existing `config.toml` is kept on upgrade
+- Writes the absolute bundled `mpv_path` / `ytdlp_path` into `config.toml` (`AutoDJ.exe --write-install-paths`)
+- Optional component: bundled mpv + yt-dlp in `%APPDATA%\CamfrogAutoDJ\mpv` (never `%APPDATA%\mpv`, which is mpv's own config folder)
+- Closes a running AutoDJ / mpv started from the install folder before upgrading or uninstalling
+- Start Menu shortcuts (AutoDJ, Edit Config, Uninstall) and a Desktop shortcut
+- Ships `install.ps1` for VB-CABLE and other prerequisites (VB-CABLE is not bundled)
+- Uninstaller keeps `config.toml`, playlists, logs and other user data
 
 ---
 

@@ -50,6 +50,11 @@ Two transport paths:
 
 Background sending verifies the message appeared in the room; after 2 unconfirmed sends it falls back to foreground mode. All UIA access is serialized with a COM re-entrancy lock.
 
+Every incoming line then goes through `Engine` before the router sees it:
+- **Own-echo filter:** `_sender()` remembers each posted chunk right before sending (one entry per post, 120 s TTL) and `_is_echo()` consumes one entry per echo, so the room showing the bot's own lines back under the account's nick is never treated as a command or AI prompt — even when the same line was posted twice. `send_im()` also remembers the IM text and the part before a `camfrog:`/URL link.
+- **Duplicate suppression:** the same user + normalized text within 3 s is dropped (`_is_duplicate_message`), so a backlog Camfrog re-dumps after a reconnect does not run a command several times.
+- **Room events (`_handle_re_events`):** gift, avatar change, status indicator, upgrade/payment alerts, and the mic/DJ greeting. Each matches whole notice lines only; the mic greeting additionally requires the line's sender to be the named nick, so ordinary chat cannot trigger an announcement.
+
 ### 3. Command dispatch (`commands.py`)
 
 Commands are registered with `@command(names, admin=False)`. The `Router`:
@@ -92,6 +97,7 @@ At startup (`auto_discover = true`) or via `--discover`, scans visible Camfrog w
 - Message box input control
 - Writes `window_title_re`, `view_type/view_index`, `input_type/input_index` to `config.toml` atomically (tmp + replace, with `.bak` backup)
 - Never replaces a working config with invalid TOML
+- comtypes' generated COM wrappers live in `%APPDATA%\CamfrogAutoDJ\comtypes_gen` (`paths.prepare_comtypes`). If discovery fails on a corrupted wrapper, only the generated `*.py` / `__pycache__` in that folder are removed; the comtypes package is never touched
 
 ## Trust boundaries and security
 
@@ -124,7 +130,7 @@ return msg.local or msg.user.lower() in self.e.admins
 
 ## Installer and distribution
 
-- **NSIS installer** (`installer.nsi`): per-user install to `%APPDATA%\CamfrogAutoDJ`, preserves `config.toml` and `playlist.json` on upgrade, uninstaller removes only application-owned files
+- **NSIS installer** (`installer.nsi`): per-user install to `%APPDATA%\CamfrogAutoDJ`, preserves `config.toml` and `playlist.json` on upgrade, uninstaller removes only application-owned files. Bundled mpv/yt-dlp go to `$INSTDIR\mpv` (never `%APPDATA%\mpv`, mpv's own config folder) and `AutoDJ.exe --write-install-paths` records their absolute paths in `config.toml`. `scripts/build_installer.ps1` (`make installer`) stages `config.example.toml` as `dist\config.toml` on every build
 - **PowerShell installers** (`install.ps1`, `install-full-auto.ps1`): staging-based installation with user-data backup/restore before any directory removal
 - **Build** (`build.ps1`): PyInstaller one-file exe, self-signing or real code-signing cert, `--noupx`, smoke-tested with `--version`
 - **Release workflow** (`.github/workflows/release.yml`): validation gate (tests, lint, typecheck, secret scan) before builder job; no automatic publish during remediation

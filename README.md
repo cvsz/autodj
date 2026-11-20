@@ -2,16 +2,17 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
-## What's new (unreleased)
+## What's new in 0.3.10
 
-- **English-only code comments and docstrings** — Thai comments/docstrings in `autodj/favorites.py`, `autodj/engine.py` and `autodj/commands.py` were translated to English per repository policy. User-facing Thai command aliases and localized strings are unchanged.
-- **GUI settings: `user_request_limit` and `rate_limit_window` now editable** — both were missing from the Settings panel although `save_settings()` referenced them; they are now full setting rows with validation and TOML persistence.
-- **Duplicate-message suppression** — the Camfrog UIA adapter can re-dump identical chat lines after a reconnect, causing the same command to run multiple times within milliseconds. A per-user+text dedup window (3 s) drops genuine backlog duplicates while still allowing a user to repeat a command after a few seconds.
-- **Idempotent echo detection** — remembering the same posted line twice no longer creates duplicate entries, so a second `_is_echo()` check cannot falsely return `True`.
-- **Camfrog log paths support `$APPDATA`** — `log_file` and `log_path` now expand `$APPDATA`/`~`, so logs go to the user's writable AppData folder by default (`$APPDATA/logs/autodj.log`, `$APPDATA/logs/chatlog.log`).
-- **mpv/yt-dlp installer path** — the NSIS installer now installs mpv to `$APPDATA\mpv\`, matching `mpv_path`/`ytdlp_path` in config.
-- **Mic/DJ greeting** — new `mic_greeting_enabled`/`mic_greeting_message`/`mic_greeting_cooldown` settings detect Camfrog mic status notices ("Seaza is now speaking", "Seaza กำลังรับไมค์") and announce in the room with per-user cooldown.
-- **Config/example synchronized** — `config.example.toml` matches `config.toml` exactly; code defaults (`DEFAULT_BOT_NICK`, `ai_enabled`, `ai_system_prompt`) are synchronized across `config.py`, `ai.py`, and the example template.
+- **Mic/DJ greeting:** when the room shows `<nick> is now speaking` (or `<nick> กำลังรับไมค์`), AutoDJ announces "{user} is now the DJ." once per `mic_greeting_cooldown` (300 s). Only whole notice lines from that user count, so ordinary chat ("who is the dj?") never triggers it. Settings: `mic_greeting_enabled`, `mic_greeting_message` ("" = localized default), `mic_greeting_cooldown` — also in the Settings dialog.
+- **`!ai help`** sends the full command list to you by IM; `!ai` alone shows the AI status.
+- **AI is on by default** (`ai_enabled = true`) but stays off until `ai_api_key` is set. With a key, non-command room chat goes to the AI endpoint (NVIDIA by default).
+- **Default `bot_nick` is `AutoDJ`.**
+- **Duplicate-message suppression:** identical lines re-dumped by Camfrog after a reconnect no longer run the same command several times (3 s per-user window).
+- **Settings dialog:** `user_request_limit` and `rate_limit_window` are now editable.
+- **Log paths support `$APPDATA`/`~`** (`log_file`, `log_path`).
+- **Installer:** bundled mpv + yt-dlp install to `%APPDATA%\CamfrogAutoDJ\mpv` (never `%APPDATA%\mpv`, mpv's own config folder, which the uninstaller would have wiped). `make installer` always packages the current `config.example.toml`.
+- **Fixes:** auto-discover's corrupted-cache cleanup no longer deletes part of the comtypes package; a line the bot posts twice is no longer handled as a user message on its second echo; the Windows prerequisite checks (NSIS / mpv / PyInstaller) really check again.
 
 ## What's new in 0.3.9
 

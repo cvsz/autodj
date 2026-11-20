@@ -1,4 +1,4 @@
-# Architecture — CamfrogAutoDJ v0.3.9
+# Architecture — CamfrogAutoDJ v0.3.10
 
 **Date:** 2026-11-16  
 **Branch:** main (HEAD: fecc053)  
@@ -77,6 +77,7 @@ AutoDJ.exe (frozen PyInstaller binary)
 - COM lock serializes reader/sender access
 - Background send with verify + foreground fallback (`send_mode = auto`)
 - Automatic fallback chain: `uia` → `logtail` → `console` → `null`
+- Engine intake before the router: own-echo filter (one remembered entry per post), 3 s per-user duplicate suppression, whole-line room-event detection (gift / avatar / status / alerts / mic greeting)
 
 ### 6. Webhook API (`webhook/`)
 - FastAPI + uvicorn, lazy imports (optional dependency)

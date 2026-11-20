@@ -17,7 +17,9 @@
 - Uninstall: removes app-owned files only; keeps `config.toml`, `playlist.json`, logs, playlists, user data.
 - Shortcuts: Desktop, Start Menu, "Edit Config" (notepad), Uninstall.
 - Registry: HKCU Uninstall + App Paths (per-user), no HKLM.
-- Optional components: mpv + yt-dlp (`SEC_MPV`), VBCable driver (`SEC_VBCable`, requires admin for driver install).
+- Optional components: mpv + yt-dlp (`SEC_MPV`, installed to `$INSTDIR\mpv` = `%APPDATA%\CamfrogAutoDJ\mpv`). VB-CABLE is not bundled; `install.ps1` handles it.
+- Config template: `scripts/build_installer.ps1` stages `config.example.toml` as `dist\config.toml` on every run; `installer.nsi` packages that file, never a local `config.toml`.
+- Media paths: `AutoDJ.exe --write-install-paths` writes `$INSTDIR\mpv\mpv.exe` / `yt-dlp.exe` into `config.toml` after install.
 - `MUI_FINISHPAGE_RUN` launches `AutoDJ.exe` after install.
 
 ## Installer safety checks
@@ -28,6 +30,9 @@
 | User data not deleted on uninstall | PASS (design: uninstall keeps config/playlists/logs) |
 | No silent overwrite of user config | PASS |
 | Nonfatal external mpv/vbcable | PASS (`/nonfatal`, optional sections) |
+| mpv never installed to `$APPDATA\mpv` (mpv's own config folder; uninstall `RMDir /r` would delete user settings) | PASS (fixed in #259, F-011) |
+| Installer packages the current config template | PASS (fixed in #259, F-017) |
+| makensis execution (0.3.10) | ✅ VERIFIED — `scripts/build_installer.ps1` built `Camfrog-AutoDJ-Setup-0.3.10.exe` (118 MB, unsigned) on Windows 11, 2026-11-20; install/uninstall of this build not run |
 | makensis execution | ✅ VERIFIED — Windows 11 host, installer `dist\Camfrog-AutoDJ-Setup-0.3.0.exe` (117.6 MB) built and signed successfully |
 
 ## Verdict

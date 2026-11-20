@@ -53,6 +53,21 @@ No Critical or High severity defects were found in the application code. The cod
 - **Description:** No Windows host, `makensis`, or Wine NSIS available on Linux host. PyInstaller `.exe`, NSIS installer, and Authenticode signing could not be built or verified here.
 - **Disposition:** VERIFIED on Windows 11 host — evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed, 0 skipped).
 
+## v0.3.10 audit (PRs #252–#258, fixed in #259)
+
+Reviewed after the 0.3.10 merge on `main` @ `60cf6ec`. All items fixed on `fix/autodj-0.3.10-audit` with regression tests in `tests/test_audit_0310.py`; full suite 711 passed.
+
+| ID | Severity | Location | Finding | Status |
+|----|----------|----------|---------|--------|
+| F-010 | Critical | `autodj/__main__.py` `_auto_discover` | Corrupted-cache cleanup ran `rmtree(dirname(comtypes.client._generate.__file__))` = `site-packages/comtypes/client` (verified on host) on any auto-discover error containing "SyntaxError" | FIXED — `_clean_comtypes_gen_cache()` removes only generated `*.py` (not `__init__.py`) and `__pycache__` in `comtypes.client.gen_dir` |
+| F-011 | High | `installer.nsi` SEC_MPV / Uninstall | mpv installed to `$APPDATA\mpv` (mpv's per-user config folder); uninstall `RMDir /r` deleted user `mpv.conf`/scripts; also contradicted `--write-install-paths` (`<install>\mpv\mpv.exe`) so fresh installs could not find mpv | FIXED — back to `$INSTDIR\mpv`; example `mpv_path = "mpv/mpv.exe"` |
+| F-012 | High | `scripts/{nsis,mpv,pyinstaller}-check.ps1` | NSIS check never failed; `Test-Path "mpv.exe"` checked CWD not PATH; `MPV_BUNDLE_EXE` dropped; `$(PY)` ran the `py` launcher and always reported OK; stray `\win11-check-.log` | FIXED — `Get-Command`, NSIS exits 1, `-BundleExe`/`-Python` passed by Makefile; `make win11-check` VERIFIED on Windows 11 |
+| F-013 | Medium | `autodj/engine.py` `_is_mic_notice` | Keyword substring fallback: any chat containing "is the dj"/"กำลังพูด" announced its sender as DJ | FIXED — whole-line `<nick> <phrase>` only, sender must equal the named nick |
+| F-014 | Medium | `autodj/engine.py` `_remember_sent` | Idempotent remember + consuming `_is_echo` let the 2nd echo of a repeated line through as a real message (could reach AI) | FIXED — one entry per post; `say()` no longer double-remembers |
+| F-015 | Low | `config.py`, `config.example.toml`, `gui.py` | `mic_greeting_message` unused; `mic_greeting_*` missing from example/Settings; hard-coded Thai fallback | FIXED |
+| F-016 | Low | version files | `__init__.py`, `installer.nsi`, `version_info.txt`, `install.bat` still 0.3.9 (3 version tests failed on main) | FIXED |
+| F-017 | Medium | `scripts/build_installer.ps1` | `make installer` packaged a stale `dist\config.toml` from the last `build.ps1` run | FIXED — re-stages `config.example.toml` every run; installer compiled (0.3.10) on Windows 11 |
+
 ## Resolved / previously fixed (regression-tested)
 
 The following historical defects are resolved and covered by tests in `tests/test_hardening.py`, `tests/test_play_flow.py`, `tests/test_production_remediation.py`:

@@ -59,7 +59,7 @@ copy config.example.toml config.toml
 แก้ไข `config.toml` ให้ตรงกับสภาพแวดล้อมของคุณ:
 
 ```toml
-bot_nick = "AutoDJBot"
+bot_nick = "AutoDJ"
 admins = ["YourNick"]
 prefix = "!"
 lang = "th"
@@ -68,9 +68,11 @@ lang = "th"
 # mpv_path = "C:/mpv/mpv.exe"
 # ytdlp_path = ""
 
-# สำหรับตัวติดตั้ง NSIS ใช้ relative path (mpv ถูกติดตั้งมาพร้อมกัน)
-# mpv_path = "mpv/mpv.exe"
-# ytdlp_path = "mpv/yt-dlp.exe"
+# สำหรับตัวติดตั้ง NSIS: ตัวติดตั้งเขียนพาธเต็มให้อัตโนมัติ
+# (%APPDATA%\CamfrogAutoDJ\mpv\mpv.exe) ถ้าเลือกส่วน "mpv + yt-dlp"
+# mpv_path = "mpv/mpv.exe"     # relative = เทียบกับโฟลเดอร์ AutoDJ.exe
+# ytdlp_path = ""              # "" = หาอัตโนมัติข้าง mpv หรือใน PATH
+# อย่าตั้งเป็น $APPDATA/mpv: นั่นคือโฟลเดอร์ตั้งค่าของ mpv เอง
 
 music_dirs = ["D:/Music"]              # โฟลเดอร์เพลงของคุณ
 autoplay_sources = []                  # ปล่อยว่างได้ ถ้าไม่ต้องการเพลงอัตโนมัติ

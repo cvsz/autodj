@@ -2623,8 +2623,41 @@ class App(tk.Tk):
         _setting_row(
             "g_settings_welcome_message_delay",
             self.s_welcome_message_delay,
-            "g_settings_join_line_regex",
+            "g_settings_mic_greeting_enabled",
         )
+
+        # mic_greeting_enabled toggle
+        self.s_mic_greeting_enabled = self.e.cfg.mic_greeting_enabled
+        cb_mic_greeting_enabled: PillButton = self._btn(
+            sp_inner,
+            "g_settings_mic_greeting_enabled",
+            lambda: self._toggle_bool("s_mic_greeting_enabled", cb_mic_greeting_enabled),
+            "chip",
+            icon="✓" if self.e.cfg.mic_greeting_enabled else "",
+            bg=SURFACE,
+            height=34,
+            minw=200,
+        )
+        cb_mic_greeting_enabled.set_active(self.e.cfg.mic_greeting_enabled)
+        cb_mic_greeting_enabled.grid(
+            row=row,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(self.px(6), self.px(2)),
+            padx=(self.px(14), self.px(14)),
+        )
+        row += 1
+
+        # mic_greeting_message entry ("" = localized default)
+        self.s_mic_greeting_message = self._entry(sp_inner)
+        self.s_mic_greeting_message.insert(0, self.e.cfg.mic_greeting_message)
+        _setting_row("g_settings_mic_greeting_message", self.s_mic_greeting_message)
+
+        # mic_greeting_cooldown
+        self.s_mic_greeting_cooldown = self._entry(sp_inner)
+        self.s_mic_greeting_cooldown.insert(0, str(self.e.cfg.mic_greeting_cooldown))
+        _setting_row("g_settings_mic_greeting_cooldown", self.s_mic_greeting_cooldown)
 
         # join_line_regex: room notice that someone entered (greets them on arrival)
         self.s_join_line_regex = self._entry(sp_inner)
@@ -3769,6 +3802,9 @@ class App(tk.Tk):
             cfg.welcome_message_delay = self._parse_float(
                 self.s_welcome_message_delay, "welcome message delay"
             )
+            cfg.mic_greeting_cooldown = self._parse_float(
+                self.s_mic_greeting_cooldown, "mic greeting cooldown"
+            )
 
             # Webhook settings
             cfg.webhook_enabled = self.s_webhook_enabled
@@ -3953,6 +3989,11 @@ class App(tk.Tk):
             lines.append(f"welcome_message_message = {_toml_str(cfg.welcome_message_message)}")
             lines.append(f"welcome_message_cooldown = {cfg.welcome_message_cooldown}")
             lines.append(f"welcome_message_delay = {cfg.welcome_message_delay}")
+            cfg.mic_greeting_enabled = self.s_mic_greeting_enabled
+            cfg.mic_greeting_message = self.s_mic_greeting_message.get().strip()
+            lines.append(f"mic_greeting_enabled = {str(cfg.mic_greeting_enabled).lower()}")
+            lines.append(f"mic_greeting_message = {_toml_str(cfg.mic_greeting_message)}")
+            lines.append(f"mic_greeting_cooldown = {cfg.mic_greeting_cooldown}")
             cfg.join_line_regex = self.s_join_line_regex.get().strip()
             lines.append(f"join_line_regex = {_toml_str(cfg.join_line_regex)}")
 

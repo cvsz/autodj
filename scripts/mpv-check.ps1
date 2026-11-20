@@ -1,27 +1,30 @@
-# Checks if mpv.exe is available on the system
-param([int]$MinBuild = 22000)
+# Reports whether mpv.exe is available for Windows builds.
+# Warning only (exit 0): the installer's mpv component is optional.
+# Output goes to stdout; the Makefile appends it to the build log.
+param([string]$BundleExe = "")
 
-$mpv_found = $false
-
-# Check common locations
-$mpv_paths = @(
-    "mpv.exe",  # in PATH
-    "C:\Program Files\mpv\mpv.exe",
-    "C:\Program Files (x86)\mpv\mpv.exe",
-    "$env:ProgramFiles\mpv\mpv.exe"
-)
-
-foreach ($path in $mpv_paths) {
-    if (Test-Path $path) {
-        Write-Host "  OK: mpv.exe found at $path"
-        $mpv_found = $true
-        break
+$found = $null
+$cmd = Get-Command mpv.exe -ErrorAction SilentlyContinue
+if ($cmd) {
+    $found = $cmd.Source
+} else {
+    $candidates = @(
+        (Join-Path $env:ProgramFiles "mpv\mpv.exe"),
+        "C:\Program Files (x86)\mpv\mpv.exe"
+    )
+    if ($BundleExe) { $candidates += $BundleExe }
+    foreach ($path in $candidates) {
+        if ($path -and (Test-Path -LiteralPath $path -PathType Leaf)) {
+            $found = $path
+            break
+        }
     }
 }
 
-if (-not $mpv_found) {
-    Write-Host "WARN: mpv.exe not found. Install: choco install mpv --yes"
+if ($found) {
+    Write-Output "  OK: mpv.exe found at $found"
+} else {
+    $extra = if ($BundleExe) { " (also checked $BundleExe)" } else { "" }
+    Write-Output "WARN: mpv.exe not found$extra. Install: choco install mpv --yes"
 }
-
-# Output log line
-Write-Output "mpv check completed" >> "$env:BUILD_LOG_DIR\win11-check-$env:BUILD_LOG_TS.log" 2>$null
+exit 0

@@ -87,9 +87,9 @@ ifeq ($(SKIP_CHECKS),1)
 else
 	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/win11-check.ps1 -MinBuild $(WIN11_MIN_BUILD) >>"$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: Windows 11 check failed (details in the log below). Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" && exit 1)
 	@echo "  OK: Windows 11 detected" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-	@powershell.exe -NoProfile -File scripts/mpv-check.ps1 >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-	@powershell.exe -NoProfile -File scripts/nsis-check.ps1 >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
-	@powershell.exe -NoProfile -File scripts/pyinstaller-check.ps1 >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
+	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/nsis-check.ps1 >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1 || (echo "ERROR: NSIS not found (details in the log). Set SKIP_CHECKS=1 to bypass." | tee -a "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" && exit 1)
+	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/mpv-check.ps1 -BundleExe "$(MPV_BUNDLE_EXE)" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
+	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/pyinstaller-check.ps1 -Python "$(PY)" >> "$(BUILD_LOG_DIR)/win11-check-$(BUILD_LOG_TS).log" 2>&1
 endif
 else
 	@echo "win11-check is Windows-only"

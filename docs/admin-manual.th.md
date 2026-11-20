@@ -1,6 +1,6 @@
 # คู่มือแอดมิน AutoDJ — ภาษาไทย
 
-**เวอร์ชัน:** 0.3.5  
+**เวอร์ชัน:** 0.3.10  
 **กลุ่มเป้าหมาย:** ผู้ดูแลห้องและผู้ปฏิบัติงานบอท  
 **ภาษา:** ไทย
 
@@ -71,7 +71,7 @@
 
 | คำสั่ง | อัลลิแอส | คำอธิบาย | ตัวอย่าง |
 |---------|----------|------------|---------|
-| `ai` | `เอไอ` | `on` / `off` / `status` / `model <id>` / `prompt <ข้อความ>` — มีผลทันที (เฉพาะขณะรัน ถ้าต้องการให้ถาวรให้แก้ config.toml) | `!เอไอ status` |
+| `ai` | `เอไอ` | `on` / `off` / `status` / `model <id>` / `prompt <ข้อความ>` — มีผลทันที (เฉพาะขณะรัน ถ้าต้องการให้ถาวรให้แก้ config.toml) พิมพ์ `!เอไอ` อย่างเดียวจะแสดงสถานะ; `!เอไอ help` ส่งรายการคำสั่งทั้งหมดให้ทาง IM | `!เอไอ status` / `!เอไอ help` |
 | `update` | `อัปเดต` | ตรวจสอบเวอร์ชันที่ใหม่กว่าบน GitHub; `apply` = ดาวน์โหลด (ตรวจ SHA-256) แล้วเตรียม `AutoDJ.next.exe` + `autodj_update.bat` | `!อัปเดต` / `!อัปเดต apply` |
 
 ### ข้อมูล
@@ -105,7 +105,7 @@
 admins = ["YourNick", "BackupAdmin"]
 
 # ชื่อของบอทในห้อง (สำหรับตรวจจับข้อความตัวเอง)
-bot_nick = "AutoDJBot"
+bot_nick = "AutoDJ"            # ค่าเริ่มต้น; ตั้งเป็นชื่อที่บอทใช้แชทจริง
 
 # คำนำหน้าคำสั่ง
 prefix = "!"
@@ -148,7 +148,7 @@ log_encoding = "utf-8"              # log file encoding
 mpv_path = "mpv/mpv.exe"            # หรือพาธเต็ม: "C:/mpv/mpv.exe"
 
 # เส้นทาง yt-dlp (ตรวจจับอัตโนมัติถ้าว่าง)
-ytdlp_path = "mpv/yt-dlp.exe"       # หรือ "C:/mpv/yt-dlp.exe"
+ytdlp_path = ""                     # "" = หาอัตโนมัติ (ข้าง mpv หรือใน PATH); หรือ "C:/mpv/yt-dlp.exe"
 
 # การยืนยันตัวตน YouTube (ตัวเลือก)
 youtube_cookies_file = ""           # path to Netscape cookies.txt for yt-dlp
@@ -370,6 +370,20 @@ join_line_regex = '...'             # ข้อความแจ้ง "X เ�
 บรรทัดแจ้งเข้าห้องหนึ่งบรรทัดมาปรับ `join_line_regex` ถ้าไม่เห็นข้อความแจ้งเข้าห้อง บอทจะทักตอนผู้ใช้พิมพ์ครั้งแรกแทน
 แต่ละคนถูกทักหนึ่งครั้งต่อช่วงคูลดาวน์: แอดมินได้ `admin_greeting_message` คนอื่นได้ `welcome_message_message`
 
+### ทักทายผู้รับไมค์ (DJ)
+
+```toml
+mic_greeting_enabled = true        # ทักทายเมื่อห้องแจ้งว่าผู้ใช้ได้รับไมค์
+mic_greeting_message = ""          # {user} = ชื่อเล่น; "" = ข้อความเริ่มต้นตามภาษา ("คุณ {user} รับไมค์เป็น DJ ขณะนี้")
+mic_greeting_cooldown = 300.0      # วินาทีระหว่างการทักผู้ใช้คนเดิม (0-86400)
+```
+
+นับเฉพาะบรรทัดเต็มในรูปแบบ `<ชื่อ> <วลีรับไมค์>` เช่น `Seaza is now speaking`,
+`Seaza has the mic`, `Seaza is the DJ`, `Seaza กำลังรับไมค์`, `Seaza กำลังพูด` และต้องเป็นบรรทัดที่
+ผู้ส่งคือชื่อนั้นเอง (หรือไม่มีผู้ส่ง เช่นข้อความระบบ) ข้อความแชทปกติเช่น "who is the dj?" จะไม่ทำให้บอททัก
+และผู้ใช้คนหนึ่งไม่สามารถทำให้บอทประกาศว่าคนอื่นเป็น DJ ได้ ผู้ใช้ที่ถูกบล็อกจะถูกข้าม ทั้งสามค่าตั้งได้ใน
+หน้าต่าง Settings ด้วย ยังไม่ได้ทดสอบกับห้อง Camfrog จริง: ถ้า Camfrog ของคุณใช้ข้อความแจ้งต่างออกไป บอทจะไม่ทัก
+
 ### Admin Command Gating (Config-gated Features)
 
 ```toml
@@ -414,7 +428,7 @@ log_json_fields = [                    # extra fields to include in JSON logs
 ### AI ตอบแชท
 
 ```toml
-ai_enabled = false
+ai_enabled = true                  # เปิดเป็นค่าเริ่มต้น แต่ AI จะไม่ทำงานจนกว่าจะตั้ง ai_api_key
 ai_api_key = ""                    # NVIDIA key (nvapi-...) from https://build.nvidia.com/settings
 ai_base_url = "https://integrate.api.nvidia.com/v1"   # endpoint ที่รองรับ OpenAI API; ต้องเป็น https (http ใช้ได้เฉพาะ localhost/127.0.0.1/::1)
 ai_model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"   # NVIDIA API catalog model id
@@ -425,7 +439,8 @@ ai_user_cooldown = 30.0            # วินาทีระหว่างค�
 
 - AI ตอบเฉพาะข้อความในห้องที่ไม่ใช่คำสั่ง และ**ไม่ตอบ IM ส่วนตัวเด็ดขาด** (บอทโพสต์ได้แค่ในห้องสาธารณะ ถ้าตอบจะทำให้ข้อความส่วนตัวหลุดออกไป)
 - URL ที่ฝังชื่อผู้ใช้/รหัสผ่านจะถูกปฏิเสธ คูลดาวน์ต่อผู้ใช้บังคับใช้จริง และช่วยจำกัดค่าใช้จ่าย API ด้วย
-- `!ai on|off|status|model <id>|prompt <ข้อความ>` (แอดมิน) มีผลทันที ส่วนการแก้ config มีผลเมื่อโหลดใหม่
+- `!ai on|off|status|model <id>|prompt <ข้อความ>` (แอดมิน) มีผลทันที ส่วนการแก้ config มีผลเมื่อโหลดใหม่ พิมพ์ `!ai` อย่างเดียวจะแสดงสถานะ และ `!ai help` ส่งรายการคำสั่งทั้งหมดทาง IM
+- เมื่อตั้ง `ai_api_key` แล้ว ข้อความแชทในห้องที่ไม่ใช่คำสั่งจะถูกส่งไปยัง AI endpoint ที่ตั้งไว้ (ค่าเริ่มต้นคือ NVIDIA) ถ้าไม่ต้องการให้ตั้ง `ai_enabled = false`
 
 ### อัปเดตอัตโนมัติ
 
@@ -626,19 +641,25 @@ dist\AutoDJ.exe --check
 ### สร้าง Installer
 
 ```powershell
-# ต้องการ NSIS 3.0+ พร้อม MUI2
-makensis installer.nsi
+make installer        # หรือ: powershell -ExecutionPolicy Bypass -File scripts/build_installer.ps1
 ```
+
+ต้อง build `dist\AutoDJ.exe` ก่อน (`make build` หรือ `make build-all` สำหรับ exe + installer)
+`scripts/build_installer.ps1` จะคัดลอก `config.example.toml` ล่าสุดไปเป็น `dist\config.toml`
+(พร้อม README, CHANGELOG และ LICENSE) ทุกครั้งที่รัน ใส่เวอร์ชันจาก `pyproject.toml` ลงใน `installer.nsi`
+แล้วจึงรัน `makensis` การรัน `makensis installer.nsi` เองจะข้ามขั้นตอนนี้และอาจได้ config เก่าติดไปกับตัวติดตั้ง
+ไฟล์ `config.toml` ของนักพัฒนาจะไม่ถูกรวมเข้าไปเด็ดขาด
 
 ### คุณสมบัติ Installer
 
 - ติดตั้งต่อผู้ใช้ไป `%APPDATA%\CamfrogAutoDJ` (ไม่ต้อง admin)
-- ติดตั้ง Python, mpv, yt-dlp, VB-Cable ผ่าน winget
-- สร้าง Shortcut บน Desktop/Start Menu
-- สร้าง config.toml แบบโต้ตอบ
-- ตัวเลือก auto-start ตอน login
-- รัน `AutoDJ.exe --check` ยืนยัน
-- มี Uninstaller รวมอยู่
+- ติดตั้ง `config.toml` จาก `config.example.toml`; ถ้ามี `config.toml` อยู่แล้วจะเก็บไว้ตอนอัปเกรด
+- เขียน `mpv_path` / `ytdlp_path` แบบพาธเต็มของ mpv ที่มากับตัวติดตั้งลงใน `config.toml` (`AutoDJ.exe --write-install-paths`)
+- ส่วนเสริม: mpv + yt-dlp ติดตั้งใน `%APPDATA%\CamfrogAutoDJ\mpv` (ไม่ใช่ `%APPDATA%\mpv` ซึ่งเป็นโฟลเดอร์ตั้งค่าของ mpv เอง)
+- ปิด AutoDJ / mpv ที่รันจากโฟลเดอร์ติดตั้งก่อนอัปเกรดหรือถอนการติดตั้ง
+- Shortcut ใน Start Menu (AutoDJ, Edit Config, Uninstall) และบน Desktop
+- มี `install.ps1` สำหรับติดตั้ง VB-CABLE และโปรแกรมที่จำเป็นอื่น (ไม่ได้รวม VB-CABLE มาในตัวติดตั้ง)
+- Uninstaller เก็บ `config.toml`, เพลย์ลิสต์, log และข้อมูลผู้ใช้ไว้
 
 ---
 

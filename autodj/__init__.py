@@ -1,4 +1,4 @@
-__version__ = "0.3.9"
+__version__ = "0.3.10"
 
 ABOUT_CREDIT = "camfrog:add:Seaza Dev @ZEAZDEV COMPANY LIMITED"
 PROJECT_URL = "https://github.com/cvsz/autodj"

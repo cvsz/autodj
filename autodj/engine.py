@@ -395,8 +395,9 @@ class Engine:
         for i, chunk in enumerate(textwrap.wrap(text, self.cfg.max_msg_len, break_long_words=True)):
             if i and chunk.startswith(self.cfg.prefix):
                 chunk = "… " + chunk  # a wrapped continuation must never look like a command
+            # _sender() remembers each chunk right before posting it, so its echo
+            # is ignored; remembering here too would leave a stale duplicate.
             self.outbox.put(chunk)
-            self._remember_sent(chunk)  # remember so echo from the room is ignored
         return True
 
     # The room shows our own lines back to us under the account's nick, which may differ from bot_nick.
@@ -404,20 +405,15 @@ class Engine:
     def _remember_sent(self, text: str):
         """Remember a posted line so its echo from the room is ignored.
 
-        Idempotent: if the same normalized text is already remembered within
-        the TTL, do not add a duplicate entry. This keeps echo detection stable
-        when say() and callers both remember the same line.
+        One entry per post: _is_echo() consumes one entry per echo, so posting
+        the same line twice must remember it twice or the second echo would be
+        handled as a real message (and could reach the AI / command router).
         """
         now = time.monotonic()
         want = norm(text)
         with self._sent_lock:
-            # Expire old entries first
             while self._sent and self._sent[0][0] < now:
                 self._sent.popleft()
-            # Skip if already remembered
-            for _, s in self._sent:
-                if s == want:
-                    return
             self._sent.append((now + ECHO_TTL, want))
 
     def _is_echo(self, text: str) -> bool:
@@ -1808,20 +1804,11 @@ class Engine:
         "moderator": "status_moderator",
         "owner": "status_owner",
     }
-    # Mic/DJ status notice keywords (Camfrog system messages when someone receives the mic)
-    _MIC_KEYWORDS = (
-        "กำลังรับไมค์",
-        "กำลังพูด",
-        "is now speaking",
-        "has the mic",
-        "is the dj",
-        "receiving mic",
-        "took the mic",
-    )
-    # A mic *notice* is a whole line like "Seaza is now speaking" or "Seaza กำลังรับไมค์"
-    # (Thai: "Seaza is now taking the mic").
+    # A mic *notice* is a whole line "<nick> <phrase>", e.g. "Seaza is now speaking" or
+    # "Seaza กำลังรับไมค์" (Thai: "Seaza is now taking the mic").  The nick is required and
+    # only whole lines match, so ordinary chat such as "who is the dj?" never triggers it.
     _MIC_NOTICE_RE = re.compile(
-        r"^(?:\S{1,30}\s+)?(?:"
+        r"^(?P<nick>\S{1,30})\s+(?:"
         r"is\s+now\s+speaking"
         r"|has\s+the\s+mic"
         r"|is\s+the\s+dj"
@@ -1854,8 +1841,10 @@ class Engine:
             self._announce_status_indicator(nick, body)
         if self.cfg.status_alert_enabled and self._is_status_message(body):
             self._alert_status(nick, body)
-        if self.cfg.mic_greeting_enabled and self._is_mic_notice(body):
-            self._announce_mic_greeting(nick)
+        if self.cfg.mic_greeting_enabled:
+            mic_nick = self._mic_notice_nick(nick, body)
+            if mic_nick:
+                self._announce_mic_greeting(mic_nick)
         # Track name colors from incoming chat HTML for GUI preview (read-only; see docs/camfrog-re/15-name-color.md)
         self._track_name_color(nick, body)
 
@@ -1900,17 +1889,20 @@ class Engine:
         word = (m.group("state") or m.group("role")).lower()
         return self._STATUS_INDICATOR_KEYWORDS.get(word)
 
-    def _is_mic_notice(self, body: str) -> bool:
-        """Return True if *body* is a Camfrog mic/DJ status notice line.
+    def _mic_notice_nick(self, sender: str, body: str) -> str | None:
+        """Return the nick a Camfrog mic/DJ notice names, or None if *body* is not one.
 
-        Matches the whole-line regex (e.g. "Seaza is now speaking") and also
-        falls back to keyword substring matching for localized system messages
-        that may include extra surrounding text.
+        A user can type "Bob is now speaking" in chat; that only counts when the
+        sender is Bob (or the line has no sender, as for a system notice), so one
+        user cannot get the bot to announce somebody else as the DJ.
         """
-        if self._MIC_NOTICE_RE.match(body.strip()):
-            return True
-        low = body.lower()
-        return any(k.lower() in low for k in self._MIC_KEYWORDS)
+        m = self._MIC_NOTICE_RE.match(body.strip())
+        if not m:
+            return None
+        named = m.group("nick")
+        if sender and norm(sender).lower() != norm(named).lower():
+            return None
+        return named
 
     def _announce_mic_greeting(self, nick: str) -> None:
         """Greet a user who just received the room mic (became the DJ)."""
@@ -1920,10 +1912,15 @@ class Engine:
         last = self._mic_greeting_cooldowns.get(nick.lower(), float("-inf"))
         if now - last < self.cfg.mic_greeting_cooldown:
             return
-        try:
+        template = (self.cfg.mic_greeting_message or "").strip()
+        if template:
+            try:
+                text = template.format(user=nick)
+            except (KeyError, IndexError, ValueError):
+                log.warning("mic_greeting_message is not a valid template; using the default")
+                text = self.t("mic_greeting", user=nick)
+        else:
             text = self.t("mic_greeting", user=nick)
-        except Exception:
-            text = f"คุณ {nick} รับไมค์เป็น DJ ขณะนี้"
         self.say(text)
         self._mic_greeting_cooldowns[nick.lower()] = now
         log.info("Sent mic greeting to %s", nick)

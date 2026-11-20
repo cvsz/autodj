@@ -54,10 +54,11 @@ line_regex = "^(?:\\[?\\d{1,2}:\\d{2}(?::\\d{2})?\\]?\\s*)?(?P<user>[^:\\s][^:]{
 # mpv and yt-dlp are installed alongside AutoDJ by the NSIS installer:
 #   $INSTDIR/mpv/mpv.exe        (mpv player)
 #   $INSTDIR/mpv/yt-dlp.exe     (YouTube downloader for mpv + title lookups)
-# Example: mpv_path = "D:/data/autodj/mpv/mpv.exe"  (relative to AutoDJ.exe install dir)
-# Example: ytdlp_path = "D:/data/autodj/mpv/yt-dlp.exe"
-mpv_path = "$APPDATA/mpv/mpv.exe"
-ytdlp_path = "$APPDATA/mpv/yt-dlp.exe" # "" = auto: yt-dlp(.exe) next to mpv or on PATH, else bundled Python module
+# The installer writes absolute paths here; a relative path is resolved against the AutoDJ.exe
+# folder. Do not point these at $APPDATA/mpv: that is mpv's own per-user config folder.
+# Example: mpv_path = "C:/mpv/mpv.exe"
+mpv_path = "mpv/mpv.exe"
+ytdlp_path = "" # "" = auto: yt-dlp(.exe) next to mpv or on PATH, else bundled Python module
 
 # YouTube authentication (for age-restricted / private content)
 youtube_cookies_file = "" # Path to Netscape cookies.txt for yt-dlp
@@ -222,6 +223,11 @@ welcome_message_enabled = true # Greet users entering the room
 welcome_message_message = "\u0e22\u0e34\u0e19\u0e14\u0e35\u0e15\u0e49\u0e2d\u0e19\u0e23\u0e31\u0e1a {user} \u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e48 {room} \u0e2a\u0e16\u0e32\u0e19\u0e35\u0e40\u0e1e\u0e25\u0e07 \u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34 24/7 \u0e0a\u0e31\u0e48\u0e27\u0e42\u0e21\u0e07" # {user} = nick, {room} = room name
 welcome_message_cooldown = 3600.0 # Seconds between greetings for the same user (1 hour, 60-86400)
 welcome_message_delay = 0.0 # Seconds to wait before sending the welcome (0 = instant; 0-3600)
+# Mic/DJ greeting: announce a user when the room notice "<nick> is now speaking" (or the Thai
+# equivalent) shows they got the mic. Ordinary chat never triggers it.
+mic_greeting_enabled = true # Greet users who receive the room mic
+mic_greeting_message = "" # {user} = nick; "" = the localized default from messages.py
+mic_greeting_cooldown = 300.0 # Seconds between mic greetings for the same user (0-86400)
 # Room notice for someone entering; must contain (?P<user>...). "" = greet on first message only.
 # The default covers "*** bob has joined the room", "bob has entered the room" and "สมชาย เข้าสู่ห้อง";
 # check what your Camfrog client actually shows and adjust (single quotes keep backslashes).

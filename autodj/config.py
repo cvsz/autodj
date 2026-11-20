@@ -274,7 +274,7 @@ class Config:
 
     # Mic/DJ greeting: announce when a user gets the room mic (becomes the DJ)
     mic_greeting_enabled: bool = True  # greet users who receive the room mic
-    mic_greeting_message: str = "คุณ {user} รับไมค์เป็น DJ ขณะนี้"  # {user} = nick
+    mic_greeting_message: str = ""  # {user} = nick; "" = localized default (messages.py)
     mic_greeting_cooldown: float = 300.0  # seconds between mic greetings for same user
 
     # Camfrog RE Integrations (Gift / Avatar / Status / Status Alert)

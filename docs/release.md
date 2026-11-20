@@ -6,13 +6,14 @@ This document describes how AutoDJ releases are built, validated, and published.
 
 ## Versioning
 
-AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.3.5`, declared in:
-- `pyproject.toml` (`version = "0.3.5"`)
-- `autodj/__init__.py` (`__version__ = "0.3.5"`)
+AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.3.10`, declared in:
+- `pyproject.toml` (`version = "0.3.10"`)
+- `autodj/__init__.py` (`__version__ = "0.3.10"`)
 - `version_info.txt` (Windows file version resource)
+- `installer.nsi` (`APP_VERSION` default), `install.bat`, `install.ps1` and `scripts/build_windows.ps1` (`$RequiredVersion`)
 - `CHANGELOG.md` (changelog entries)
 
-`tests/test_version_and_release.py::test_versions_agree` verifies all three stay in sync.
+`tests/test_version_consistency.py`, `tests/test_version_and_release.py` and `tests/test_hardening.py::test_versions_agree` verify they stay in sync. A version bump must update every file above in the same PR.
 
 ## Release gating
 
@@ -24,7 +25,7 @@ Must pass before any build artifact is produced:
 
 1. **Checkout** the exact tag commit
 2. **Install dependencies** (`-e .`, pytest, ruff, mypy)
-3. **Run unit tests** — `python -m pytest -q -p no:faulthandler -p no:cacheprovider` (baseline: 414 passed)
+3. **Run unit tests** — `python -m pytest -q -p no:faulthandler -p no:cacheprovider` (baseline: 711 passed at 0.3.10)
 4. **Lint** — `ruff check autodj tests tools`
 5. **Format check** — `ruff format --check autodj tests tools`
 6. **Strict typecheck** — `mypy autodj`

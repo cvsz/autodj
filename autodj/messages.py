@@ -114,7 +114,7 @@ STR = {
         "status_moderator": "{nick} is a moderator.",
         "status_owner": "{nick} is the room owner.",
         # Mic / DJ greeting (user receives the room mic; see docs/camfrog-re mic detection)
-        "mic_greeting": "You {user} are now the DJ.",
+        "mic_greeting": "{user} is now the DJ.",
         # Status alerts (upgrade / payment required; see docs/camfrog-re/07-upgrade-logic.md, 09-payment.md)
         "status_upgrade_required": "Camfrog upgrade required — check the client.",
         "status_payment_required": "Payment required — check the Camfrog store.",
@@ -245,6 +245,9 @@ STR = {
         "g_settings_config_hot_reload": "Config hot reload (auto-reload on file change)",
         "g_settings_welcome_message_cooldown": "Welcome message cooldown (seconds, min 60)",
         "g_settings_welcome_message_delay": "Welcome message delay (seconds, 0-3600)",
+        "g_settings_mic_greeting_enabled": "Greet users who get the room mic",
+        "g_settings_mic_greeting_message": "Mic greeting text ({user}; empty = default)",
+        "g_settings_mic_greeting_cooldown": "Mic greeting cooldown (seconds, 0-86400)",
         "g_settings_np_question_reply": 'Answer "what song is this?" in the room',
         "g_settings_webhook_enabled": "Enable webhook server",
         "g_settings_webhook_host": "Webhook host",
@@ -547,6 +550,9 @@ STR = {
         "g_settings_config_hot_reload": "โหลดการตั้งค่าอัตโนมัติเมื่อไฟล์เปลี่ยนแปลง",
         "g_settings_welcome_message_cooldown": "คูลดาวน์ข้อความต้อนรับ (วินาที, ขั้นต่ำ 60)",
         "g_settings_welcome_message_delay": "หน่วงเวลาข้อความต้อนรับ (วินาที, 0-3600)",
+        "g_settings_mic_greeting_enabled": "ทักทายผู้ใช้ที่รับไมค์",
+        "g_settings_mic_greeting_message": "ข้อความทักทายเมื่อรับไมค์ (ใช้ {user}; ว่าง = ค่าเริ่มต้น)",
+        "g_settings_mic_greeting_cooldown": "คูลดาวน์ทักทายรับไมค์ (วินาที, 0-86400)",
         "g_settings_np_question_reply": 'ตอบคำถาม "เพลงอะไร" ในห้องอัตโนมัติ',
         "g_settings_webhook_enabled": "เปิดใช้งานเซิร์ฟเวอร์ Webhook",
         "g_settings_webhook_host": "โฮสต์ Webhook",
