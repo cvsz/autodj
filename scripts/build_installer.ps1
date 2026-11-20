@@ -67,11 +67,30 @@ if (-not $makensis) {
 }
 Write-Host "Found NSIS: $makensis"
 
+# Stage the shipped config template and docs from the repo on every build, so the
+# installer always carries the current config.example.toml (installer.nsi packages
+# dist\config.toml) even when AutoDJ.exe was built earlier.  Never a developer's
+# local config.toml: it may hold an API key and site-specific admins.
+New-Item -ItemType Directory -Force -Path $SrcDir | Out-Null
+$staged = @{
+    "config.example.toml" = "config.toml"
+    "README.md"           = "README.md"
+    "CHANGELOG.md"        = "CHANGELOG.md"
+    "LICENSE"             = "LICENSE"
+}
+foreach ($src in $staged.Keys) {
+    if (-not (Test-Path $src -PathType Leaf)) {
+        throw "Required installer source file missing: $src"
+    }
+    Copy-Item $src (Join-Path $SrcDir $staged[$src]) -Force
+    Write-Host "  Staged: $src -> $SrcDir\$($staged[$src])"
+}
+
 # Verify source files exist
 $requiredFiles = @(
     "AutoDJ.exe",
     "app.ico",
-    "config.example.toml",
+    "config.toml",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
