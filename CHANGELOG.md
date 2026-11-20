@@ -1,3 +1,8 @@
+## Unreleased
+
+- **An IM is no longer handled twice** - when the IM window got focus, Camfrog dropped its "new messages" separator, the fixed-size read window started one item earlier, and `diff_lines` (which only checked whether the new read *starts* with the old tail) matched a short repeated line by accident and replayed an old IM (live: `!play` handled twice, the duplicate dropped by the cooldown). The end of the previous read is now located anywhere in the new one (longest matching run).
+- **Release installer is signed** - the release workflow signed `AutoDJ.exe` but shipped `Camfrog-AutoDJ-Setup-<ver>.exe` unsigned (v0.3.9). It is now signed with the same certificate before checksums, attestation and upload; a tagged build without signing secrets fails.
+
 ## 0.3.9 — 2026-11-20
 
 - **Song requests in room chat and by IM** — `allow_play_in_room` now defaults to `true`: `!play` / `!ขอเพลง` work in the room and by IM. IM requests still need the sender to be in the room; anyone else gets `im_join_room_message` privately and nothing is queued. `false` keeps the old IM-only mode.

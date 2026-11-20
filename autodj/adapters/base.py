@@ -63,8 +63,28 @@ def compile_join_rx(pattern: str) -> re.Pattern[str] | None:
 
 
 def diff_lines(prev: list[str], cur: list[str]) -> list[str]:
-    """New lines in `cur`; handles growth and a scrolled/trimmed buffer."""
-    for k in range(min(len(prev), len(cur)), 0, -1):
-        if prev[-k:] == cur[:k]:
-            return cur[k:]
-    return cur if prev else []
+    """New lines in `cur`; handles growth, a trimmed buffer and a shifted read window.
+
+    The end of `prev` is located in `cur` as the longest run of `prev`'s tail
+    ending at some position (latest position on a tie); everything after it is
+    new.  Matching only "cur starts with prev's tail" broke when the read
+    window moved the other way (Camfrog drops its "new messages" separator
+    when the IM window gets focus, so a fixed-size tail starts one item
+    earlier): a short repeated line matched by accident and an old IM came
+    back as new (live: `!play` handled twice).
+    """
+    if not prev or not cur:
+        return []
+    last = prev[-1]
+    best_end, best_len = -1, 0
+    for e in range(len(cur) - 1, -1, -1):
+        if cur[e] != last:
+            continue
+        n = 1
+        while n < len(prev) and n <= e and cur[e - n] == prev[-1 - n]:
+            n += 1
+        if n > best_len:
+            best_end, best_len = e, n
+    if best_end < 0:
+        return cur  # no overlap at all: the whole buffer was replaced
+    return cur[best_end + 1 :]
