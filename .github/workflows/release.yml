@@ -148,6 +148,42 @@ jobs:
           $version = $env:GITHUB_REF_NAME -replace '^v', ''
           & "C:\\Program Files (x86)\\NSIS\\makensis.exe" "/DAPP_VERSION=$version" installer.nsi
 
+      - name: Sign NSIS installer
+        shell: pwsh
+        env:
+          AUTODJ_PFX_BASE64: ${{ secrets.AUTODJ_PFX_BASE64 }}
+          AUTODJ_PFX_PASSWORD: ${{ secrets.AUTODJ_PFX_PASSWORD }}
+          AUTODJ_CERT_THUMBPRINT: ${{ secrets.AUTODJ_CERT_THUMBPRINT }}
+        run: |
+          # build.ps1 signs AutoDJ.exe; the installer itself was shipped unsigned (v0.3.9).
+          # Sign it with the same certificate before checksums, attestation and upload.
+          $installer = Get-ChildItem Camfrog-AutoDJ-Setup-*.exe | Select-Object -First 1
+          if (-not $installer) { Write-Error "installer not found"; exit 1 }
+          $signArgs = @("-File", $installer.FullName)
+          $pfxPath = $null
+          if ($env:AUTODJ_PFX_BASE64) {
+            $pfxPath = Join-Path $env:RUNNER_TEMP "autodj-signing-installer.pfx"
+            [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:AUTODJ_PFX_BASE64))
+            $signArgs += @("-Pfx", $pfxPath, "-Password", $env:AUTODJ_PFX_PASSWORD)
+          } elseif ($env:AUTODJ_CERT_THUMBPRINT) {
+            $signArgs += @("-Thumbprint", $env:AUTODJ_CERT_THUMBPRINT)
+          } elseif ($env:GITHUB_REF -like "refs/tags/*") {
+            Write-Error "Tagged releases must sign the installer: set the signing secrets."
+            exit 1
+          } else {
+            "no signing secrets: installer left unsigned (non-tag build)"
+            exit 0
+          }
+          try {
+            powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\sign_exe.ps1 @signArgs
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            if ($pfxPath) { Remove-Item $pfxPath -Force -ErrorAction SilentlyContinue }
+          }
+          $sig = Get-AuthenticodeSignature $installer.FullName
+          if (-not $sig.SignerCertificate) { Write-Error "installer is not signed"; exit 1 }
+          "installer signed by $($sig.SignerCertificate.Subject) ($($sig.Status))"
+
       - name: Generate CycloneDX SBOM
         run: |
           cyclonedx-py environment --pyproject pyproject.toml -o Camfrog-AutoDJ-${{ github.ref_name }}.cdx.json
