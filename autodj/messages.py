@@ -294,6 +294,16 @@ STR = {
         "ai_model_set": "AI model set to: {model}",
         "ai_prompt_set": "AI system prompt set.",
         "ai_help": "🤖 AI Commands:\n{p}ai on|off|status|model <name>|prompt <text>\n{p}ai help — show this help via IM\n\n📋 All Commands:\n{base}{admin}\n\n💬 Send IM to {BOT} to use any command privately.",
+        # Chatbot templates (i18n)
+        "chatbot_welcome": "Hello! I'm AutoDJ, your music bot. Use !help to see commands, or just chat with me.",
+        "chatbot_ai_enabled": "AI replies are now enabled. I'll answer non-command messages.",
+        "chatbot_ai_disabled": "AI replies are now disabled. I only respond to commands.",
+        "chatbot_ai_error": "Sorry, I'm having trouble reaching the AI service right now. Please try again later.",
+        "chatbot_ai_unavailable": "AI replies are not available (no API key configured). Ask an admin to set ai_api_key.",
+        "chatbot_not_understood": "I didn't understand that. Try !help for available commands, or chat with me if AI is enabled.",
+        "chatbot_rate_limited": "Please wait {remaining}s before chatting again.",
+        "chatbot_help_intro": "🤖 AutoDJ Music Bot — Commands:",
+        "chatbot_help_outro": "Send me an IM to use commands privately.",
     },
     "th": {
         "admin_only": "เฉพาะแอดมินเท่านั้น",
@@ -586,6 +596,16 @@ STR = {
         "ai_model_set": "ตั้งค่าโมเดล AI เป็น: {model}",
         "ai_prompt_set": "ตั้งค่า system prompt ของ AI แล้ว.",
         "ai_help": "🤖 คำสั่ง AI:\n{p}เอไอ on|off|status|model <ชื่อ>|prompt <ข้อความ>\n{p}เอไอ help — แสดงคำช่วยเหลือนี้ทาง IM\n\n📋 คำสั่งทั้งหมด:\n{base}{admin}\n\n💬 ส่ง IM ไปยัง {BOT} เพื่อใช้คำสั่งส่วนตัวทาง IM",
+        # Chatbot templates (i18n)
+        "chatbot_welcome": "สวัสดีค่ะ! ฉันคือ AutoDJ บอทเพลงของคุณ ใช้ !help เพื่อดูคำสั่ง หรือแชทกับฉันได้เลย",
+        "chatbot_ai_enabled": "เปิดใช้งานการตอบกลับด้วย AI แล้ว ฉันจะตอบข้อความที่ไม่ใช่คำสั่ง",
+        "chatbot_ai_disabled": "ปิดใช้งานการตอบกลับด้วย AI แล้ว ฉันจะตอบเฉพาะคำสั่งเท่านั้น",
+        "chatbot_ai_error": "ขออภัยค่ะ ฉันมีปัญหาในการเชื่อมต่อกับบริการ AI กรุณาลองใหม่ภายหลัง",
+        "chatbot_ai_unavailable": "การตอบกลับด้วย AI ไม่พร้อมใช้งาน (ยังไม่ได้ตั้งค่า ai_api_key) กรุณาให้แอดมินตั้งค่า",
+        "chatbot_not_understood": "ฉันไม่เข้าใจค่ะ ลองใช้ !help เพื่อดูคำสั่ง หรือแชทกับฉันหากเปิดใช้งาน AI",
+        "chatbot_rate_limited": "กรุณารอ {remaining} วินาทีก่อนแชทอีกครั้งค่ะ",
+        "chatbot_help_intro": "🤖 AutoDJ บอทเพลง — คำสั่ง:",
+        "chatbot_help_outro": "ส่ง IM หาฉันเพื่อใช้คำสั่งส่วนตัวค่ะ",
     },
 }
 
