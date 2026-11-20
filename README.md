@@ -4,6 +4,8 @@ Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now
 
 ## What's new (unreleased)
 
+- **English-only code comments and docstrings** — Thai comments/docstrings in `autodj/favorites.py`, `autodj/engine.py` and `autodj/commands.py` were translated to English per repository policy. User-facing Thai command aliases and localized strings are unchanged.
+- **GUI settings: `user_request_limit` and `rate_limit_window` now editable** — both were missing from the Settings panel although `save_settings()` referenced them; they are now full setting rows with validation and TOML persistence.
 - **Duplicate-message suppression** — the Camfrog UIA adapter can re-dump identical chat lines after a reconnect, causing the same command to run multiple times within milliseconds. A per-user+text dedup window (3 s) drops genuine backlog duplicates while still allowing a user to repeat a command after a few seconds.
 - **Idempotent echo detection** — remembering the same posted line twice no longer creates duplicate entries, so a second `_is_echo()` check cannot falsely return `True`.
 - **Camfrog log paths support `$APPDATA`** — `log_file` and `log_path` now expand `$APPDATA`/`~`, so logs go to the user's writable AppData folder by default (`$APPDATA/logs/autodj.log`, `$APPDATA/logs/chatlog.log`).

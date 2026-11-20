@@ -1856,7 +1856,25 @@ class App(tk.Tk):
         # poll_interval
         self.s_poll_interval = self._entry(sp_inner)
         self.s_poll_interval.insert(0, str(self.e.cfg.poll_interval))
-        _setting_row("g_settings_poll_interval", self.s_poll_interval, "g_settings_search_limit")
+        _setting_row(
+            "g_settings_poll_interval", self.s_poll_interval, "g_settings_user_request_limit"
+        )
+
+        # user_request_limit
+        self.s_user_request_limit = self._entry(sp_inner)
+        self.s_user_request_limit.insert(0, str(self.e.cfg.user_request_limit))
+        _setting_row(
+            "g_settings_user_request_limit",
+            self.s_user_request_limit,
+            "g_settings_rate_limit_window",
+        )
+
+        # rate_limit_window
+        self.s_rate_limit_window = self._entry(sp_inner)
+        self.s_rate_limit_window.insert(0, str(self.e.cfg.rate_limit_window))
+        _setting_row(
+            "g_settings_rate_limit_window", self.s_rate_limit_window, "g_settings_search_limit"
+        )
 
         # search_limit
         self.s_search_limit = self._entry(sp_inner)
@@ -3674,6 +3692,9 @@ class App(tk.Tk):
             cfg.max_queue = self._parse_int(self.s_max_queue, "max queue length")
             cfg.max_duration = self._parse_int(self.s_max_duration, "max track duration")
             cfg.search_limit = self._parse_int(self.s_search_limit, "search limit")
+            cfg.user_request_limit = self._parse_int(
+                self.s_user_request_limit, "user request limit"
+            )
             cfg.tts_rate = self._parse_int(self.s_tts_rate, "TTS rate")
             cfg.tts_duck = self._parse_int(self.s_tts_duck, "TTS duck volume")
             cfg.launch_timeout = self._parse_int(self.s_launch_timeout, "launch timeout")
@@ -3683,10 +3704,7 @@ class App(tk.Tk):
             cfg.cooldown = self._parse_float(self.s_cooldown, "cooldown")
             cfg.send_interval = self._parse_float(self.s_send_interval, "send interval")
             cfg.poll_interval = self._parse_float(self.s_poll_interval, "poll interval")
-            if hasattr(self, "s_rate_limit_window"):
-                cfg.rate_limit_window = self._parse_float(
-                    self.s_rate_limit_window, "rate limit window"
-                )
+            cfg.rate_limit_window = self._parse_float(self.s_rate_limit_window, "rate limit window")
 
             # Bool fields
             cfg.auto_discover = self.s_auto_discover
