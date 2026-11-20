@@ -1,10 +1,10 @@
 # CamfrogAutoDJ — Complete Architecture Blueprint
 
-**Version:** 0.3.5 (Enterprise Production Release)  
+**Version:** 0.3.10 (module/feature tables refreshed 2026-11-20; per-module line counts below date from 0.3.5)  
 **Generated:** 2026-11-10  
 **Repository:** https://github.com/cvsz/autodj  
-**Total Source:** 10,085 lines across 32 modules  
-**Test Coverage:** 375 tests + 3 subtests
+**Total Source:** 18,033 lines across 49 modules (0.3.10)  
+**Test Coverage:** 711 tests + 3 subtests (0.3.10)
 
 ---
 
@@ -202,7 +202,8 @@ AutoDJError (base)
 | **Auto-reply** | `auto_reply_enabled`, `auto_reply_interval`, `auto_reply_file` | Scheduled room messages; default interval 60s |
 | **IM** | `im_auto_reply_enabled`, `im_auto_reply_message`, `im_auto_reply_cooldown`, `im_require_room_presence`, `im_viewer_enabled` | Private message handling |
 | **Admin Features** | `admin_mute_mic`, `admin_unmute_mic`, `admin_block_user`, `admin_unblock_user`, `admin_block_bot`, `admin_unblock_bot`, `admin_kick_user`, `admin_ban_user`, `admin_unban_user`, `admin_punish_user`, `admin_punish_bot`, `admin_delete_message_enabled`, `admin_greeting_enabled`, `admin_greeting_message`, `admin_greeting_cooldown` | All config-gated |
-| **Welcome** | `welcome_message_enabled`, `welcome_message_message` | First-join greeting |
+| **Welcome** | `welcome_message_enabled`, `welcome_message_message`, `welcome_message_cooldown`, `welcome_message_delay`, `join_line_regex` | Greeting on room join (or first message) |
+| **Mic greeting** | `mic_greeting_enabled`, `mic_greeting_message`, `mic_greeting_cooldown` | Announce the user who got the room mic (whole-line notice, sender must match) |
 | **RE Integrations** | `gift_announce_enabled`, `avatar_change_enabled`, `status_indicator_enabled`, `status_alert_enabled` | Camfrog reverse-engineered features |
 | **Audio Engineering** | `audio_fade`, `audio_fade_in_sec`, `audio_fade_out_sec`, `audio_normalize` | mpv dynaudnorm |
 | **Style** | `message_style` (nested) | GUI preview only |

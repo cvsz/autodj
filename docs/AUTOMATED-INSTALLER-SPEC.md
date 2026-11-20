@@ -197,7 +197,7 @@ Committed to repo - reference template for manual setups and documentation.
 .\build_installer.bat
 
 # PowerShell (cross-platform)
-.\scripts\build_installer.ps1 -Version 0.2.3
+.\scripts\build_installer.ps1   # version defaults to pyproject.toml
 
 # Linux/Wine
 ./scripts/build_installer_linux.sh 0.2.3
@@ -320,7 +320,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1" %*
 
 ### build_installer.ps1 (NSIS Builder)
 ```powershell
-.\scripts\build_installer.ps1 -Version 0.2.3 -SrcDir dist -OutDir dist [-Sign]
+.\scripts\build_installer.ps1 [-Version X.Y.Z] -SrcDir dist -OutDir dist [-Sign]
 ```
 - Validates NSIS (`makensis`) in PATH
 - Verifies required files in `dist/`

@@ -179,7 +179,7 @@ REM Windows batch
 .\build_installer.bat
 
 REM PowerShell (with version override)
-.\scripts\build_installer.ps1 -Version 0.2.5 -Sign
+.\scripts\build_installer.ps1 -Sign   # version defaults to pyproject.toml
 
 REM Linux/Wine
 ./scripts/build_installer_linux.sh 0.2.5
