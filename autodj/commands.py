@@ -781,6 +781,14 @@ def _ai_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
         e.say(e.t("ai_status", state=state, model=e.cfg.ai_model, url=e.cfg.ai_base_url))
         return
 
+    if arg == "help":
+        # Send full command list via private IM to the admin.
+        base = e.t("help_base", p=e.cfg.prefix)
+        admin = e.t("help_admin", p=e.cfg.prefix)
+        text = e.t("ai_help", p=e.cfg.prefix, base=base, admin=admin, BOT=e.cfg.bot_nick)
+        e.send_im(m.user, text)
+        return
+
     if arg == "on":
         e.cfg.ai_enabled = True
         e.refresh_ai()
