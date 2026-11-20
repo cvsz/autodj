@@ -20,7 +20,7 @@ log = logging.getLogger("autodj")
 COMMANDS: dict[str, tuple] = {}
 # Names of every command that queues a song (all aliases).  Used for the per-user
 # request limit and allow_play_in_room — a hard-coded name tuple used to miss
-# aliases such as aplay/addm/ขอเพลง/เล่นเพลง/เปิดเพลง.
+# aliases such as aplay/addm/ขอเพลง/เล่นเพลง/เปิดเพลง (Thai command aliases).
 REQUEST_COMMANDS: set[str] = set()
 
 
@@ -263,25 +263,25 @@ def _hadj(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("skipp", "ข้ามเพลง")  # _skip enforces requester-or-admin
 def _skipp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    """ข้ามเพลงปัจจุบัน — ผู้ขอหรือ Main Owner เท่านั้น (alias ของ /skip)."""
+    """Skip the current track — requester or Main Owner only (alias of /skip)."""
     _skip(e, m, a, admin)
 
 
 @command("nowp")
 def _nowp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    """ดูเพลงปัจจุบันและผู้ขอ (alias ของ /np)."""
+    """Show the current track and requester (alias of /np)."""
     _np(e, m, a, admin)
 
 
 @command("lastp")
 def _lastp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    """ดูเพลงที่เล่นไปล่าสุด (alias ของ /last)."""
+    """Show the most recently played track (alias of /last)."""
     _last(e, m, a, admin)
 
 
 @command("aplay", "addm", request=True)
 def _aplay(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    """ขอเพลงผ่าน IM (alias ของ /play) รองรับการมอบเพลงด้วย @{USER} เช่น /aplay ครับพี่ @user"""
+    """Request a song via IM (alias of /play) with dedication support via @{USER}, e.g. /aplay ครับพี่ @user"""
     stripped = a.strip()
     if stripped.lower().startswith("fav "):
         _aplay_fav(e, m, stripped, admin)
@@ -290,7 +290,7 @@ def _aplay(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 
 def _aplay_fav(e: "Engine", m: "ChatMessage", stripped: str, admin: bool) -> None:
-    """เล่นเพลงโปรดจากคำสั่ง /aplay fav <ลำดับ>."""
+    """Play a favorite from /aplay fav <position>."""
     try:
         index = int(stripped[4:].strip())
     except ValueError as err:
@@ -301,7 +301,7 @@ def _aplay_fav(e: "Engine", m: "ChatMessage", stripped: str, admin: bool) -> Non
     entry = fav.get(m.user, index)
     if not entry:
         raise UserError(e.t("aplay_fav_not_found", n=index))
-    # เล่นเพลงโปรดโดยตรง
+    # Play the favorite directly
     tracks = e.resolve(entry["source"], m.user, admin)
     if not tracks:
         raise UserError(e.t("nothing_found"))
@@ -874,22 +874,22 @@ def _remove_operator(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None
 
 
 # ============================================================================
-# ขอเพลงและดูคิว / Song requests (IM commands) — ตามคู่มือ /hadj
+# Song requests and queue (IM commands) — per the /hadj guide
 # ============================================================================
 
 
 @command("hbdp", "hbdm", "อวยพรวันเกิด", admin=False, request=True)
 def _hbdp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    """อวยพรวันเกิดหน้าห้อง + เปิดเพลงวันเกิด"""
+    """Birthday wish in the room + play a birthday song"""
     if not a:
         raise UserError(e.t("hbdp_usage", p=e.cfg.prefix))
     name = a.strip()
-    # อวยพรวันเกิดในห้อง
+    # Birthday wish in the room
     e.say(e.t("hbdp_wish", name=name))
-    # เปิดเพลงวันเกิด (ใช้ resolve ค้นหาเพลงวันเกิด)
+    # Play a birthday song (resolve to find a birthday song)
     tracks = e.resolve("生日快乐 happy birthday", "AutoDJ", True)
     if not tracks:
-        # fallback: ค้นหาเป็นภาษาอังกฤษ
+        # fallback: search in English
         tracks = e.resolve("happy birthday", "AutoDJ", True)
     if tracks:
         tracks = tracks[:1]  # one birthday song per wish
@@ -909,7 +909,7 @@ def _hbdp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("topp", "topm", "เพลงขอสูงสุด", admin=False)
 def _topp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    """เพลงที่ถูกขอมากสุดวันนี้ (/topm week = สัปดาห์นี้)"""
+    """Most-requested songs today (/topm week = this week)"""
     period = a.strip().lower() if a else "today"
     if period not in ("today", "week"):
         period = "today"
@@ -925,7 +925,7 @@ def _topp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("favp", "favm", "เพลงโปรด", admin=False)
 def _favp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    """เก็บเพลงที่กำลังเล่นไว้ในเพลงโปรด"""
+    """Save the currently playing track to favorites"""
     cur = e.current
     if not cur:
         raise UserError(e.t("nothing_playing"))
@@ -938,7 +938,7 @@ def _favp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 
 @command("myfavp", "myfavm", "ดูเพลงโปรด", admin=False)
 def _myfavp(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    """ดูเพลงโปรดของตัวเอง"""
+    """View your own favorites"""
     from .favorites import FavoritesStore
 
     fav = FavoritesStore(e.cfg_path)

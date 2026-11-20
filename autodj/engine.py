@@ -789,14 +789,14 @@ class Engine:
         return fresh[-n:]
 
     def top_requests(self, period: str = "today", limit: int = 5) -> list[dict]:
-        """คืนรายการเพลงที่ถูกขอมากสุดในช่วงเวลาที่กำหนด.
+        """Return the most-requested tracks in the given time window.
 
         Args:
-            period: "today" หรือ "week"
-            limit: จำนวนเพลงสูงสุดที่คืน
+            period: "today" or "week"
+            limit: maximum number of tracks to return
 
         Returns:
-            list of {"title": str, "count": int} เรียงจากมากไปน้อย
+            list of {"title": str, "count": int} sorted from most to least requested
         """
         from pathlib import Path
 
@@ -832,7 +832,7 @@ class Engine:
         return [{"title": titles[src], "count": cnt} for src, cnt in ranked]
 
     def record_request(self, source: str, title: str) -> None:
-        """บันทึกการขอเพลงสำหรับสถิติ /topm."""
+        """Record a song request for /topm statistics."""
         from pathlib import Path
 
         counter_path: Path | None = None
@@ -857,7 +857,7 @@ class Engine:
         if not isinstance(data, dict) or not isinstance(data.get("requests"), list):
             data = {"requests": []}
         data["requests"].append({"source": source, "title": title, "ts": time.time()})
-        # เก็บแค่ 30 วันย้อนหลัง
+        # Keep only the last 30 days
         cutoff = time.time() - 86400.0 * 30
         data["requests"] = [r for r in data["requests"] if r.get("ts", 0) >= cutoff]
         tmp = counter_path.with_suffix(".json.tmp")
@@ -1601,7 +1601,7 @@ class Engine:
         self._remember_sent(text)
         # Camfrog renders camfrog:join:<room> / URLs as links and the IM reader keeps
         # the text before the link: remember that part too, or our own reply comes
-        # back as an IM from the user ("IM received: zdevz: กรุณาเข้าห้อง").
+        # back as an IM from the user ("IM received: zdevz: please join the room first").
         visible = re.split(r"camfrog:|https?://", text, maxsplit=1)[0].strip()
         if visible and visible != text:
             self._remember_sent(visible)
@@ -1653,6 +1653,7 @@ class Engine:
         # Update last user request time for !play commands (tracked in router)
         self.exec.submit(self.router.handle, msg)
         # "เพลงอะไร / what song is this?" -> answer with the current song
+        # (Thai keyword "เพลงอะไร" = "what song is this?")
         if self._answer_np_question(msg):
             return
         # AI: reply to non-command room messages
@@ -1817,7 +1818,8 @@ class Engine:
         "receiving mic",
         "took the mic",
     )
-    # A mic *notice* is a whole line like "Seaza is now speaking" or "Seaza กำลังรับไมค์".
+    # A mic *notice* is a whole line like "Seaza is now speaking" or "Seaza กำลังรับไมค์"
+    # (Thai: "Seaza is now taking the mic").
     _MIC_NOTICE_RE = re.compile(
         r"^(?:\S{1,30}\s+)?(?:"
         r"is\s+now\s+speaking"

@@ -1,10 +1,10 @@
-"""ระบบเพลงโปรด (Favorites) — เก็บเพลงที่ผู้ใช้ถูกใจในไฟล์ JSON.
+"""User favorites system — stores tracks users like in a JSON file.
 
-จัดเก็บไฟล์ favorites.json ถัดจาก config.toml โดยใช้รูปแบบ:
+The favorites.json file lives next to config.toml and uses this format:
 {
   "users": {
     "nickname": [
-      {"title": "เพลงที่ 1", "source": "https://youtu.be/...", "requester": "nickname", "added_at": "..."},
+      {"title": "Song 1", "source": "https://youtu.be/...", "requester": "nickname", "added_at": "..."},
       ...
     ]
   }
@@ -40,7 +40,7 @@ def _lock_for(path: Path) -> threading.Lock:
 
 
 class FavoritesStore:
-    """ร้านค้าเพลงโปรดต่อผู้ใช้ — thread-safe, เก็บเป็นไฟล์ JSON เดียว.
+    """Per-user favorites store — thread-safe, single JSON file.
 
     Every operation re-reads the file under a process-wide per-file lock, so
     instances never work from a stale snapshot.
@@ -82,14 +82,14 @@ class FavoritesStore:
             log.exception("failed to save favorites file %r", self._path)
 
     def add(self, user: str, track: "Track") -> None:
-        """เพิ่มเพลงเข้าเพลงโปรดของผู้ใช้ (กันซ้ำโดยใช้ source เป็นคีย์)."""
+        """Add a track to a user's favorites (dedup by source)."""
         key = user.lower()
         with self._lock:
             self._data = self._load()  # fresh copy: other instances may have saved
             entries = self._data.setdefault(key, [])
             for entry in entries:
                 if entry.get("source") == track.source:
-                    return  # มีอยู่แล้ว ไม่เพิ่มซ้ำ
+                    return  # already present, do not add again
             entries.append(
                 {
                     "title": track.title,
@@ -101,13 +101,13 @@ class FavoritesStore:
             self._save()
 
     def list_for(self, user: str) -> list[dict]:
-        """คืนรายการเพลงโปรดของผู้ใช้."""
+        """Return a user's favorite tracks."""
         with self._lock:
             self._data = self._load()  # fresh copy: other instances may have saved
             return list(self._data.get(user.lower(), []))
 
     def get(self, user: str, index: int) -> dict | None:
-        """คืนเพลงโปรดลำดับที่ index (เริ่มที่ 1) ของผู้ใช้."""
+        """Return the user's favorite track at *index* (1-based)."""
         with self._lock:
             self._data = self._load()  # fresh copy: other instances may have saved
             entries = self._data.get(user.lower(), [])
@@ -116,7 +116,7 @@ class FavoritesStore:
             return None
 
     def remove(self, user: str, index: int) -> bool:
-        """ลบเพลงโปรดลำดับที่ index ของผู้ใช้."""
+        """Remove the user's favorite track at *index* (1-based)."""
         with self._lock:
             self._data = self._load()  # fresh copy: other instances may have saved
             entries = self._data.get(user.lower(), [])
@@ -127,7 +127,7 @@ class FavoritesStore:
             return False
 
     def clear(self, user: str) -> int:
-        """ลบเพลงโปรดทั้งหมดของผู้ใช้ คืนจำนวนที่ลบ."""
+        """Remove all of a user's favorite tracks; return the number removed."""
         with self._lock:
             self._data = self._load()  # fresh copy: other instances may have saved
             key = user.lower()
