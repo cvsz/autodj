@@ -1,4 +1,4 @@
-"""Default bot_nick is AutoDJBot; the setup check flags only that default."""
+"""Default bot_nick is AutoDJ; the setup check flags only that default."""
 
 import re
 import tomllib
@@ -14,14 +14,14 @@ def _infos(cfg):
 
 
 def test_default_is_autodjbot_everywhere():
-    assert DEFAULT_BOT_NICK == "AutoDJBot" == Config().bot_nick
+    assert DEFAULT_BOT_NICK == "AutoDJ" == Config().bot_nick
     with open("config.example.toml", "rb") as fh:
-        assert tomllib.load(fh)["bot_nick"] == DEFAULT_BOT_NICK
+        assert tomllib.load(fh)["bot_nick"] == "AutoDJ"
 
 
 def test_doctor_flags_only_the_default_nick():
     assert _infos(Config(bot_nick=DEFAULT_BOT_NICK))  # default -> INFO
-    assert not _infos(Config(bot_nick="AutoDJ"))  # a real nick (even the old default) -> quiet
+    assert not _infos(Config(bot_nick="MyBotNick"))  # a real nick (not the default) -> quiet
 
 
 def test_install_ps1_edits_match_the_example_config():

@@ -74,7 +74,7 @@ class MessageStyle:
 
 # Shipped default nick: the setup check (doctor) asks to replace it with the
 # nickname the bot really chats as.
-DEFAULT_BOT_NICK = "AutoDJBot"
+DEFAULT_BOT_NICK = "AutoDJ"
 
 
 @dataclass
@@ -272,6 +272,11 @@ class Config:
     )
     welcome_message_cooldown: float = 3600.0  # seconds between welcome messages (1 hour)
 
+    # Mic/DJ greeting: announce when a user gets the room mic (becomes the DJ)
+    mic_greeting_enabled: bool = True  # greet users who receive the room mic
+    mic_greeting_message: str = "คุณ {user} รับไมค์เป็น DJ ขณะนี้"  # {user} = nick
+    mic_greeting_cooldown: float = 300.0  # seconds between mic greetings for same user
+
     # Camfrog RE Integrations (Gift / Avatar / Status / Status Alert)
     gift_announce_enabled: bool = True  # announce virtual-gift messages sent to the room
     avatar_change_enabled: bool = True  # announce avatar change messages sent to the room
@@ -319,14 +324,14 @@ class Config:
     # replace this installation (via autodj_update.bat) before starting the bot.
     auto_update_apply_on_start: bool = True
 
-    # AI: optional chat-completion integration (disabled by default)
-    ai_enabled: bool = False  # enable AI chat replies
+    # AI: optional chat-completion integration (enabled by default)
+    ai_enabled: bool = True  # enable AI chat replies
     ai_api_key: str = ""  # API key for the AI provider
     ai_base_url: str = "https://integrate.api.nvidia.com/v1"  # NVIDIA Inference API endpoint
     ai_model: str = "nvidia/llama-3.3-nemotron-super-49b-v1.5"  # NVIDIA API catalog model id
     ai_system_prompt: str = (
-        "You are AutoDJ, a music bot in a Camfrog room. Keep replies short, "
-        "friendly, and on-topic. Do not claim to play music unless asked. Powered by NVIDIA AI"
+        "You are AutoDJ, a music bot in a Camfrog room powered by NVIDIA AI. Keep replies short, "
+        "friendly, and on-topic. Do not claim to play music unless asked."
     )
     ai_max_chars: int = 200  # max characters in AI reply
     ai_user_cooldown: float = 30.0  # seconds between AI replies to same user
@@ -465,6 +470,7 @@ _RANGES = {
     "ai_user_cooldown": (0.0, 86400.0),
     "ai_max_chars": (1, 2000),
     "welcome_message_delay": (0.0, 3600.0),
+    "mic_greeting_cooldown": (0.0, 86400.0),
 }
 
 

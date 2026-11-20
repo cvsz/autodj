@@ -19,7 +19,7 @@ def test_example_config_matches_code_defaults():
     c = Config()
     for key in ("ai_enabled", "ai_api_key", "ai_base_url", "ai_model", "ai_system_prompt"):
         assert ex[key] == getattr(c, key), key
-    assert ex["ai_api_key"] == "" and ex["ai_enabled"] is False  # template never ships a key
+    assert ex["ai_api_key"] == "" and ex["ai_enabled"] is True  # template ships AI on
 
 
 def test_ai_off_without_key():

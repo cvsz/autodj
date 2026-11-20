@@ -151,20 +151,20 @@ Section "Playlist Directory" SEC_PLAYLIST
 SectionEnd
 
 Section /o "mpv + yt-dlp" SEC_MPV
-    SetOutPath "$INSTDIR\mpv"
+    SetOutPath "$APPDATA\mpv"
     ; /nonfatal: CI runners have no vendored mpv/ folder (it is not in git); a
     ; missing binary must not abort the whole installer build (SEC_MPV is optional)
     File /nonfatal "dist\mpv\mpv.exe"
     File /nonfatal "dist\mpv\yt-dlp.exe"
     File /nonfatal "dist\mpv\mpv-register.bat"
     File /nonfatal "dist\mpv\mpv-unregister.bat"
-    SetOutPath "$INSTDIR\mpv\_internal"
+    SetOutPath "$APPDATA\mpv\_internal"
     File /nonfatal /r "dist\mpv\_internal\*.*"
     ; Register mpv file associations and protocols (optional, requires admin)
     ; Run hidden so user doesn't see command window flash
-    IfFileExists "$INSTDIR\mpv\mpv-register.bat" do_register skip_register
+    IfFileExists "$APPDATA\mpv\mpv-register.bat" do_register skip_register
 do_register:
-    ExecWait '"$INSTDIR\mpv\mpv-register.bat"'
+    ExecWait '"$APPDATA\mpv\mpv-register.bat"'
 skip_register:
 SectionEnd
 
@@ -246,10 +246,10 @@ Section -Post
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "Path" "$INSTDIR"
 
     ; Register bundled media tools only when the optional component is present.
-    IfFileExists "$INSTDIR\mpv\mpv.exe" media_tools_present media_tools_absent
+    IfFileExists "$APPDATA\mpv\mpv.exe" media_tools_present media_tools_absent
 media_tools_present:
-    WriteRegStr HKCU "Software\CamfrogAutoDJ" "mpv_path" "$INSTDIR\mpv\mpv.exe"
-    WriteRegStr HKCU "Software\CamfrogAutoDJ" "ytdlp_path" "$INSTDIR\mpv\yt-dlp.exe"
+    WriteRegStr HKCU "Software\CamfrogAutoDJ" "mpv_path" "$APPDATA\mpv\mpv.exe"
+    WriteRegStr HKCU "Software\CamfrogAutoDJ" "ytdlp_path" "$APPDATA\mpv\yt-dlp.exe"
     Goto media_tools_registry_done
 media_tools_absent:
     DeleteRegValue HKCU "Software\CamfrogAutoDJ" "mpv_path"
@@ -301,7 +301,7 @@ Section Uninstall
     Delete "$INSTDIR\install.bat"
     Delete "$INSTDIR\uninstall.exe"
     Delete "$INSTDIR\ads-list.json"
-    RMDir /r "$INSTDIR\mpv"
+    RMDir /r "$APPDATA\mpv"
     RMDir /r "$INSTDIR\playlist"
     RMDir /r "$INSTDIR\docs"
     RMDir /r "$INSTDIR\tools"

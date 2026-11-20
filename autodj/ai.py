@@ -25,8 +25,8 @@ log = logging.getLogger("autodj")
 DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"  # NVIDIA API catalog (OpenAI-compatible)
 DEFAULT_MODEL = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
 DEFAULT_SYSTEM_PROMPT = (  # keep equal to Config.ai_system_prompt
-    "You are AutoDJ, a music bot in a Camfrog room. Keep replies short, "
-    "friendly, and on-topic. Do not claim to play music unless asked. Powered by NVIDIA AI"
+    "You are AutoDJ, a music bot in a Camfrog room powered by NVIDIA AI. Keep replies short, "
+    "friendly, and on-topic. Do not claim to play music unless asked."
 )
 DEFAULT_CHECK_INTERVAL = 60.0  # seconds between AI message checks (not used yet)
 MAX_RESPONSE_CHARS = 200  # Camfrog message length safety

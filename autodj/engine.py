@@ -150,6 +150,10 @@ class Engine:
         self._chat_rate_window: dict[
             str, deque
         ] = {}  # nick -> deque of timestamps for rate limiting
+        # Recently processed (user, text) pairs to drop duplicate deliveries from
+        # the chat adapter (Camfrog can re-dump a backlog of identical lines).
+        self._recent_messages: dict[str, float] = {}
+        self._recent_messages_lock = threading.Lock()
         self._plugin_manager = None  # built from cfg.plugins below; loaded in start()
         if getattr(cfg, "plugins", None):
             from .plugins.manager import PluginManager
@@ -169,6 +173,7 @@ class Engine:
         # ---- Camfrog RE / greeting / welcome cooldowns ------------------------
         self._admin_greeting_cooldowns: dict[str, float] = {}
         self._welcome_cooldowns: dict[str, float] = {}
+        self._mic_greeting_cooldowns: dict[str, float] = {}
         self._name_colors: dict[str, str] = {}
         self._im_reply_cooldowns: dict[str, float] = {}
         # ---- Circuit breaker --------------------------------------------------
@@ -391,13 +396,29 @@ class Engine:
             if i and chunk.startswith(self.cfg.prefix):
                 chunk = "… " + chunk  # a wrapped continuation must never look like a command
             self.outbox.put(chunk)
+            self._remember_sent(chunk)  # remember so echo from the room is ignored
         return True
 
     # The room shows our own lines back to us under the account's nick, which may differ from bot_nick.
     # Remembering what we posted lets us ignore those echoes instead of treating them as commands.
     def _remember_sent(self, text: str):
+        """Remember a posted line so its echo from the room is ignored.
+
+        Idempotent: if the same normalized text is already remembered within
+        the TTL, do not add a duplicate entry. This keeps echo detection stable
+        when say() and callers both remember the same line.
+        """
+        now = time.monotonic()
+        want = norm(text)
         with self._sent_lock:
-            self._sent.append((time.monotonic() + ECHO_TTL, norm(text)))
+            # Expire old entries first
+            while self._sent and self._sent[0][0] < now:
+                self._sent.popleft()
+            # Skip if already remembered
+            for _, s in self._sent:
+                if s == want:
+                    return
+            self._sent.append((now + ECHO_TTL, want))
 
     def _is_echo(self, text: str) -> bool:
         now, want = time.monotonic(), norm(text)
@@ -1462,10 +1483,43 @@ class Engine:
             self._update_participant_count(msg.user)
         elif msg.event == "join":
             self._handle_room_join(msg)
+        elif self._is_duplicate_message(msg):
+            log.debug(
+                "duplicate chat message dropped: user=%r text=%r",
+                msg.user,
+                msg.text[:60],
+            )
+            return
         elif msg.is_im:
             self._handle_im(msg)
         else:
             self._handle_room_message(msg)
+
+    def _is_duplicate_message(self, msg: ChatMessage) -> bool:
+        """Return True if *msg* is a duplicate of a recently processed line.
+
+        The Camfrog adapter can re-dump a backlog of identical chat lines (for
+        example after a reconnect).  Without dedup, each copy is submitted to
+        the command router as a separate thread-pool task, and concurrent
+        tasks all pass the per-user cooldown check before any of them update
+        it -- so the same command runs multiple times at once.  A short
+        (3 s) per-user+text window suppresses genuine adapter backlog
+        duplicates while still allowing a user to repeat a command after a
+        few seconds.
+        """
+        key = f"{msg.user.lower()}|{norm(msg.text)}"
+        now = time.monotonic()
+        with self._recent_messages_lock:
+            last = self._recent_messages.get(key, 0.0)
+            if now - last < 3.0:
+                return True
+            self._recent_messages[key] = now
+            if len(self._recent_messages) > 2000:
+                cutoff = now - 10.0
+                self._recent_messages = {
+                    k: v for k, v in self._recent_messages.items() if v >= cutoff
+                }
+        return False
 
     def _should_ignore_message(self, msg: ChatMessage) -> bool:
         """Return True if the message should be ignored (echo or own message)."""
@@ -1753,6 +1807,29 @@ class Engine:
         "moderator": "status_moderator",
         "owner": "status_owner",
     }
+    # Mic/DJ status notice keywords (Camfrog system messages when someone receives the mic)
+    _MIC_KEYWORDS = (
+        "กำลังรับไมค์",
+        "กำลังพูด",
+        "is now speaking",
+        "has the mic",
+        "is the dj",
+        "receiving mic",
+        "took the mic",
+    )
+    # A mic *notice* is a whole line like "Seaza is now speaking" or "Seaza กำลังรับไมค์".
+    _MIC_NOTICE_RE = re.compile(
+        r"^(?:\S{1,30}\s+)?(?:"
+        r"is\s+now\s+speaking"
+        r"|has\s+the\s+mic"
+        r"|is\s+the\s+dj"
+        r"|receiving\s+mic"
+        r"|took\s+the\s+mic"
+        r"|กำลังรับไมค์"
+        r"|กำลังพูด"
+        r")\.?$",
+        re.IGNORECASE,
+    )
     # Name color regex: style='color: #RRGGBB' or style="color: #RRGGBB" (Camfrog nickname color; see docs/camfrog-re/15-name-color.md)
     _NICK_COLOR_RE = re.compile(r"color:\s*#([0-9a-fA-F]{6})")
 
@@ -1775,6 +1852,8 @@ class Engine:
             self._announce_status_indicator(nick, body)
         if self.cfg.status_alert_enabled and self._is_status_message(body):
             self._alert_status(nick, body)
+        if self.cfg.mic_greeting_enabled and self._is_mic_notice(body):
+            self._announce_mic_greeting(nick)
         # Track name colors from incoming chat HTML for GUI preview (read-only; see docs/camfrog-re/15-name-color.md)
         self._track_name_color(nick, body)
 
@@ -1818,6 +1897,34 @@ class Engine:
             return None
         word = (m.group("state") or m.group("role")).lower()
         return self._STATUS_INDICATOR_KEYWORDS.get(word)
+
+    def _is_mic_notice(self, body: str) -> bool:
+        """Return True if *body* is a Camfrog mic/DJ status notice line.
+
+        Matches the whole-line regex (e.g. "Seaza is now speaking") and also
+        falls back to keyword substring matching for localized system messages
+        that may include extra surrounding text.
+        """
+        if self._MIC_NOTICE_RE.match(body.strip()):
+            return True
+        low = body.lower()
+        return any(k.lower() in low for k in self._MIC_KEYWORDS)
+
+    def _announce_mic_greeting(self, nick: str) -> None:
+        """Greet a user who just received the room mic (became the DJ)."""
+        if nick.lower() in self.blocked:
+            return
+        now = time.monotonic()
+        last = self._mic_greeting_cooldowns.get(nick.lower(), float("-inf"))
+        if now - last < self.cfg.mic_greeting_cooldown:
+            return
+        try:
+            text = self.t("mic_greeting", user=nick)
+        except Exception:
+            text = f"คุณ {nick} รับไมค์เป็น DJ ขณะนี้"
+        self.say(text)
+        self._mic_greeting_cooldowns[nick.lower()] = now
+        log.info("Sent mic greeting to %s", nick)
 
     def _announce_gift(self, nick: str, body: str) -> None:
         """Announce a virtual gift detected in room chat."""

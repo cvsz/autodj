@@ -2,6 +2,15 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
+## What's new (unreleased)
+
+- **Duplicate-message suppression** — the Camfrog UIA adapter can re-dump identical chat lines after a reconnect, causing the same command to run multiple times within milliseconds. A per-user+text dedup window (3 s) drops genuine backlog duplicates while still allowing a user to repeat a command after a few seconds.
+- **Idempotent echo detection** — remembering the same posted line twice no longer creates duplicate entries, so a second `_is_echo()` check cannot falsely return `True`.
+- **Camfrog log paths support `$APPDATA`** — `log_file` and `log_path` now expand `$APPDATA`/`~`, so logs go to the user's writable AppData folder by default (`$APPDATA/logs/autodj.log`, `$APPDATA/logs/chatlog.log`).
+- **mpv/yt-dlp installer path** — the NSIS installer now installs mpv to `$APPDATA\mpv\`, matching `mpv_path`/`ytdlp_path` in config.
+- **Mic/DJ greeting** — new `mic_greeting_enabled`/`mic_greeting_message`/`mic_greeting_cooldown` settings detect Camfrog mic status notices ("Seaza is now speaking", "Seaza กำลังรับไมค์") and announce in the room with per-user cooldown.
+- **Config/example synchronized** — `config.example.toml` matches `config.toml` exactly; code defaults (`DEFAULT_BOT_NICK`, `ai_enabled`, `ai_system_prompt`) are synchronized across `config.py`, `ai.py`, and the example template.
+
 ## What's new in 0.3.9
 
 - **Default song waits a real 30 seconds:** after the last requested song finishes, AutoDJ waits `autoplay_idle_timeout` (30 s) for a new request before the default song (`default_track`) plays. It used to start at once after any request longer than 30 s.
