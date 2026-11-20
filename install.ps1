@@ -714,9 +714,9 @@ function Create-Config {
     # Interactive config edits - simplified to avoid regex issues
     try {
         if (Confirm "Configure basic settings now? (bot nickname, admin, music folder)") {
-            Write-Host "Bot nickname in Camfrog room [AutoDJBot]:"
+            Write-Host "Bot nickname in Camfrog room [AutoDJ]:"
             $botNick = Read-Host
-            if (-not $botNick) { $botNick = "AutoDJBot" }
+            if (-not $botNick) { $botNick = "AutoDJ" }
             Write-Host "Your Camfrog nickname (admin):"
             $adminNick = Read-Host
             Write-Host "Music folder path [D:\Music]:"

@@ -1,6 +1,6 @@
 # AutoDJ Commands Reference — English
 
-**Version:** 0.3.5  
+**Version:** 0.3.10  
 **Prefix:** `!` (configurable via `prefix` in config.toml)  
 **Language:** English (`lang = "en"`)
 
@@ -87,7 +87,7 @@
 | `speak` | `tts` | Speak text via TTS (music ducks) | `!speak <text>` |
 | `block` | — | Block a user from using commands | `!block <nick>` |
 | `unblock` | — | Unblock a user | `!unblock <nick>` |
-| `ai` | `เอไอ` | AI replies: `on`, `off`, `status`, `model <id>`, `prompt <text>` (applies immediately) | `!ai status` |
+| `ai` | `เอไอ` | AI replies: `on`, `off`, `status`, `model <id>`, `prompt <text>` (applies immediately); `!ai` alone shows the status; `help` sends the full command list by IM | `!ai status` / `!ai help` |
 | `update` | `อัปเดต` | Check GitHub for a strictly newer release; `apply` downloads and stages it (SHA-256 verified) | `!update` / `!update apply` |
 
 ### Examples
@@ -113,7 +113,8 @@
 !block spammer123
 !unblock spammer123
 !ai status
-!ai model gpt-4o-mini
+!ai help
+!ai model nvidia/llama-3.3-nemotron-super-49b-v1.5
 !update
 ```
 
@@ -326,7 +327,7 @@ Key settings in `config.toml`:
 # Core
 prefix = "!"
 lang = "en"
-bot_nick = "AutoDJBot"
+bot_nick = "AutoDJ"
 admins = ["admin_nick"]  # case-insensitive
 
 # Chat
