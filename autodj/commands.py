@@ -784,8 +784,8 @@ def _ai_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if arg == "help":
         # Send full command list via private IM to the admin.
         base = e.t("help_base", p=e.cfg.prefix)
-        admin = e.t("help_admin", p=e.cfg.prefix)
-        text = e.t("ai_help", p=e.cfg.prefix, base=base, admin=admin, BOT=e.cfg.bot_nick)
+        admin_cmds = e.t("help_admin", p=e.cfg.prefix)
+        text = e.t("ai_help", p=e.cfg.prefix, base=base, admin=admin_cmds, BOT=e.cfg.bot_nick)
         e.send_im(m.user, text)
         return
 
