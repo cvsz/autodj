@@ -26,6 +26,48 @@ def _read(ctrl) -> str:
     return ""
 
 
+# Room message box (WebView2): time for the editor to take the focus after the click,
+# and for the pasted text to land before Enter.
+_WEB_FOCUS_DELAY = 0.5
+_WEB_PASTE_DELAY = 0.3
+
+
+def _focus_target(handle: int, x: int, y: int, what: str) -> None:
+    """Make *handle* the foreground window and check that (x, y) belongs to it.
+
+    Keystrokes go to whatever window has the focus.  Without these checks a
+    send that could not take the focus (Windows refuses focus changes while the
+    user works in another app) clicked and pasted + Enter into that other app:
+    live 2026-11-22, no announcement reached the room for ~1.5 h while a
+    terminal was the foreground window.  Raises RuntimeError and types nothing
+    when the window cannot be brought to the front or is covered.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    u32 = ctypes.windll.user32  # type: ignore[attr-defined]
+    if u32.IsIconic(handle):
+        u32.ShowWindow(handle, 9)  # SW_RESTORE
+    deadline = time.monotonic() + 2.0
+    while u32.GetForegroundWindow() != handle and time.monotonic() < deadline:
+        u32.BringWindowToTop(handle)
+        u32.SetForegroundWindow(handle)
+        time.sleep(0.1)
+    if u32.GetForegroundWindow() != handle:
+        raise RuntimeError(f"{what} could not be brought to the front; nothing typed")
+    hit = u32.WindowFromPoint(wintypes.POINT(x, y))
+    if not hit or u32.GetAncestor(hit, 2) != handle:  # GA_ROOT
+        raise RuntimeError(f"{what} message box is covered by another window; nothing typed")
+
+
+def _still_front(handle: int, what: str) -> None:
+    """Abort before a keystroke if another window took the focus meanwhile."""
+    import ctypes
+
+    if ctypes.windll.user32.GetForegroundWindow() != handle:  # type: ignore[attr-defined]
+        raise RuntimeError(f"{what} lost the focus before typing; nothing typed")
+
+
 def _keys_literal(text: str) -> str:
     """*text* as literal keystrokes for pywinauto.send_keys (newlines become spaces)."""
     text = text.replace("\r", " ").replace("\n", " ")
@@ -435,18 +477,31 @@ class UiaAdapter(ChatAdapter):
                 if self.win.is_minimized():
                     self.win.restore()
             except (RuntimeError, AttributeError):
-                pass  # window may have closed; proceed with foreground send
-            self.win.set_focus()  # keystrokes go to the foreground window, so bring Camfrog up first
+                pass  # window may have closed; the checks below decide
+            try:
+                self.win.set_focus()  # keystrokes go to the foreground window
+            except (RuntimeError, AttributeError, OSError):
+                pass  # _focus_target() decides
             # _ensure_controls() guarantees self._input is not None here
             if self._input is None:  # explicit check: asserts are stripped under python -O
                 raise RuntimeError("_ensure_controls must be called before _send_fg")
+            handle = int(self.win.handle)
+            r = self._input.rectangle()  # measured after the window came forward
+            x, y = (r.left + r.right) // 2, (r.top + r.bottom) // 2
+            _focus_target(handle, x, y, "Camfrog room window")
+            pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
             if self._web:
                 self._input.click_input()  # the message box is a web editor: only a click focuses it
+                # WebView2 focuses its editor ~0.35 s after the click.  With 0.2 s the
+                # Ctrl+V was lost while the later Enter arrived: an empty send (live
+                # 2026-11-22), or a leftover draft in the box was posted instead.
+                time.sleep(_WEB_FOCUS_DELAY)
             else:
                 self._input.set_focus()
-            pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
+            _still_front(handle, "Camfrog room window")
             send_keys("^v")
-            time.sleep(0.15)
+            time.sleep(_WEB_PASTE_DELAY)
+            _still_front(handle, "Camfrog room window")  # never press Enter in another app
             send_keys("{ENTER}")
         finally:
             time.sleep(0.1)
@@ -585,8 +640,17 @@ class UiaAdapter(ChatAdapter):
                         )
                     return
                 # mode == "auto" and background did not confirm: fall through to foreground
+            # Compare against the history read *before* typing.  With [] every line of the
+            # history counted as new, so an auto-reply posted earlier (they repeat) made
+            # a send that never reached the room look delivered.
+            before_fg: list[str] = []
+            if self.cfg.send_verify:
+                try:
+                    before_fg = self._lines()
+                except (OSError, RuntimeError):
+                    before_fg = []
             self._send_fg(text)
-            if self.cfg.send_verify and not self._appeared(text, []):
+            if self.cfg.send_verify and not self._appeared(text, before_fg):
                 log.warning(
                     "sent via foreground paste but NOT seen in the room within 3s "
                     "(the message box may not have received the paste/enter)"
