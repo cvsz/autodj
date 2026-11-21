@@ -59,6 +59,11 @@ tmp/
 config.toml
 config.toml.bak
 config.toml.tmp
+# Any other local copy of config.toml (config.toml.bak-ai, config.toml.bak-20261121, ...):
+# it holds ai_api_key, admins and site paths.  config.toml.bak-imjoin with a live
+# ai_api_key was committed in a90226f because only the two names above were ignored.
+config.toml.*
+!config.example.toml
 
 # User data / runtime state (never commit)
 playlist.json
