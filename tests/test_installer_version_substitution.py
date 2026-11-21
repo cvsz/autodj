@@ -87,4 +87,3 @@ def test_release_workflow_passes_app_version_without_tag_prefix():
     # Tags are vX.Y.Z while pyproject/NSIS use X.Y.Z.
     assert "GITHUB_REF_NAME" in workflow
     assert "replace" in workflow
-

@@ -8,6 +8,11 @@ dependencies = [
   "pyttsx3",
   "pywinauto; sys_platform == 'win32'",
   "pyperclip; sys_platform == 'win32'",
+  # autodj/__main__.py imports autodj.stream at startup, which imports these
+  # (stream/probe_login.py, stream/adapters/facebook.py, stream/probe_account.py);
+  # undeclared, a clean install failed with ModuleNotFoundError before main().
+  "requests>=2.32,<3",
+  "cryptography>=44",
 ]
 [project.optional-dependencies]
 dev = ["pytest"]

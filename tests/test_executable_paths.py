@@ -11,9 +11,7 @@ def test_resolve_expands_windows_environment_variables(monkeypatch, tmp_path):
     executable.write_bytes(b"binary")
     monkeypatch.setenv("APPDATA", str(appdata))
 
-    assert paths.resolve_executable(r"%APPDATA%\AutoDJ\mpv\mpv.exe") == str(
-        executable.resolve()
-    )
+    assert paths.resolve_executable(r"%APPDATA%\AutoDJ\mpv\mpv.exe") == str(executable.resolve())
 
 
 def test_resolve_relative_path_from_application_directory(monkeypatch, tmp_path):
@@ -117,4 +115,3 @@ def test_find_ytdlp_expands_appdata_environment_path(monkeypatch, tmp_path):
     monkeypatch.setenv("APPDATA", str(appdata))
 
     assert find_ytdlp(r"%APPDATA%\Camfrog AutoDJ\mpv\yt-dlp.exe") == str(executable.resolve())
-
