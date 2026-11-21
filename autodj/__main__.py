@@ -12,7 +12,13 @@ from .config import Config, ConfigError
 from .engine import Engine
 from .logging_json import add_json_file_handler, configure_json_logging
 from .migrate import migrate_config
-from .textutil import clean_text
+from .stream import (
+    AdapterManager,
+    AuthManager,
+    CompositeStreamAdapter,
+    StreamRegistry,
+)
+from .textutil import clean_text, safe_print
 
 log = logging.getLogger(__name__)
 
@@ -107,7 +113,7 @@ def main():
     try:
         _run(a, level)
     except ConfigError as ex:
-        print(f"\nCannot start: {ex}\n", file=sys.stderr)
+        safe_print(f"\nCannot start: {ex}\n", file=sys.stderr)
         sys.exit(2)
     except RuntimeError as ex:  # e.g. the Camfrog room window is not open
         log.error("%s", ex)
@@ -191,12 +197,28 @@ def _run(a, level):
         return
     if _apply_startup_update(cfg):
         return  # the batch file relaunches the freshly installed exe
+
+    # Build the core adapter (Camfrog UIA or NullAdapter)
     adapter = _build_adapter(a, cfg)
     eng = Engine(cfg, adapter, cfg_path=a.config)
+
+    # Start multi-platform streaming infrastructure if enabled
+    stream_mgr = _start_stream_infrastructure(cfg, eng)
+    if stream_mgr is not None:
+        eng.adapter = stream_mgr["composite"]
+        log.info(
+            "multi-platform streaming enabled: %s",
+            ", ".join(stream_mgr["adapters"]),
+        )
+
     if a.gui:
         _run_gui(eng)
     else:
         eng.run()
+
+    # Cleanup streaming on shutdown
+    if stream_mgr is not None:
+        _stop_stream_infrastructure(stream_mgr)
 
 
 def _run_gui(eng) -> None:
@@ -236,7 +258,7 @@ def _handle_windows(a) -> bool:
     from .windows import list_all
 
     for c in list_all():
-        print(f"exe={c.exe!r} pid={c.pid} class={c.cls!r} title={c.title!r}")
+        safe_print(f"exe={c.exe!r} pid={c.pid} class={c.cls!r} title={c.title!r}")
     return True
 
 
@@ -249,7 +271,7 @@ def _handle_dump(a) -> bool:
 
     cs = [c for c in candidates(a.dump, visible_only=False) if c.pid != os.getpid()]
     if not cs:
-        print("no window matches", a.dump)
+        safe_print("no window matches", a.dump)
         return True
     Desktop(backend="uia").window(handle=cs[0].handle).print_control_identifiers()
     return True
@@ -320,7 +342,7 @@ def _run_check(a, cfg) -> bool:
     from . import doctor
 
     res = doctor.run_checks(cfg)
-    print(doctor.format_report(res))
+    safe_print(doctor.format_report(res))
     sys.exit(1 if doctor.has_failures(res) else 0)
 
 
@@ -376,6 +398,18 @@ def _clean_comtypes_gen_cache(log: logging.Logger) -> list[str]:
     return removed
 
 
+def _print_discovery(ups: dict) -> None:
+    """Echo the discovered updates to the console without crashing.
+
+    The updates were already written to config.toml (UTF-8); this is only a
+    convenience echo.  A console codepage that cannot encode some discovered
+    characters (e.g. cp874 Thai with an emoji in the Camfrog window title) is
+    handled by safe_print (unrepresentable characters are replaced), so this
+    never aborts startup.
+    """
+    safe_print(ups)
+
+
 def _auto_discover(a, cfg) -> bool:
     # Auto-discovery must never prevent the GUI from opening: log the failure
     # and continue with the existing config instead of crashing at startup.
@@ -399,7 +433,10 @@ def _auto_discover(a, cfg) -> bool:
             _clean_comtypes_gen_cache(log)
         ups = None
     if a.discover:
-        print(ups or "nothing found: open the room window and try again")
+        if ups:
+            _print_discovery(ups)
+        else:
+            print("nothing found: open the room window and try again")
         return True
     return False
 
@@ -409,8 +446,16 @@ def _run_say(a, cfg) -> bool:
         return False
     ad = build_adapter(cfg)
     ad.send(clean_text(a.say))
-    print("sent:", a.say)
+    safe_print("sent:", a.say)
     return True
+
+
+def _stop_stream_infrastructure(stream_mgr: dict) -> None:
+    """Stop the multi-platform streaming manager on shutdown."""
+    try:
+        stream_mgr["manager"].stop()
+    except Exception:  # noqa: BLE001, S110
+        pass
 
 
 def _build_adapter(a, cfg):
@@ -426,6 +471,68 @@ def _build_adapter(a, cfg):
             )
             return NullAdapter()
         raise
+
+
+def _start_stream_infrastructure(cfg, eng):
+    """Initialize multi-platform streaming: registry, auth, adapters, composite.
+
+    Returns a dict with the composite adapter and manager, or None if streaming
+    is not enabled.  The composite adapter wraps all platform adapters so the
+    engine sees one chat source.
+    """
+    streams_cfg = cfg.streams or {}
+    if not streams_cfg.get("enabled", False):
+        return None
+
+    # 1. Stream registry (thread-safe stream/room lifecycle)
+    registry = StreamRegistry(stream_ttl_seconds=streams_cfg.get("registry_ttl_seconds", 86400.0))
+
+    # 2. Auth manager (JWT tokens + API keys)
+    auth_cfg = streams_cfg.get("auth", {})
+    auth_manager = None
+    if auth_cfg.get("enable", False):
+        try:
+            auth_manager = AuthManager(
+                jwt_secret=auth_cfg.get("jwt_secret", ""),
+                jwt_expiry=auth_cfg.get("jwt_expiry", "24h"),
+                api_keys=auth_cfg.get("api_keys", []),
+                allow_anonymous=auth_cfg.get("allow_anonymous", False),
+            )
+        except Exception as exc:  # auth failure must not crash startup
+            log.warning("stream auth disabled: %s", exc)
+
+    # 3. Adapter manager (routes messages through AutoDJ's command system)
+    mgr = AdapterManager(
+        config=cfg,
+        registry=registry,
+        command_callback=eng._dispatch_chat,
+        auth_manager=auth_manager,
+    )
+    mgr.start()
+
+    # 4. Collect adapters and build composite
+    adapters = {}
+    with mgr._lock:
+        adapters = dict(mgr._adapters)
+
+    if not adapters:
+        log.warning("multi-platform streaming enabled but no adapters connected")
+        mgr.stop()
+        return None
+
+    composite = CompositeStreamAdapter(
+        adapters=adapters,
+        send_callback=lambda text: None,  # engine handles sending via eng.adapter
+    )
+    composite.connect()
+
+    return {
+        "registry": registry,
+        "auth": auth_manager,
+        "manager": mgr,
+        "composite": composite,
+        "adapters": list(adapters.keys()),
+    }
 
 
 if __name__ == "__main__":

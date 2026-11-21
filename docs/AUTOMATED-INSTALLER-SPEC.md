@@ -1,4 +1,4 @@
-# CamfrogAutoDJ - Automated Windows 11 Installer Specification
+# AutoDJ - Automated Windows 11 Installer Specification
 
 > **Single Source of Truth** for all installer-related logic, configuration, and build processes.
 
@@ -6,7 +6,7 @@
 
 ## 📋 Overview
 
-CamfrogAutoDJ provides **two complementary installation paths**:
+AutoDJ provides **two complementary installation paths**:
 
 | Path | Use Case | Technology |
 |------|----------|------------|
@@ -88,7 +88,7 @@ camfrog-autodj/
 
 ### Installed Layout (NSIS installer target)
 ```
-%PROGRAMFILES64%\CamfrogAutoDJ\
+%PROGRAMFILES64%\AutoDJ\
 ├── AutoDJ.exe                 # Main executable
 ├── app.ico                    # Icon
 ├── config.toml                # User config (production config, preserved on upgrade)
@@ -108,27 +108,27 @@ camfrog-autodj/
 
 ### Start Menu Shortcuts Created
 ```
-Start Menu > Programs > CamfrogAutoDJ\
-├── CamfrogAutoDJ.lnk         → AutoDJ.exe --gui
+Start Menu > Programs > AutoDJ\
+├── AutoDJ.lnk         → AutoDJ.exe --gui
 ├── Edit Config.lnk            → notepad.exe config.toml
 └── Uninstall.lnk              → uninstall.exe
 ```
 
 ### Desktop Shortcut
 ```
-Desktop\CamfrogAutoDJ.lnk     → AutoDJ.exe --gui
+Desktop\AutoDJ.lnk     → AutoDJ.exe --gui
 ```
 
 ### Registry (Add/Remove Programs)
 ```
-HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ
-  DisplayName        = "CamfrogAutoDJ"
+HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ
+  DisplayName        = "AutoDJ"
   DisplayVersion     = "0.2.3"
   Publisher          = "ZEAZDEV COMPANY LIMITED"
   URLInfoAbout       = "https://github.com/cvsz/autodj"
-  InstallLocation    = "%PROGRAMFILES64%\CamfrogAutoDJ"
-  UninstallString    = "%PROGRAMFILES64%\CamfrogAutoDJ\uninstall.exe"
-  DisplayIcon        = "%PROGRAMFILES64%\CamfrogAutoDJ\app.ico"
+  InstallLocation    = "%PROGRAMFILES64%\AutoDJ"
+  UninstallString    = "%PROGRAMFILES64%\AutoDJ\uninstall.exe"
+  DisplayIcon        = "%PROGRAMFILES64%\AutoDJ\app.ico"
   NoModify           = 1
   NoRepair           = 1
 ```
@@ -441,3 +441,4 @@ $env:PATH = [Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [En
 ---
 
 *Generated from repository analysis. Update this document when installer logic changes.*
+

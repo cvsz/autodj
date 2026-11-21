@@ -1,4 +1,4 @@
-# CamfrogAutoDJ Configuration
+# AutoDJ Configuration
 # ============================
 # Copy this file to config.toml and edit as needed.
 # All settings are documented below with their types and valid ranges.
@@ -130,7 +130,7 @@ allow_play_in_room = true # Song requests in room chat too (IM works for users i
 
 # --- Logging -----------------------------------------------------------------
 log_file = "$APPDATA/logs/autodj.log" # Log file (rotating, 1 MB x 3). Relative names go to <install>/logs/ (APPDATA fallback). Empty = default autodj.log there.
-# Relative paths are resolved to %APPDATA%/CamfrogAutoDJ/ so they are
+# Relative paths are resolved to %APPDATA%/AutoDJ/ so they are
 # writable even when AutoDJ is installed to Program Files.
 
 # JSON structured logging
@@ -276,6 +276,120 @@ ai_model = "nvidia/llama-3.3-nemotron-super-49b-v1.5" # NVIDIA API catalog model
 ai_system_prompt = "You are AutoDJ, a music bot in a Camfrog room powered by NVIDIA AI. Keep replies short, friendly, and on-topic. Do not claim to play music unless asked."
 ai_max_chars = 200 # reply length cap (Camfrog line limit)
 ai_user_cooldown = 30.0 # seconds between AI replies to the same user
+
+
+# ---------------------------------------------------------------------------
+# Multi-platform streaming (ported from cvsz/streamdbc architecture)
+# ---------------------------------------------------------------------------
+# Stream/room registry tracks active broadcasts across platforms.
+# Each platform has its own adapter: Camfrog (UIA), YouTube Live, TikTok Live,
+# Facebook Live.  The registry assigns a safe stream_id per room and manages
+# lifecycle (IDLE / LIVE / RECORDING / ERROR).
+
+[streams]
+enabled = false # Multi-platform stream registry off by default
+registry_ttl_seconds = 86400.0 # Idle stream cleanup TTL (seconds)
+max_concurrent_streams = 16 # Max simultaneous platform streams
+
+# Auth for cross-platform control: JWT tokens scoped per stream, API keys for
+# management.  Set streams.auth.enable = true to require tokens for
+# publish/play actions from platform bots.
+[streams.auth]
+enable = false # Require JWT tokens for stream publish/play actions
+jwt_secret = "REPLACE_ME_STREAM_JWT_SECRET_MIN_32_CHARS" # >=32 chars, keep private
+jwt_expiry = "24h" # Token lifetime (Go duration: 24h, 30m, 15s)
+api_keys = ["REPLACE_ME_STREAM_API_KEY_MIN_16_CHARS"] # >=16 chars each
+allow_anonymous = false # Allow play tokens without authentication
+
+# FFmpeg recorder: archives broadcasts from any platform to MP4 for later
+# review or rebroadcast.  One recording per stream at a time.
+[streams.recorder]
+enable = false # Record platform streams to MP4
+path = "$APPDATA/AutoDJ/recordings" # Recordings directory (APPDATA fallback)
+ffmpeg_path = "ffmpeg" # FFmpeg executable
+max_active = 64 # Max concurrent recordings
+
+# FFmpeg transcoder: produces adaptive-bitrate HLS from recordings for
+# playback on any platform.  Hardware encoders (NVENC, QSV, AMF,
+# VideoToolbox) are auto-detected with libx264 fallback.
+[streams.transcoder]
+enable = false # Transcode recordings to HLS ABR ladder
+worker_count = 2 # Parallel FFmpeg transcoder workers
+ffmpeg_path = "ffmpeg" # FFmpeg executable
+gpu_enabled = false # Use hardware encoder (NVENC/QSV/AMF/VideoToolbox) if detected
+output_format = "hls" # Output container (only "hls" supported)
+
+[[streams.abr_ladder]]
+name = "1080p"
+width = 1920
+height = 1080
+bitrate = 5000000
+frame_rate = 30
+audio_bitrate = 192000
+
+[[streams.abr_ladder]]
+name = "720p"
+width = 1280
+height = 720
+bitrate = 3000000
+frame_rate = 30
+audio_bitrate = 128000
+
+[[streams.abr_ladder]]
+name = "480p"
+width = 854
+height = 480
+bitrate = 1500000
+frame_rate = 30
+audio_bitrate = 96000
+
+[[streams.abr_ladder]]
+name = "360p"
+width = 640
+height = 360
+bitrate = 800000
+frame_rate = 30
+audio_bitrate = 64000
+
+# Platform adapters (bounded, disabled by default).  Enable only after
+# supplying the corresponding platform API credentials and media engine.
+[streams.platforms.camfrog]
+enable = true # Camfrog desktop UIA adapter (existing behavior)
+chat_reader = "uia"
+chat_sender = "uia"
+
+[streams.platforms.youtube]
+enable = false # YouTube Live chat adapter
+api_key = "" # YouTube Data API v3 key
+channel_id = "" # YouTube channel ID to monitor
+# Probe account for YouTube OAuth2 login
+[streams.platforms.youtube.probe_account]
+email = "probe_youtube@example.com" # Probe account email
+access_token = "" # OAuth2 access token (auto-refreshed)
+refresh_token = "" # OAuth2 refresh token
+client_id = "" # Google OAuth2 client ID
+client_secret = "" # Google OAuth2 client secret
+
+[streams.platforms.tiktok]
+enable = false # TikTok Live chat adapter
+room_id = "" # TikTok Live room ID (unique_id)
+# Probe account for TikTokLive unofficial client
+[streams.platforms.tiktok.probe_account]
+username = "probe_tiktok" # TikTok username
+password = "" # TikTok password (encrypted at rest)
+
+[streams.platforms.facebook]
+enable = false # Facebook Live comments adapter
+page_id = "" # Facebook page ID running the live stream
+access_token = "" # Facebook Graph API access token
+# Probe account for Facebook Graph API login
+[streams.platforms.facebook.probe_account]
+email = "probe_facebook@example.com" # Probe account email
+access_token = "" # Facebook Graph API access token
+page_id = "" # Facebook page ID
+client_id = "" # Facebook OAuth2 client ID
+client_secret = "" # Facebook OAuth2 client secret
+
 
 
 

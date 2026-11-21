@@ -1,4 +1,4 @@
-# Windows Build Review — CamfrogAutoDJ
+# Windows Build Review — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -34,7 +34,7 @@
 
 ## Installer (installer.nsi) findings
 
-- Per-user install to `$APPDATA\CamfrogAutoDJ` (`RequestExecutionLevel user`).
+- Per-user install to `$APPDATA\AutoDJ` (`RequestExecutionLevel user`).
 - Preserves existing `config.toml` on upgrade (`IfFileExists ... config_exists` skips overwriting).
 - Uninstaller deletes only app-owned files; keeps `config.toml`, `playlist.json`, logs, playlists.
 - `SEC_MPV` (mpv + yt-dlp) and `SEC_VBCABLE` (driver) are optional components (`/o`).
@@ -52,4 +52,5 @@
 | E2E Integration | ✅ PASS | All E2E prerequisites met |
 
 Evidence: `evidence/validation-evidence-20261111-175639.json`
+
 

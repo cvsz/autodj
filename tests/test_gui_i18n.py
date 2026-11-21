@@ -289,7 +289,7 @@ def test_window_pick_by_process():
     cs = [
         Cand(
             1,
-            "CamfrogAutoDJ - Claude - Google Chrome",
+            "AutoDJ - Claude - Google Chrome",
             "Chrome_WidgetWin_1",
             5,
             "chrome.exe",
@@ -349,3 +349,4 @@ def test_discover_web_updates():
 
     ups = to_updates(Found("ZeaZDev: x", Ctl("Pane", 0), Ctl("Pane", 0), 3, web=True))
     assert ups["view_kind"] == "web" and "window_title_re" in ups
+

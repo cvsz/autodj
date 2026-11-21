@@ -1,4 +1,4 @@
-# CamfrogAutoDJ v0.2.6 — Official Release Report
+# AutoDJ v0.2.6 — Official Release Report
 
 **Repository:** `cvsz/autodj`  
 **Official Release Target:** `v0.2.6`  
@@ -12,7 +12,7 @@
 
 ## 1. Executive Summary
 
-CamfrogAutoDJ `v0.2.6` has been officially built, attested, and published. All required assets—including the Windows NSIS installer, standalone binary, CycloneDX Software Bill of Materials (SBOM), and SHA-256 manifest—are attached to the GitHub release, verified via independent downloads, and backed by cryptographically valid Sigstore build provenance attestations.
+AutoDJ `v0.2.6` has been officially built, attested, and published. All required assets—including the Windows NSIS installer, standalone binary, CycloneDX Software Bill of Materials (SBOM), and SHA-256 manifest—are attached to the GitHub release, verified via independent downloads, and backed by cryptographically valid Sigstore build provenance attestations.
 
 ---
 
@@ -35,3 +35,4 @@ CamfrogAutoDJ `v0.2.6` has been officially built, attested, and published. All r
 - **Python Version:** `3.11`
 - **NSIS Version:** Modern UI 2
 - **Persistent Artifact:** `autodj-release-v0.2.6` (57.6 MB zip, ID `13076458038`, 90-day retention).
+

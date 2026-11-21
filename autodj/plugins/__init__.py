@@ -1,4 +1,4 @@
-"""Plugin system for CamfrogAutoDJ.
+"""Plugin system for AutoDJ.
 
 Provides a modular plugin architecture for extending AutoDJ functionality.
 """

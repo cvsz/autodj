@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    CamfrogAutoDJ - Fully Automated One-Click Installer
+    AutoDJ - Fully Automated One-Click Installer
     Installs ALL dependencies, configures EVERYTHING, ready to run.
 
 .DESCRIPTION
@@ -25,7 +25,7 @@ param(
     [switch]$NoShortcuts,           # Don't create Desktop/Start Menu shortcuts
     [switch]$NoBuild,               # Use existing AutoDJ.exe if present
     [switch]$Unattended,            # No prompts, use all defaults
-    [string]$ProjectDir = "$env:USERPROFILE\CamfrogAutoDJ",
+    [string]$ProjectDir = "$env:USERPROFILE\AutoDJ",
     [string]$PlaylistQuery = "cantonese r&b remix,mandopop 2024,chinese chill songs,廣東歌 remix"
 )
 
@@ -283,7 +283,7 @@ function Auto-ConfigComplete {
     $musicDir = ($env:USERPROFILE + '\Music') -replace '\\', '/'
 
     $configLines = @(
-        '# CamfrogAutoDJ Configuration'
+        '# AutoDJ Configuration'
         '# ============================'
         ''
         '# --- Core Bot Identity --------------------------------------------------------'
@@ -501,15 +501,15 @@ function Create-ShortcutsAuto {
 
     # Desktop
     $deskDir = [Environment]::GetFolderPath("Desktop")
-    $deskPath = Join-Path $deskDir "CamfrogAutoDJ.lnk"
+    $deskPath = Join-Path $deskDir "AutoDJ.lnk"
     $desk = $wsh.CreateShortcut($deskPath)
     $desk.TargetPath = $exe; $desk.Arguments = "--gui"; $desk.WorkingDirectory = "$ProjectDir\dist"; $desk.IconLocation = $ico; $desk.Save()
     Ok "Desktop shortcut"
 
     # Start Menu
-    $sm = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\CamfrogAutoDJ"
+    $sm = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\AutoDJ"
     New-Item -ItemType Directory -Path $sm -Force | Out-Null
-    $s1Path = Join-Path $sm "CamfrogAutoDJ.lnk"
+    $s1Path = Join-Path $sm "AutoDJ.lnk"
     $s1 = $wsh.CreateShortcut($s1Path)
     $s1.TargetPath = $exe; $s1.Arguments = "--gui"; $s1.WorkingDirectory = "$ProjectDir\dist"; $s1.IconLocation = $ico; $s1.Save()
     $s2Path = Join-Path $sm "Edit Config.lnk"
@@ -523,7 +523,7 @@ function Create-ShortcutsAuto {
     # Auto-start
     if (-not $NoAutoStart) {
         $startupDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
-        $st = Join-Path $startupDir "CamfrogAutoDJ.lnk"
+        $st = Join-Path $startupDir "AutoDJ.lnk"
         $sa = $wsh.CreateShortcut($st)
         $sa.TargetPath = $exe; $sa.Arguments = "--gui"; $sa.WorkingDirectory = "$ProjectDir\dist"; $sa.IconLocation = $ico; $sa.Save()
         Ok "Auto-start shortcut"
@@ -538,19 +538,19 @@ function Create-UninstallerAuto {
     $content = @"
 <#
 .SYNOPSIS
-    CamfrogAutoDJ Uninstaller
+    AutoDJ Uninstaller
 #>
 param([switch]`$Force)
 `$ErrorActionPreference = "Continue"
 `$Proj = "$ProjectDir"
-Write-Host "Uninstalling CamfrogAutoDJ..." -Fore Cyan
+Write-Host "Uninstalling AutoDJ..." -Fore Cyan
 
 # Shortcuts
-`$sm = Join-Path `$env:APPDATA "Microsoft\Windows\Start Menu\Programs\CamfrogAutoDJ"
+`$sm = Join-Path `$env:APPDATA "Microsoft\Windows\Start Menu\Programs\AutoDJ"
 if (Test-Path `$sm) { Remove-Item -Recurse -Force `$sm; "Removed Start Menu" }
-`$desk = Join-Path [Environment]::GetFolderPath("Desktop") "CamfrogAutoDJ.lnk"
+`$desk = Join-Path [Environment]::GetFolderPath("Desktop") "AutoDJ.lnk"
 if (Test-Path `$desk) { Remove-Item -Force `$desk; "Removed Desktop" }
-`$st = Join-Path `$env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\CamfrogAutoDJ.lnk"
+`$st = Join-Path `$env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\AutoDJ.lnk"
 if (Test-Path `$st) { Remove-Item -Force `$st; "Removed Auto-start" }
 
 # Project dir
@@ -599,7 +599,7 @@ function Verify-All {
 # ============================================================================
 Write-Host ""
 Write-Host ("="*72) -Fore $C_CYAN
-Write-Host "  CamfrogAutoDJ - FULLY AUTOMATED INSTALLER" -Fore $C_CYAN
+Write-Host "  AutoDJ - FULLY AUTOMATED INSTALLER" -Fore $C_CYAN
 Write-Host ("="*72) -Fore $C_CYAN
 Write-Host ""
 
@@ -629,7 +629,7 @@ Write-Host "  INSTALLATION COMPLETE" -Fore $C_CYAN
 Write-Host ("="*72) -Fore $C_CYAN
 Write-Host ""
 if ($success) {
-    Ok "CamfrogAutoDJ is ready!"
+    Ok "AutoDJ is ready!"
     Write-Host ""
     Write-Host "Next steps:" -Fore $C_CYAN
     Write-Host "  1. Open Camfrog and join your room" -Fore $C_WHITE

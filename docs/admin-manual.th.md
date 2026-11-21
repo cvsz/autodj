@@ -526,7 +526,7 @@ plugins = ["builtin.stats", "builtin.help"]  # list of plugin modules to load (e
 - บันทึกแบบ atomic พร้อม backup `.bak`
 - ตอนบันทึกจะคงค่าที่หน้าตั้งค่าไม่ได้แสดงไว้ (`ai_*`, `auto_update_*`, `webhook_secret`, `voteskip_cooldown`, `log_json*`) ไม่รีเซ็ตเป็นค่าเริ่มต้นแล้ว
 - ปุ่มเปิด/ปิดการตอบคำถาม "เพลงอะไร" ในห้อง (`np_question_reply`)
-- ย้ายไป `%APPDATA%\CamfrogAutoDJ\` อัตโนมัติถ้าโฟลเดอร์ติดตั้งเขียนไม่ได้
+- ย้ายไป `%APPDATA%\AutoDJ\` อัตโนมัติถ้าโฟลเดอร์ติดตั้งเขียนไม่ได้
 - สลับภาษา label แบบเรียลไทม์
 
 ---
@@ -580,7 +580,7 @@ AutoDJ.exe --console --lang th
 - **ค่าเริ่มต้น:** แสดงผลบนคอนโซล (stdout/stderr)
 - **ไฟล์:** ตั้ง `log_file = "autodj.log"` ใน config
 - **หมุนเวียน:** 1 MB × 3 ไฟล์
-- **ตำแหน่ง:** พาธสัมพัทธ์ resolve ไป `%APPDATA%\CamfrogAutoDJ\`
+- **ตำแหน่ง:** พาธสัมพัทธ์ resolve ไป `%APPDATA%\AutoDJ\`
 
 ### ปัญหาที่พบบ่อยและวิธีแก้
 
@@ -652,10 +652,10 @@ make installer        # หรือ: powershell -ExecutionPolicy Bypass -File s
 
 ### คุณสมบัติ Installer
 
-- ติดตั้งต่อผู้ใช้ไป `%APPDATA%\CamfrogAutoDJ` (ไม่ต้อง admin)
+- ติดตั้งต่อผู้ใช้ไป `%APPDATA%\AutoDJ` (ไม่ต้อง admin)
 - ติดตั้ง `config.toml` จาก `config.example.toml`; ถ้ามี `config.toml` อยู่แล้วจะเก็บไว้ตอนอัปเกรด
 - เขียน `mpv_path` / `ytdlp_path` แบบพาธเต็มของ mpv ที่มากับตัวติดตั้งลงใน `config.toml` (`AutoDJ.exe --write-install-paths`)
-- ส่วนเสริม: mpv + yt-dlp ติดตั้งใน `%APPDATA%\CamfrogAutoDJ\mpv` (ไม่ใช่ `%APPDATA%\mpv` ซึ่งเป็นโฟลเดอร์ตั้งค่าของ mpv เอง)
+- ส่วนเสริม: mpv + yt-dlp ติดตั้งใน `%APPDATA%\AutoDJ\mpv` (ไม่ใช่ `%APPDATA%\mpv` ซึ่งเป็นโฟลเดอร์ตั้งค่าของ mpv เอง)
 - ปิด AutoDJ / mpv ที่รันจากโฟลเดอร์ติดตั้งก่อนอัปเกรดหรือถอนการติดตั้ง
 - Shortcut ใน Start Menu (AutoDJ, Edit Config, Uninstall) และบน Desktop
 - มี `install.ps1` สำหรับติดตั้ง VB-CABLE และโปรแกรมที่จำเป็นอื่น (ไม่ได้รวม VB-CABLE มาในตัวติดตั้ง)
@@ -713,7 +713,7 @@ AutoDJ migrate อัตโนมัติ:
 
 | ไฟล์ | ตำแหน่งค่าเริ่มต้น | คำอธิบาย |
 |------|------------------|-----------|
-| `config.toml` | `%APPDATA%\CamfrogAutoDJ\` | การตั้งค่าหลัก |
+| `config.toml` | `%APPDATA%\AutoDJ\` | การตั้งค่าหลัก |
 | `playlist.json` | เหมือน config | คำขอผู้ใช้ที่คงอยู่ |
 | `ads-list.json` | เหมือน config | ข้อความตอบกลับอัตโนมัติ |
 | `autodj.log` | เหมือน config | Log ไฟล์หมุนเวียน |

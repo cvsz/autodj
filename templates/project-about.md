@@ -1,4 +1,4 @@
-# About CamfrogAutoDJ
+# About AutoDJ
 
 Automatic DJ bot for Camfrog video chat rooms: plays music from YouTube and local files, manages a request queue, and supports admin commands via chat.
 
@@ -14,3 +14,4 @@ Automatic DJ bot for Camfrog video chat rooms: plays music from YouTube and loca
 - Success metrics: tracks played per session, request fulfillment rate, uptime.
 - Data classification and compliance: public chat room data only; no personal data stored beyond requester nicks.
 - Support and service expectations: community-supported via GitHub issues; no SLA.
+

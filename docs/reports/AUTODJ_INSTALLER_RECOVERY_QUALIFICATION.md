@@ -22,7 +22,7 @@ A critical bug was discovered and fixed in the NSIS installer uninstaller: `RMDi
 
 | Aspect | Implementation | Status |
 |--------|---------------|--------|
-| Per-user install dir | `$APPDATA\CamfrogAutoDJ` (`installer.nsi:48`) | Code reviewed |
+| Per-user install dir | `$APPDATA\AutoDJ` (`installer.nsi:48`) | Code reviewed |
 | No admin rights required | `RequestExecutionLevel user` (`installer.nsi:52`) | Code reviewed |
 | Windows 11 check | Build 22000+ (`install.ps1:205`) | Code reviewed |
 | Prerequisite installation | winget: Python, mpv, yt-dlp, Git, NSIS | Code reviewed |
@@ -187,3 +187,4 @@ The following files are **NOT** deleted by the uninstaller:
 | No reparse point / symlink protection | Medium | Add symlink/reparse point detection before directory operations |
 | No corrupt backup detection | Low | Add backup integrity verification before restore |
 | No interrupted rollback handling | Low | Add rollback state tracking and resumption |
+

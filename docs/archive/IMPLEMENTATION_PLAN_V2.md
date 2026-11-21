@@ -1,4 +1,4 @@
-# CamfrogAutoDJ - Comprehensive Enhancement Plan v2
+# AutoDJ - Comprehensive Enhancement Plan v2
 
 **Current State**: 450 tests passing, all lint/typecheck/format clean, production-ready v0.3.0
 **Goal**: Full enterprise production-grade enhancements with zero regressions

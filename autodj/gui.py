@@ -4055,7 +4055,7 @@ class App(tk.Tk):
                 os.replace(tmp, p)
             except (OSError, PermissionError):
                 app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-                app_cfg_dir = Path(app_data) / "CamfrogAutoDJ"
+                app_cfg_dir = Path(app_data) / "AutoDJ"
                 app_cfg_dir.mkdir(parents=True, exist_ok=True)
                 app_cfg_path = app_cfg_dir / "config.toml"
                 if app_cfg_path.exists():

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    CamfrogAutoDJ Windows Validation Evidence Collector
+    AutoDJ Windows Validation Evidence Collector
 .DESCRIPTION
     Collects validation evidence for all 5 blocked items on Windows 11:
     1. Windows Installer Build (NSIS + PyInstaller)
@@ -335,4 +335,5 @@ $passed = @($Results.results.Values | Where-Object { $_.status -eq "PASS" }).Cou
 $skipped = @($Results.results.Values | Where-Object { $_.status -eq "SKIPPED" }).Count
 Write-Host "Summary: $passed passed, $failed failed, $skipped skipped"
 if ($failed -gt 0) { exit 1 }
+
 

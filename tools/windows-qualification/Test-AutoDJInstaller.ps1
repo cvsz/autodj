@@ -325,7 +325,7 @@ if (Test-Path (Join-Path $installDir7 "AutoDJ.exe")) {
 
 Write-Host "--- Test 8: Invalid destination path ---" -ForegroundColor Gray
 
-$invalidDir = "C:\Windows\System32\CamfrogAutoDJ"
+$invalidDir = "C:\Windows\System32\AutoDJ"
 $installLog8 = Join-Path $testRoot "test8-invalid.log"
 & $InstallerPath /S /D="$invalidDir" > $installLog8 2>&1
 $installCode8 = $LASTEXITCODE

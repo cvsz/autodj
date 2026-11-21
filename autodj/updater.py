@@ -1,4 +1,4 @@
-"""Auto-update client for CamfrogAutoDJ.
+"""Auto-update client for AutoDJ.
 
 Checks GitHub releases for a newer AutoDJ.exe and downloads it from
 ``https://github.com/cvsz/autodj/releases/latest`` only (fail-closed:
@@ -49,7 +49,7 @@ log = logging.getLogger("autodj")
 GITHUB_API = "https://api.github.com"
 DEFAULT_REPO = "cvsz/autodj"
 DEFAULT_CHECK_INTERVAL = 6 * 60 * 60  # 6 hours
-UA = f"CamfrogAutoDJ/{__version__} (+https://github.com/cvsz/autodj)"
+UA = f"AutoDJ/{__version__} (+https://github.com/cvsz/autodj)"
 
 
 class UpdateError(AutoDJError):

@@ -1,9 +1,9 @@
 @echo off
-REM CamfrogAutoDJ - NSIS Installer Builder
+REM AutoDJ - NSIS Installer Builder
 REM Run this on Windows to build the NSIS installer
 
 echo ==========================================
-echo CamfrogAutoDJ - NSIS Installer Builder
+echo AutoDJ - NSIS Installer Builder
 echo ==========================================
 echo.
 
@@ -63,3 +63,4 @@ echo   1. Test the installer on a clean VM
 echo   2. Sign with: signtool sign /f cert.pfx /p password /t http://timestamp.digicert.com "Camfrog-AutoDJ-Setup-*.exe"
 echo   3. Upload to GitHub Releases
 echo.
+

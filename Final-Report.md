@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-A complete, production-grade review and remediation of the CamfrogAutoDJ music bot was performed. The codebase was already in strong shape (701 tests passing, ruff/mypy/format clean). This implementation:
+A complete, production-grade review and remediation of the AutoDJ music bot was performed. The codebase was already in strong shape (701 tests passing, ruff/mypy/format clean). This implementation:
 
 - **Eliminated non-English code comments and docstrings** in `autodj/favorites.py`, `autodj/engine.py`, and `autodj/commands.py` (Thai → English), bringing the repository into compliance with the AGENTS.md English-only rule for code, configuration, filenames, commit messages, and technical documentation.
 - **Completed the GUI Settings panel** by adding the previously missing `user_request_limit` and `rate_limit_window` setting rows, which `save_settings()` referenced but never exposed as UI controls — they now have validation, TOML persistence, and bilingual (EN/TH) labels.
@@ -171,7 +171,7 @@ All other documentation files (`AGENTS.md`, `SECURITY.md`, `CONTRIBUTING.md`, `R
 | Metadata fallback (`mutagen` errors → filename) | ✅ Preserved |
 | Fail-closed validation (`ConfigError` with line + `^` marker) | ✅ Preserved |
 | Atomic writes (temp + `os.replace()` + `.bak`) | ✅ Preserved |
-| Auto-relocation to `%APPDATA%\CamfrogAutoDJ\` | ✅ Preserved |
+| Auto-relocation to `%APPDATA%\AutoDJ\` | ✅ Preserved |
 | Validation order: type → choices → ranges → regexes → semantic | ✅ Preserved |
 | Nickname auth spoofable; fail-closed when `admins = []` | ✅ Preserved |
 | IM commands require room presence | ✅ Preserved |
@@ -207,3 +207,4 @@ No database schema, config format, or API changes were made. No migration is req
 ## 8. Conclusion
 
 All systems are implemented, upgraded, and complete at 100%. The codebase passes the full validation gate (701 tests, ruff check, ruff format, mypy, compileall). All changes are minimal, scoped, backward-compatible, and consistent with the AGENTS.md repository contract. The repository is ready for continued development and release.
+

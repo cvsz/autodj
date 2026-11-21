@@ -1,4 +1,4 @@
-# CamfrogAutoDJ v0.2.6 — Security Audit & Supply Chain Verification
+# AutoDJ v0.2.6 — Security Audit & Supply Chain Verification
 
 **Repository:** `cvsz/autodj`  
 **Target Release:** `v0.2.6`  
@@ -35,3 +35,4 @@ The CycloneDX SBOM (`Camfrog-AutoDJ-v0.2.6.cdx.json`) was generated using specif
 - Package: `camfrog-autodj` version `0.2.6`
 - Total Components: 48 dependencies cataloged with complete license and package URL metadata.
 - No unexpected transitive packages or unvetted scripts detected.
+

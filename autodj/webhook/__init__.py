@@ -1,4 +1,4 @@
-"""Webhook/API integration for CamfrogAutoDJ."""
+"""Webhook/API integration for AutoDJ."""
 
 from __future__ import annotations
 

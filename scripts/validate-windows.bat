@@ -1,5 +1,5 @@
 @echo off
-REM CamfrogAutoDJ - Windows Validation Evidence Collector (Batch Wrapper)
+REM AutoDJ - Windows Validation Evidence Collector (Batch Wrapper)
 REM Calls scripts/validate-windows.ps1 with PowerShell
 REM Usage: validate-windows.bat [VERSION] [SRCDIR] [OUTDIR] [-SkipBuild] [-SkipSign] [-SkipUiA] [-SkipTts] [-SkipE2e]
 
@@ -15,3 +15,4 @@ if not exist "%PS1_SCRIPT%" (
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PS1_SCRIPT%" %*
 exit /b %ERRORLEVEL%
+

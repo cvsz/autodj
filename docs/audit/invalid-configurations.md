@@ -1,4 +1,4 @@
-# Invalid Configurations — CamfrogAutoDJ
+# Invalid Configurations — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -23,3 +23,4 @@ Placeholder values (`REPLACE_ME`, `CHANGE_ME`, `TODO`, `FIXME`, `XXX`, empty pat
 ## No silently-accepted invalid values
 
 All invalid configuration raises explicit `ConfigError` with a message written for the person editing the file (TOML syntax errors include the offending line and a `^` marker). No setting is silently replaced with a default.
+

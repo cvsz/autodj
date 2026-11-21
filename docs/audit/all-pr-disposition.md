@@ -1,4 +1,4 @@
-# Pull Request Disposition — CamfrogAutoDJ
+# Pull Request Disposition — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Every PR has a recorded disposition.** 142 / 142 dispositioned (100%).
@@ -24,3 +24,4 @@ A new feature branch `feat/autodj-library-scan-safety` was created from `fb5e99a
 - `tests/test_library_scan_safety.py` — 11 new regression tests for library scan symlink/reparse-point safety (Phase 3).
 
 This is the only outstanding change from this audit and is tracked as a PR candidate (see gpg-review-merge-evidence.md).
+

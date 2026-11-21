@@ -1,4 +1,4 @@
-# CamfrogAutoDJ Deep Audit Findings
+# AutoDJ Deep Audit Findings
 
 ## Executive Summary
 

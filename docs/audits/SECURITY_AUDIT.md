@@ -1,4 +1,4 @@
-# Security Audit — CamfrogAutoDJ
+# Security Audit — AutoDJ
 
 **Repository:** cvsz/autodj  
 **Branch:** `feat/autodj-enhancements-and-fixes`  
@@ -126,4 +126,5 @@ blocked: set of lowercase nicks whose commands are ignored silently
 - Real mpv (IPC pipe predictability cannot be tested without it)
 - Windows-only code paths (UIA, winmsg, launcher, tts)
 - Build/sign process (`build.ps1`)
+
 

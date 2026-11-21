@@ -53,7 +53,7 @@ A critical bug was discovered and fixed in the NSIS installer uninstaller: `RMDi
 
 | Feature | Implementation | Status |
 |---------|---------------|--------|
-| Per-user install dir | `$APPDATA\CamfrogAutoDJ` | Defined |
+| Per-user install dir | `$APPDATA\AutoDJ` | Defined |
 | No admin rights required | `RequestExecutionLevel user` | Defined |
 | Windows 64-bit check | `.onInit` function | Defined |
 | In-place upgrade | Previous uninstaller not invoked | Defined |
@@ -131,3 +131,4 @@ A critical bug was discovered and fixed in the NSIS installer uninstaller: `RMDi
 | No root/system path rejection | Medium | Add path validation to reject `C:\`, `C:\Windows`, etc. |
 | No reparse point / symlink protection | Medium | Add symlink detection before directory operations |
 | No corrupt backup detection | Low | Add backup integrity verification |
+

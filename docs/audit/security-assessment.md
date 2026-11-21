@@ -1,4 +1,4 @@
-# Security Assessment — CamfrogAutoDJ
+# Security Assessment — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -48,3 +48,4 @@
 
 - GPG signing of commits could not be performed in this environment (`GPG_PASSPHRASE` unset, no TTY). Reported as a blocker (F-005), not faked.
 - Windows Authenticode signature verification could not be performed (no Windows host). Not claimed as verified.
+

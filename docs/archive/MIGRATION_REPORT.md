@@ -1,4 +1,4 @@
-# Migration Report — CamfrogAutoDJ v0.3.0
+# Migration Report — AutoDJ v0.3.0
 
 **Date:** 2026-11-16  
 **Branch:** main (HEAD: fecc053)  
@@ -74,4 +74,5 @@ All 9 migration tests pass.
 1. **No user migration required.** Existing installations can upgrade to v0.3.0 without config changes.
 2. **Placeholder detection runs at startup.** Installer placeholders are automatically detected and reported; unresolvable placeholders are preserved.
 3. **Backup before upgrade.** As always, users should back up `config.toml` and `playlist.json` before upgrading (atomic writes with `.bak` backup are already implemented).
+
 

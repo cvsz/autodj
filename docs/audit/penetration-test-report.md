@@ -1,4 +1,4 @@
-# Penetration Test Report — CamfrogAutoDJ
+# Penetration Test Report — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -27,3 +27,4 @@ No exploitable vulnerabilities identified in static review. The highest-risk ite
 - Live Camfrog UI Automation bypass testing.
 - Fuzzing of yt-dlp/mpv subprocess inputs.
 - Authenticode signature verification (no signing host).
+

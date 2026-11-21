@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CamfrogAutoDJ - Launcher
+AutoDJ - Launcher
 
 ช่วยเรียกใช้ AutoDJ ได้ง่ายขึ้น โดยไม่ต้องพิมพ์คำสั่งยาว ๆ
 
@@ -114,4 +114,5 @@ def _build_launch_command(args, config_path: Path) -> list[str]:
 
 if __name__ == "__main__":
     main()
+
 

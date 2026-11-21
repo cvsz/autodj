@@ -1,4 +1,4 @@
-# CamfrogAutoDJ v0.2.6 — Final Release Acceptance
+# AutoDJ v0.2.6 — Final Release Acceptance
 
 **Repository:** `cvsz/autodj`  
 **Official Release Target:** `v0.2.6`  
@@ -40,4 +40,5 @@ FINAL CLASSIFICATION: RELEASE_ACCEPTED
 ================================================================================
 ```
 The official `v0.2.6` release is published, the tag resolves to the exact verified source commit, all binary and metadata assets are downloadable, SHA-256 digests match exactly, all SLSA provenance attestations pass verification, and governance gates are fully satisfied.
+
 

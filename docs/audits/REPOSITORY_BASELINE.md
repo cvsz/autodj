@@ -1,4 +1,4 @@
-# Repository Baseline — AutoDJ (CamfrogAutoDJ)
+# Repository Baseline — AutoDJ (AutoDJ)
 
 **Generated:** 2026-11-06  
 **Branch:** `feat/autodj-enhancements-and-fixes`  
@@ -92,7 +92,7 @@ Local branches:
 
 - `AutoDJ.spec` — PyInstaller spec
 - `build.ps1` — PowerShell build/sign script
-- `installer.nsi` — NSIS installer (per-user, `%APPDATA%\CamfrogAutoDJ`)
+- `installer.nsi` — NSIS installer (per-user, `%APPDATA%\AutoDJ`)
 - `install.ps1` / `install.bat` — Automated Windows 11 installer
 - `Camfrog-AutoDJ-Setup-0.2.6.exe` — Built installer (119 MB)
 - `pyproject.toml`, `Dockerfile`, `Makefile`
@@ -169,4 +169,5 @@ Local branches:
 12. `console.py`: `im nick: text` format for IM messages
 13. `logtail.py` / `uia.py`: IM detection via `[IM]` tag or `IM ` prefix
 14. Message keys for auto-reply settings in `messages.py` (en/th)
+
 

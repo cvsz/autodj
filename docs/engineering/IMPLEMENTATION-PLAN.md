@@ -1,4 +1,4 @@
-# Enterprise Implementation Plan — CamfrogAutoDJ
+# Enterprise Implementation Plan — AutoDJ
 
 **Target:** Production-grade, 100% complete, fully validated implementation  
 **Version:** 0.3.0 (Enterprise)  
@@ -150,3 +150,4 @@ All docs updated:
 | End-to-End Integration Test — Requires Camfrog room + bot account | BLOCKED |
 
 ---
+

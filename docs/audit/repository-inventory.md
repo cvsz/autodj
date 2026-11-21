@@ -1,4 +1,4 @@
-# Repository Inventory — CamfrogAutoDJ
+# Repository Inventory — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -19,4 +19,5 @@
 ## Version
 
 `pyproject.toml` version = 0.2.8; `autodj/__init__.py` `__version__ = "0.2.8"` (only `__version__`, as build.ps1 requires).
+
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import sys
 
+from ..textutil import safe_print
 from .base import ChatAdapter, ChatMessage
 
 log = logging.getLogger(__name__)
@@ -36,4 +37,4 @@ class ConsoleAdapter(ChatAdapter):
                 yield ChatMessage(u, t)
 
     def send(self, text):
-        print(f"[room] {text}", flush=True)
+        safe_print(f"[room] {text}", flush=True)

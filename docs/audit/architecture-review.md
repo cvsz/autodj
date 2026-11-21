@@ -1,4 +1,4 @@
-# Architecture Review — CamfrogAutoDJ
+# Architecture Review — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -27,4 +27,5 @@ None found. `adapters/uia.py` imports `..windows` and `..webchat` lazily inside 
 ## Conclusion
 
 Maintain the existing architecture. No unnecessary rewrite. The one test gap (library scan symlink safety) was closed with `tests/test_library_scan_safety.py` without changing architecture.
+
 

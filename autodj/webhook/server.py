@@ -1,4 +1,4 @@
-"""FastAPI webhook server for CamfrogAutoDJ.
+"""FastAPI webhook server for AutoDJ.
 
 This module provides a webhook API for controlling the AutoDJ engine remotely.
 All FastAPI/uvicorn imports are lazy to avoid making them mandatory dependencies.
@@ -95,7 +95,7 @@ def _create_base_app(config: WebhookConfig) -> "FastAPI":
         log.info("Webhook server shutting down")
 
     app = FastAPI(
-        title="CamfrogAutoDJ Webhook API",
+        title="AutoDJ Webhook API",
         version="1.0.0",
         lifespan=lifespan,
         docs_url="/webhook/docs" if config.enabled else None,

@@ -1,5 +1,5 @@
 #!/bin/bash
-# CamfrogAutoDJ - NSIS Installer Builder (Linux/WSL)
+# AutoDJ - NSIS Installer Builder (Linux/WSL)
 # Builds the NSIS installer. Detection order for makensis:
 #   1. native `makensis` on PATH
 #   2. $NSIS_PATH (Windows makensis.exe inside the Wine prefix)
@@ -15,7 +15,7 @@ NSIS_PATH="${NSIS_PATH:-$HOME/.wine/drive_c/NSIS/makensis.exe}"
 WINE_BIN="${WINE_BIN:-$(command -v wine || command -v wine64 || true)}"
 
 echo "=========================================="
-echo "CamfrogAutoDJ - NSIS Installer Builder (Linux/WSL)"
+echo "AutoDJ - NSIS Installer Builder (Linux/WSL)"
 echo "=========================================="
 echo "Version: $VERSION"
 echo "Source:  $SRCDIR"

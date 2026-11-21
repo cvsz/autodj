@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Transform CamfrogAutoDJ into a production-grade, enterprise-ready music bot with optimized performance, enhanced type safety, robust error handling, clean architecture, comprehensive observability, and complete documentation.
+**Goal:** Transform AutoDJ into a production-grade, enterprise-ready music bot with optimized performance, enhanced type safety, robust error handling, clean architecture, comprehensive observability, and complete documentation.
 
 **Architecture:** Modular refactoring of the existing monolithic modules (engine.py 1700+ lines, gui.py 3000+ lines) into focused, single-responsibility components while preserving all existing functionality. Add circuit breaker patterns, structured logging, metrics collection, and improved concurrency controls.
 
@@ -921,3 +921,4 @@ git commit -m "ci: update release pipeline and GitHub workflow"
 **Reason:** This plan has 11 major tasks with complex interdependencies (modularization must complete before observability integration, security hardening before stress tests). Subagent-driven ensures each task gets independent review before the next begins, critical for a production-grade refactor of this scope. The modular architecture means tasks 3-4 can run in parallel after tasks 1-2.
 
 **Next Step:** Please review this plan. Does it capture what you want? If yes, which execution approach do you prefer?
+

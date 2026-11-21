@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableDelayedExpansion
-rem CamfrogAutoDJ - Windows 11 Automated Installer (Batch Wrapper)
+rem AutoDJ - Windows 11 Automated Installer (Batch Wrapper)
 rem This wrapper ensures PowerShell execution policy allows the script to run.
 
 echo.

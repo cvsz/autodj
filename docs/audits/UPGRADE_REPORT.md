@@ -1,4 +1,4 @@
-# Upgrade and Compatibility Report — CamfrogAutoDJ
+# Upgrade and Compatibility Report — AutoDJ
 
 **Repository:** cvsz/autodj  
 **Branch:** `feat/autodj-enhancements-and-fixes`  
@@ -190,3 +190,4 @@ No dependency changes affect packaging:
 **No upgrades are required for this branch.** All dependencies are current or managed by Dependabot. The Deep Upgrade phase is complete with all upgrades evaluated and either accepted as-current or explicitly deferred with reasons.
 
 **Next action:** When preparing a release, re-run this evaluation against the exact release HEAD and record results in `UPGRADE_REPORT.md` as part of the release artifact.
+

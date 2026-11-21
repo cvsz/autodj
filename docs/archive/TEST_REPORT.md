@@ -1,4 +1,4 @@
-# Test Report — CamfrogAutoDJ v0.3.0
+# Test Report — AutoDJ v0.3.0
 
 **Date:** 2026-11-16  
 **Branch:** main (HEAD: fecc053)  
@@ -113,4 +113,5 @@ Low coverage in platform-specific adapters and builtin plugins is expected — t
 ## Regressions
 
 No unexplained test regressions. All tests that passed in the previous baseline continue to pass.
+
 

@@ -1,4 +1,4 @@
-# Performance Report — CamfrogAutoDJ
+# Performance Report — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -21,3 +21,4 @@
 - MPV startup latency.
 
 These require a Windows host with mpv, a media library, and a display. Marked BLOCKED, not estimated.
+

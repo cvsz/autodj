@@ -1,4 +1,4 @@
-"""Configuration loading, validation, and defaults for CamfrogAutoDJ.
+"""Configuration loading, validation, and defaults for AutoDJ.
 
 The :class:`Config` dataclass holds all runtime settings.  :meth:`Config.load`
 parses ``config.toml`` with ``tomllib`` and validates values with exact line
@@ -336,6 +336,13 @@ class Config:
     ai_max_chars: int = 200  # max characters in AI reply
     ai_user_cooldown: float = 30.0  # seconds between AI replies to same user
 
+    # Multi-platform streaming (ported from cvsz/streamdbc architecture)
+    # Stream/room registry tracks active broadcasts across platforms
+    # (Camfrog, YouTube Live, TikTok Live, Facebook Live). Each platform has
+    # its own adapter; the registry assigns a safe stream_id per room and
+    # manages lifecycle (IDLE / LIVE / RECORDING / ERROR).
+    streams: dict = field(default_factory=dict)
+
     # Reload callbacks (class-level, shared across all instances)
     _reload_callbacks: ClassVar[list] = []
 
@@ -528,6 +535,11 @@ def _validate(cfg: Config, data: dict, where: str) -> None:
     cfg.admins = [a.strip() for a in cfg.admins if a.strip()]
     cfg.blocked_users = [a.strip() for a in cfg.blocked_users if a.strip()]
 
+    # Validate multi-platform streaming config
+    streams_cfg = data.get("streams", {})
+    if isinstance(streams_cfg, dict):
+        _validate_streams(streams_cfg, where)
+
 
 def _validate_field(cfg: Config, data: dict, f, defaults: Config, where: str) -> None:
     v = data[f.name]
@@ -559,3 +571,74 @@ def _validate_regex(cfg: Config, k: str, where: str) -> None:
             f"{where}: '{k}' is not a valid regular expression ({ex}). "
             "Tip: write regexes in 'single quotes' so backslashes stay as they are."
         ) from None
+
+
+def _validate_streams(streams_cfg: dict, where: str) -> None:
+    """Validate the [streams] TOML table (multi-platform streaming config)."""
+    enabled = streams_cfg.get("enabled", False)
+    if not isinstance(enabled, bool):
+        raise ConfigError(f"{where}: 'streams.enabled' must be true/false")
+
+    if not enabled:
+        return  # nothing more to validate when disabled
+
+    max_concurrent = streams_cfg.get("max_concurrent_streams", 16)
+    if not isinstance(max_concurrent, int) or not 1 <= max_concurrent <= 256:
+        raise ConfigError(f"{where}: 'streams.max_concurrent_streams' must be 1-256")
+
+    registry_ttl = streams_cfg.get("registry_ttl_seconds", 86400.0)
+    if not isinstance(registry_ttl, (int, float)) or registry_ttl <= 0:
+        raise ConfigError(f"{where}: 'streams.registry_ttl_seconds' must be > 0")
+
+    _validate_streams_auth(streams_cfg.get("auth", {}), where)
+    _validate_streams_platforms(streams_cfg.get("platforms", {}), where)
+    _validate_streams_recorder(streams_cfg.get("recorder", {}), where)
+    _validate_streams_transcoder(streams_cfg.get("transcoder", {}), where)
+
+
+def _validate_streams_auth(auth_cfg: dict, where: str) -> None:
+    if not isinstance(auth_cfg, dict):
+        return
+    jwt_secret = auth_cfg.get("jwt_secret", "")
+    if jwt_secret and len(jwt_secret) < 32:
+        raise ConfigError(f"{where}: 'streams.auth.jwt_secret' must be at least 32 characters")
+    api_keys = auth_cfg.get("api_keys", [])
+    if not isinstance(api_keys, list):
+        raise ConfigError(f"{where}: 'streams.auth.api_keys' must be a list")
+    for key in api_keys:
+        if not isinstance(key, str) or len(key) < 16:
+            raise ConfigError(f"{where}: each 'streams.auth.api_keys' entry must be >= 16 chars")
+
+
+def _validate_streams_platforms(platforms_cfg: dict, where: str) -> None:
+    if not isinstance(platforms_cfg, dict):
+        raise ConfigError(f"{where}: 'streams.platforms' must be a table")
+    allowed_platforms = {"camfrog", "youtube", "tiktok", "facebook"}
+    for platform_name, platform_cfg in platforms_cfg.items():
+        if platform_name not in allowed_platforms:
+            raise ConfigError(
+                f"{where}: unknown platform '{platform_name}' in streams.platforms "
+                f"(allowed: {', '.join(sorted(allowed_platforms))})"
+            )
+        if not isinstance(platform_cfg, dict):
+            raise ConfigError(f"{where}: 'streams.platforms.{platform_name}' must be a table")
+        if "enable" in platform_cfg and not isinstance(platform_cfg["enable"], bool):
+            raise ConfigError(
+                f"{where}: 'streams.platforms.{platform_name}.enable' must be true/false"
+            )
+
+
+def _validate_streams_recorder(recorder_cfg: dict, where: str) -> None:
+    if not isinstance(recorder_cfg, dict):
+        return
+    max_active = recorder_cfg.get("max_active", 64)
+    if not isinstance(max_active, int) or not 1 <= max_active <= 256:
+        raise ConfigError(f"{where}: 'streams.recorder.max_active' must be 1-256")
+
+
+def _validate_streams_transcoder(transcoder_cfg: dict, where: str) -> None:
+    if not isinstance(transcoder_cfg, dict):
+        return
+    worker_count = transcoder_cfg.get("worker_count", 2)
+    if not isinstance(worker_count, int) or not 1 <= worker_count <= 16:
+        raise ConfigError(f"{where}: 'streams.transcoder.worker_count' must be 1-16")

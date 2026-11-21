@@ -1,4 +1,4 @@
-# CamfrogAutoDJ v0.2.6 — Windows Installation Validation Report
+# AutoDJ v0.2.6 — Windows Installation Validation Report
 
 **Repository:** `cvsz/autodj`  
 **Target Release:** `v0.2.6`  
@@ -34,3 +34,4 @@ The NSIS Modern UI 2 installer (`Camfrog-AutoDJ-Setup-0.2.6.exe`) built in GitHu
 
 > [!NOTE]
 > Per ZEAZ execution instructions, live desktop installation requiring an interactive Windows user session is explicitly marked as `BLOCKED` rather than simulating false verification.
+

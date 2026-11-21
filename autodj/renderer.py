@@ -1,4 +1,4 @@
-"""Message rendering for CamfrogAutoDJ.
+"""Message rendering for AutoDJ.
 
 Camfrog desktop client does NOT support rich text in outgoing messages.
 All messages sent via UIA are plain text only.

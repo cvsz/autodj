@@ -1,4 +1,4 @@
-# CamfrogAutoDJ v0.2.6 — Camfrog Runtime & Functional Validation Report
+# AutoDJ v0.2.6 — Camfrog Runtime & Functional Validation Report
 
 **Repository:** `cvsz/autodj`  
 **Target Release:** `v0.2.6`  
@@ -30,4 +30,5 @@
   2. An authenticated Camfrog client connected to an active room.
   3. A virtual audio cable driver (VB-CABLE) or hardware loopback.
 - In strict adherence to Rule #10 and Rule #12, automated integration tests are verified, while physical room broadcast is correctly documented as requiring an operator with an authenticated Camfrog account.
+
 

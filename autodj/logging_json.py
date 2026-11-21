@@ -1,4 +1,4 @@
-"""JSON structured logging for CamfrogAutoDJ.
+"""JSON structured logging for AutoDJ.
 
 Provides a JSON formatter for structured log output compatible with
 Loki, Grafana, Elasticsearch, and other log aggregation systems.

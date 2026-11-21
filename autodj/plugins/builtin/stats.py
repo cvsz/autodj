@@ -34,7 +34,7 @@ class StatsPlugin(Plugin):
     def _load(self) -> None:
         if self.stats_file.exists():
             try:
-                data = json.loads(self.stats_file.read_text())
+                data = json.loads(self.stats_file.read_text(encoding="utf-8"))
                 self.track_counts = Counter(data.get("tracks", {}))
                 self.user_counts = Counter(data.get("users", {}))
                 self.total_plays = data.get("total_plays", 0)
@@ -48,7 +48,7 @@ class StatsPlugin(Plugin):
                 "users": dict(self.user_counts),
                 "total_plays": self.total_plays,
             }
-            self.stats_file.write_text(json.dumps(data))
+            self.stats_file.write_text(json.dumps(data), encoding="utf-8")
         except Exception:
             log.exception("Failed to save stats")
 

@@ -1,4 +1,4 @@
-# Warnings — CamfrogAutoDJ
+# Warnings — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`
@@ -20,4 +20,5 @@ These are pre-existing style notes in multi-repo tooling scripts, outside the ap
 ## mypy
 
 Not executed as a gate (CI mypy step tolerates pre-existing issues due to missing stubs for pywinauto/pyttsx3/mutagen/yt_dlp/pyperclip). `mypy ignore_missing_imports = true` in `pyproject.toml`.
+
 
