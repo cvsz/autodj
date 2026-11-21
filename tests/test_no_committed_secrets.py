@@ -31,7 +31,24 @@ _SECRET = re.compile(
 )
 
 
+def _require_git_checkout() -> None:
+    """Skip when there is no git work tree (e.g. the Docker audit image has git
+    but excludes .git, so every git command exits 128)."""
+    try:
+        res = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        pytest.skip("git not available")
+    if res.returncode != 0 or res.stdout.strip() != "true":
+        pytest.skip("not a git checkout")
+
+
 def _tracked() -> list[str]:
+    _require_git_checkout()
     try:
         out = subprocess.run(
             ["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True
@@ -49,16 +66,15 @@ def test_no_local_config_copies_are_tracked():
 
 
 def test_config_backups_are_gitignored():
+    _require_git_checkout()
     names = ["config.toml", "config.toml.bak", "config.toml.bak-ai", "config.toml.bak-20261121"]
-    try:
-        res = subprocess.run(
-            ["git", "check-ignore", "--no-index", *names],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-        )
-    except OSError:
-        pytest.skip("git not available")
+    res = subprocess.run(
+        ["git", "check-ignore", "--no-index", *names],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode in (0, 1), res.stderr  # 128 = git error, not "not ignored"
     ignored = set(res.stdout.split())
     assert ignored == set(names), f"not ignored: {sorted(set(names) - ignored)}"
     example = subprocess.run(
