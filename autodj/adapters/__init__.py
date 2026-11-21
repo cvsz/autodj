@@ -18,6 +18,7 @@ __all__ = [
     "ChatMessage",
     "Composite",
     "NullAdapter",
+    "ReattachingAdapter",
     "build_adapter",
     "build_adapter_with_fallback",
     "AdapterType",
@@ -272,6 +273,84 @@ def build_adapter(cfg: "Config") -> ChatAdapter:
     reader = _make(cfg.chat_reader, cfg)
     sender = reader if cfg.chat_sender == cfg.chat_reader else _make(cfg.chat_sender, cfg)
     return Composite(reader, sender)
+
+
+class ReattachingAdapter(ChatAdapter):
+    """Camfrog was not reachable at startup: keep trying instead of giving up.
+
+    The GUI used to fall back to a NullAdapter for the whole session, so a bot
+    started before the room window was open never read chat or answered IMs
+    until it was restarted.  This wrapper retries ``build`` every *interval*
+    seconds (and on each send) and delegates to the real adapter once the room
+    window appears.
+    """
+
+    def __init__(
+        self,
+        cfg: "Config",
+        build: "Callable[[Config], ChatAdapter] | None" = None,
+        interval: float = 15.0,
+    ):
+        self.cfg = cfg
+        self._build = build or build_adapter
+        self.interval = interval
+        self._inner: ChatAdapter | None = None
+        self._next_try = 0.0
+        self._lock = threading.Lock()
+        self._closed = threading.Event()
+
+    def _attached(self) -> ChatAdapter | None:
+        """The real adapter, attaching first if a retry is due."""
+        with self._lock:
+            if self._inner is not None or self._closed.is_set():
+                return self._inner
+            now = time.monotonic()
+            if now < self._next_try:
+                return None
+            try:
+                self._inner = self._build(self.cfg)
+            except Exception as ex:  # room window still closed, COM not ready, ...
+                self._next_try = now + self.interval
+                log.debug("Camfrog chat still not reachable: %s", ex)
+                return None
+            log.info("attached to Camfrog chat (the room window is open now)")
+            return self._inner
+
+    def messages(self) -> Iterator[ChatMessage]:
+        while not self._closed.is_set():
+            inner = self._attached()
+            if inner is not None:
+                yield from inner.messages()
+                return
+            self._closed.wait(min(self.interval, 1.0))
+
+    def send(self, text: str) -> None:
+        inner = self._attached()
+        if inner is None:
+            log.warning(
+                "Cannot send chat: Camfrog room window is not open yet. Message dropped: %r",
+                text[:80],
+            )
+            return
+        inner.send(text)
+
+    @property
+    def delivers(self) -> bool:
+        inner = self._inner
+        return inner is not None and bool(getattr(inner, "delivers", True))
+
+    @property
+    def send_im(self) -> Callable[[str, str], None] | None:
+        inner = self._attached()
+        fn = getattr(inner, "send_im", None) if inner is not None else None
+        return fn if callable(fn) else None
+
+    def close(self) -> None:
+        self._closed.set()
+        with self._lock:
+            inner, self._inner = self._inner, None
+        if inner is not None:
+            inner.close()
 
 
 class NullAdapter(ChatAdapter):
