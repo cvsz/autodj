@@ -26,6 +26,12 @@ def _read(ctrl) -> str:
     return ""
 
 
+# Room message box (WebView2): time for the editor to take the focus after the click,
+# and for the pasted text to land before Enter.
+_WEB_FOCUS_DELAY = 0.5
+_WEB_PASTE_DELAY = 0.3
+
+
 def _focus_target(handle: int, x: int, y: int, what: str) -> None:
     """Make *handle* the foreground window and check that (x, y) belongs to it.
 
@@ -483,15 +489,18 @@ class UiaAdapter(ChatAdapter):
             r = self._input.rectangle()  # measured after the window came forward
             x, y = (r.left + r.right) // 2, (r.top + r.bottom) // 2
             _focus_target(handle, x, y, "Camfrog room window")
+            pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
             if self._web:
                 self._input.click_input()  # the message box is a web editor: only a click focuses it
-                time.sleep(0.2)
+                # WebView2 focuses its editor ~0.35 s after the click.  With 0.2 s the
+                # Ctrl+V was lost while the later Enter arrived: an empty send (live
+                # 2026-11-22), or a leftover draft in the box was posted instead.
+                time.sleep(_WEB_FOCUS_DELAY)
             else:
                 self._input.set_focus()
             _still_front(handle, "Camfrog room window")
-            pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
             send_keys("^v")
-            time.sleep(0.15)
+            time.sleep(_WEB_PASTE_DELAY)
             _still_front(handle, "Camfrog room window")  # never press Enter in another app
             send_keys("{ENTER}")
         finally:

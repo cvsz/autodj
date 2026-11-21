@@ -167,3 +167,21 @@ def test_appeared_sees_the_new_line(monkeypatch):
     history = ["1:37|Seaza: ขอบคุณที่เข้ามาฟังเพลง"]
     a._lines = lambda: history + ["3:25|Seaza: ขอบคุณที่เข้ามาฟังเพลง"]
     assert a._appeared("ขอบคุณที่เข้ามาฟังเพลง", history) is True
+
+
+def test_send_fg_waits_for_webview_focus_before_paste(user32, monkeypatch):
+    """Live 2026-11-22: 0.2 s after the click the WebView2 editor had no focus yet, the
+    Ctrl+V was lost and only Enter arrived (empty send, or a leftover draft posted)."""
+    events: list[tuple[str, object]] = []
+    a, clip = _adapter_for_fg(monkeypatch, [])
+    user32.can_focus = True
+    a._input.click_input = lambda: events.append(("click", clip["v"]))
+    monkeypatch.setattr(uia.time, "sleep", lambda s: events.append(("sleep", s)))
+    sys.modules["pywinauto.keyboard"].send_keys = lambda k, **kw: events.append(("key", k))
+    a._send_fg("now playing")
+    click = events.index(("click", "now playing"))  # clipboard already holds the text
+    paste = events.index(("key", "^v"))
+    enter = events.index(("key", "{ENTER}"))
+    waited = sum(s for kind, s in events[click:paste] if kind == "sleep")
+    assert waited >= 0.35
+    assert sum(s for kind, s in events[paste:enter] if kind == "sleep") >= 0.25
