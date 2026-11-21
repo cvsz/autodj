@@ -2,9 +2,11 @@
 
 Live 2026-11-22: Windows refused to give Camfrog the focus while the user worked
 in a terminal running a coding agent; _send_fg clicked + pasted + pressed Enter
-anyway, so the bot's room announcements went into that terminal, and the
-verification still logged "send ok" because an identical auto-reply was in the
-room history.
+anyway, so the keystrokes went to the foreground window instead of Camfrog, and
+the verification still logged "send ok" because an identical auto-reply was in
+the room history.  Later the same day, with the Thai keyboard layout active,
+pywinauto's "^v" pressed only Ctrl (no 'v' in that layout) and Enter sent an
+empty box or a leftover draft.
 """
 
 from __future__ import annotations
@@ -29,6 +31,13 @@ class _User32:
         self.front = front
         self.can_focus = can_focus
         self.root_at_point = root_at_point
+        self.kbd: list[tuple[int, int]] = []
+        self.on_paste = None  # called when V goes down (Ctrl+V)
+
+    def keybd_event(self, vk, scan, flags, extra):
+        self.kbd.append((vk, flags))
+        if vk == 0x56 and flags == 0 and self.on_paste:
+            self.on_paste()
 
     def IsIconic(self, h):
         return False
@@ -119,7 +128,7 @@ def test_send_fg_never_presses_keys_when_focus_is_refused(user32, monkeypatch):
     user32.can_focus = False
     with pytest.raises(RuntimeError):
         a._send_fg("now playing")
-    assert keys == []  # no Ctrl+V, no Enter into the other app
+    assert keys == [] and user32.kbd == []  # no Ctrl+V, no Enter into the other app
     assert clip["v"] == "user clipboard"
 
 
@@ -128,12 +137,10 @@ def test_send_fg_no_enter_if_focus_lost_after_paste(user32, monkeypatch):
     a, _ = _adapter_for_fg(monkeypatch, keys)
     user32.can_focus = True
 
-    def paste_then_lose_focus(k, **kw):
-        keys.append(k)
-        if k == "^v":
-            user32.front = OTHER  # another app grabbed the focus
+    def lose_focus():
+        user32.front = OTHER  # another app grabbed the focus right after the paste
 
-    sys.modules["pywinauto.keyboard"].send_keys = paste_then_lose_focus
+    user32.on_paste = lose_focus
     with pytest.raises(RuntimeError, match="lost the focus"):
         a._send_fg("now playing")
     assert "{ENTER}" not in keys
@@ -144,7 +151,8 @@ def test_send_fg_happy_path_pastes_and_enters(user32, monkeypatch):
     a, clip = _adapter_for_fg(monkeypatch, keys)
     user32.can_focus = True
     a._send_fg("now playing")
-    assert keys == ["^v", "{ENTER}"]
+    assert user32.kbd == [(0x11, 0), (0x56, 0), (0x56, 2), (0x11, 2)]  # Ctrl+V by VK code
+    assert keys == ["{ENTER}"]
     assert clip["v"] == "user clipboard"  # restored
 
 
@@ -178,6 +186,7 @@ def test_send_fg_waits_for_webview_focus_before_paste(user32, monkeypatch):
     a._input.click_input = lambda: events.append(("click", clip["v"]))
     monkeypatch.setattr(uia.time, "sleep", lambda s: events.append(("sleep", s)))
     sys.modules["pywinauto.keyboard"].send_keys = lambda k, **kw: events.append(("key", k))
+    user32.on_paste = lambda: events.append(("key", "^v"))
     a._send_fg("now playing")
     click = events.index(("click", "now playing"))  # clipboard already holds the text
     paste = events.index(("key", "^v"))
@@ -185,3 +194,9 @@ def test_send_fg_waits_for_webview_focus_before_paste(user32, monkeypatch):
     waited = sum(s for kind, s in events[click:paste] if kind == "sleep")
     assert waited >= 0.35
     assert sum(s for kind, s in events[paste:enter] if kind == "sleep") >= 0.25
+
+
+def test_ctrl_v_does_not_depend_on_the_keyboard_layout(user32):
+    """VkKeyScanW('v') is -1 with the Thai layout; the VK code 0x56 is not."""
+    uia._press_ctrl_v()
+    assert user32.kbd == [(0x11, 0), (0x56, 0), (0x56, 2), (0x11, 2)]

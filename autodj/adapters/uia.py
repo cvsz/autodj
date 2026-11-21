@@ -32,6 +32,25 @@ _WEB_FOCUS_DELAY = 0.5
 _WEB_PASTE_DELAY = 0.3
 
 
+def _press_ctrl_v() -> None:
+    """Press Ctrl+V by virtual-key code, whatever the keyboard layout.
+
+    pywinauto's ``send_keys("^v")`` looks the 'v' up with VkKeyScanW() in the
+    *current* layout.  With the Thai layout active there is no 'v' (-1), so
+    only Ctrl was pressed and nothing was pasted, while the following Enter
+    still went through: live 2026-11-22 every room send was empty, and a draft
+    left in the message box was posted instead of the bot's text.
+    """
+    import ctypes
+
+    u32 = ctypes.windll.user32  # type: ignore[attr-defined]
+    vk_control, vk_v, keyup = 0x11, 0x56, 0x0002
+    u32.keybd_event(vk_control, 0, 0, 0)
+    u32.keybd_event(vk_v, 0, 0, 0)
+    u32.keybd_event(vk_v, 0, keyup, 0)
+    u32.keybd_event(vk_control, 0, keyup, 0)
+
+
 def _focus_target(handle: int, x: int, y: int, what: str) -> None:
     """Make *handle* the foreground window and check that (x, y) belongs to it.
 
@@ -492,14 +511,13 @@ class UiaAdapter(ChatAdapter):
             pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
             if self._web:
                 self._input.click_input()  # the message box is a web editor: only a click focuses it
-                # WebView2 focuses its editor ~0.35 s after the click.  With 0.2 s the
-                # Ctrl+V was lost while the later Enter arrived: an empty send (live
-                # 2026-11-22), or a leftover draft in the box was posted instead.
+                # the web editor takes the focus a moment after the click (~0.35 s
+                # measured on the IM editor): do not paste before that
                 time.sleep(_WEB_FOCUS_DELAY)
             else:
                 self._input.set_focus()
             _still_front(handle, "Camfrog room window")
-            send_keys("^v")
+            _press_ctrl_v()
             time.sleep(_WEB_PASTE_DELAY)
             _still_front(handle, "Camfrog room window")  # never press Enter in another app
             send_keys("{ENTER}")
