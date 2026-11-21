@@ -112,7 +112,7 @@ def _read_registry_values() -> dict[str, str]:
         try:
             with winreg.OpenKey(  # type: ignore[attr-defined]
                 winreg.HKEY_CURRENT_USER,  # type: ignore[attr-defined]
-                r"Software\CamfrogAutoDJ",
+                r"Software\AutoDJ",
             ) as key:
                 for valname in ("mpv_path", "ytdlp_path"):
                     try:

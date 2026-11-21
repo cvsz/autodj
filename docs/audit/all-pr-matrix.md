@@ -1,4 +1,4 @@
-# Pull Request Matrix — CamfrogAutoDJ
+# Pull Request Matrix — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Basis:** 142 PRs enumerated via `gh api --paginate repos/cvsz/autodj/pulls -f state=all` (complete, single page).  
@@ -47,3 +47,4 @@
 ## Mergeability
 
 No PR is currently open, so there are no merge conflicts to resolve and no mergeability gate to pass. The current `main` HEAD (`fb5e99a`) already incorporates all merged PR work. Any new PR opened from this audit will be branched from `fb5e99a`.
+

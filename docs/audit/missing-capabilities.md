@@ -1,4 +1,4 @@
-# Missing Capabilities — CamfrogAutoDJ
+# Missing Capabilities — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -32,3 +32,4 @@
 ## Policy note
 
 Missing features are marked NOT IMPLEMENTED or BLOCKED; none are claimed as working. Tests unavailable on the current platform are marked BLOCKED with reasons.
+

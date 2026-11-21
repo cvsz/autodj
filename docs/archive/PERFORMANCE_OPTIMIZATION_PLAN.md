@@ -1,4 +1,4 @@
-# Performance Optimization Plan for CamfrogAutoDJ
+# Performance Optimization Plan for AutoDJ
 
 ## Current Architecture Analysis
 

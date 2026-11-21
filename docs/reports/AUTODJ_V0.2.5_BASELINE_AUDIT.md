@@ -1,4 +1,4 @@
-# CamfrogAutoDJ v0.2.5 — Baseline Discovery & Architecture Audit
+# AutoDJ v0.2.5 — Baseline Discovery & Architecture Audit
 
 **Date:** 2026-11-01  
 **Auditor:** Super Ultra AI ORC (Principal Systems Architect & Release Orchestrator)  
@@ -69,4 +69,5 @@ All 140 unit and integration tests are passing cleanly on Python 3.14 / 3.11 / 3
 - **Verification Strategy:** Feature branches -> Local pytest -> GPG Commit -> PR -> policedbc review -> cvsz merge -> Tag `v0.2.5`.
 
 ---
+
 

@@ -1007,7 +1007,7 @@ git commit -m "refactor: consolidate voteskip logic in Engine, Router delegates"
   uses: softprops/action-gh-release@v2
   with:
     tag_name: v${{ steps.version.outputs.version }}
-    name: CamfrogAutoDJ v${{ steps.version.outputs.version }}
+    name: AutoDJ v${{ steps.version.outputs.version }}
     body_path: RELEASE_NOTES.md
     files: |
       dist/AutoDJ.exe
@@ -1244,3 +1244,4 @@ This plan addresses all **37 bugs**, **14 security vulnerabilities**, **12 incom
 **Total Tasks:** 21
 **Estimated Test Runs:** 21+ full suite runs
 **Validation Gates:** 6 (pytest, ruff check, ruff format, mypy, shellcheck, compileall)
+

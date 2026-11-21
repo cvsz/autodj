@@ -1,4 +1,4 @@
-# Build / Lint / Test Report — CamfrogAutoDJ
+# Build / Lint / Test Report — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -48,4 +48,5 @@ None are defects; all are pre-existing style notes in multi-repo/tooling scripts
 ## New regression test added
 
 `tests/test_library_scan_safety.py` — 11 tests pinning `scan_folder`/`LocalIndex` symlink safety (Phase 3 critical regression tests: symlink cycles, reparse-point cycles, broken symlinks, unreadable directories, limits, Unicode).
+
 

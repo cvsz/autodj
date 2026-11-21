@@ -1,6 +1,6 @@
-# CamfrogAutoDJ v0.2.5 — Official Release Report
+# AutoDJ v0.2.5 — Official Release Report
 
-**Product:** CamfrogAutoDJ  
+**Product:** AutoDJ  
 **Target Release:** `v0.2.5`  
 **Organization:** ZEAZDEV COMPANY LIMITED  
 **Repository:** `cvsz/autodj`  
@@ -71,3 +71,4 @@ This report documents the verification, governance, implementation, security har
 ## 6. Release Governance Note
 
 Tag name `v0.2.5` was created and consumed during initial release workflow invocation. GitHub's immutable release policy restricts re-creating ref `v0.2.5` directly via remote push. The full release bundle, build provenance attestation, and SBOM have been verified on GitHub Actions run #41285640249.
+

@@ -1,4 +1,4 @@
-# Architecture — CamfrogAutoDJ v0.3.10
+# Architecture — AutoDJ v0.3.10
 
 **Date:** 2026-11-16  
 **Branch:** main (HEAD: fecc053)  
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-CamfrogAutoDJ is a music bot for Camfrog rooms that plays YouTube tracks and local audio files, responds to `!` commands (with Thai aliases), manages a request queue, and provides a desktop GUI. It runs on Windows (primary) and can be tested on Linux/macOS/WSL.
+AutoDJ is a music bot for Camfrog rooms that plays YouTube tracks and local audio files, responds to `!` commands (with Thai aliases), manages a request queue, and provides a desktop GUI. It runs on Windows (primary) and can be tested on Linux/macOS/WSL.
 
 The architecture is documented in detail at `docs/architecture.md`. This file provides a concise overview.
 
@@ -49,7 +49,7 @@ AutoDJ.exe (frozen PyInstaller binary)
 - Fail-closed: `ConfigError` with exact line + `^` marker
 - Validation order: type → choices → ranges → regexes → semantic
 - Atomic writes: temp file + `os.replace()` + `.bak` backup
-- Auto-relocation to `%APPDATA%\CamfrogAutoDJ\` when not writable
+- Auto-relocation to `%APPDATA%\AutoDJ\` when not writable
 
 ### 2. Audio Engine (`player.py`, `engine.py`)
 - **One mpv process per track** — no shared state between tracks
@@ -110,4 +110,5 @@ AutoDJ.exe (frozen PyInstaller binary)
 - `docs/architecture.md` — Detailed architecture documentation
 - `docs/adr/` — Architecture decision records
 - `docs/protocols/` — Reverse-engineering evidence (Camfrog font logic, UIA behavior)
+
 

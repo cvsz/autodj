@@ -1,4 +1,4 @@
-# Technical Audit — CamfrogAutoDJ
+# Technical Audit — AutoDJ
 
 **Repository:** cvsz/autodj  
 **Branch:** `feat/autodj-enhancements-and-fixes`  
@@ -182,4 +182,5 @@ New regression tests should be added for:
 3. Click-to-seek via `GlowBar` / `Engine.seek()`
 4. Double-click queue item → `add_request(t, position=0)`
 5. Settings persistence of auto-reply fields
+
 

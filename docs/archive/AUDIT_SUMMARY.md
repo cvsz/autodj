@@ -1,4 +1,4 @@
-# CamfrogAutoDJ Deep Audit Summary
+# AutoDJ Deep Audit Summary
 
 ## Audit Date: 2026-11-14
 
@@ -113,7 +113,7 @@ After a comprehensive deep-dive audit of the entire codebase (44 Python source f
 - ✅ Windows primary (named pipes for mpv IPC, UIA for chat)
 - ✅ Linux headless support (Unix sockets for mpv IPC, xvfb for GUI tests)
 - ✅ Path handling uses `pathlib.Path` throughout
-- ✅ Config auto-relocation to `%APPDATA%\CamfrogAutoDJ\` on Windows
+- ✅ Config auto-relocation to `%APPDATA%\AutoDJ\` on Windows
 - ✅ Atomic config writes with `.bak` backup
 
 ---
@@ -131,7 +131,7 @@ After a comprehensive deep-dive audit of the entire codebase (44 Python source f
 
 ## Conclusion
 
-**The CamfrogAutoDJ codebase is production-ready.** All validation gates pass, security posture is strong, cross-platform compatibility is maintained, and documentation is consistent. The minor AGENTS.md placeholder updates have been applied to comply with the repository's own security rules.
+**The AutoDJ codebase is production-ready.** All validation gates pass, security posture is strong, cross-platform compatibility is maintained, and documentation is consistent. The minor AGENTS.md placeholder updates have been applied to comply with the repository's own security rules.
 
 **Next Steps for Release:**
 1. Create feature branch: `git checkout -b feat/autodj-placeholder-fixes`
@@ -139,3 +139,4 @@ After a comprehensive deep-dive audit of the entire codebase (44 Python source f
 3. Open PR for independent review by `@policedbc`
 4. After approval, merge with `--match-head-commit` enforcement
 5. Tag release `v0.3.0` to trigger release workflow
+

@@ -1,4 +1,4 @@
-# Bugs and Findings — CamfrogAutoDJ
+# Bugs and Findings — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -81,4 +81,5 @@ The following historical defects are resolved and covered by tests in `tests/tes
 - NSIS installer warnings / `MUI_ABORTWARNING` / `VI_*` defines (`installer.nsi`)
 - MPV timeout/hung-process termination (`player.py:_wait_for_mpv_end`)
 - yt-dlp TLS/CA-bundle fallback (`library.py:_extract_exe`/`_extract_module`)
+
 

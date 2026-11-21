@@ -108,14 +108,26 @@ if (Test-Path mpv) {
     # _internal); override it with $env:AUTODJ_MPV_BUNDLE on another machine.
     $bundleSource = $env:AUTODJ_MPV_BUNDLE
     if (-not $bundleSource) { $bundleSource = "D:\data\autodj-installer" }
+    # The vendored bundle lives in $bundleSource\mpv\ (mpv.exe, yt-dlp.exe,
+    # vbcable/, _internal/, register scripts).  Accept either the flat legacy
+    # layout ($bundleSource\mpv.exe) or the folder layout ($bundleSource\mpv\).
+    $mpvSource = Join-Path $bundleSource "mpv"
+    $mpvExe    = Join-Path $mpvSource "mpv.exe"
+    $flatExe   = Join-Path $bundleSource "mpv.exe"
     $found = $false
-    if (Test-Path (Join-Path $bundleSource "mpv.exe")) {
+    if (Test-Path $mpvExe) {
         if (-not (Test-Path "dist\mpv")) { New-Item -ItemType Directory -Path "dist\mpv" | Out-Null }
-        robocopy $bundleSource dist\mpv /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+        robocopy $mpvSource dist\mpv /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
         $rc = $LASTEXITCODE
         $global:LASTEXITCODE = 0   # robocopy: 0-7 = success, >= 8 = failure
-        if ($rc -ge 8) { throw "copying mpv bundle from $bundleSource failed (robocopy exit $rc)" }
-        "copied mpv bundle from $bundleSource -> dist\mpv\ (robocopy exit $rc)" | Write-Host
+        if ($rc -ge 8) { throw "copying mpv bundle from $mpvSource failed (robocopy exit $rc)" }
+        "copied mpv bundle from $mpvSource -> dist\mpv\ (robocopy exit $rc)" | Write-Host
+        $found = $true
+    } elseif (Test-Path $flatExe) {
+        # Legacy flat layout: $bundleSource\mpv.exe (single exe only).
+        if (-not (Test-Path "dist\mpv")) { New-Item -ItemType Directory -Path "dist\mpv" | Out-Null }
+        Copy-Item $flatExe "dist\mpv\mpv.exe" -Force
+        "copied mpv.exe from $flatExe -> dist\mpv\" | Write-Host
         $found = $true
     } else {
         # No full bundle: try to find mpv.exe on the system.

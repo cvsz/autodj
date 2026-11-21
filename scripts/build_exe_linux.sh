@@ -1,5 +1,5 @@
 #!/bin/bash
-# CamfrogAutoDJ - AutoDJ.exe builder for Linux/WSL (Wine + Windows Python).
+# AutoDJ - AutoDJ.exe builder for Linux/WSL (Wine + Windows Python).
 #
 # Builds the SAME Windows AutoDJ.exe as build.ps1 does on Windows: it
 # regenerates AutoDJ.spec from the shared PyInstaller flags
@@ -42,7 +42,7 @@ done
 VERSION="${POSITIONAL[0]:-}"
 
 echo "=========================================="
-echo "CamfrogAutoDJ - AutoDJ.exe builder (Linux/Wine)"
+echo "AutoDJ - AutoDJ.exe builder (Linux/Wine)"
 echo "=========================================="
 echo
 

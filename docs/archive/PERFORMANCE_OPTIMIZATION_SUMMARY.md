@@ -1,4 +1,4 @@
-# Performance Optimization Summary for CamfrogAutoDJ
+# Performance Optimization Summary for AutoDJ
 
 ## Overview
 Implemented 9 key performance optimizations targeting the highest-impact areas identified in the analysis. All 526 tests pass, and code quality checks (ruff, mypy) are clean.
@@ -195,3 +195,4 @@ All changes are fully backward compatible:
 1. **Async/Await Migration** - Consider migrating I/O-bound loops to asyncio for better scalability
 2. **Bitmap Caching for GUI** - Cache rendered frames for static elements (record, equalizer background)
 3. **SIMD-accelerated Audio Visualization** - Use numpy for equalizer bar calculations
+

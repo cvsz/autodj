@@ -1,0 +1,15 @@
+The system cannot find the path specified.
+The system cannot find the path specified.
+The system cannot find the path specified.
+The system cannot find the path specified.
+C:/Users/cvsz.ZEAZ/AppData/Local/Microsoft/WinGet/Links/make.exe win11-check SKIP_CHECKS=
+make[1]: Entering directory 'D:/data/autodj'
+The system cannot find the path specified.
+The system cannot find the path specified.
+The system cannot find the path specified.
+The system cannot find the path specified.
+"=== Windows 11 Prerequisite Check (unknown) ==="
+-c was unexpected at this time.
+make[1]: *** [Makefile:83: win11-check] Error 255
+make[1]: Leaving directory 'D:/data/autodj'
+make: *** [Makefile:306: build-all] Error 2

@@ -1,4 +1,4 @@
-# Playback Engine Review — CamfrogAutoDJ
+# Playback Engine Review — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -31,3 +31,4 @@
 ## Verdict
 
 Playback design is sound for the local-file and YouTube (via yt-dlp) paths it supports. Real mpv process startup, IPC, device disconnection, and crash behavior **cannot be executed on this Linux host** (no mpv, no audio device, no Windows). Marked BLOCKED for runtime validation; not claimed as passing.
+

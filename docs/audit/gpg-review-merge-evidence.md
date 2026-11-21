@@ -1,4 +1,4 @@
-# GPG Review & Merge Evidence — CamfrogAutoDJ
+# GPG Review & Merge Evidence — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Workflow:** cvsz implements → policedbc independent review → cvsz controlled merge  
@@ -79,3 +79,4 @@ gh pr review <PR> --approve   # after independent audit
 gh auth switch -u cvsz
 gh pr merge <PR>               # controlled merge, only after approval + green checks
 ```
+

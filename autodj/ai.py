@@ -1,4 +1,4 @@
-"""Built-in AI client for CamfrogAutoDJ.
+"""Built-in AI client for AutoDJ.
 
 Optional, fail-closed integration with OpenAI-compatible chat APIs
 (OpenAI, OpenRouter, local llama.cpp, etc.).  Disabled by default;
@@ -31,7 +31,7 @@ DEFAULT_SYSTEM_PROMPT = (  # keep equal to Config.ai_system_prompt
 DEFAULT_CHECK_INTERVAL = 60.0  # seconds between AI message checks (not used yet)
 MAX_RESPONSE_CHARS = 200  # Camfrog message length safety
 USER_COOLDOWN = 30.0  # seconds between AI replies to same user
-UA = f"CamfrogAutoDJ/{__version__} (+https://github.com/cvsz/autodj)"
+UA = f"AutoDJ/{__version__} (+https://github.com/cvsz/autodj)"
 
 
 class AIError(AutoDJError):

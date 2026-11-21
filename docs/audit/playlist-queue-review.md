@@ -1,4 +1,4 @@
-# Playlist and Queue Review — CamfrogAutoDJ
+# Playlist and Queue Review — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -33,3 +33,4 @@ No defects found. Corrupt-file backup, atomic save, dedup, and rate limiting are
 ## Verdict
 
 Playlist integrity and queue behavior are verified by tests on Linux. No code change needed.
+

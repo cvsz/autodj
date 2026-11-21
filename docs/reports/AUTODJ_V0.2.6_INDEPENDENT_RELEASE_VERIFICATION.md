@@ -1,4 +1,4 @@
-# CamfrogAutoDJ v0.2.6 — Independent Release & Supply-Chain Verification
+# AutoDJ v0.2.6 — Independent Release & Supply-Chain Verification
 
 **Repository:** `cvsz/autodj`  
 **Release Tag:** `v0.2.6`  
@@ -43,3 +43,4 @@ gh attestation verify SHA256SUMS.txt --repo cvsz/autodj
 - **Metadata Component:** `camfrog-autodj` version `0.2.6`
 - **Total Components:** 48 dependencies cataloged with complete license IDs and purls.
 - **Verification Result:** Conforms to CycloneDX JSON schema.
+

@@ -1,4 +1,4 @@
-# GUI Responsiveness — CamfrogAutoDJ
+# GUI Responsiveness — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -30,3 +30,4 @@
 ## Verdict
 
 GUI design is thread-safe and non-blocking by construction. Windows display behavior and real Camfrog window interaction are BLOCKED (no Windows/display/Camfrog host).
+

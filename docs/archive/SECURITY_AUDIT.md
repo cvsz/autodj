@@ -1,4 +1,4 @@
-# Security Audit — CamfrogAutoDJ v0.3.0
+# Security Audit — AutoDJ v0.3.0
 
 **Date:** 2026-11-16  
 **Branch:** main (HEAD: fecc053)  
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-A comprehensive security audit was performed against the CamfrogAutoDJ codebase. All security-sensitive areas were reviewed. **No critical or high-severity findings were identified.** One configuration gap was identified and remediated (`.git-credentials` excluded from Docker build context).
+A comprehensive security audit was performed against the AutoDJ codebase. All security-sensitive areas were reviewed. **No critical or high-severity findings were identified.** One configuration gap was identified and remediated (`.git-credentials` excluded from Docker build context).
 
 ---
 
@@ -39,7 +39,7 @@ A comprehensive security audit was performed against the CamfrogAutoDJ codebase.
 | Blocked users | Silently ignored, no error messages leaked | ✅ Verified |
 | Config validation | Fail-closed `ConfigError` with exact line + `^` marker | ✅ Verified |
 | Atomic config writes | Temp file + `os.replace()` + `.bak` backup | ✅ Verified |
-| Config auto-relocation | Writes to `%APPDATA%\CamfrogAutoDJ\` when not writable | ✅ Verified |
+| Config auto-relocation | Writes to `%APPDATA%\AutoDJ\` when not writable | ✅ Verified |
 | Dependency vulnerabilities | Declared deps: `yt-dlp`, `mutagen`, `pyttsx3`, `pywinauto` (win32), `pyperclip` (win32) | ✅ 0 known vulnerabilities |
 | Installer privilege escalation | `RequestExecutionLevel user` in NSIS installer | ✅ User-level execution |
 | Installer user data preservation | Uninstaller preserves `config.toml`, `playlist.json`, logs | ✅ Verified (test_installer_data_safety.py) |
@@ -86,4 +86,5 @@ No secrets are baked into the Docker image.
 
 ## Conclusion
 
-The CamfrogAutoDJ codebase maintains a strong security posture. All identified findings have been remediated. Fail-closed defaults are preserved throughout. No secrets are committed to Git.
+The AutoDJ codebase maintains a strong security posture. All identified findings have been remediated. Fail-closed defaults are preserved throughout. No secrets are committed to Git.
+

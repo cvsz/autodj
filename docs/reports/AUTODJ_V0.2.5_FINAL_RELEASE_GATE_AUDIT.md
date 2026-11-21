@@ -1,4 +1,4 @@
-# CamfrogAutoDJ v0.2.5 — Final Release Gate Audit
+# AutoDJ v0.2.5 — Final Release Gate Audit
 
 **Repository:** `cvsz/autodj`  
 **Current HEAD SHA (`main`):** `c0e0f4bb07a0f213d4e6fdaba7a9a6eb32542a79`  
@@ -52,3 +52,4 @@ All pull requests strictly followed repository governance: least-privilege branc
 - **CycloneDX SBOM:** Generated via `cyclonedx-py environment --pyproject pyproject.toml -o Camfrog-AutoDJ-v0.2.5.cdx.json` (spec 1.6 compliant).
 - **Sigstore Provenance Attestation:** Successfully generated and uploaded to Rekor transparency log (Log index `3623647793`, attestation ID `62283016`).
 - **Windows Installer:** Built via NSIS with Unicode 64-bit target, dual language (EN/TH), App Paths registry entries, and silent clean uninstallation of prior versions.
+

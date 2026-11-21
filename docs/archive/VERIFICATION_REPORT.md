@@ -1,4 +1,4 @@
-# Verification Report — CamfrogAutoDJ v0.3.0
+# Verification Report — AutoDJ v0.3.0
 
 **Date:** 2026-11-14  
 **Commit:** `$(git rev-parse HEAD 2>/dev/null || echo "unknown")`  
@@ -194,7 +194,7 @@
 - Temp file + `os.replace()` + `.bak` backup ✅
 
 ### Auto-Relocation
-- Writes to `%APPDATA%\CamfrogAutoDJ\` when config not writable ✅
+- Writes to `%APPDATA%\AutoDJ\` when config not writable ✅
 
 ### Validation Order
 1. Type checking ✅
@@ -364,7 +364,7 @@ $ python -m autodj --help
 
 ## Conclusion
 
-**VERIFIED** — All logic, tests, and quality gates pass. The CamfrogAutoDJ v0.3.0 codebase is in a verified, production-ready state with:
+**VERIFIED** — All logic, tests, and quality gates pass. The AutoDJ v0.3.0 codebase is in a verified, production-ready state with:
 
 - ✅ 526 comprehensive tests covering all critical paths
 - ✅ 68% overall code coverage (100% on critical modules)
@@ -376,3 +376,4 @@ $ python -m autodj --help
 ---
 
 *Report generated: 2026-11-14 12:58:00 UTC*
+

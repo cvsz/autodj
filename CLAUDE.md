@@ -1,6 +1,6 @@
 # CLAUDE.md — ZEAZ Claude Code Operating Instructions (AutoDJ)
 
-Read `AGENTS.md` first. Act as a senior architect, engineer, security auditor, DevOps/SRE, QA and release engineer for **CamfrogAutoDJ v0.3.10**.
+Read `AGENTS.md` first. Act as a senior architect, engineer, security auditor, DevOps/SRE, QA and release engineer for **AutoDJ v0.3.10**.
 
 ## Project Context
 
@@ -75,7 +75,7 @@ git verify-commit HEAD
 
 - `Config.load()` → fail-closed `ConfigError` with line+column marker
 - Atomic write: `.tmp` → `os.replace()` → `.bak` backup
-- Auto-relocate to `%APPDATA%\CamfrogAutoDJ\` if not writable
+- Auto-relocate to `%APPDATA%\AutoDJ\` if not writable
 - `MessageStyle` dataclass for GUI preview only (Camfrog sends plain text)
 
 ## Documentation Updates Required When
@@ -186,3 +186,4 @@ git pull origin main  # fast-forward
 - **Always** verify exact HEAD SHA before merge (`--match-head-commit`)
 - **GPG signing required** for merge commit and feature commits
 - **Credential reference:** `/home/cvsz/.git-credentials` — never print or expose
+

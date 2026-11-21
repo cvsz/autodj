@@ -1,4 +1,4 @@
-# CamfrogAutoDJ Enhancement Plan - Phase 1/2/7
+# AutoDJ Enhancement Plan - Phase 1/2/7
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -326,3 +326,4 @@ Expected: All 450+ new tests pass, zero lint/typecheck warnings
 **Recommended execution order:** 1 → 2 → 3 → 4 → 5 → 6
 
 **Estimated effort:** ~200-300 lines of new code across 8 files + tests
+

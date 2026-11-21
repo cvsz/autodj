@@ -66,7 +66,7 @@ git rev-parse <commit-sha>
 python -m pytest tests/test_version_and_release.py::test_versions_agree -v
 
 # 3. Create the annotated, GPG-signed tag
-git tag -s v<version> <commit-sha> -m "CamfrogAutoDJ v<version>
+git tag -s v<version> <commit-sha> -m "AutoDJ v<version>
 
 Release notes summary."
 
@@ -150,4 +150,5 @@ If a signed tag is created in error:
 2. Notify all consumers that the tag should not be trusted
 3. Create a new tag with a different version number for the corrected release
 4. Document the superseded tag in the release notes
+
 

@@ -1,4 +1,4 @@
-# Camfrog Integration — CamfrogAutoDJ
+# Camfrog Integration — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -36,3 +36,4 @@
 ## Failure modes reviewed
 
 Wrong window selection, window closed, process restart, chat control unavailable, UIA failure, clipboard failure, invalid commands, unauthorized commands, rate limits, Unicode messages, long messages — handled in `uia.py`/`engine.py`/`commands.py` with logging and graceful degradation. Not executed live.
+

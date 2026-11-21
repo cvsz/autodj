@@ -17,15 +17,26 @@ def application_dir() -> Path:
 
 
 def _expand_environment(value: str) -> str:
-    """Expand POSIX and Windows environment-variable syntax on every host."""
+    """Expand POSIX and Windows environment-variable syntax on every host.
+
+    Each variable is expanded exactly once: ``os.path.expandvars`` handles the
+    native syntax (``%VAR%`` on Windows, ``$VAR``/``${VAR}`` on POSIX), and the
+    manual ``%VAR%`` pass below only runs where the OS helper does not (POSIX).
+    Running it on Windows too would re-expand env-var references that appear
+    *inside* an already-expanded value (e.g. ``%APPDATA%`` resolving to a path
+    that itself contains ``%TEMP%``), corrupting the result.
+    """
     expanded = os.path.expanduser(os.path.expandvars(value))
     if os.name != "nt":
         expanded = expanded.replace("\\", os.sep)
 
-    def replace(match: re.Match[str]) -> str:
-        return os.environ.get(match.group(1), match.group(0))
+        # os.path.expandvars on POSIX does not understand %VAR%; expand those
+        # once, without re-scanning text that expandvars already produced.
+        def replace(match: re.Match[str]) -> str:
+            return os.environ.get(match.group(1), match.group(0))
 
-    return re.sub(r"%([^%]+)%", replace, expanded)
+        return re.sub(r"%([^%]+)%", replace, expanded)
+    return expanded
 
 
 def prepare_comtypes() -> Path | None:
@@ -40,9 +51,7 @@ def prepare_comtypes() -> Path | None:
         import comtypes.gen
     except Exception:  # comtypes is Windows-only / may be absent
         return None
-    target = (
-        Path(os.environ.get("APPDATA", os.path.expanduser("~"))) / "CamfrogAutoDJ" / "comtypes_gen"
-    )
+    target = Path(os.environ.get("APPDATA", os.path.expanduser("~"))) / "AutoDJ" / "comtypes_gen"
     try:
         target.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -73,7 +82,7 @@ def log_directory() -> Path:
         return install_logs
     except OSError:
         app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-        fallback = Path(app_data) / "CamfrogAutoDJ" / "logs"
+        fallback = Path(app_data) / "AutoDJ" / "logs"
         fallback.mkdir(parents=True, exist_ok=True)
         return fallback
 

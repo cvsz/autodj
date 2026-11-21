@@ -1,4 +1,4 @@
-# CamfrogAutoDJ v0.2.6 — Baseline Audit & Release Discovery
+# AutoDJ v0.2.6 — Baseline Audit & Release Discovery
 
 **Repository:** `cvsz/autodj`  
 **Target Release:** `v0.2.6`  
@@ -25,3 +25,4 @@ Under explicit executive authorization, the repository release manager transitio
 3. **Test Suite Baseline:** 143 unit and regression tests passing cleanly in 3.47s.
 4. **Governance Baseline:** PRs #45–#53 reviewed and approved by `policedbc`, merged by `cvsz`.
 5. **Milestone State:** 0 open milestones.
+

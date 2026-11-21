@@ -1,4 +1,4 @@
-# CamfrogAutoDJ - Automated Windows 11 Installer Specification (Complete)
+# AutoDJ - Automated Windows 11 Installer Specification (Complete)
 
 > **Definitive Single Source of Truth** - All installer logic, fixes, build processes, and troubleshooting in one document.
 
@@ -6,7 +6,7 @@
 
 ## 🎯 Executive Summary
 
-This document is the **complete, authoritative reference** for building and distributing the CamfrogAutoDJ automated installer on Windows 11. It consolidates 6 source files, fixes all known bugs, and provides step-by-step procedures that work.
+This document is the **complete, authoritative reference** for building and distributing the AutoDJ automated installer on Windows 11. It consolidates 6 source files, fixes all known bugs, and provides step-by-step procedures that work.
 
 **Two Installation Paths:**
 | Path | Target Audience | Technology | Status |
@@ -112,7 +112,7 @@ winget install NSIS.NSIS
 ### Parameters
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `ProjectDir` | string | `$env:USERPROFILE\CamfrogAutoDJ` | Install directory |
+| `ProjectDir` | string | `$env:USERPROFILE\AutoDJ` | Install directory |
 | `NoBuild` | switch | false | Skip PyInstaller build |
 | `NoShortcuts` | switch | false | Skip Desktop/Start Menu shortcuts |
 | `AutoStart` | switch | false | Create Startup folder shortcut |
@@ -138,7 +138,7 @@ winget install NSIS.NSIS
 
 ### Output Locations
 ```
-%USERPROFILE%\CamfrogAutoDJ\
+%USERPROFILE%\AutoDJ\
 ├── dist\AutoDJ.exe           # Main executable
 ├── config.toml               # User configuration
 ├── uninstall.ps1             # Generated uninstaller
@@ -146,11 +146,11 @@ winget install NSIS.NSIS
 └── (other project files)
 
 Shortcuts:
-├── Desktop\CamfrogAutoDJ.lnk
-├── Start Menu\Programs\CamfrogAutoDJ\CamfrogAutoDJ.lnk
-├── Start Menu\Programs\CamfrogAutoDJ\Edit Config.lnk
-├── Start Menu\Programs\CamfrogAutoDJ\Uninstall.lnk
-└── Startup\CamfrogAutoDJ.lnk (if -AutoStart)
+├── Desktop\AutoDJ.lnk
+├── Start Menu\Programs\AutoDJ\AutoDJ.lnk
+├── Start Menu\Programs\AutoDJ\Edit Config.lnk
+├── Start Menu\Programs\AutoDJ\Uninstall.lnk
+└── Startup\AutoDJ.lnk (if -AutoStart)
 ```
 
 ---
@@ -202,7 +202,7 @@ dist\Camfrog-AutoDJ-Setup-0.2.5.exe  (~35 MB)
 - **Shortcuts:** Desktop, Start Menu (App, Config, Uninstall)
 - **Registry:** Add/Remove Programs entry, App Paths for CLI
 - **Uninstaller:** Full cleanup including registry
-- **Admin Required:** Installs to `%PROGRAMFILES64%\CamfrogAutoDJ`
+- **Admin Required:** Installs to `%PROGRAMFILES64%\AutoDJ`
 
 ### NSIS Script Sections
 ```nsis
@@ -373,9 +373,9 @@ cd dist
 
 ### config.toml (Production Config — Bundled with Installer)
 ```toml
-# CamfrogAutoDJ Configuration
+# AutoDJ Configuration
 # Production config with sensible defaults - bundled with NSIS installer
-# Edit with: Start Menu > CamfrogAutoDJ > Edit Config
+# Edit with: Start Menu > AutoDJ > Edit Config
 
 [bot]
 bot_nick = "AutoDJ"
@@ -444,33 +444,33 @@ Committed to repo as reference for manual installations. Copy to `config.toml` a
 ```powershell
 <#
 .SYNOPSIS
-    CamfrogAutoDJ Uninstaller (Generated)
+    AutoDJ Uninstaller (Generated)
 #>
 param([switch]$Force)
 
-$InstallDir = "$env:PROGRAMFILES64\CamfrogAutoDJ"
+$InstallDir = "$env:PROGRAMFILES64\AutoDJ"
 $ErrorActionPreference = "Continue"
 
-Write-Host "Uninstalling CamfrogAutoDJ..." -ForegroundColor Cyan
+Write-Host "Uninstalling AutoDJ..." -ForegroundColor Cyan
 
 # Remove shortcuts
 $startMenu = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
-$autoDjFolder = Join-Path $startMenu "CamfrogAutoDJ"
+$autoDjFolder = Join-Path $startMenu "AutoDJ"
 if (Test-Path $autoDjFolder) { Remove-Item -Recurse -Force $autoDjFolder; Write-Host "Removed Start Menu folder" }
 
 $desktop = [Environment]::GetFolderPath("Desktop")
-$desktopShortcut = Join-Path $desktop "CamfrogAutoDJ.lnk"
+$desktopShortcut = Join-Path $desktop "AutoDJ.lnk"
 if (Test-Path $desktopShortcut) { Remove-Item -Force $desktopShortcut; Write-Host "Removed Desktop shortcut" }
 
 $startup = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
-$autoStartShortcut = Join-Path $startup "CamfrogAutoDJ.lnk"
+$autoStartShortcut = Join-Path $startup "AutoDJ.lnk"
 if (Test-Path $autoStartShortcut) { Remove-Item -Force $autoStartShortcut; Write-Host "Removed auto-start shortcut" }
 
 # Remove registry
 $regPaths = @(
-    "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ",
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ",
     "HKLM:\Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe",
-    "HKLM:\Software\CamfrogAutoDJ"
+    "HKLM:\Software\AutoDJ"
 )
 foreach ($p in $regPaths) { if (Test-Path $p) { Remove-Item -Recurse -Force $p; Write-Host "Removed registry: $p" } }
 
@@ -590,8 +590,8 @@ Before publishing `Camfrog-AutoDJ-Setup-{version}.exe` to GitHub Releases:
 ### Changing Install Directory (NSIS)
 Edit `installer.nsi`:
 ```nsis
-InstallDir "$PROGRAMFILES64\CamfrogAutoDJ"  ; Change here
-InstallDirRegKey HKLM "Software\CamfrogAutoDJ" "InstallDir"
+InstallDir "$PROGRAMFILES64\AutoDJ"  ; Change here
+InstallDirRegKey HKLM "Software\AutoDJ" "InstallDir"
 ```
 Also update registry paths in Uninstall section.
 
@@ -621,8 +621,8 @@ dist\AutoDJ.exe --check
 .\uninstall.ps1 -Force
 
 # Uninstall (NSIS method)
-# Control Panel → Programs → CamfrogAutoDJ → Uninstall
-# OR run: "C:\Program Files\CamfrogAutoDJ\uninstall.exe"
+# Control Panel → Programs → AutoDJ → Uninstall
+# OR run: "C:\Program Files\AutoDJ\uninstall.exe"
 ```
 
 ---
@@ -674,3 +674,4 @@ dist\AutoDJ.exe --check
 
 *This document is the definitive reference. Update it when any installer logic changes.*
 *Last verified: 2026-10-29 against repository commit HEAD*
+

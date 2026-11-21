@@ -1,4 +1,4 @@
-# Windows Qualification — CamfrogAutoDJ
+# Windows Qualification — AutoDJ
 
 **Repository:** cvsz/autodj  
 **Branch:** `feat/autodj-enhancements-and-fixes`  

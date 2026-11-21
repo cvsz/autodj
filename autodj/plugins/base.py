@@ -1,4 +1,4 @@
-"""Plugin base interface for CamfrogAutoDJ."""
+"""Plugin base interface for AutoDJ."""
 
 from __future__ import annotations
 

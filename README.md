@@ -1,4 +1,4 @@
-# CamfrogAutoDJ
+# AutoDJ
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
@@ -11,7 +11,7 @@ Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now
 - **Duplicate-message suppression:** identical lines re-dumped by Camfrog after a reconnect no longer run the same command several times (3 s per-user window).
 - **Settings dialog:** `user_request_limit` and `rate_limit_window` are now editable.
 - **Log paths support `$APPDATA`/`~`** (`log_file`, `log_path`).
-- **Installer:** bundled mpv + yt-dlp install to `%APPDATA%\CamfrogAutoDJ\mpv` (never `%APPDATA%\mpv`, mpv's own config folder, which the uninstaller would have wiped). `make installer` always packages the current `config.example.toml`.
+- **Installer:** bundled mpv + yt-dlp install to `%APPDATA%\AutoDJ\mpv` (never `%APPDATA%\mpv`, mpv's own config folder, which the uninstaller would have wiped). `make installer` always packages the current `config.example.toml`.
 - **Fixes:** auto-discover's corrupted-cache cleanup no longer deletes part of the comtypes package; a line the bot posts twice is no longer handled as a user message on its second echo; the Windows prerequisite checks (NSIS / mpv / PyInstaller) really check again.
 
 ## What's new in 0.3.9
@@ -176,7 +176,7 @@ It handles the entire setup end-to-end:
 ```
 **Requirements:** Windows 11, PowerShell 5.1+, Administrator rights for VB-Cable install.  
 **Log file:** `%TEMP%\autodj-install-<timestamp>.log`  
-**Uninstall:** Start Menu → CamfrogAutoDJ → Uninstall, or run `uninstall.ps1` in the project folder.
+**Uninstall:** Start Menu → AutoDJ → Uninstall, or run `uninstall.ps1` in the project folder.
 
 ## Chat reader (web view)
 Messages are split at the avatar images of the room's history pane, so date headers, system lines and bodies that look like a time ("10:30") no longer corrupt parsing. `web_strict_body = false` restores joining of adjacent text. Regression test: `tests/test_webchat_dump.py` (shaped after a real room dump).
@@ -195,4 +195,5 @@ Messages are split at the avatar images of the room's history pane, so date head
 - Tested (325 passed, `python -m pytest -q -p no:faulthandler -p no:cacheprovider`): queue, commands EN/TH, chat diff, parsing, launcher flow (mocked), config validation, failure/echo/limit regressions (`tests/test_hardening.py`), GUI logic against a strict fake Tk (`tests/test_gui_logic.py`), an end-to-end run of the real CLI with a fake mpv, and all Thai/English command paths (`!ช่วยเหลือ`, `!เล่น`, `!เพลงนี้`, `!ข้าม`, `!บล็อก`, `!คิว`, `!ประวัติ`, `!สุ่ม`, `!วนซ้ำ`, `!เสียง`, `!ล้างคิว`, `!พูด`, `!ออกเสียง`, `!โหลด`, `!บล็อก`, `!เลิกบล็อก`, `!โหวตข้าม`, `!ลบ`, `!np`, `!ถัดไป`).
 - Not tested: real Camfrog, mpv, yt-dlp, TTS (Thai voice must be installed in Windows), Windows launch/URI, how the new GUI actually looks on screen (the real-Tk smoke test `test_gui_smoke` runs wherever a display exists), `build.ps1`.
 - Check room rules and Camfrog terms before running a bot.
+
 

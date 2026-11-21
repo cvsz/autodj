@@ -1,4 +1,4 @@
-# Production Readiness — CamfrogAutoDJ
+# Production Readiness — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Version:** 0.2.8 (`pyproject.toml`, `autodj/__init__.py`)  
@@ -36,4 +36,5 @@ Linux unit/test validation passes. All validation gates pass on Linux (441 tests
 - E2E Integration — PASS
 
 Real Camfrog integration and real mpv/yt-dlp playback remain NOT IMPLEMENTED (mocks only; no authorized live test environment).
+
 

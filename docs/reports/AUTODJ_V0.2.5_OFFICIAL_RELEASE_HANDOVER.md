@@ -1,4 +1,4 @@
-# CamfrogAutoDJ v0.2.5 — Official Release Recovery, Verification & Handover
+# AutoDJ v0.2.5 — Official Release Recovery, Verification & Handover
 
 **Repository:** `cvsz/autodj`  
 **Target Release:** `v0.2.5`  
@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-This comprehensive audit, verification, and handover report establishes the definitive technical and governance status of CamfrogAutoDJ `v0.2.5`. Every claim from previous audit reports, workflow runs, pull requests, cryptographic attestations, and GitHub repository states has been independently evaluated and verified using the GitHub API, Git CLI, and external transparency log queries.
+This comprehensive audit, verification, and handover report establishes the definitive technical and governance status of AutoDJ `v0.2.5`. Every claim from previous audit reports, workflow runs, pull requests, cryptographic attestations, and GitHub repository states has been independently evaluated and verified using the GitHub API, Git CLI, and external transparency log queries.
 
 All product engineering, test coverage (143 unit/regression tests passing), security hardening, SBOM generation, build provenance attestation, and installer packaging specifications are complete, verified, and merged into `main` at commit `7387864948ed5d99c8140f6c6f2b2b12d9f3ac24`.
 
@@ -266,4 +266,5 @@ FINAL CLASSIFICATION: IMPLEMENTATION_COMPLETE_RELEASE_BLOCKED
 
 ### Rationale
 All code implementation, architectural requirements, test suites (143/143 passing), CI status checks, CycloneDX SBOM generation, and cryptographic build provenance attestations are complete and verified on `main`. However, official GitHub Release publication remains blocked by GitHub's immutable tag restriction on `v0.2.5`. In strict accordance with ZEAZ Master Prompt governance rules, automatic publication of an unapproved version is prohibited. Awaiting user authorization to initiate the `v0.2.6` release path.
+
 

@@ -1,4 +1,4 @@
-# Final Report — CamfrogAutoDJ 0.3.0 audit, fixes and hardening (2026-11-18)
+# Final Report — AutoDJ 0.3.0 audit, fixes and hardening (2026-11-18)
 
 ## 0. Authoritative verification update — v0.3.6 (2026-11-19)
 
@@ -248,4 +248,5 @@ Validation (clean tree copy):
 - **IM auto-reply** posts the operator's fixed text to the room, because the adapter has no private send channel; IM content is never echoed.
 - **Step 5 (signed commit, PR, independent review, merge): BLOCKED in this session.** The session machine has no `gh` CLI, no `/home/cvsz` credential store, no GPG secret key (`commit.gpgsign=true` is required) and no SSH egress for `git@github.com`. In addition, `CLAUDE.md` forbids self-approval; the approval must come from the policedbc reviewer, not from the author's session. Run Phase A–C from `CLAUDE.md` on the cvsz workstation: `feat/autodj-np-room-and-hardening`, `git add` of the 44 modified and 2 new files listed by `git status`, then `git commit -S`.
 - Local hygiene, recommended: rotate the tokens in `.git-credentials` and `.config/gh/.git-credentials` (git-ignored, never committed), and move `docs/rea/` malware samples off the dev tree.
+
 

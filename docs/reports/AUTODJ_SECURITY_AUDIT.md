@@ -1,4 +1,4 @@
-# CamfrogAutoDJ — Security Audit Report
+# AutoDJ — Security Audit Report
 
 **Repository:** `cvsz/autodj`  
 **Base Commit SHA (`main`):** `572aad9` (Merge PR #56)  
@@ -173,4 +173,5 @@ python -m autodj --check
 | Unreviewed security change | Medium | Medium | FIXED — CODEOWNERS requires @policedbc |
 | Dependency vulnerability | Medium | Medium | PARTIAL — Dependabot pip coverage added |
 | Committed secrets | Low | Critical | VERIFIED — CI scan passes, none found |
+
 

@@ -1,4 +1,4 @@
-# Residual Risks — CamfrogAutoDJ
+# Residual Risks — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`
@@ -22,3 +22,4 @@
 
 - No claim of real Camfrog integration (no authorized test environment).
 - No claim of real audio playback with mpv/yt-dlp (no real media on host).
+

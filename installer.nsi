@@ -1,4 +1,4 @@
-; CamfrogAutoDJ - NSIS Installer Script
+; AutoDJ - NSIS Installer Script
 ; Builds a professional Windows installer (.exe) for distribution
 ;
 ; Usage: makensis installer.nsi
@@ -30,7 +30,7 @@
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
 !define /IfNDef APP_EXE "AutoDJ.exe"
-!define /IfNDef INSTALLER_NAME "Camfrog-AutoDJ-Setup-${APP_VERSION}.exe"
+!define /IfNDef INSTALLER_NAME "AutoDJ-Setup-${APP_VERSION}.exe"
 ; Directory the finished installer is written to (build scripts pass /DOUTDIR=...).
 ; Relative paths resolve against the makensis working directory (repo root).
 !define /IfNDef OUTDIR "."
@@ -48,8 +48,8 @@
 ; -----------------------------------------------------------------------------
 Name "${APP_NAME} ${APP_VERSION}"
 OutFile "${OUTDIR}\${INSTALLER_NAME}"
-InstallDir "$APPDATA\CamfrogAutoDJ"
-InstallDirRegKey HKCU "Software\CamfrogAutoDJ" "InstallDir"
+InstallDir "$APPDATA\AutoDJ"
+InstallDirRegKey HKCU "Software\AutoDJ" "InstallDir"
 ShowInstDetails show
 ShowUninstDetails show
 RequestExecutionLevel user
@@ -101,7 +101,7 @@ CRCCheck on
 !define MUI_DIRECTORYPAGE_TEXT_TOP "Choose the installation folder for ${APP_NAME}."
 !define MUI_DIRECTORYPAGE_TEXT_DESTINATION "Destination Folder"
 
-!define MUI_STARTMENUPAGE_DEFAULTFOLDER "CamfrogAutoDJ"
+!define MUI_STARTMENUPAGE_DEFAULTFOLDER "AutoDJ"
 !define MUI_STARTMENUPAGE_NODISABLE
 
 !define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "Installation Complete"
@@ -140,6 +140,10 @@ config_exists:
     ExecWait '"$INSTDIR\AutoDJ.exe" --write-install-paths -c "$INSTDIR\config.toml"'
     ; config.toml can be customized by install.ps1 on first run (interactive prompts)
     File "dist\run_autodj.py"
+    ; Client-friendly launchers (relative paths - work from any install folder)
+    File "dist\start.bat"
+    File "dist\check.bat"
+    File "dist\readme.txt"
 SectionEnd
 
 Section "Playlist Directory" SEC_PLAYLIST
@@ -205,7 +209,7 @@ FunctionEnd
 
 Function .onInstSuccess
     HideWindow
-    MessageBox MB_ICONINFORMATION|MB_OK "CamfrogAutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nVB-CABLE is not bundled. Run install.ps1 to use the existing VB-CABLE setup workflow."
+    MessageBox MB_ICONINFORMATION|MB_OK "AutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nVB-CABLE is not bundled. Run install.ps1 to use the existing VB-CABLE setup workflow."
 FunctionEnd
 
 ; -----------------------------------------------------------------------------
@@ -216,30 +220,30 @@ Section -Post
     WriteUninstaller "$INSTDIR\uninstall.exe"
 
     ; Start Menu shortcuts
-    CreateDirectory "$SMPROGRAMS\CamfrogAutoDJ"
-    CreateShortcut "$SMPROGRAMS\CamfrogAutoDJ\CamfrogAutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
-    CreateShortcut "$SMPROGRAMS\CamfrogAutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Uninstall CamfrogAutoDJ"
-    CreateShortcut "$SMPROGRAMS\CamfrogAutoDJ\Edit Config.lnk" "notepad.exe" "$INSTDIR\config.toml" "" 0 SW_SHOWNORMAL "" "Edit configuration"
+    CreateDirectory "$SMPROGRAMS\AutoDJ"
+    CreateShortcut "$SMPROGRAMS\AutoDJ\AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
+    CreateShortcut "$SMPROGRAMS\AutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Uninstall AutoDJ"
+    CreateShortcut "$SMPROGRAMS\AutoDJ\Edit Config.lnk" "notepad.exe" "$INSTDIR\config.toml" "" 0 SW_SHOWNORMAL "" "Edit configuration"
 
     ; Desktop shortcut
-    CreateShortcut "$DESKTOP\CamfrogAutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
+    CreateShortcut "$DESKTOP\AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
 
     ; Registry entries for Add/Remove Programs (per-user)
     ; Required values per NSIS Appendix D
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayName" "CamfrogAutoDJ"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayVersion" "${APP_VERSION}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "Publisher" "${APP_PUBLISHER}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "URLInfoAbout" "${APP_WEBSITE}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "InstallLocation" "$INSTDIR"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "UninstallString" '"$INSTDIR\uninstall.exe"'
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "DisplayIcon" "$INSTDIR\app.ico"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "HelpLink" "${APP_WEBSITE}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "URLUpdateInfo" "${APP_WEBSITE}"
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoModify" 1
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ" "NoRepair" 1
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "DisplayName" "AutoDJ"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "DisplayVersion" "${APP_VERSION}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "Publisher" "${APP_PUBLISHER}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "URLInfoAbout" "${APP_WEBSITE}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "InstallLocation" "$INSTDIR"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "UninstallString" '"$INSTDIR\uninstall.exe"'
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "DisplayIcon" "$INSTDIR\app.ico"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "HelpLink" "${APP_WEBSITE}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "URLUpdateInfo" "${APP_WEBSITE}"
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "NoModify" 1
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "NoRepair" 1
     ; Save install directory for uninstaller to read ($INSTDIR may differ in uninstaller context)
-    WriteRegStr HKCU "Software\CamfrogAutoDJ" "InstallDir" "$INSTDIR"
+    WriteRegStr HKCU "Software\AutoDJ" "InstallDir" "$INSTDIR"
 
     ; App Paths for CLI access (per-user)
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "" "$INSTDIR\AutoDJ.exe"
@@ -248,12 +252,12 @@ Section -Post
     ; Register bundled media tools only when the optional component is present.
     IfFileExists "$INSTDIR\mpv\mpv.exe" media_tools_present media_tools_absent
 media_tools_present:
-    WriteRegStr HKCU "Software\CamfrogAutoDJ" "mpv_path" "$INSTDIR\mpv\mpv.exe"
-    WriteRegStr HKCU "Software\CamfrogAutoDJ" "ytdlp_path" "$INSTDIR\mpv\yt-dlp.exe"
+    WriteRegStr HKCU "Software\AutoDJ" "mpv_path" "$INSTDIR\mpv\mpv.exe"
+    WriteRegStr HKCU "Software\AutoDJ" "ytdlp_path" "$INSTDIR\mpv\yt-dlp.exe"
     Goto media_tools_registry_done
 media_tools_absent:
-    DeleteRegValue HKCU "Software\CamfrogAutoDJ" "mpv_path"
-    DeleteRegValue HKCU "Software\CamfrogAutoDJ" "ytdlp_path"
+    DeleteRegValue HKCU "Software\AutoDJ" "mpv_path"
+    DeleteRegValue HKCU "Software\AutoDJ" "ytdlp_path"
 media_tools_registry_done:
 SectionEnd
 
@@ -261,32 +265,32 @@ SectionEnd
 ; Uninstaller
 ; -----------------------------------------------------------------------------
 Function un.onInit
-    ReadRegStr $INSTDIR HKCU "Software\CamfrogAutoDJ" "InstallDir"
+    ReadRegStr $INSTDIR HKCU "Software\AutoDJ" "InstallDir"
     ${If} $INSTDIR == ""
-        StrCpy $INSTDIR "$APPDATA\CamfrogAutoDJ"
+        StrCpy $INSTDIR "$APPDATA\AutoDJ"
     ${EndIf}
 FunctionEnd
 
 Section Uninstall
     !insertmacro STOP_RUNNING_AUTODJ
     ; Remove shortcuts
-    Delete "$SMPROGRAMS\CamfrogAutoDJ\CamfrogAutoDJ.lnk"
-    Delete "$SMPROGRAMS\CamfrogAutoDJ\Edit Config.lnk"
-    Delete "$SMPROGRAMS\CamfrogAutoDJ\Uninstall.lnk"
-    RMDir /r "$SMPROGRAMS\CamfrogAutoDJ"
-    Delete "$DESKTOP\CamfrogAutoDJ.lnk"
-    Delete "$SMPROGRAMS\CamfrogAutoDJ\Uninstall.lnk"
+    Delete "$SMPROGRAMS\AutoDJ\AutoDJ.lnk"
+    Delete "$SMPROGRAMS\AutoDJ\Edit Config.lnk"
+    Delete "$SMPROGRAMS\AutoDJ\Uninstall.lnk"
+    RMDir /r "$SMPROGRAMS\AutoDJ"
+    Delete "$DESKTOP\AutoDJ.lnk"
+    Delete "$SMPROGRAMS\AutoDJ\Uninstall.lnk"
 
     ; Remove Startup shortcut if exists
-    Delete "$APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\CamfrogAutoDJ.lnk"
+    Delete "$APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\AutoDJ.lnk"
 
     ; Remove application registration without deleting unrelated app settings.
-    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamfrogAutoDJ"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ"
     DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe"
-    DeleteRegValue HKCU "Software\CamfrogAutoDJ" "InstallDir"
-    DeleteRegValue HKCU "Software\CamfrogAutoDJ" "mpv_path"
-    DeleteRegValue HKCU "Software\CamfrogAutoDJ" "ytdlp_path"
-    DeleteRegKey /ifempty HKCU "Software\CamfrogAutoDJ"
+    DeleteRegValue HKCU "Software\AutoDJ" "InstallDir"
+    DeleteRegValue HKCU "Software\AutoDJ" "mpv_path"
+    DeleteRegValue HKCU "Software\AutoDJ" "ytdlp_path"
+    DeleteRegKey /ifempty HKCU "Software\AutoDJ"
 
     ; Remove application-owned files and directories only.
     ; Keep config.toml, playlist.json, logs, playlists, and other user-created data.
@@ -338,3 +342,4 @@ SectionEnd
 ; -----------------------------------------------------------------------------
 ; The actual files will be copied from the build output directory
 ; Usage: makensis /DAPP_VERSION=0.2.6 installer.nsi
+

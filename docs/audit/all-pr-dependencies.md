@@ -1,4 +1,4 @@
-# Pull Request Dependencies — CamfrogAutoDJ
+# Pull Request Dependencies — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Basis:** 142 PRs enumerated via `gh api --paginate repos/cvsz/autodj/pulls -f state=all`.
@@ -27,3 +27,4 @@ All Dependabot PRs are merged into `main`. The dependency pinning in `pyproject.
 ## Security advisories
 
 No open Dependabot security alerts were part of this audit's scope to fetch live; the `dependency-review.yml` and `codeql.yml` workflows are enabled and SHA-pinned (see #83, #40). Dependency upgrades were reviewed in small groups per policy; no blind mass upgrade was performed.
+

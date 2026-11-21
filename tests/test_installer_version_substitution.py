@@ -43,7 +43,7 @@ def _render(tmp_path: Path, template: str, version: str = "0.3.6"):
 def test_render_replaces_ifndef_default(tmp_path):
     result, output = _render(
         tmp_path,
-        '!define /IfNDef APP_VERSION "9.9.9"\nName "CamfrogAutoDJ ${APP_VERSION}"\n',
+        '!define /IfNDef APP_VERSION "9.9.9"\nName "AutoDJ ${APP_VERSION}"\n',
     )
 
     assert result.returncode == 0, result.stderr
@@ -87,3 +87,4 @@ def test_release_workflow_passes_app_version_without_tag_prefix():
     # Tags are vX.Y.Z while pyproject/NSIS use X.Y.Z.
     assert "GITHUB_REF_NAME" in workflow
     assert "replace" in workflow
+

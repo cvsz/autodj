@@ -1,4 +1,4 @@
-# CamfrogAutoDJ -- dev convenience targets.
+# AutoDJ -- dev convenience targets.
 # Cross-platform (Linux/macOS/Windows PowerShell/Git-Bash).
 # Windows 11 ready: validates OS build >= 22000, NSIS 3.13+, mpv.exe, PyInstaller.
 # Recipes use POSIX sh syntax ([ -f ], mkdir -p, ...); on Windows SHELL is set
@@ -21,12 +21,13 @@ PY          ?= python
 #   $env:PATH = "C:\Program Files\Git\usr\bin;$env:PATH"
 #   $env:SHELL = "C:/Program Files/Git/bin/bash.exe"
 #   make build-all
-MPV_BUNDLE_EXE ?= D:/data/autodj-installer/mpv.exe
+MPV_BUNDLE_EXE ?= D:/data/autodj-installer/mpv/mpv.exe
 # Without a POSIX shell, make falls back to cmd.exe: every `2>/dev/null` probe
 # fails, so RUFF came out empty and `make lint` silently ran py_compile only.
-# Stop with instructions instead of passing with fake results.
+# Warn but do not stop: Windows-only targets (powershell.exe, etc.) still work
+# in cmd.exe; only POSIX-dependent recipes (lint, test, ...) need Git Bash.
 ifneq ($(shell echo posix-ok 2>/dev/null),posix-ok)
-$(error This Makefile needs Git Bash on Windows. In cmd: set "SHELL=C:/Program Files/Git/bin/bash.exe" and set "PATH=C:\Program Files\Git\usr\bin;%PATH%" (PowerShell: $$env:SHELL / $$env:PATH, see the comment above), then run make again)
+$(warning NOTE: Git Bash not detected; make will run in cmd.exe. Windows-only targets (build, portable, installer, sign) still work. POSIX targets (lint, test, coverage, ...) need Git Bash.)
 endif
 else
 PY          ?= $(shell command -v python3 >/dev/null 2>&1 && echo python3 || echo python)
@@ -60,14 +61,13 @@ endif
 .PHONY: help install install-dev install-build install-auto venv \
         run run-gui run-console run-headless check discover windows say \
         test test-v test-one coverage mutation-smoke \
-        lint lint-src fmt typecheck validate-playlists fix-playlists validate-template validate-installer full-validation security-check config-check \
-        build build-clean sign build-all build-all-force build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
+        lint lint-src fmt typecheck validate-playlists fix-playlists validate-template validate-installer full-validation security-check config-check config version bump-patch changelog-check pre-commit ci docs \
+        build build-clean portable portable-zip sign build-all build-all-force build-all-linux build-all-hybrid trustsign package release installer installer-clean nsiswindows11 \
         validate-windows validate-windows-bat \
-        clean clean-all distclean \
-        config version bump-patch changelog-check pre-commit ci docs
+        clean clean-all distclean
 
 help:  ## Show this help
-	@echo "CamfrogAutoDJ -- make targets (Windows 11 + Linux/Wine)"
+	@echo "AutoDJ -- make targets (Windows 11 + Linux/Wine)"
 	@echo ""
 	@$(PY) -c "import re; [print(f'  \033[36m{m.group(1):<24}\033[0m {m.group(2)}') for line in open('$(firstword $(MAKEFILE_LIST))', encoding='utf-8') if (m := re.match(r'^([a-zA-Z0-9_.-]+):[^#]*##\s*(.*)', line))]"
 	@echo ""
@@ -290,6 +290,33 @@ ifeq ($(OS),Windows_NT)
 else
 	bash scripts/build_exe_linux.sh $(VERSION) $(BUILD_ARGS)
 endif
+
+portable:  ## Build the portable AutoDJ.exe distribution (dist/AutoDJ.exe + dist/mpv/, config.toml) — no installer
+ifeq ($(OS),Windows_NT)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -NoSign $(BUILD_ARGS)
+	@if not exist dist\AutoDJ.exe (echo ERROR: dist\AutoDJ.exe not found after build. & exit /b 1)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$$s=New-Object -ComObject WScript.Shell; $$e=(Resolve-Path 'dist\AutoDJ.exe').Path; $$d=(Resolve-Path 'dist').Path; $$c=$$s.CreateShortcut($$d+'\AutoDJ-Check.lnk'); $$c.TargetPath=$$e; $$c.Arguments='--check'; $$c.WorkingDirectory=$$d; $$c.Save(); $$c=$$s.CreateShortcut($$d+'\Start-AutoDJ.lnk'); $$c.TargetPath=$$e; $$c.Arguments='--gui'; $$c.WorkingDirectory=$$d; $$c.Save()" 2>nul
+	mpv\mpv-register.bat /S
+	python tools\make_client_shortcuts.py
+	@if exist dist-readme.txt copy dist-readme.txt dist\readme.txt >nul
+	@echo ""
+	@echo "=== Portable build complete ==="
+	@echo "Run: dist\start.bat      (double-click to open AutoDJ GUI)"
+	@echo "Check: dist\check.bat    (double-click to verify setup)"
+	@echo "Files: dist/AutoDJ.exe  dist/mpv/  dist/config.toml  dist/readme.txt"
+else
+	bash scripts/build_exe_linux.sh $(VERSION) $(BUILD_ARGS)
+	@if [ ! -f "dist/AutoDJ.exe" ]; then echo "ERROR: dist/AutoDJ.exe not found after build."; exit 1; fi
+	@echo ""
+	@echo "=== Portable build complete ==="
+	@echo "Run: dist/AutoDJ.exe --gui"
+	@echo "Files: dist/AutoDJ.exe  dist/mpv/  dist/config.toml"
+endif
+
+portable-zip: portable  ## Build portable dist and zip it for distribution (dist/camfrog-autodj-portable-<ver>.zip)
+	@mkdir -p dist
+	$(PY) -c "import zipfile, os, pathlib; z='dist/camfrog-autodj-portable-$(VERSION).zip'; base=pathlib.Path('dist'); zf=zipfile.ZipFile(z,'w',zipfile.ZIP_DEFLATED); [zf.write(p, os.path.relpath(p, base)) for p in base.rglob('*') if p.is_file()]; zf.close()"
+	@echo "Portable zip: dist/camfrog-autodj-portable-$(VERSION).zip"
 
 build-clean:  ## Clean build artifacts then rebuild
 ifeq ($(OS),Windows_NT)

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Complete all missing enterprise-grade features for CamfrogAutoDJ: Webhook/API integration, Plugin System, Performance Optimizations (persistent IPC, lock separation, batch cleanup), Enhanced Audit Logging, Dead Letter Queue, and documentation updates.
+**Goal:** Complete all missing enterprise-grade features for AutoDJ: Webhook/API integration, Plugin System, Performance Optimizations (persistent IPC, lock separation, batch cleanup), Enhanced Audit Logging, Dead Letter Queue, and documentation updates.
 
 **Architecture:** Modular, clean architecture with clear separation of concerns. New components follow existing patterns (async-friendly, thread-safe, observable). All changes maintain backward compatibility and zero-downtime reload capability.
 
@@ -161,7 +161,7 @@ def create_webhook_app(config: WebhookConfig, engine: Engine | None = None) -> F
     async def lifespan(app: FastAPI):
         yield
     
-    app = FastAPI(title="CamfrogAutoDJ Webhook", lifespan=lifespan)
+    app = FastAPI(title="AutoDJ Webhook", lifespan=lifespan)
     
     @app.get("/webhook/health")
     async def health():
@@ -1370,3 +1370,4 @@ git tag -s v0.4.0 -m "Release v0.4.0"
 - Config defaults keep new features disabled by default
 - Feature flags allow gradual rollout
 - Existing 472 tests must continue to pass
+

@@ -1,4 +1,4 @@
-"""Built-in plugins for CamfrogAutoDJ.
+"""Built-in plugins for AutoDJ.
 
 Exposes the built-in plugin classes so they can be imported both as
 ``autodj.plugins.builtin`` (package) and as submodules

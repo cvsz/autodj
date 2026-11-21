@@ -530,7 +530,7 @@ Access via **⚙️ Settings** button. All config.toml settings editable with:
 - Atomic save with `.bak` backup
 - Saving keeps keys the dialog does not show (`ai_*`, `auto_update_*`, `webhook_secret`, `voteskip_cooldown`, `log_json*`) instead of resetting them
 - Toggle for answering "what song?" questions in the room (`np_question_reply`)
-- Auto-relocation to `%APPDATA%\CamfrogAutoDJ\` if install dir not writable
+- Auto-relocation to `%APPDATA%\AutoDJ\` if install dir not writable
 - Live language switch for labels
 
 ---
@@ -584,7 +584,7 @@ AutoDJ.exe --console --lang th
 - **Default:** Console output (stdout/stderr)
 - **File:** Set `log_file = "autodj.log"` in config
 - **Rotation:** 1 MB × 3 files
-- **Location:** Relative paths resolve to `%APPDATA%\CamfrogAutoDJ\`
+- **Location:** Relative paths resolve to `%APPDATA%\AutoDJ\`
 
 ### Common Issues & Fixes
 
@@ -656,10 +656,10 @@ staging and can ship a stale config template. A developer's local `config.toml` 
 
 ### Installer Features
 
-- Per-user install to `%APPDATA%\CamfrogAutoDJ` (no admin)
+- Per-user install to `%APPDATA%\AutoDJ` (no admin)
 - Ships `config.toml` from `config.example.toml`; an existing `config.toml` is kept on upgrade
 - Writes the absolute bundled `mpv_path` / `ytdlp_path` into `config.toml` (`AutoDJ.exe --write-install-paths`)
-- Optional component: bundled mpv + yt-dlp in `%APPDATA%\CamfrogAutoDJ\mpv` (never `%APPDATA%\mpv`, which is mpv's own config folder)
+- Optional component: bundled mpv + yt-dlp in `%APPDATA%\AutoDJ\mpv` (never `%APPDATA%\mpv`, which is mpv's own config folder)
 - Closes a running AutoDJ / mpv started from the install folder before upgrading or uninstalling
 - Start Menu shortcuts (AutoDJ, Edit Config, Uninstall) and a Desktop shortcut
 - Ships `install.ps1` for VB-CABLE and other prerequisites (VB-CABLE is not bundled)
@@ -717,7 +717,7 @@ AutoDJ automatically migrates:
 
 | File | Default Location | Description |
 |------|------------------|-------------|
-| `config.toml` | `%APPDATA%\CamfrogAutoDJ\` | Main configuration |
+| `config.toml` | `%APPDATA%\AutoDJ\` | Main configuration |
 | `playlist.json` | Same as config | Persisted user requests |
 | `ads-list.json` | Same as config | Auto-reply messages |
 | `autodj.log` | Same as config | Rotating log file |

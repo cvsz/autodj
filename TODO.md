@@ -1,4 +1,4 @@
-# CamfrogAutoDJ Comprehensive Audit Fix & Optimization - Task Tracker
+# AutoDJ Comprehensive Audit Fix & Optimization - Task Tracker
 
 ## Tasks
 

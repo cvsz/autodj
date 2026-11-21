@@ -1,4 +1,4 @@
-# Library Scan Review — CamfrogAutoDJ
+# Library Scan Review — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -42,4 +42,5 @@ The Phase 3 requirement — "Never follow untrusted directory links outside perm
 ## Windows reparse-point note (BLOCKED)
 
 On Windows, `Path.is_symlink()` returns True for both symlinks and junctions (reparse points). The scan skips them, so reparse-point cycles cannot cause infinite recursion. This could not be executed on a Windows host in this environment; marked BLOCKED, not assumed.
+
 

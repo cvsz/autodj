@@ -1,4 +1,4 @@
-# Installer Review — CamfrogAutoDJ
+# Installer Review — AutoDJ
 
 **Repository:** github.com/cvsz/autodj  
 **Baseline SHA:** `fb5e99a`  
@@ -12,12 +12,12 @@
 
 ## Design (per installer.nsi and README)
 
-- Install directory: `%APPDATA%\CamfrogAutoDJ` (no admin rights required for the app).
+- Install directory: `%APPDATA%\AutoDJ` (no admin rights required for the app).
 - Upgrade behavior: in-place; existing `config.toml` preserved (not overwritten).
 - Uninstall: removes app-owned files only; keeps `config.toml`, `playlist.json`, logs, playlists, user data.
 - Shortcuts: Desktop, Start Menu, "Edit Config" (notepad), Uninstall.
 - Registry: HKCU Uninstall + App Paths (per-user), no HKLM.
-- Optional components: mpv + yt-dlp (`SEC_MPV`, installed to `$INSTDIR\mpv` = `%APPDATA%\CamfrogAutoDJ\mpv`). VB-CABLE is not bundled; `install.ps1` handles it.
+- Optional components: mpv + yt-dlp (`SEC_MPV`, installed to `$INSTDIR\mpv` = `%APPDATA%\AutoDJ\mpv`). VB-CABLE is not bundled; `install.ps1` handles it.
 - Config template: `scripts/build_installer.ps1` stages `config.example.toml` as `dist\config.toml` on every run; `installer.nsi` packages that file, never a local `config.toml`.
 - Media paths: `AutoDJ.exe --write-install-paths` writes `$INSTDIR\mpv\mpv.exe` / `yt-dlp.exe` into `config.toml` after install.
 - `MUI_FINISHPAGE_RUN` launches `AutoDJ.exe` after install.
@@ -38,3 +38,4 @@
 ## Verdict
 
 Installer design is sound and consistent across `installer.nsi`, `install.ps1`, and README. **Execution and real-install testing VERIFIED on Windows 11 host** — installer built and signed successfully.
+
