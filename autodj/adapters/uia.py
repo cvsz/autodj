@@ -32,6 +32,29 @@ def _keys_literal(text: str) -> str:
     return "".join("{%s}" % c if c in "+^%~(){}[]" else c for c in text)
 
 
+_IM_PREFIXES = ("IM ", "[IM]", "(IM)", "PM ", "Private:", "IM:")
+_IM_PREFIXES_LOWER = ("im from ", "private message from ")
+_STAMP_RE = re.compile(r"^\s*\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*")
+_IM_HEADER_MARK_RE = re.compile(r"(?:^|\s)(?:\[IM\]|\(IM\))(?:\s|$)")
+
+
+def _has_im_marker(line: str) -> bool:
+    """True when a room-history line is marked as an instant message.
+
+    The marker counts only in the line's *header* -- the optional ``H:MM``
+    stamp plus the nick, i.e. everything before the first ``": "``.  The
+    message body never counts: the bot's own room reply "... (IM) ..." used to
+    come back as an IM from the bot's own account, which then tried to answer
+    itself ("no open IM window for 'Seaza'") on every read.
+    """
+    rest = _STAMP_RE.sub("", line, count=1)
+    for s in (line, rest):
+        if s.startswith(_IM_PREFIXES) or s.lower().startswith(_IM_PREFIXES_LOWER):
+            return True
+    header = rest.split(": ", 1)[0] if ": " in rest else ""
+    return bool(_IM_HEADER_MARK_RE.search(header))
+
+
 class UiaAdapter(ChatAdapter):
     """Windows UI Automation. Two layouts:
     - web (Camfrog room window): history/message box are embedded-web panes, see webchat.py
@@ -83,13 +106,7 @@ class UiaAdapter(ChatAdapter):
         """A new room-history line as a ChatMessage (chat line, IM line or join notice)."""
         # Camfrog builds have used several IM markers over time.  Detect all of
         # them; a log record makes a new format easy to spot in the startup log.
-        low = line.lower()
-        is_im = (
-            line.startswith(("IM ", "[IM]", "(IM)", "PM ", "Private:", "IM:"))
-            or low.startswith(("im from ", "private message from "))
-            or "[IM]" in line
-            or " (IM) " in line
-        )
+        is_im = _has_im_marker(line)
         if is_im:
             log.info("IM detected: %r", line[:240])
         m = parse_line(line, self.rx, is_im=is_im)

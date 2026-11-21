@@ -1,3 +1,8 @@
+## Unreleased
+
+- **The bot no longer answers its own room reply as an IM** — any room line containing ` (IM) ` or `[IM]` *anywhere* was treated as an instant message, so the bot's own reply "ขอเพลงผ่านข้อความส่วนตัว (IM) ได้เลยครับ" ("request songs via private message (IM)") came back as an IM from the bot's Camfrog account, which then tried to answer itself (`no open IM window for 'Seaza'`) on every read. The marker now counts only in the line header (stamp + nick, before the first `": "`), never in the message body.
+- **Auto-discover no longer saves the room list as the room** — with the room window closed, Camfrog's room list ("รายชื่อห้องสนทนา": a list plus a search box) passed as a room with 0 chat lines and overwrote a working `window_title_re`; every send then failed with `no pane titled like 'wb-log-room-data'`. A classic window needs at least one chat line now; with no room found, `config.toml` is left unchanged. If an install already saved `window_title_re = 'รายชื่อห้องสนทนา'`, set it back to the room title (or open the room window and run `AutoDJ.exe --discover`).
+
 ## 0.3.10 — 2026-11-20
 
 ### Audit fixes

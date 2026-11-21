@@ -87,6 +87,13 @@ def score_window(title: str, ctls: list[Ctl], rx: re.Pattern) -> Found | None:
     view, matched = choose_view(ctls, rx)
     if view is None:
         return None
+    if matched == 0:
+        # A Document + Edit without a single chat line is not evidence of a room:
+        # Camfrog's room list ("รายชื่อห้องสนทนา") has exactly that shape (list +
+        # search box).  Accepting it made auto-discover overwrite a working
+        # window_title_re with the room list whenever the room window was closed,
+        # and the bot then failed every send ("no pane titled like 'wb-log-room-data'").
+        return None
     inp = choose_input(ctls, view)
     if inp is None:
         return None
