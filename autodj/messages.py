@@ -64,10 +64,10 @@ STR = {
         "blocked_state": "Blocked: {nick}",
         "unblocked_state": "Unblocked: {nick}",
         "cannot_block_admin": "cannot block an admin",
-        # Mic mute / unmute
-        "mute_on": "Mic muted.",
-        "mute_off": "Mic unmuted.",
-        "mute_state": "Mic state: {s}",
+        # !mute / !unmute silence AutoDJ's music (player volume 0); the Camfrog mic is not touched
+        "mute_on": "Music muted.",
+        "mute_off": "Music unmuted.",
+        "mute_state": "Music: {s}",
         # Block / unblock bot
         "block_bot_usage": "usage: {p}blockbot <nick>",
         "unblock_bot_usage": "usage: {p}unblockbot <nick>",
@@ -241,7 +241,7 @@ STR = {
         "g_settings_line_regex": "Chat line regex",
         "g_settings_log_file": "Log file path",
         "g_settings_log_path": "Chat log file path",
-        "g_settings_mute_enabled": "Microphone muted state",
+        "g_settings_mute_enabled": "Music muted (!mute)",
         "g_settings_config_hot_reload": "Config hot reload (auto-reload on file change)",
         "g_settings_welcome_message_cooldown": "Welcome message cooldown (seconds, min 60)",
         "g_settings_welcome_message_delay": "Welcome message delay (seconds, 0-3600)",
@@ -369,10 +369,10 @@ STR = {
         "blocked_state": "บล็อกแล้ว: {nick}",
         "unblocked_state": "เลิกบล็อกแล้ว: {nick}",
         "cannot_block_admin": "บล็อกแอดมินไม่ได้",
-        # Mic mute / unmute
-        "mute_on": "ปิดไมโครโฟนแล้ว",
-        "mute_off": "เปิดไมโครโฟนแล้ว",
-        "mute_state": "สถานะไมโครโฟน: {s}",
+        # !mute / !unmute ปิด/เปิดเสียงเพลงของ AutoDJ (ไม่ได้ปิดไมค์ Camfrog)
+        "mute_on": "ปิดเสียงเพลงแล้ว",
+        "mute_off": "เปิดเสียงเพลงแล้ว",
+        "mute_state": "สถานะเสียงเพลง: {s}",
         # Block / unblock bot
         "block_bot_usage": "วิธีใช้: {p}บล็อกบอท <ชื่อ>",
         "unblock_bot_usage": "วิธีใช้: {p}เลิกบล็อกบอท <ชื่อ>",
@@ -546,7 +546,7 @@ STR = {
         "g_settings_line_regex": "นิพจน์ปกติบรรทัดแชท",
         "g_settings_log_file": "เส้นทางไฟล์บันทึก",
         "g_settings_log_path": "เส้นทางไฟล์บันทึกแชท",
-        "g_settings_mute_enabled": "สถานะไมโครโฟนถูกปิด",
+        "g_settings_mute_enabled": "ปิดเสียงเพลงอยู่ (!mute)",
         "g_settings_config_hot_reload": "โหลดการตั้งค่าอัตโนมัติเมื่อไฟล์เปลี่ยนแปลง",
         "g_settings_welcome_message_cooldown": "คูลดาวน์ข้อความต้อนรับ (วินาที, ขั้นต่ำ 60)",
         "g_settings_welcome_message_delay": "หน่วงเวลาข้อความต้อนรับ (วินาที, 0-3600)",

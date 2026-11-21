@@ -387,7 +387,7 @@ mic_greeting_cooldown = 300.0      # วินาทีระหว่างก�
 ### Admin Command Gating (Config-gated Features)
 
 ```toml
-# Admin mic mute/unmute
+# แอดมิน !mute / !unmute: ปิด/เปิดเสียงเพลงของ AutoDJ (ตั้งระดับเสียงเป็น 0) ไม่ได้ปิดไมค์ Camfrog
 admin_mute_mic = true
 admin_unmute_mic = true
 
@@ -411,7 +411,7 @@ admin_punish_bot = true
 # Admin delete message
 admin_delete_message_enabled = true
 
-# Mic mute state
+# สถานะปิดเสียงเพลง (ตั้งโดย !mute)
 mute_enabled = false
 ```
 

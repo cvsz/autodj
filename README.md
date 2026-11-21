@@ -82,7 +82,7 @@ Highlights: **Enterprise-grade exception hierarchy** with structured error codes
 6. **New Thai Aliases**: `!ขอเพลง` (request song), `!เล่นเพลง` (play song).
 7. **Auto-Reply**: Every 60 seconds (1 minute) from `ads-list.json` (configurable `auto_reply_interval`, min 60s).
 8. **REA Reverse Engineering**: Documented Camfrog font logic (GDI imports, chat/IM font settings, HTML rendering for display only).
-9. **Mic Mute/Unmute**: Admin commands `!mute` / `!unmute` to mute/unmute the mic (config-gated: `admin_mute_mic`, `admin_unmute_mic`).
+9. **Music Mute/Unmute**: Admin commands `!mute` / `!unmute` silence / restore AutoDJ's music by setting the player volume to 0 and back. They do not mute the Camfrog microphone (config-gated: `admin_mute_mic`, `admin_unmute_mic`; the key names are kept for compatibility).
 10. **Block/Unblock Bot**: Admin commands `!blockbot` / `!unblockbot` to block/unblock bots (config-gated: `admin_block_bot`, `admin_unblock_bot`).
 11. **Kick/Ban/Unban User**: Admin commands `!kick` / `!ban` / `!unban` (config-gated: `admin_kick_user`, `admin_ban_user`, `admin_unban_user`).
 12. **Punish User/Bot**: Admin commands `!punish` / `!punishbot` (config-gated: `admin_punish_user`, `admin_punish_bot`).

@@ -44,7 +44,7 @@ input_type = "Edit"
 input_index = -1
 
 # Log file (optional, for logtail reader or additional logging)
-log_path = "$APPDATA/logs/chatlog.log" # Also write chat log to this file (rotating, 1 MB x 3)
+log_path = "" # Camfrog chat log to READ when chat_reader = "logtail" (unused with "uia")
 log_encoding = "utf-8" # Log file encoding
 
 # Line parsing regex for logtail reader (must have named groups: user, text)
@@ -129,7 +129,7 @@ im_require_room_presence = true # Only users seen in room chat can DM the bot
 allow_play_in_room = true # Song requests in room chat too (IM works for users in the room); false = IM only
 
 # --- Logging -----------------------------------------------------------------
-log_file = "$APPDATA/logs/autodj.log" # Log file (rotating, 1 MB x 3). Relative names go to <install>/logs/ (APPDATA fallback). Empty = default autodj.log there.
+log_file = "" # Log file (rotating, 1 MB x 3). Relative names go to <install>/logs/ (APPDATA fallback). Empty = default autodj.log there.
 # Relative paths are resolved to %APPDATA%/AutoDJ/ so they are
 # writable even when AutoDJ is installed to Program Files.
 
