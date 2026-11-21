@@ -77,6 +77,8 @@ $staged = @{
     "README.md"           = "README.md"
     "CHANGELOG.md"        = "CHANGELOG.md"
     "LICENSE"             = "LICENSE"
+    # installer.nsi packages dist\readme.txt (the Makefile's portable target copies it too)
+    "dist-readme.txt"     = "readme.txt"
 }
 foreach ($src in $staged.Keys) {
     if (-not (Test-Path $src -PathType Leaf)) {
@@ -84,6 +86,16 @@ foreach ($src in $staged.Keys) {
     }
     Copy-Item $src (Join-Path $SrcDir $staged[$src]) -Force
     Write-Host "  Staged: $src -> $SrcDir\$($staged[$src])"
+}
+
+# installer.nsi packages dist\start.bat and dist\check.bat.  Only `make portable`
+# created them, so a CI / release build (build.ps1 + this script) aborted with
+# 'File: "dist\start.bat" -> no files found'.  Generate them here, from the same tool.
+if (Test-Path (Join-Path $SrcDir "AutoDJ.exe") -PathType Leaf) {
+    & python tools\make_client_shortcuts.py $SrcDir
+    if ($LASTEXITCODE -ne 0) {
+        throw "tools\make_client_shortcuts.py failed (exit $LASTEXITCODE)"
+    }
 }
 
 # Verify source files exist

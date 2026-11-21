@@ -30,7 +30,9 @@
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
 !define /IfNDef APP_EXE "AutoDJ.exe"
-!define /IfNDef INSTALLER_NAME "AutoDJ-Setup-${APP_VERSION}.exe"
+; Keep in step with scripts/build_installer.ps1, windows-build.yml and release.yml,
+; which all look for Camfrog-AutoDJ-Setup-<version>.exe (tests/test_im_detect_discover.py).
+!define /IfNDef INSTALLER_NAME "Camfrog-AutoDJ-Setup-${APP_VERSION}.exe"
 ; Directory the finished installer is written to (build scripts pass /DOUTDIR=...).
 ; Relative paths resolve against the makensis working directory (repo root).
 !define /IfNDef OUTDIR "."

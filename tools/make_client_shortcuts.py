@@ -1,13 +1,15 @@
-"""Create client-friendly launchers in dist/ (relative-path batch files + .lnk shortcuts)."""
+"""Create client-friendly launchers in dist/ (relative-path batch files + .lnk shortcuts).
+
+Usage: python tools/make_client_shortcuts.py [DIST_DIR]   (default: dist)
+"""
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-DIST = Path("dist")
 
-
-def make_batch(name: str, args: str) -> None:
+def make_batch(dist: Path, name: str, args: str) -> None:
     """Write a batch file that launches AutoDJ.exe with relative paths."""
     content = f"""@echo off
 rem AutoDJ - {args.strip() or "gui"}
@@ -15,22 +17,24 @@ rem Double-click to run. Works from any location.
 cd /d "%~dp0"
 start "" "AutoDJ.exe" {args}
 """
-    (DIST / name).write_text(content, encoding="utf-8")
+    (dist / name).write_text(content, encoding="utf-8")
 
 
-def main() -> None:
-    if not DIST.is_dir():
-        print("ERROR: dist/ not found. Run 'make portable' or 'portable.bat' first.")
+def main(argv: list[str] | None = None) -> None:
+    args = sys.argv[1:] if argv is None else argv
+    dist = Path(args[0]) if args else Path("dist")
+    if not dist.is_dir():
+        print(f"ERROR: {dist}/ not found. Run 'make portable' or 'portable.bat' first.")
         raise SystemExit(1)
-    if not (DIST / "AutoDJ.exe").is_file():
-        print("ERROR: dist/AutoDJ.exe not found.")
+    if not (dist / "AutoDJ.exe").is_file():
+        print(f"ERROR: {dist}/AutoDJ.exe not found.")
         raise SystemExit(1)
 
-    make_batch("start.bat", "--gui")
-    make_batch("check.bat", "--check")
+    make_batch(dist, "start.bat", "--gui")
+    make_batch(dist, "check.bat", "--check")
 
-    print("Created dist/start.bat   (double-click to run AutoDJ GUI)")
-    print("Created dist/check.bat   (double-click to verify setup)")
+    print(f"Created {dist}/start.bat   (double-click to run AutoDJ GUI)")
+    print(f"Created {dist}/check.bat   (double-click to verify setup)")
 
 
 if __name__ == "__main__":
