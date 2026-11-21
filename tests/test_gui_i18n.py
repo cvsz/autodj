@@ -349,4 +349,3 @@ def test_discover_web_updates():
 
     ups = to_updates(Found("ZeaZDev: x", Ctl("Pane", 0), Ctl("Pane", 0), 3, web=True))
     assert ups["view_kind"] == "web" and "window_title_re" in ups
-

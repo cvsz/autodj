@@ -10,7 +10,7 @@ DIST = Path("dist")
 def make_batch(name: str, args: str) -> None:
     """Write a batch file that launches AutoDJ.exe with relative paths."""
     content = f"""@echo off
-rem AutoDJ - {args.strip() or 'gui'}
+rem AutoDJ - {args.strip() or "gui"}
 rem Double-click to run. Works from any location.
 cd /d "%~dp0"
 start "" "AutoDJ.exe" {args}
@@ -35,4 +35,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
