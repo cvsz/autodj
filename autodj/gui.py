@@ -2659,6 +2659,14 @@ class App(tk.Tk):
         self.s_mic_greeting_cooldown.insert(0, str(self.e.cfg.mic_greeting_cooldown))
         _setting_row("g_settings_mic_greeting_cooldown", self.s_mic_greeting_cooldown)
 
+        # mic_notice_senders / mic_greeting_ignore (comma-separated nicks)
+        self.s_mic_notice_senders = self._entry(sp_inner)
+        self.s_mic_notice_senders.insert(0, ", ".join(self.e.cfg.mic_notice_senders))
+        _setting_row("g_settings_mic_notice_senders", self.s_mic_notice_senders)
+        self.s_mic_greeting_ignore = self._entry(sp_inner)
+        self.s_mic_greeting_ignore.insert(0, ", ".join(self.e.cfg.mic_greeting_ignore))
+        _setting_row("g_settings_mic_greeting_ignore", self.s_mic_greeting_ignore)
+
         # join_line_regex: room notice that someone entered (greets them on arrival)
         self.s_join_line_regex = self._entry(sp_inner)
         self.s_join_line_regex.insert(0, self.e.cfg.join_line_regex)
@@ -3994,6 +4002,22 @@ class App(tk.Tk):
             lines.append(f"mic_greeting_enabled = {str(cfg.mic_greeting_enabled).lower()}")
             lines.append(f"mic_greeting_message = {_toml_str(cfg.mic_greeting_message)}")
             lines.append(f"mic_greeting_cooldown = {cfg.mic_greeting_cooldown}")
+            cfg.mic_notice_senders = [
+                s.strip() for s in self.s_mic_notice_senders.get().split(",") if s.strip()
+            ]
+            cfg.mic_greeting_ignore = [
+                s.strip() for s in self.s_mic_greeting_ignore.get().split(",") if s.strip()
+            ]
+            lines.append(
+                "mic_notice_senders = ["
+                + ", ".join(_toml_str(s) for s in cfg.mic_notice_senders)
+                + "]"
+            )
+            lines.append(
+                "mic_greeting_ignore = ["
+                + ", ".join(_toml_str(s) for s in cfg.mic_greeting_ignore)
+                + "]"
+            )
             cfg.join_line_regex = self.s_join_line_regex.get().strip()
             lines.append(f"join_line_regex = {_toml_str(cfg.join_line_regex)}")
 
