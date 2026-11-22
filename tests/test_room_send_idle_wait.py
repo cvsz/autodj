@@ -54,6 +54,19 @@ def test_unknown_idle_time_never_blocks(monkeypatch):
 
 
 def test_send_fg_waits_before_taking_the_focus(monkeypatch):
+    import sys
+    import types
+
+    # hermetic: never import the real pywinauto/pyperclip (comtypes code generation)
+    monkeypatch.setitem(
+        sys.modules,
+        "pyperclip",
+        types.SimpleNamespace(paste=lambda: "", copy=lambda v: None, PyperclipException=Exception),
+    )
+    kb = types.ModuleType("pywinauto.keyboard")
+    kb.send_keys = lambda *a, **kw: None  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "pywinauto", types.ModuleType("pywinauto"))
+    monkeypatch.setitem(sys.modules, "pywinauto.keyboard", kb)
     calls = []
     monkeypatch.setattr(
         uia,

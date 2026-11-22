@@ -111,6 +111,32 @@ def _press_ctrl_v() -> None:
     u32.keybd_event(vk_control, 0, keyup, 0)
 
 
+def _bring_to_front(u32, handle: int) -> None:
+    """BringWindowToTop + SetForegroundWindow while attached to the input queue of
+    the current foreground window.
+
+    Windows refuses SetForegroundWindow from a background process for the
+    foreground lock time-out (200 s by default) after the user's last input: live
+    2026-11-23 every send failed with "could not be brought to the front" while
+    the operator worked in a terminal.  Attaching to the foreground thread's input
+    queue for the call is the documented way around the lock; no key is pressed.
+    """
+    import threading
+
+    fg = u32.GetForegroundWindow()
+    fg_thread = u32.GetWindowThreadProcessId(fg, None) if fg and fg != handle else 0
+    me = threading.get_native_id()
+    attached = (
+        bool(fg_thread) and fg_thread != me and bool(u32.AttachThreadInput(me, fg_thread, True))
+    )
+    try:
+        u32.BringWindowToTop(handle)
+        u32.SetForegroundWindow(handle)
+    finally:
+        if attached:
+            u32.AttachThreadInput(me, fg_thread, False)
+
+
 def _focus_target(handle: int, x: int, y: int, what: str) -> None:
     """Make *handle* the foreground window and check that (x, y) belongs to it.
 
@@ -129,8 +155,7 @@ def _focus_target(handle: int, x: int, y: int, what: str) -> None:
         u32.ShowWindow(handle, 9)  # SW_RESTORE
     deadline = time.monotonic() + 2.0
     while u32.GetForegroundWindow() != handle and time.monotonic() < deadline:
-        u32.BringWindowToTop(handle)
-        u32.SetForegroundWindow(handle)
+        _bring_to_front(u32, handle)
         time.sleep(0.1)
     if u32.GetForegroundWindow() != handle:
         raise RuntimeError(f"{what} could not be brought to the front; nothing typed")
@@ -619,15 +644,10 @@ class UiaAdapter(ChatAdapter):
         except (pyperclip.PyperclipException, OSError):
             old_clip = None
         try:
-            try:
-                if self.win.is_minimized():
-                    self.win.restore()
-            except (RuntimeError, AttributeError):
-                pass  # window may have closed; the checks below decide
-            try:
-                self.win.set_focus()  # keystrokes go to the foreground window
-            except (RuntimeError, AttributeError, OSError):
-                pass  # _focus_target() decides
+            # No pywinauto restore()/set_focus(): they are cross-process UIA calls, and
+            # UIA SetFocus blocked the sender thread for good when Windows refused the
+            # focus (live 2026-11-23: no room message after 02:27:49).  _focus_target()
+            # restores and raises the window with plain Win32 calls that never block.
             # _ensure_controls() guarantees self._input is not None here
             if self._input is None:  # explicit check: asserts are stripped under python -O
                 raise RuntimeError("_ensure_controls must be called before _send_fg")
@@ -721,14 +741,10 @@ class UiaAdapter(ChatAdapter):
         try:
             if u32.IsIconic(handle):
                 u32.ShowWindow(handle, 9)  # SW_RESTORE
-            try:
-                win.set_focus()
-            except (RuntimeError, AttributeError, OSError):
-                pass  # the checks below decide
+            # (no UIA win.set_focus(): it can block forever, see _send_fg)
             deadline = time.monotonic() + 2.0
             while u32.GetForegroundWindow() != handle and time.monotonic() < deadline:
-                u32.BringWindowToTop(handle)
-                u32.SetForegroundWindow(handle)
+                _bring_to_front(u32, handle)
                 time.sleep(0.1)
             if u32.GetForegroundWindow() != handle:
                 raise RuntimeError("IM window could not be brought to the front; nothing typed")

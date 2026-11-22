@@ -32,6 +32,7 @@ class _User32:
         self.can_focus = can_focus
         self.root_at_point = root_at_point
         self.kbd: list[tuple[int, int]] = []
+        self.attach_calls: list[tuple[int, bool]] = []
         self.on_paste = None  # called when V goes down (Ctrl+V)
 
     def keybd_event(self, vk, scan, flags, extra):
@@ -43,6 +44,13 @@ class _User32:
         return False
 
     def ShowWindow(self, h, n):
+        return True
+
+    def GetWindowThreadProcessId(self, h, pid):
+        return 4242 if h == OTHER else 1
+
+    def AttachThreadInput(self, a, b, attach):
+        self.attach_calls.append((b, attach))
         return True
 
     def BringWindowToTop(self, h):
@@ -117,7 +125,10 @@ def _adapter_for_fg(monkeypatch, keys: list[str]):
     rect = types.SimpleNamespace(left=0, top=0, right=20, bottom=20)
     a._input = types.SimpleNamespace(rectangle=lambda: rect, click_input=lambda: None)
     a.win = types.SimpleNamespace(
-        handle=ROOM, is_minimized=lambda: False, restore=lambda: None, set_focus=lambda: None
+        handle=ROOM,
+        is_minimized=lambda: pytest.fail("UIA is_minimized() must not be called"),
+        restore=lambda: pytest.fail("UIA restore() must not be called"),
+        set_focus=lambda: pytest.fail("UIA set_focus() can block forever: must not be called"),
     )
     return a, clip
 
@@ -200,3 +211,11 @@ def test_ctrl_v_does_not_depend_on_the_keyboard_layout(user32):
     """VkKeyScanW('v') is -1 with the Thai layout; the VK code 0x56 is not."""
     uia._press_ctrl_v()
     assert user32.kbd == [(0x11, 0), (0x56, 0), (0x56, 2), (0x11, 2)]
+
+
+def test_focus_attaches_to_the_foreground_thread_and_detaches(user32):
+    """Foreground lock: attach to the foreground thread's input queue, then detach."""
+    user32.can_focus = True
+    uia._focus_target(ROOM, 10, 10, "Camfrog room window")
+    assert user32.front == ROOM
+    assert user32.attach_calls == [(4242, True), (4242, False)]
