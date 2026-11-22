@@ -238,7 +238,8 @@ def _create_mutex(name: str) -> tuple[object, bool]:
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
     k32.CreateMutexW.restype = ctypes.c_void_p
     handle = k32.CreateMutexW(None, False, name)
-    return handle, ctypes.get_last_error() == 183  # ERROR_ALREADY_EXISTS
+    already = ctypes.get_last_error() == 183  # type: ignore[attr-defined]  # ERROR_ALREADY_EXISTS
+    return handle, already
 
 
 def _single_instance(config_path: str) -> bool:
