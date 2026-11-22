@@ -32,6 +32,19 @@ _WEB_FOCUS_DELAY = 0.5
 _WEB_PASTE_DELAY = 0.3
 
 
+class RoomHiddenError(RuntimeError):
+    """Camfrog's window shows another page (the room list, another tab): there is
+    no room chat to read or type into until the room tab is selected again."""
+
+
+def _window_title(handle: int) -> str:
+    import ctypes
+
+    buf = ctypes.create_unicode_buffer(512)
+    ctypes.windll.user32.GetWindowTextW(handle, buf, 512)  # type: ignore[attr-defined]
+    return buf.value
+
+
 def _press_ctrl_v() -> None:
     """Press Ctrl+V by virtual-key code, whatever the keyboard layout.
 
@@ -122,6 +135,17 @@ class UiaAdapter(ChatAdapter):
     - text: plain Document/Edit controls chosen by view_type/view_index, input_type/input_index
     view_kind = auto | web | text. `AutoDJ.exe --discover` fills in what it finds."""
 
+    # Web room chat: the window title seen when the chat panes were found.  Camfrog
+    # shows the room list (or another tab) in the same window; the cached panes
+    # then still answer with the old room's text and position, so a changed title
+    # means "look the panes up again" (see _check_room_shown).  Class-level
+    # defaults so subclasses and test doubles that skip __init__ keep working.
+    _web_room: bool = False
+    _room_title: str | None = None
+    _room_hidden: bool = False
+    _hidden_title: str | None = None
+    _hidden_checked: float = 0.0
+
     def __init__(self, cfg):
         self.cfg = cfg
         self.rx = re.compile(cfg.line_regex)
@@ -150,6 +174,11 @@ class UiaAdapter(ChatAdapter):
         self._web = False
         self._bg_fails = 0  # consecutive unconfirmed background sends (auto mode only)
         self._bg_fails_lock = threading.Lock()  # protects _bg_fails across reader/sender threads
+        self._web_room = False
+        self._room_title = None
+        self._room_hidden = False
+        self._hidden_title = None
+        self._hidden_checked = 0.0
         self._attach()
 
     def _attach(self):
@@ -212,6 +241,8 @@ class UiaAdapter(ChatAdapter):
             view, inp = find_web_panes(self.win, self.cfg.web_view_title, self.cfg.web_input_title)
             if view is not None:
                 self._web, self._view, self._input = True, view, inp
+                self._web_room = True
+                self._room_title = _window_title(self.handle)
                 log.info(
                     "chat: web view found (message box %s)",
                     "found" if inp is not None else "MISSING",
@@ -238,9 +269,50 @@ class UiaAdapter(ChatAdapter):
         else:
             log.debug("UIA adapter test_connection: OK (no lines yet)")
 
+    def _check_room_shown(self) -> None:
+        """Raise RoomHiddenError unless the window still shows the room chat.
+
+        Live 2026-11-22: Camfrog switched to its room list (same window, title
+        'รายชื่อห้องสนทนา') and for 5 h every send clicked and pasted into that
+        page through the cached message-box position, while the reader kept
+        re-reading the cached history pane.  Same title: nothing to do (one
+        GetWindowTextW).  Changed title (room list, another tab, a new topic):
+        the panes are looked up again; none found -> RoomHiddenError.
+        """
+        title = _window_title(self.handle)
+        if self._view is not None and title == self._room_title:
+            return
+        now = time.monotonic()
+        if self._room_hidden and title == self._hidden_title and now - self._hidden_checked < 5.0:
+            raise RoomHiddenError(f"Camfrog shows {title!r}, not the room chat")
+        from ..webchat import find_web_panes
+
+        if self.win is None:
+            self._attach()
+        view, inp = find_web_panes(self.win, self.cfg.web_view_title, self.cfg.web_input_title)
+        if view is not None:
+            self._web, self._view, self._input = True, view, inp
+            self._room_title = title
+            if self._room_hidden:
+                log.info("room chat is shown again (%r): reading and sending resume", title)
+                self._room_hidden = False
+            return
+        self._view = self._input = None  # stale panes of the hidden room page
+        self._hidden_title, self._hidden_checked = title, now
+        if not self._room_hidden:
+            log.warning(
+                "Camfrog shows %r instead of the room chat: nothing is read from or "
+                "typed into the room until its tab is selected again",
+                title,
+            )
+            self._room_hidden = True
+        raise RoomHiddenError(f"Camfrog shows {title!r}, not the room chat")
+
     def _lines(self) -> list[str]:
         with self.com_lock:
-            if self._view is None:
+            if self._web_room:
+                self._check_room_shown()
+            elif self._view is None:
                 self._resolve()
             if self._web:
                 from ..webchat import read_web
@@ -366,31 +438,38 @@ class UiaAdapter(ChatAdapter):
         self._im_not_im &= live
         return out
 
+    def _room_events(self, prev: list[str] | None, lines: list[str]):
+        """ChatMessages for one room read: the first read only reports who is present."""
+        if prev is None:
+            # First read: the history is a baseline and is never replayed, but
+            # the people in it are (most likely) still in the room.  Without
+            # this, after a restart everyone already present counted as "not
+            # in the room" until they spoke again, and their IM requests were
+            # refused (im_require_room_presence).
+            for nick in self._recent_nicks(lines):
+                yield ChatMessage(nick, "", event="seen")
+            return
+        for line in diff_lines(prev, lines):
+            m = self._room_line_message(line)
+            if m:
+                yield m
+
     def messages(self):
         prev = None
         while True:
             try:
-                lines = self._lines()
+                lines: list[str] | None = self._lines()
+            except RoomHiddenError:
+                lines = None  # room page not shown: keep the baseline, still read IMs
             except (OSError, RuntimeError) as e:
                 log.debug("chat read failed: %s", e)
                 with self.com_lock:  # protect _view/win against reader/sender race
                     self._view = self.win = None  # drop everything: the next poll re-attaches fresh
                 time.sleep(1)
                 continue
-            if prev is None:
-                # First read: the history is a baseline and is never replayed, but
-                # the people in it are (most likely) still in the room.  Without
-                # this, after a restart everyone already present counted as "not
-                # in the room" until they spoke again, and their IM requests were
-                # refused (im_require_room_presence).
-                for nick in self._recent_nicks(lines):
-                    yield ChatMessage(nick, "", event="seen")
-            else:
-                for line in diff_lines(prev, lines):
-                    m = self._room_line_message(line)
-                    if m:
-                        yield m
-            prev = lines  # first poll only sets the baseline: old history is never replayed
+            if lines is not None:
+                yield from self._room_events(prev, lines)
+                prev = lines  # first poll only sets the baseline: old history is never replayed
             # Private messages live in a different web pane; read them too.
             try:
                 for im in self._im_lines():
@@ -645,6 +724,8 @@ class UiaAdapter(ChatAdapter):
         """
         mode = self.cfg.send_mode
         try:
+            if self._web_room:
+                self._check_room_shown()  # never type into the room list / another tab
             self._ensure_controls()
             if mode in ("auto", "background"):
                 decision = self._attempt_background_send(text, mode)
