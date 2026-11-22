@@ -812,7 +812,9 @@ def _ai_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
         base = e.t("help_base", p=e.cfg.prefix)
         admin_cmds = e.t("help_admin", p=e.cfg.prefix)
         text = e.t("ai_help", p=e.cfg.prefix, base=base, admin=admin_cmds, BOT=e.cfg.bot_nick)
-        e.send_im(m.user, text)
+        if not e.send_im(m.user, text):
+            # Live 2026-11-23: with no IM window open the help was dropped silently
+            raise UserError(e.t("ai_help_no_im", p=e.cfg.prefix))
         return
 
     if arg == "on":

@@ -304,6 +304,7 @@ STR = {
         "ai_ask_usage": "usage: {p}ai ask <question>",
         "ai_busy": "the AI is busy, please ask again in a moment",
         "ai_wait": "please wait a little before asking the AI again",
+        "ai_help_no_im": "could not send it by IM: open a private chat (IM) with me first, then type {p}ai help again",
         # Chatbot templates (i18n)
         "chatbot_welcome": "Hello! I'm AutoDJ, your music bot. Use !help to see commands, or just chat with me.",
         "chatbot_ai_enabled": "AI answers are on: ask with the ai ask command.",
@@ -616,6 +617,7 @@ STR = {
         "ai_ask_usage": "วิธีใช้: {p}เอไอ ถาม <คำถาม>",
         "ai_busy": "AI กำลังตอบคนอื่นอยู่ ลองถามใหม่อีกสักครู่",
         "ai_wait": "รอสักครู่ก่อนถาม AI อีกครั้ง",
+        "ai_help_no_im": "ส่งทาง IM ไม่ได้: เปิดแชทส่วนตัว (IM) กับบอทก่อน แล้วพิมพ์ {p}เอไอ help อีกครั้ง",
         # Chatbot templates (i18n)
         "chatbot_welcome": "สวัสดีค่ะ! ฉันคือ AutoDJ บอทเพลงของคุณ ใช้ !help เพื่อดูคำสั่ง หรือแชทกับฉันได้เลย",
         "chatbot_ai_enabled": "เปิดการตอบด้วย AI แล้ว: ถามได้ด้วยคำสั่ง เอไอ ถาม",

@@ -136,3 +136,14 @@ def test_client_unfinished_reasoning_is_no_answer(monkeypatch):
         c, "_post_json", lambda u, p: {"choices": [{"message": {"content": "<think>cut off"}}]}
     )
     assert c.chat("hi") is None
+
+
+def test_help_without_im_window_tells_the_user():
+    """Live 2026-11-23: `!ai help` with no IM window open was dropped silently."""
+    e = _engine()
+    e.send_im.return_value = False
+    with pytest.raises(UserError, match="ai_help_no_im"):
+        commands._ai_command(e, _msg(), "help", True)
+    e.send_im.return_value = True
+    commands._ai_command(e, _msg(), "help", True)  # sent: nothing posted in the room
+    e.say.assert_not_called()
