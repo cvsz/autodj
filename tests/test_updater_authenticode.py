@@ -130,8 +130,9 @@ def test_powershell_failure_fails_closed(monkeypatch):
 
 
 def test_non_windows_fails_closed(monkeypatch):
+    exe = Path("/tmp/AutoDJ.next.exe")  # build before patching os.name
     monkeypatch.setattr(upd.os, "name", "posix")
-    assert verify_authenticode(Path("/tmp/AutoDJ.next.exe"))[0] is False
+    assert verify_authenticode(exe)[0] is False
 
 
 # ---- real PowerShell (Windows only) ---------------------------------------------------------

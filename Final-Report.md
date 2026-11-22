@@ -99,6 +99,7 @@ Each item has a regression test unless marked *live-only*. "PR" is where the fix
 | Build | `make build` (PyInstaller + signtool) | PASS: `AutoDJ.exe` 0.3.11.0, Authenticode **Valid**, `CN=ZEAZDEV COMPANY LIMITED`, DigiCert timestamp |
 | Commit signatures | `git verify-commit` on every new commit | Good signature (`cvsz <seaza@msn.com>`) |
 | CI (GitHub) | #267/#268/#269 runs | 23/23 (#269 had one flaky GUI test on ubuntu/3.15, green on re-run) |
+| CI (GitHub) | release PR #270 | Round 1: mypy `attr-defined` on `ctypes.get_last_error` (Linux stubs) → `type: ignore`, verified with `mypy --platform linux`. Round 2: 9 Linux failures "cannot instantiate 'WindowsPath'" in `test_updater_authenticode.py` (tests patch `os.name`) → `updater` builds the PowerShell path with `os.path.join`; tests create `Path` objects before patching. Round 3: the mirror case on Windows/3.11 ("cannot instantiate 'PosixPath'") → same fix in `test_non_windows_fails_closed`. Final head: all required checks green (see §8) |
 
 `--basetemp` is required on this host: the default `pytest-of-cvsz` temp directory is access-denied.
 
