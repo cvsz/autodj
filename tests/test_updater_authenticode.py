@@ -96,9 +96,10 @@ def _fake_ps(stdout: str):
     ],
 )
 def test_verify_authenticode_decision(monkeypatch, stdout, ok):
+    exe = Path("C:/x/AutoDJ.next.exe")  # before os.name is patched (no WindowsPath on Linux)
     monkeypatch.setattr(upd.os, "name", "nt")
     monkeypatch.setattr(upd.subprocess, "run", _fake_ps(stdout))
-    assert verify_authenticode(Path("C:/x/AutoDJ.next.exe"))[0] is ok
+    assert verify_authenticode(exe)[0] is ok
 
 
 def test_path_reaches_powershell_only_through_env(monkeypatch):
@@ -109,21 +110,23 @@ def test_path_reaches_powershell_only_through_env(monkeypatch):
         captured["env"] = kw["env"]
         return subprocess.CompletedProcess(argv, 0, stdout="NotSigned|", stderr="")
 
+    evil = "C:/x/a'; Remove-Item C:/ -Recurse; '.exe"
+    evil_path = Path(evil)  # before os.name is patched
     monkeypatch.setattr(upd.os, "name", "nt")
     monkeypatch.setattr(upd.subprocess, "run", run)
-    evil = "C:/x/a'; Remove-Item C:/ -Recurse; '.exe"
-    verify_authenticode(Path(evil))
+    verify_authenticode(evil_path)
     assert all(evil not in str(a) for a in captured["argv"])
-    assert captured["env"]["AUTODJ_VERIFY_PATH"] == str(Path(evil))
+    assert captured["env"]["AUTODJ_VERIFY_PATH"] == str(evil_path)
 
 
 def test_powershell_failure_fails_closed(monkeypatch):
     def boom(*a, **k):
         raise subprocess.TimeoutExpired("powershell", 60)
 
+    exe = Path("C:/x/AutoDJ.next.exe")  # before os.name is patched
     monkeypatch.setattr(upd.os, "name", "nt")
     monkeypatch.setattr(upd.subprocess, "run", boom)
-    assert verify_authenticode(Path("C:/x/AutoDJ.next.exe"))[0] is False
+    assert verify_authenticode(exe)[0] is False
 
 
 def test_non_windows_fails_closed(monkeypatch):

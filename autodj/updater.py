@@ -86,12 +86,14 @@ def verify_authenticode(path: Path) -> tuple[bool, str]:
     if os.name != "nt":
         return False, "Authenticode verification requires Windows"
     root = os.environ.get("SystemRoot", r"C:\Windows")
-    ps = Path(root) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
+    # plain string (not Path): no WindowsPath is instantiated, so the decision logic is
+    # testable on any OS with os.name patched
+    ps = os.path.join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
     env = dict(os.environ, AUTODJ_VERIFY_PATH=str(path))
     try:
         # security review: fixed argv, absolute powershell.exe, path passed via env
         res = subprocess.run(  # nosec B603
-            [str(ps), "-NoProfile", "-NonInteractive", "-Command", _PS_VERIFY],
+            [ps, "-NoProfile", "-NonInteractive", "-Command", _PS_VERIFY],
             capture_output=True,
             text=True,
             timeout=60,
