@@ -49,7 +49,7 @@ MAX_FAIL_ANNOUNCE = (
 )
 MAX_BACKOFF = 30.0  # seconds, ceiling of the pause between consecutive failed tracks
 RECENT_FAIL_TTL = 600.0  # seconds a failed song is skipped before it may be retried
-AI_MAX_INFLIGHT = 2  # concurrent AI provider calls; further room lines are not sent to the AI
+AI_MAX_INFLIGHT = 2  # concurrent AI provider calls; further `!ai ask` get a 'busy' reply
 ECHO_TTL = 120.0  # seconds a line we posted is remembered, to recognise it when it comes back from the room
 
 # Failure categories for structured diagnostics
@@ -1652,8 +1652,8 @@ class Engine:
         # (Thai keyword "เพลงอะไร" = "what song is this?")
         if self._answer_np_question(msg):
             return
-        # AI: reply to non-command room messages
-        self._ai_handle_room(msg)
+        # The AI answers only `!ai ask <question>` (commands.py -> ai_ask): ordinary
+        # room chat is never sent to the AI provider.
 
     def _answer_np_question(self, msg: ChatMessage) -> bool:
         """Answer room questions about the current song without a command.
@@ -1677,33 +1677,37 @@ class Engine:
         self.say(self.now_playing_text())
         return True
 
-    def _ai_handle_room(self, msg: ChatMessage) -> None:
-        """Reply to non-command room messages via AI (if enabled)."""
-        if not self.ai.is_enabled():
-            return
-        if msg.text.strip().startswith(self.cfg.prefix):
-            return  # command: let the router handle it
-        if msg.user.lower() in self.blocked:
-            return  # blocked users are never forwarded to the provider
+    def ai_ask(self, user: str, question: str) -> None:
+        """Answer ``!ai ask <question>`` in the room: the only way the AI is used.
+
+        Ordinary room chat is never sent to the AI provider: answering every line
+        made the bot reply to other room bots (ZeazBot posts a quote every few
+        minutes) and to its own echoed lines.  A per-user cooldown and a cap on
+        concurrent provider calls bound room spam and API spend; the network call
+        runs on its own pool so it never blocks chat reading or other commands.
+        """
         with self._ai_inflight_lock:
             if self._ai_inflight >= AI_MAX_INFLIGHT:
-                return  # provider busy: drop rather than queue unbounded work
-            if not self.ai.can_reply(msg.user):
-                return  # per-user cooldown (also bounds API spend)
-            self._ai_inflight += 1
-        # Network call (up to 30s) must never block the chat-reading loop, and runs
-        # on its own pool so it cannot delay !skip and other commands.
+                refused = "ai_busy"
+            elif not self.ai.can_reply(user):
+                refused = "ai_wait"
+            else:
+                refused = ""
+                self._ai_inflight += 1
+        if refused:
+            self.say(f"{user}: {self.t(refused)}")
+            return
         try:
-            self._ai_exec.submit(self._ai_reply, msg.text)
+            self._ai_exec.submit(self._ai_reply, user, question)
         except RuntimeError:  # pool shut down (engine stopping)
             with self._ai_inflight_lock:
                 self._ai_inflight -= 1
 
-    def _ai_reply(self, text: str) -> None:
+    def _ai_reply(self, user: str, text: str) -> None:
         try:
             reply = self.ai.chat(text)
-            if reply:
-                self.say(reply)
+            # "<user>: ..." also keeps an answer from ever starting with the command prefix
+            self.say(f"{user}: {reply if reply else self.t('chatbot_ai_error')}")
         finally:
             with self._ai_inflight_lock:
                 self._ai_inflight -= 1

@@ -6,7 +6,7 @@ STR = {
     "en": {
         "admin_only": "admin only",
         "error": "something went wrong (check the log)",
-        "help_base": "Commands: {p}play <youtube url|name> {p}np {p}next {p}queue {p}history {p}voteskip {p}remove <n> {p}topm {p}favm",
+        "help_base": "Commands: {p}play <youtube url|name> {p}np {p}next {p}queue {p}history {p}voteskip {p}remove <n> {p}topm {p}favm {p}ai ask <question>",
         "help_admin": " | admin: {p}mute {p}unmute {p}ai on|off|status {p}update {p}skip {p}pause {p}resume {p}vol <0-100> {p}shuffle on|off {p}repeat off|one {p}clear {p}load <src> {p}say <text> {p}speak <text> {p}block <nick> {p}unblock <nick> {p}blockbot <nick> {p}unblockbot <nick> {p}kick <nick> {p}ban <nick> {p}unban <nick> {p}punish <nick> {p}punishbot <nick> {p}deletehistory <all|N> {p}delete <msg id> {p}welcome <text>",
         "usage_play": "usage: {p}play <youtube url | song name>",
         "queue_full": "queue is full",
@@ -257,6 +257,9 @@ STR = {
         "g_settings_webhook_rate_limit_per_ip": "Webhook rate limit per IP (per minute)",
         "g_settings_webhook_cors_origins": "Webhook CORS origins (comma-separated)",
         "g_settings_plugins": "Plugin modules (comma-separated)",
+        # security review: UI label text, not a credential
+        "g_settings_ai_api_key": "AI API key (NVIDIA nvapi-...; AI answers only !ai ask)",
+        "g_settings_ai_model": "AI model",
         "g_settings_saved": "Settings saved to config.toml",
         "g_settings_save_failed": "Failed to save settings: {err}",
         # IM / private-message announcements and /hadj command guide
@@ -296,10 +299,14 @@ STR = {
         "ai_status": "AI: {state} | model={model} | base_url={url}",
         "ai_model_set": "AI model set to: {model}",
         "ai_prompt_set": "AI system prompt set.",
-        "ai_help": "🤖 AI Commands:\n{p}ai on|off|status|model <name>|prompt <text>\n{p}ai help — show this help via IM\n\n📋 All Commands:\n{base}{admin}\n\n💬 Send IM to {BOT} to use any command privately.",
+        "ai_help": "🤖 AI Commands:\n{p}ai ask <question> — ask the AI (everyone)\n{p}ai on|off|status|model <name>|prompt <text> (admin)\n{p}ai help — show this help via IM\n\n📋 All Commands:\n{base}{admin}\n\n💬 Send IM to {BOT} to use any command privately.",
+        "ai_no_key": "on, but no API key (set ai_api_key in Settings)",
+        "ai_ask_usage": "usage: {p}ai ask <question>",
+        "ai_busy": "the AI is busy, please ask again in a moment",
+        "ai_wait": "please wait a little before asking the AI again",
         # Chatbot templates (i18n)
         "chatbot_welcome": "Hello! I'm AutoDJ, your music bot. Use !help to see commands, or just chat with me.",
-        "chatbot_ai_enabled": "AI replies are now enabled. I'll answer non-command messages.",
+        "chatbot_ai_enabled": "AI answers are on: ask with the ai ask command.",
         "chatbot_ai_disabled": "AI replies are now disabled. I only respond to commands.",
         "chatbot_ai_error": "Sorry, I'm having trouble reaching the AI service right now. Please try again later.",
         "chatbot_ai_unavailable": "AI replies are not available (no API key configured). Ask an admin to set ai_api_key.",
@@ -311,7 +318,7 @@ STR = {
     "th": {
         "admin_only": "เฉพาะแอดมินเท่านั้น",
         "error": "เกิดข้อผิดพลาด (ดูรายละเอียดในไฟล์ log)",
-        "help_base": "คำสั่ง: {p}เล่น <ลิงก์ยูทูบ|ชื่อเพลง> {p}ขอเพลง {p}เล่นเพลง {p}เพลงนี้ {p}ถัดไป {p}คิว {p}ประวัติ {p}โหวตข้าม {p}ลบ <เลขคิว> {p}เพลงขอสูงสุด {p}เพลงโปรด",
+        "help_base": "คำสั่ง: {p}เล่น <ลิงก์ยูทูบ|ชื่อเพลง> {p}ขอเพลง {p}เล่นเพลง {p}เพลงนี้ {p}ถัดไป {p}คิว {p}ประวัติ {p}โหวตข้าม {p}ลบ <เลขคิว> {p}เพลงขอสูงสุด {p}เพลงโปรด {p}เอไอ ถาม <คำถาม>",
         "help_admin": " | แอดมิน: {p}ปิดไมค์ {p}เปิดไมค์ {p}เอไอ on|off|status {p}อัปเดต {p}ข้าม {p}หยุดชั่วคราว {p}เล่นต่อ {p}เสียง <0-100> {p}สุ่ม on|off {p}วนซ้ำ off|one {p}ล้างคิว {p}โหลด <แหล่งเพลง> {p}พูด <ข้อความ> {p}ออกเสียง <ข้อความ> {p}บล็อก <ชื่อ> {p}เลิกบล็อก <ชื่อ> {p}บล็อกบอท <ชื่อ> {p}เลิกบล็อกบอท <ชื่อ> {p}เตะ <ชื่อผู้ใช้> {p}แบน <ชื่อผู้ใช้> {p}เลิกแบน <ชื่อผู้ใช้> {p}ลงโทษ <ชื่อ> {p}ลงโทษบอท <ชื่อ> {p}ลบประวัติ <all|N> {p}ลบข้อความ <รหัสข้อความ> {p}ต้อนรับ <ข้อความ>",
         "usage_play": "วิธีใช้: {p}เล่น <ลิงก์ยูทูบ | ชื่อเพลง>",
         "queue_full": "คิวเต็มแล้ว",
@@ -562,6 +569,9 @@ STR = {
         "g_settings_webhook_rate_limit_per_ip": "อัตราจำกัด Webhook ต่อ IP (ต่อนาที)",
         "g_settings_webhook_cors_origins": "ต้นทาง CORS Webhook (คั่นด้วยจุลภาค)",
         "g_settings_plugins": "โมดูลปลั๊กอิน (คั่นด้วยจุลภาค)",
+        # security review: UI label text, not a credential
+        "g_settings_ai_api_key": "คีย์ API ของ AI (NVIDIA nvapi-...; AI ตอบเฉพาะ !เอไอ ถาม)",
+        "g_settings_ai_model": "โมเดล AI",
         "g_settings_saved": "บันทึกการตั้งค่าไปยัง config.toml แล้ว",
         "g_settings_save_failed": "บันทึกการตั้งค่าไม่สำเร็จ: {err}",
         # IM / ประกาศข้อความส่วนตัวและคู่มือคำสั่ง /hadj
@@ -601,10 +611,14 @@ STR = {
         "ai_status": "AI: {state} | model={model} | base_url={url}",
         "ai_model_set": "ตั้งค่าโมเดล AI เป็น: {model}",
         "ai_prompt_set": "ตั้งค่า system prompt ของ AI แล้ว.",
-        "ai_help": "🤖 คำสั่ง AI:\n{p}เอไอ on|off|status|model <ชื่อ>|prompt <ข้อความ>\n{p}เอไอ help — แสดงคำช่วยเหลือนี้ทาง IM\n\n📋 คำสั่งทั้งหมด:\n{base}{admin}\n\n💬 ส่ง IM ไปยัง {BOT} เพื่อใช้คำสั่งส่วนตัวทาง IM",
+        "ai_help": "🤖 คำสั่ง AI:\n{p}เอไอ ถาม <คำถาม> — ถาม AI (ทุกคน)\n{p}เอไอ on|off|status|model <ชื่อ>|prompt <ข้อความ> (แอดมิน)\n{p}เอไอ help — แสดงคำช่วยเหลือนี้ทาง IM\n\n📋 คำสั่งทั้งหมด:\n{base}{admin}\n\n💬 ส่ง IM ไปยัง {BOT} เพื่อใช้คำสั่งส่วนตัวทาง IM",
+        "ai_no_key": "เปิดอยู่ แต่ยังไม่มี API key (ตั้ง ai_api_key ในหน้าตั้งค่า)",
+        "ai_ask_usage": "วิธีใช้: {p}เอไอ ถาม <คำถาม>",
+        "ai_busy": "AI กำลังตอบคนอื่นอยู่ ลองถามใหม่อีกสักครู่",
+        "ai_wait": "รอสักครู่ก่อนถาม AI อีกครั้ง",
         # Chatbot templates (i18n)
         "chatbot_welcome": "สวัสดีค่ะ! ฉันคือ AutoDJ บอทเพลงของคุณ ใช้ !help เพื่อดูคำสั่ง หรือแชทกับฉันได้เลย",
-        "chatbot_ai_enabled": "เปิดใช้งานการตอบกลับด้วย AI แล้ว ฉันจะตอบข้อความที่ไม่ใช่คำสั่ง",
+        "chatbot_ai_enabled": "เปิดการตอบด้วย AI แล้ว: ถามได้ด้วยคำสั่ง เอไอ ถาม",
         "chatbot_ai_disabled": "ปิดใช้งานการตอบกลับด้วย AI แล้ว ฉันจะตอบเฉพาะคำสั่งเท่านั้น",
         "chatbot_ai_error": "ขออภัยค่ะ ฉันมีปัญหาในการเชื่อมต่อกับบริการ AI กรุณาลองใหม่ภายหลัง",
         "chatbot_ai_unavailable": "การตอบกลับด้วย AI ไม่พร้อมใช้งาน (ยังไม่ได้ตั้งค่า ai_api_key) กรุณาให้แอดมินตั้งค่า",
