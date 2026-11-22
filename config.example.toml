@@ -269,9 +269,9 @@ auto_update_check_interval = 21600.0 # seconds between background checks (min 30
 auto_update_asset = "AutoDJ.exe" # release asset; must have a published SHA-256 digest
 auto_update_apply_on_start = true # download latest AutoDJ.exe from GitHub on launch and replace this install
 
-# ---- AI chat replies (OpenAI-compatible API) — off by default ----------------------------
+# ---- AI answers (OpenAI-compatible API): only `!ai ask <question>` is sent to the provider; room chat never is
 # Answers non-command room lines (never private IMs). https required except for localhost.
-ai_enabled = true # on by default; flip to false to disable AI replies
+ai_enabled = true # on by default (still off until ai_api_key is set); false = !ai ask refused
 ai_api_key = "" # NVIDIA key (nvapi-...) from https://build.nvidia.com/settings; keep this file private (it is git-ignored). Empty = AI stays off
 ai_base_url = "https://integrate.api.nvidia.com/v1" # any OpenAI-compatible endpoint (https)
 ai_model = "nvidia/llama-3.3-nemotron-super-49b-v1.5" # NVIDIA API catalog model id

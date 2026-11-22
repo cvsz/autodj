@@ -330,7 +330,7 @@ class Config:
     auto_update_apply_on_start: bool = True
 
     # AI: optional chat-completion integration (enabled by default)
-    ai_enabled: bool = True  # enable AI chat replies
+    ai_enabled: bool = True  # allow `!ai ask` answers (needs ai_api_key)
     ai_api_key: str = ""  # API key for the AI provider
     ai_base_url: str = "https://integrate.api.nvidia.com/v1"  # NVIDIA Inference API endpoint
     ai_model: str = "nvidia/llama-3.3-nemotron-super-49b-v1.5"  # NVIDIA API catalog model id

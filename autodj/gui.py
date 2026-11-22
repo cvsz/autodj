@@ -2869,6 +2869,7 @@ class App(tk.Tk):
 
         # webhook_secret
         self.s_webhook_secret = self._entry(sp_inner)
+        self.s_webhook_secret.configure(show="•")  # secret: never shown on screen
         self.s_webhook_secret.insert(0, self.e.cfg.webhook_secret)
         _setting_row(
             "g_settings_webhook_secret",
@@ -2896,6 +2897,15 @@ class App(tk.Tk):
         self.s_plugins = self._entry(sp_inner)
         self.s_plugins.insert(0, ", ".join(self.e.cfg.plugins))
         _setting_row("g_settings_plugins", self.s_plugins, "g_settings_save")
+
+        # AI: answers only `!ai ask`; the key is masked and saved to config.toml
+        self.s_ai_api_key = self._entry(sp_inner)
+        self.s_ai_api_key.configure(show="•")
+        self.s_ai_api_key.insert(0, self.e.cfg.ai_api_key)
+        _setting_row("g_settings_ai_api_key", self.s_ai_api_key)
+        self.s_ai_model = self._entry(sp_inner)
+        self.s_ai_model.insert(0, self.e.cfg.ai_model)
+        _setting_row("g_settings_ai_model", self.s_ai_model)
 
         # Save bar (Close is in the header): pinned to the bottom so it is always
         # reachable (it used to sit after ~120 rows of scrolling), plus a status line
@@ -3686,6 +3696,16 @@ class App(tk.Tk):
         if new_cfg.ui_theme != previous_theme:
             self._retheme(new_cfg.ui_theme)
 
+    def _read_ai_settings(self, cfg) -> None:
+        """AI key/model rows -> cfg (persisted by _append_remaining_keys).  The dialog
+        may be a test double without these rows: then cfg keeps its values."""
+        ai_key = getattr(self, "s_ai_api_key", None)
+        if ai_key is not None:
+            cfg.ai_api_key = ai_key.get().strip()
+        ai_model = getattr(self, "s_ai_model", None)
+        if ai_model is not None:
+            cfg.ai_model = ai_model.get().strip() or cfg.ai_model
+
     def save_settings(self):
         """Save settings from the settings tab back to config.toml.
 
@@ -3819,6 +3839,7 @@ class App(tk.Tk):
             cfg.webhook_host = self.s_webhook_host.get().strip()
             cfg.webhook_port = self._parse_int(self.s_webhook_port, "webhook port")
             cfg.webhook_secret = self.s_webhook_secret.get().strip()
+            self._read_ai_settings(cfg)
             cfg.webhook_rate_limit_per_ip = self._parse_int(
                 self.s_webhook_rate_limit_per_ip, "webhook rate limit per IP"
             )

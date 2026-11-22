@@ -66,7 +66,7 @@ Commands are registered with `@command(names, admin=False)`. The `Router`:
 - User commands: play, np, next, queue, history, voteskip, remove, help
 - `np` replies via `Engine.now_playing_text()` (template + live `(elapsed/total)`); non-command room lines matching `np_question_keywords` get the same reply, rate-limited room-wide by `np_question_cooldown`
 - Announcements: "now playing" once per track (also with repeat-one); "up next" is the track `PlayQueue.peek()` promised, which is the one that actually plays. `msg_now`/`msg_next` templates get `{elapsed}` `{remaining}` `{eta}` in addition to `{title}` `{duration}` `{requester}`
-- AI replies (`ai.py`) only for non-command room messages, never for IMs; per-user cooldown; the client is rebuilt on `!ai` changes and config reload
+- AI answers (`ai.py`) only for `!ai ask <question>` (never ordinary room chat, never IMs); per-user cooldown and at most 2 calls in flight on a dedicated pool; the client is rebuilt on `!ai` changes and config reload
 - Auto-update (`updater.py`) is opt-in (`auto_update_enabled`); downloads are kept only when the SHA-256 matches the release `digest` or a `.sha256`/`SHA256SUMS` asset
 
 ### 4. Playback (`player.py`, `library.py`)

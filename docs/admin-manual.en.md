@@ -71,7 +71,7 @@ This manual covers administrative features, configuration, and operational proce
 
 | Command | Aliases | Description | Example |
 |---------|---------|-------------|---------|
-| `ai` | `เอไอ` | `on` / `off` / `status` / `model <id>` / `prompt <text>` — takes effect immediately (runtime only; edit config.toml to persist). `!ai` alone shows the status; `!ai help` sends the full command list to you by IM | `!ai status` / `!ai help` |
+| `ai` | `เอไอ` | `ask <question>` (**everyone**; Thai `!เอไอ ถาม ...`) — the only way the AI is used. Admin: `on` / `off` / `status` / `model <id>` / `prompt <text>` — take effect immediately (runtime only; edit config.toml or Settings to persist). `!ai` alone shows the status; `!ai help` sends the full command list to you by IM | `!ai ask what is this song?` / `!ai status` |
 | `update` | `อัปเดต` | Check GitHub for a strictly newer release; `apply` downloads it (SHA-256 verified) and stages `AutoDJ.next.exe` + `autodj_update.bat` | `!update` / `!update apply` |
 
 ### Information
@@ -443,8 +443,8 @@ ai_user_cooldown = 30.0            # seconds between AI replies to the same user
 
 - AI answers non-command room messages only. It **never** answers private IMs (the bot can only post to the public room, so that would leak the IM).
 - URLs with embedded credentials are rejected. The per-user cooldown is enforced and also bounds API spend.
-- `!ai on|off|status|model <id>|prompt <text>` (admin) take effect immediately; config edits apply on reload. `!ai` alone shows the status and `!ai help` sends the full command list by IM.
-- Once `ai_api_key` is set, non-command room chat is sent to the configured AI endpoint (NVIDIA by default). Set `ai_enabled = false` if that is not wanted.
+- `!ai ask <question>` (everyone; `!เอไอ ถาม ...`) is the only way the AI is used; answers are posted as `<nick>: <answer>`, with a per-user cooldown (`ai_user_cooldown`) and at most 2 questions in flight. `!ai on|off|status|model <id>|prompt <text>` (admin) take effect immediately; config edits apply on reload. `!ai` alone shows the status (it says when `ai_api_key` is missing) and `!ai help` sends the full command list by IM.
+- Only the question after `!ai ask` is sent to the configured AI endpoint (NVIDIA by default); ordinary room chat and IMs never are. Set the key in **Settings → AI API key** (masked) or as `ai_api_key` in config.toml; set `ai_enabled = false` to refuse `!ai ask`.
 
 ### Auto-Update
 
