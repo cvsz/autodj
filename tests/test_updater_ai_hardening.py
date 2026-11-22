@@ -96,6 +96,7 @@ def test_download_accepts_matching_digest(tmp_path):
         "digest": "sha256:" + hashlib.sha256(data).hexdigest(),
     }
     dest = tmp_path / "AutoDJ.next.exe"
+    up.verify_signature = lambda p: (True, "signed by pinned certificate (test)")
     with patch("autodj.updater.urlopen", return_value=_Resp(data)):
         assert up.download_asset(asset, dest) is True
     assert dest.read_bytes() == data
