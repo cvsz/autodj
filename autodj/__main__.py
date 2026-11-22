@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .adapters import NullAdapter, build_adapter
+from .adapters import ReattachingAdapter, build_adapter
 from .config import Config, ConfigError
 from .engine import Engine
 from .logging_json import add_json_file_handler, configure_json_logging
@@ -465,11 +465,14 @@ def _build_adapter(a, cfg):
         if a.gui:
             # The window must still open so the user can run --check / --discover
             # from inside it; chat degrades to silent until Camfrog is reachable.
+            # It keeps retrying, so opening the room later starts chat (and IMs)
+            # without restarting AutoDJ.
             log.error(
-                "cannot attach to Camfrog chat (%s); opening the GUI without chat",
+                "cannot attach to Camfrog chat (%s); opening the GUI and retrying "
+                "every 15 s until the room window is open",
                 ex,
             )
-            return NullAdapter()
+            return ReattachingAdapter(cfg)
         raise
 
 
