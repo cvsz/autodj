@@ -45,6 +45,53 @@ def _window_title(handle: int) -> str:
     return buf.value
 
 
+# Foreground sends take the keyboard focus.  Live 2026-11-23 the operator was
+# typing on the bot PC ("ตรวจ ภาษา") while the bot pasted: their keystrokes went
+# into the Camfrog message box and were posted glued to the bot's lines
+# ("วเข้าคิวที่ 1 ...").  So a foreground send first waits until nobody has used
+# the keyboard or mouse for a moment, and types nothing if the PC stays busy.
+_IDLE_REQUIRED_S = 2.5
+_IDLE_MAX_WAIT_S = 30.0
+
+
+def _idle_seconds() -> float:
+    """Seconds since the last keyboard/mouse input on this desktop (inf if unknown)."""
+    import ctypes
+    from ctypes import wintypes
+
+    class _LastInputInfo(ctypes.Structure):
+        _fields_ = [("cbSize", wintypes.UINT), ("dwTime", wintypes.DWORD)]
+
+    try:
+        info = _LastInputInfo()
+        info.cbSize = ctypes.sizeof(info)
+        if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(info)):  # type: ignore[attr-defined]
+            return float("inf")
+        now = ctypes.windll.kernel32.GetTickCount() & 0xFFFFFFFF  # type: ignore[attr-defined]
+    except (AttributeError, OSError):  # not Windows / API unavailable: never block sends
+        return float("inf")
+    return ((now - info.dwTime) & 0xFFFFFFFF) / 1000.0
+
+
+def _wait_user_idle(what: str) -> None:
+    """Wait until the user has been idle for _IDLE_REQUIRED_S; RuntimeError after
+    _IDLE_MAX_WAIT_S of continuous activity (nothing is typed)."""
+    deadline = time.monotonic() + _IDLE_MAX_WAIT_S
+    waited = False
+    while True:
+        idle = _idle_seconds()
+        if idle >= _IDLE_REQUIRED_S:
+            if waited:
+                log.info("%s: waited for the user to stop typing", what)
+            return
+        if time.monotonic() >= deadline:
+            raise RuntimeError(
+                f"{what}: someone is using the keyboard/mouse on this PC; nothing typed"
+            )
+        waited = True
+        time.sleep(min(0.5, _IDLE_REQUIRED_S - idle + 0.05))
+
+
 def _press_ctrl_v() -> None:
     """Press Ctrl+V by virtual-key code, whatever the keyboard layout.
 
@@ -565,6 +612,7 @@ class UiaAdapter(ChatAdapter):
 
         from .. import winmsg
 
+        _wait_user_idle("Camfrog room window")  # before touching focus or clipboard
         prev = winmsg.foreground()
         try:
             old_clip = pyperclip.paste()
@@ -668,6 +716,7 @@ class UiaAdapter(ChatAdapter):
         from .. import winmsg
 
         u32 = ctypes.windll.user32  # type: ignore[attr-defined]
+        _wait_user_idle("IM window")  # before touching focus
         prev = winmsg.foreground()
         try:
             if u32.IsIconic(handle):
