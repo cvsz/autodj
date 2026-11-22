@@ -144,6 +144,9 @@ class Engine:
         )  # n = consecutive failures so far
         self._backoff_until = 0.0  # monotonic time until playback may resume after failures
         self._sent: deque[tuple[float, str]] = deque(maxlen=64)
+        # Camfrog shows our own posts under the account's nick (e.g. Seaza), which
+        # differs from bot_nick; learned from echoes so the bot never greets itself.
+        self._own_nicks: set[str] = set()
         self._sent_lock = threading.Lock()
         self._chat_lock = threading.Lock()  # guards chat_log + chat_seq (GUI polls them)
         self._chat_rate_lock = threading.Lock()  # guards _chat_rate_limit state
@@ -1518,8 +1521,25 @@ class Engine:
         return False
 
     def _should_ignore_message(self, msg: ChatMessage) -> bool:
-        """Return True if the message should be ignored (echo or own message)."""
-        return norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text)
+        """Return True if the message should be ignored (echo or own message).
+
+        An echo also teaches the nick our posts appear under: live 2026-11-23 a
+        line of ours that came back slightly changed was taken as the account
+        owner speaking, and the bot posted "welcome back, admin Seaza" to itself.
+        """
+        if norm(msg.user).lower() == self.cfg.bot_nick.lower():
+            return True
+        if self._is_echo(msg.text):
+            nick = norm(msg.user).lower()
+            own = self.__dict__.setdefault("_own_nicks", set())
+            if nick and nick not in own:
+                own.add(nick)
+                log.info("own account in the room: %s (never greeted)", msg.user)
+            return True
+        return False
+
+    def _is_own_account(self, user: str) -> bool:
+        return norm(user).lower() in getattr(self, "_own_nicks", ())
 
     def _handle_im(self, msg: ChatMessage) -> None:
         """Handle an instant/private message.
@@ -1746,7 +1766,7 @@ class Engine:
         """Greet *user* once per cooldown: admins get the admin greeting, everyone else
         the welcome message. Blocked users are never greeted (they are
         silently ignored everywhere else). Returns True if a greeting was sent."""
-        if user.lower() in self.blocked:
+        if user.lower() in self.blocked or self._is_own_account(user):
             return False
         if user.lower() in self.admins and self.cfg.admin_greeting_enabled:
             return self._handle_admin_greeting(ChatMessage(user, ""))
@@ -1919,7 +1939,7 @@ class Engine:
             return
         skip = {norm(s).lower() for s in (self.cfg.mic_greeting_ignore or []) if s.strip()}
         skip.add(norm(self.cfg.bot_nick).lower())
-        if norm(nick).lower() in skip:
+        if norm(nick).lower() in skip or self._is_own_account(nick):
             return  # e.g. the account AutoDJ itself streams the music from
         now = time.monotonic()
         last = self._mic_greeting_cooldowns.get(nick.lower(), float("-inf"))

@@ -2,11 +2,19 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
+## What's new in 0.3.11
+
+- **AI answers only `!ai ask <question>`** (Thai `!เอไอ ถาม ...`, everyone). `ai_enabled = true` by default, but the AI stays off until `ai_api_key` is set (Settings → AI API key, masked). Ordinary room chat is never sent to the AI endpoint (NVIDIA by default).
+- **Room messages are delivered reliably:** Ctrl+V works with the Thai keyboard layout, nothing is typed while Camfrog shows its room list or another tab, the bot waits until nobody is typing on the bot PC, and it never types into another application. "send ok" is logged only when the line really appeared in the room.
+- **Mic greeting from a room bot:** a trusted bot's announcement (`mic_notice_senders`, e.g. ZeazBot's "<nick> กำลังรับไมค์") greets the user who took the mic; `mic_greeting_ignore` skips the streaming account.
+- **Opening the room after start works:** AutoDJ attaches to the room window when it opens later.
+- **Only one AutoDJ per config;** `AutoDJ.exe` without arguments opens the GUI; the bot never greets its own account.
+- **Security:** auto-update accepts only an `AutoDJ.exe` signed by the pinned ZEAZDEV certificate; probe-account store keys are derived from the passphrase (not stored beside the data); admin targets are single tokens; local config backups are no longer tracked; Settings masks the AI key and webhook secret.
+
 ## What's new in 0.3.10
 
 - **Mic/DJ greeting:** when the room shows `<nick> is now speaking` (or `<nick> กำลังรับไมค์`), AutoDJ announces "{user} is now the DJ." once per `mic_greeting_cooldown` (300 s). Only whole notice lines from that user count, so ordinary chat ("who is the dj?") never triggers it. Settings: `mic_greeting_enabled`, `mic_greeting_message` ("" = localized default), `mic_greeting_cooldown` — also in the Settings dialog.
 - **`!ai help`** sends the full command list to you by IM; `!ai` alone shows the AI status.
-- **AI answers only `!ai ask <question>`** (Thai `!เอไอ ถาม ...`, everyone). `ai_enabled = true` by default, but the AI stays off until `ai_api_key` is set (Settings → AI API key, masked). Ordinary room chat is never sent to the AI endpoint (NVIDIA by default).
 - **Default `bot_nick` is `AutoDJ`.**
 - **Duplicate-message suppression:** identical lines re-dumped by Camfrog after a reconnect no longer run the same command several times (3 s per-user window).
 - **Settings dialog:** `user_request_limit` and `rate_limit_window` are now editable.
