@@ -391,7 +391,7 @@ if your client words the notice differently, the greeting will not fire.
 ### Admin Command Gating (Config-gated Features)
 
 ```toml
-# Admin mic mute/unmute
+# Admin !mute / !unmute: silence AutoDJ's music (player volume 0). The Camfrog mic is not touched.
 admin_mute_mic = true
 admin_unmute_mic = true
 
@@ -415,7 +415,7 @@ admin_punish_bot = true
 # Admin delete message
 admin_delete_message_enabled = true
 
-# Mic mute state
+# Music muted state (set by !mute)
 mute_enabled = false
 ```
 

@@ -1,5 +1,7 @@
 # AutoDJ Deep Audit Findings
 
+> **Status update (2026-11-21):** Line numbers and counts below predate the current source and are no longer accurate. Re-checking the staged source found these items already fixed: duplicate `stop_evt`, admin path confinement in `_resolve_local_file`, fail-closed empty prefix, `_ipc` set in `play_file`, non-blocking `_track_failed`, symlink check in `doctor.py`, control-character stripping, `participant_count` defined, and moderation commands wired behind config flags. Fixed in this pass: room-command target validation (kick/ban/unban/punish/punishbot/delete), `punish_user`/`punish_bot` de-duplicated, `mute_mic` documented and logged as music-only, and a personal email removed from `AGENTS.md`. Verified later the same day on the Windows host (see `Final-Report.md`, "Verified audit pass"): the target validation is covered by `tests/test_admin_command_targets.py`, the `mute_on` / `mute_off` / `mute_state` strings now say "music", and `ci.yml` / `tests.yml` run mypy as a failing step (the `|| echo` claim did not reproduce). Full suite: 757 passed; ruff, mypy clean.
+
 ## Executive Summary
 
 Comprehensive deep-dive audit of all 32 Python modules (32 source files), configuration, CI/CD, and documentation. Found **37 bugs**, **14 security vulnerabilities**, **12 incomplete features**, **9 performance bottlenecks**, and **11 tech debt items** across the codebase.

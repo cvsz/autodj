@@ -2517,20 +2517,21 @@ class Engine:
     # ---- admin: mic mute / unmute ----------------------------------------
 
     def mute_mic(self, muted: bool):
-        """Mute or unmute the mic output via player volume.
+        """Mute or unmute AutoDJ's music output by setting the player volume.
 
-        Sets player volume to 0 when muted, restores previous volume when unmuted.
-        This affects AutoDJ's music output, not the Camfrog mic device directly.
+        Despite the historical name, this does NOT mute the Camfrog microphone
+        device; it only silences the bot's own playback. Restores the previous
+        volume on unmute.
         """
         if muted:
             self._mic_prev_volume = self.volume
             self.set_volume(0)
             self.mute_enabled = True
-            log.info("Mic muted by admin")
+            log.info("Music output muted by admin (Camfrog mic is not affected)")
         else:
             self.set_volume(getattr(self, "_mic_prev_volume", 70))
             self.mute_enabled = False
-            log.info("Mic unmuted by admin")
+            log.info("Music output unmuted by admin")
 
     # ---- admin: kick / ban / unban / punish ------------------------------
 
@@ -2549,15 +2550,17 @@ class Engine:
         self.say(f"/unban {nick}")
         log.info("Unbanned user: %s", nick)
 
-    def punish_user(self, nick: str):
-        """Punish a user via Camfrog /punish command."""
+    def _send_punish(self, nick: str, kind: str) -> None:
         self.say(f"/punish {nick}")
-        log.info("Punished user: %s", nick)
+        log.info("Punished %s: %s", kind, nick)
 
-    def punish_bot(self, nick: str):
+    def punish_user(self, nick: str) -> None:
+        """Punish a user via Camfrog /punish command."""
+        self._send_punish(nick, "user")
+
+    def punish_bot(self, nick: str) -> None:
         """Punish a bot via Camfrog /punish command."""
-        self.say(f"/punish {nick}")
-        log.info("Punished bot: %s", nick)
+        self._send_punish(nick, "bot")
 
     # ---- admin: delete message -------------------------------------------
 

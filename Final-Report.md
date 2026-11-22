@@ -1,5 +1,125 @@
 # Final Report — AutoDJ Full Independent Implementation
 
+## Status — Verified audit pass, 2026-11-21 (Windows 11 host, `D:\data\autodj`)
+
+> **Read this section first.** It supersedes every status claim below it, including an earlier
+> 2026-11-21 pass that could not run git or tests. Sections under the `---` are historical
+> (v0.3.9 era) and were not re-verified.
+
+**Verdict: NOT READY** — one P0 (a live API key published in this public repository) is
+mitigated in code but stays open until the key owner revokes it, and three PRs await an
+independent human review. Everything else found in this pass is fixed and verified.
+
+### 1. Baseline (verified)
+
+| Item | Value |
+|---|---|
+| Repo / visibility | `cvsz/autodj`, **PUBLIC** |
+| `main` at start of pass | `2b90a95` (CI **red**: lint, tests, Windows build) |
+| `main` now | `1c4853b` (PR #261 merged; CI green, 23/23) |
+| Version | 0.3.10 (`pyproject.toml`); latest release `v0.3.10.1` |
+| Runtime | Python 3.14 locally; CI 3.11–3.15, Ubuntu + Windows |
+| Concurrent work | An earlier session left uncommitted edits (commands/engine/docs). Preserved in `git stash` ("preserved: earlier audit pass…"); its code changes are taken into this PR **with tests**; its `AGENTS.md` change (personal email → `REPLACE_ME_EMAIL`) is **not** taken because it breaks the documented signing identity. |
+
+### 2. Product
+
+Windows desktop music bot for Camfrog rooms: reads room/IM chat through UI Automation, queues
+YouTube/local tracks, plays through mpv, replies in the room or by IM. Single operator, single
+room, no server-side data store. Optional subsystems (webhook API, multi-platform streams) are
+off by default.
+
+### 3. Findings by severity
+
+| # | Sev | Finding (evidence) | Root cause | Status |
+|---|---|---|---|---|
+| F1 | **P0** | Live NVIDIA `ai_api_key` in `config.toml.bak-imjoin:269`, committed in `a90226f` to a public repo; also in tags `v0.3.10`, `v0.3.10.1`. Full-history scan: no other secret. | Local config backups in repo root; `.gitignore` covered only `config.toml` / `config.toml.bak`; release commit used `git add -A`. | **Mitigated** in PR #263 (untrack, `.gitignore` `config.toml.*`, guard test). **Open:** key revocation by owner. History not rewritten. |
+| F2 | P1 | Bot treated its own room reply "… (IM) …" as an IM from itself, then failed every read (`no open IM window for 'Seaza'`). | IM marker matched anywhere in the line. | Fixed, PR #261 (merged) |
+| F3 | P1 | Auto-discover saved the room *list* window as the room; all sends failed. | `score_window` accepted 0 chat lines. | Fixed, PR #261 (merged); installed config repaired with backup |
+| F4 | P1 | Clean install crashed: `requests`, `cryptography` imported at startup but undeclared. | Dependencies missing from `pyproject.toml`. | Fixed, PR #261 (merged); verified in a fresh venv |
+| F5 | P1 | Installer build broken outside `make portable` (wrong output name; launchers not staged). | `INSTALLER_NAME` changed in one place only. | Fixed, PR #261 (merged); verified by local clean-dist build |
+| F6 | P1 | Bot started before the room window stayed deaf until restart. | GUI fell back to `NullAdapter` permanently. | Fixed, PR #262 (open) |
+| F7 | P1 | `!kick bob extra` sent `/kick bob extra`; a target could carry a second slash command. | Target not validated. | Fixed in this PR (earlier pass's code + new tests: 6 failed before, 15 passed after) |
+| F8 | P2 | `ProbeAccountStore` wrote the passphrase-derived key next to the data (fixed salt), so the passphrase protected nothing; a wrong passphrase loaded an empty store and the next save wiped all credentials. | Key persisted; broad `except`. | Fixed in this PR (3 failed before, 6 passed after) |
+| F9 | P2 | Shipped config logged to the shared `%APPDATA%\logs`. | `config.example.toml` values. | Fixed in this PR |
+| F10 | P2 | Room replied "Mic muted." though `!mute` only silences the music. | Wording. | Fixed in this PR (EN/TH, GUI label, README, manuals) |
+| F11 | P2 | Auto-updater checks SHA-256 against GitHub's digest but not the Authenticode signature, so a compromised release account defeats it. | Design. | **Open** (recommendation below) |
+| F12 | P2 | `v0.3.10.1` was not produced by `release.yml`: assets `AutoDJ-Setup-0.3.10.exe`, `AutoDJ.exe`; no `SHA256SUMS`, SBOM or attestation. | Manual release. | **Open** (process) |
+| F13 | P3 | Without a passphrase, `ProbeAccountStore` keeps a random key file beside the data (`chmod 0o600` is a no-op on Windows). | Design. | **Open**; DPAPI recommended before the stream feature is enabled |
+
+Not reproduced: the earlier claim that `ci.yml` swallows mypy with `|| echo` (current `ci.yml` / `tests.yml` run `mypy autodj` as a failing step).
+
+### 4. Security assessment (tools run this pass)
+
+| Check | Result |
+|---|---|
+| `pip-audit` on a clean venv built from `pyproject.toml` | PASS — no known vulnerabilities |
+| `bandit -r autodj` (18 143 LOC) | PASS — 0 high, 0 medium, 24 low |
+| `shellcheck -S warning` (9 scripts) | PASS |
+| Secret scan, tracked files + full history | **FAIL → F1**; guard test added |
+| Webhook auth review | PASS — HMAC-SHA256 + `compare_digest`, timestamp window, method/path bound, fail-closed without secret |
+| Updater review | PARTIAL — https + github.com only, SHA-256 required; no signature check (F11) |
+| Admin auth | Known, documented limit: nickname-based, spoofable (`Router.is_admin`), fail-closed when `admins = []` |
+
+### 5. Validation evidence (this branch)
+
+| Command | Result |
+|---|---|
+| `py -3.14 -m ruff check autodj tests tools` | PASS |
+| `py -3.14 -m ruff format --check autodj tests tools` | PASS (150 files) |
+| `py -3.14 -m mypy autodj` | PASS (65 files) |
+| `py -3.14 -m compileall -q autodj tests tools` | PASS |
+| `py -3.14 -m pytest -q -p no:faulthandler -p no:cacheprovider --basetemp=…` | PASS — 757 passed, exit 0 |
+| New tests red-before / green-after | admin targets 6F→15P; probe store 3F→6P; mute wording + log paths 2F→2P |
+| GitHub CI on `main` after PR #261 | PASS — 23/23 |
+| Real Camfrog room run | **BLOCKED** — room window was closed during the pass; bot attaches once it is opened (PR #262) |
+
+`--basetemp` is needed because the default `pytest-of-cvsz` temp folder is access-denied on this host.
+
+### 6. Git, PRs, review
+
+| PR | Content | CI | Review | Merged |
+|---|---|---|---|---|
+| #261 | F2–F5 + format | 23/23 | policedbc approval **performed by Claude** (self-review, disclosed) | Yes (`1c4853b`) |
+| #262 | F6 | 23/23 | none | **No — awaiting human review** |
+| #263 | F1 mitigation | pending | none | **No — awaiting human review** |
+| this PR | F7–F10 | pending | none | **No — awaiting human review** |
+
+All commits GPG-signed (`cvsz`). No force-push, no history rewrite, no release. Per the
+engineering contract, no further self-approval or merge.
+
+Independent review status: **internal adversarial self-review only.** No independent human
+review has taken place for #262, #263 or this PR.
+
+### 7. Remaining risks and blockers
+
+1. **Revoke the exposed NVIDIA key** (owner action). Until then F1 is open.
+2. Human review + merge of #262, #263 and this PR.
+3. F11: verify `AutoDJ.exe.next` with `WinVerifyTrust` (publisher `ZEAZDEV COMPANY LIMITED`) before swapping.
+4. F12: cut the next release only through `release.yml` (signed installer, `SHA256SUMS`, SBOM, attestation).
+5. Installed copy at `D:\CamfrogAutoDJ` while 0.3.10 installs to `%APPDATA%\AutoDJ`: confirm the upgrade path before the next installer run.
+6. Live Camfrog verification of F2/F3/F6 after the room window is open.
+
+### 8. Production readiness (Section 14)
+
+| Area | Status |
+|---|---|
+| Functional correctness | PARTIAL — unit/integration green; live room run BLOCKED |
+| Security | **FAIL** until the key is revoked (F1); then PARTIAL (F11) |
+| Architecture | PASS — no structural change needed |
+| Data integrity | PASS — credential-store wipe fixed (F8) |
+| Reliability | PARTIAL — reattach (F6) awaiting merge |
+| Performance / scalability | N/A — single-room desktop bot; no evidence of a problem |
+| Observability | PASS — log location fixed (F9) |
+| Deployment reproducibility | PARTIAL — CI build fixed (F5); last release bypassed `release.yml` (F12) |
+| Disaster recovery | N/A — local config with `.bak`; no server state |
+| Documentation | PASS — CHANGELOG, README, admin manuals updated |
+| Testing | PASS — 757 passed; new regression tests for every fix |
+| Operational readiness | PARTIAL — pending merges and live verification |
+
+**Final verdict: NOT READY** (blocking item: F1 key revocation; then human review of #262, #263 and this PR).
+
+---
+
 **Repository:** https://github.com/cvsz/autodj  
 **Branch:** `main` (HEAD: `f07d0de`)  
 **Version:** 0.3.9 (Python 3.11+)  
