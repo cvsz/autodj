@@ -1893,21 +1893,30 @@ class Engine:
         """Return the nick a Camfrog mic/DJ notice names, or None if *body* is not one.
 
         A user can type "Bob is now speaking" in chat; that only counts when the
-        sender is Bob (or the line has no sender, as for a system notice), so one
-        user cannot get the bot to announce somebody else as the DJ.
+        sender is Bob, the line has no sender (a system notice), or the sender is a
+        room bot listed in ``mic_notice_senders`` (e.g. ZeazBot posts
+        "Seaza กำลังรับไมค์" when Seaza takes the mic).  Anyone else cannot get
+        the bot to announce somebody else as the DJ.
         """
         m = self._MIC_NOTICE_RE.match(body.strip())
         if not m:
             return None
         named = m.group("nick")
-        if sender and norm(sender).lower() != norm(named).lower():
-            return None
+        who = norm(sender).lower() if sender else ""
+        if who and who != norm(named).lower():
+            trusted = {norm(s).lower() for s in (self.cfg.mic_notice_senders or []) if s.strip()}
+            if who not in trusted:
+                return None
         return named
 
     def _announce_mic_greeting(self, nick: str) -> None:
         """Greet a user who just received the room mic (became the DJ)."""
         if nick.lower() in self.blocked:
             return
+        skip = {norm(s).lower() for s in (self.cfg.mic_greeting_ignore or []) if s.strip()}
+        skip.add(norm(self.cfg.bot_nick).lower())
+        if norm(nick).lower() in skip:
+            return  # e.g. the account AutoDJ itself streams the music from
         now = time.monotonic()
         last = self._mic_greeting_cooldowns.get(nick.lower(), float("-inf"))
         if now - last < self.cfg.mic_greeting_cooldown:

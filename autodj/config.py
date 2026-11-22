@@ -276,6 +276,11 @@ class Config:
     mic_greeting_enabled: bool = True  # greet users who receive the room mic
     mic_greeting_message: str = ""  # {user} = nick; "" = localized default (messages.py)
     mic_greeting_cooldown: float = 300.0  # seconds between mic greetings for same user
+    # Room bots trusted to announce that *another* nick took the mic, e.g. ["ZeazBot"]
+    # for "Seaza กำลังรับไมค์".  Other users can only announce themselves.
+    mic_notice_senders: list[str] = field(default_factory=list)
+    # Nicks never greeted on the mic (e.g. the account AutoDJ streams the music from).
+    mic_greeting_ignore: list[str] = field(default_factory=list)
 
     # Camfrog RE Integrations (Gift / Avatar / Status / Status Alert)
     gift_announce_enabled: bool = True  # announce virtual-gift messages sent to the room
