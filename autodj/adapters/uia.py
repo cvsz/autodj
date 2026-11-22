@@ -137,6 +137,74 @@ def _bring_to_front(u32, handle: int) -> None:
             u32.AttachThreadInput(me, fg_thread, False)
 
 
+def _foreground_is_elevated(u32) -> bool:
+    """True when the foreground window belongs to a process running as administrator
+    while we do not: Windows (UIPI) never lets a normal process take the focus
+    from it, whatever the code does.  False when unknown."""
+    import ctypes
+    from ctypes import wintypes
+
+    try:
+        # private DLL objects: typed handles here must not change ctypes.windll users
+        adv = ctypes.WinDLL("advapi32")  # type: ignore[attr-defined]
+        k32 = ctypes.WinDLL("kernel32")  # type: ignore[attr-defined]
+    except (AttributeError, OSError):  # not Windows
+        return False
+    k32.OpenProcess.restype = wintypes.HANDLE
+    k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    k32.GetCurrentProcess.restype = wintypes.HANDLE
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    adv.OpenProcessToken.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.HANDLE),
+    ]
+    adv.GetTokenInformation.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
+    adv.GetSidSubAuthorityCount.restype = ctypes.POINTER(ctypes.c_ubyte)
+    adv.GetSidSubAuthorityCount.argtypes = [ctypes.c_void_p]
+    adv.GetSidSubAuthority.restype = ctypes.POINTER(wintypes.DWORD)
+    adv.GetSidSubAuthority.argtypes = [ctypes.c_void_p, wintypes.DWORD]
+
+    def level(proc) -> int:
+        tok = wintypes.HANDLE()
+        if not adv.OpenProcessToken(proc, 0x0008, ctypes.byref(tok)):  # TOKEN_QUERY
+            return -1
+        try:
+            need = wintypes.DWORD()
+            adv.GetTokenInformation(tok, 25, None, 0, ctypes.byref(need))  # TokenIntegrityLevel
+            buf = ctypes.create_string_buffer(need.value or 64)
+            if not adv.GetTokenInformation(tok, 25, buf, len(buf), ctypes.byref(need)):
+                return -1
+            sid = ctypes.cast(buf, ctypes.POINTER(ctypes.c_void_p))[0]
+            count = adv.GetSidSubAuthorityCount(sid)[0]
+            return int(adv.GetSidSubAuthority(sid, count - 1)[0])
+        finally:
+            k32.CloseHandle(tok)
+
+    try:
+        pid = wintypes.DWORD()
+        u32.GetWindowThreadProcessId(u32.GetForegroundWindow(), ctypes.byref(pid))
+        if not pid.value:
+            return False
+        other = k32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not other:
+            return False
+        try:
+            theirs = level(other)
+        finally:
+            k32.CloseHandle(other)
+        ours = level(k32.GetCurrentProcess())
+        return ours >= 0 and theirs > ours
+    except (AttributeError, OSError, ValueError, ctypes.ArgumentError):
+        return False
+
+
 def _focus_target(handle: int, x: int, y: int, what: str) -> None:
     """Make *handle* the foreground window and check that (x, y) belongs to it.
 
@@ -158,6 +226,13 @@ def _focus_target(handle: int, x: int, y: int, what: str) -> None:
         _bring_to_front(u32, handle)
         time.sleep(0.1)
     if u32.GetForegroundWindow() != handle:
+        if _foreground_is_elevated(u32):
+            # live 2026-11-23: an administrator Windows Terminal was in front
+            raise RuntimeError(
+                f"{what} could not be brought to the front: the window in front belongs "
+                "to a program running as administrator (Windows does not let AutoDJ take "
+                "the focus from it; minimize or close that window); nothing typed"
+            )
         raise RuntimeError(f"{what} could not be brought to the front; nothing typed")
     hit = u32.WindowFromPoint(wintypes.POINT(x, y))
     if not hit or u32.GetAncestor(hit, 2) != handle:  # GA_ROOT

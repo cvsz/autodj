@@ -219,3 +219,15 @@ def test_focus_attaches_to_the_foreground_thread_and_detaches(user32):
     uia._focus_target(ROOM, 10, 10, "Camfrog room window")
     assert user32.front == ROOM
     assert user32.attach_calls == [(4242, True), (4242, False)]
+
+
+def test_refused_by_an_elevated_window_says_so(user32, monkeypatch):
+    user32.can_focus = False
+    monkeypatch.setattr(uia, "_foreground_is_elevated", lambda u32: True)
+    with pytest.raises(RuntimeError, match="running as administrator"):
+        uia._focus_target(ROOM, 10, 10, "Camfrog room window")
+
+
+def test_elevation_check_never_raises(user32):
+    # fake windll has no advapi32/kernel32: unknown -> False, not an exception
+    assert uia._foreground_is_elevated(user32) is False
