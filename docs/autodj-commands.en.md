@@ -1,6 +1,6 @@
 # AutoDJ Commands Reference — English
 
-**Version:** 0.3.10  
+**Version:** 0.3.11  
 **Prefix:** `!` (configurable via `prefix` in config.toml)  
 **Language:** English (`lang = "en"`)
 
@@ -87,7 +87,7 @@
 | `speak` | `tts` | Speak text via TTS (music ducks) | `!speak <text>` |
 | `block` | — | Block a user from using commands | `!block <nick>` |
 | `unblock` | — | Unblock a user | `!unblock <nick>` |
-| `ai` | `เอไอ` | AI replies: `on`, `off`, `status`, `model <id>`, `prompt <text>` (applies immediately); `!ai` alone shows the status; `help` sends the full command list by IM | `!ai status` / `!ai help` |
+| `ai` | `เอไอ` | `ask <question>` asks the AI (everyone; the only way the AI is used). Admin: `on`, `off`, `status`, `model <id>`, `prompt <text>` (applies immediately); `!ai` alone shows the status; `help` sends the full command list by IM | `!ai ask what is this song?` / `!ai status` |
 | `update` | `อัปเดต` | Check GitHub for a strictly newer release; `apply` downloads and stages it (SHA-256 verified) | `!update` / `!update apply` |
 
 ### Examples
@@ -112,6 +112,7 @@
 !speak Welcome to the room
 !block spammer123
 !unblock spammer123
+!ai ask what genre is this song?
 !ai status
 !ai help
 !ai model nvidia/llama-3.3-nemotron-super-49b-v1.5

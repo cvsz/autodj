@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 from urllib.error import HTTPError
@@ -105,7 +106,11 @@ class AIClient:
                 {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": text},
             ],
-            "max_tokens": max(1, self.max_chars // 4),
+            # Reasoning models spend most tokens thinking before they answer: live
+            # 2026-11-23 a one-line Thai question used 368 completion tokens, 322 of
+            # them reasoning.  max_chars // 4 (50) never left room for an answer, so
+            # allow 1024; the posted reply is still cut to max_chars below.
+            "max_tokens": max(1024, self.max_chars * 4),
             "temperature": 0.7,
         }
         try:
@@ -119,7 +124,8 @@ class AIClient:
                 return None
             message = choices[0].get("message") or {}
             content = message.get("content") or ""
-            content = content.strip()
+            # drop a reasoning block; an unfinished one (cut by max_tokens) leaves nothing
+            content = re.sub(r"<think>.*?(</think>|$)", "", content, flags=re.S).strip()
             if not content:
                 return None
             if len(content) > self.max_chars:

@@ -49,7 +49,7 @@ MAX_FAIL_ANNOUNCE = (
 )
 MAX_BACKOFF = 30.0  # seconds, ceiling of the pause between consecutive failed tracks
 RECENT_FAIL_TTL = 600.0  # seconds a failed song is skipped before it may be retried
-AI_MAX_INFLIGHT = 2  # concurrent AI provider calls; further room lines are not sent to the AI
+AI_MAX_INFLIGHT = 2  # concurrent AI provider calls; further `!ai ask` get a 'busy' reply
 ECHO_TTL = 120.0  # seconds a line we posted is remembered, to recognise it when it comes back from the room
 
 # Failure categories for structured diagnostics
@@ -144,6 +144,9 @@ class Engine:
         )  # n = consecutive failures so far
         self._backoff_until = 0.0  # monotonic time until playback may resume after failures
         self._sent: deque[tuple[float, str]] = deque(maxlen=64)
+        # Camfrog shows our own posts under the account's nick (e.g. Seaza), which
+        # differs from bot_nick; learned from echoes so the bot never greets itself.
+        self._own_nicks: set[str] = set()
         self._sent_lock = threading.Lock()
         self._chat_lock = threading.Lock()  # guards chat_log + chat_seq (GUI polls them)
         self._chat_rate_lock = threading.Lock()  # guards _chat_rate_limit state
@@ -1518,8 +1521,25 @@ class Engine:
         return False
 
     def _should_ignore_message(self, msg: ChatMessage) -> bool:
-        """Return True if the message should be ignored (echo or own message)."""
-        return norm(msg.user).lower() == self.cfg.bot_nick.lower() or self._is_echo(msg.text)
+        """Return True if the message should be ignored (echo or own message).
+
+        An echo also teaches the nick our posts appear under: live 2026-11-23 a
+        line of ours that came back slightly changed was taken as the account
+        owner speaking, and the bot posted "welcome back, admin Seaza" to itself.
+        """
+        if norm(msg.user).lower() == self.cfg.bot_nick.lower():
+            return True
+        if self._is_echo(msg.text):
+            nick = norm(msg.user).lower()
+            own = self.__dict__.setdefault("_own_nicks", set())
+            if nick and nick not in own:
+                own.add(nick)
+                log.info("own account in the room: %s (never greeted)", msg.user)
+            return True
+        return False
+
+    def _is_own_account(self, user: str) -> bool:
+        return norm(user).lower() in getattr(self, "_own_nicks", ())
 
     def _handle_im(self, msg: ChatMessage) -> None:
         """Handle an instant/private message.
@@ -1652,8 +1672,8 @@ class Engine:
         # (Thai keyword "เพลงอะไร" = "what song is this?")
         if self._answer_np_question(msg):
             return
-        # AI: reply to non-command room messages
-        self._ai_handle_room(msg)
+        # The AI answers only `!ai ask <question>` (commands.py -> ai_ask): ordinary
+        # room chat is never sent to the AI provider.
 
     def _answer_np_question(self, msg: ChatMessage) -> bool:
         """Answer room questions about the current song without a command.
@@ -1677,33 +1697,37 @@ class Engine:
         self.say(self.now_playing_text())
         return True
 
-    def _ai_handle_room(self, msg: ChatMessage) -> None:
-        """Reply to non-command room messages via AI (if enabled)."""
-        if not self.ai.is_enabled():
-            return
-        if msg.text.strip().startswith(self.cfg.prefix):
-            return  # command: let the router handle it
-        if msg.user.lower() in self.blocked:
-            return  # blocked users are never forwarded to the provider
+    def ai_ask(self, user: str, question: str) -> None:
+        """Answer ``!ai ask <question>`` in the room: the only way the AI is used.
+
+        Ordinary room chat is never sent to the AI provider: answering every line
+        made the bot reply to other room bots (ZeazBot posts a quote every few
+        minutes) and to its own echoed lines.  A per-user cooldown and a cap on
+        concurrent provider calls bound room spam and API spend; the network call
+        runs on its own pool so it never blocks chat reading or other commands.
+        """
         with self._ai_inflight_lock:
             if self._ai_inflight >= AI_MAX_INFLIGHT:
-                return  # provider busy: drop rather than queue unbounded work
-            if not self.ai.can_reply(msg.user):
-                return  # per-user cooldown (also bounds API spend)
-            self._ai_inflight += 1
-        # Network call (up to 30s) must never block the chat-reading loop, and runs
-        # on its own pool so it cannot delay !skip and other commands.
+                refused = "ai_busy"
+            elif not self.ai.can_reply(user):
+                refused = "ai_wait"
+            else:
+                refused = ""
+                self._ai_inflight += 1
+        if refused:
+            self.say(f"{user}: {self.t(refused)}")
+            return
         try:
-            self._ai_exec.submit(self._ai_reply, msg.text)
+            self._ai_exec.submit(self._ai_reply, user, question)
         except RuntimeError:  # pool shut down (engine stopping)
             with self._ai_inflight_lock:
                 self._ai_inflight -= 1
 
-    def _ai_reply(self, text: str) -> None:
+    def _ai_reply(self, user: str, text: str) -> None:
         try:
             reply = self.ai.chat(text)
-            if reply:
-                self.say(reply)
+            # "<user>: ..." also keeps an answer from ever starting with the command prefix
+            self.say(f"{user}: {reply if reply else self.t('chatbot_ai_error')}")
         finally:
             with self._ai_inflight_lock:
                 self._ai_inflight -= 1
@@ -1742,7 +1766,7 @@ class Engine:
         """Greet *user* once per cooldown: admins get the admin greeting, everyone else
         the welcome message. Blocked users are never greeted (they are
         silently ignored everywhere else). Returns True if a greeting was sent."""
-        if user.lower() in self.blocked:
+        if user.lower() in self.blocked or self._is_own_account(user):
             return False
         if user.lower() in self.admins and self.cfg.admin_greeting_enabled:
             return self._handle_admin_greeting(ChatMessage(user, ""))
@@ -1893,21 +1917,30 @@ class Engine:
         """Return the nick a Camfrog mic/DJ notice names, or None if *body* is not one.
 
         A user can type "Bob is now speaking" in chat; that only counts when the
-        sender is Bob (or the line has no sender, as for a system notice), so one
-        user cannot get the bot to announce somebody else as the DJ.
+        sender is Bob, the line has no sender (a system notice), or the sender is a
+        room bot listed in ``mic_notice_senders`` (e.g. ZeazBot posts
+        "Seaza กำลังรับไมค์" when Seaza takes the mic).  Anyone else cannot get
+        the bot to announce somebody else as the DJ.
         """
         m = self._MIC_NOTICE_RE.match(body.strip())
         if not m:
             return None
         named = m.group("nick")
-        if sender and norm(sender).lower() != norm(named).lower():
-            return None
+        who = norm(sender).lower() if sender else ""
+        if who and who != norm(named).lower():
+            trusted = {norm(s).lower() for s in (self.cfg.mic_notice_senders or []) if s.strip()}
+            if who not in trusted:
+                return None
         return named
 
     def _announce_mic_greeting(self, nick: str) -> None:
         """Greet a user who just received the room mic (became the DJ)."""
         if nick.lower() in self.blocked:
             return
+        skip = {norm(s).lower() for s in (self.cfg.mic_greeting_ignore or []) if s.strip()}
+        skip.add(norm(self.cfg.bot_nick).lower())
+        if norm(nick).lower() in skip or self._is_own_account(nick):
+            return  # e.g. the account AutoDJ itself streams the music from
         now = time.monotonic()
         last = self._mic_greeting_cooldowns.get(nick.lower(), float("-inf"))
         if now - last < self.cfg.mic_greeting_cooldown:
@@ -2517,20 +2550,21 @@ class Engine:
     # ---- admin: mic mute / unmute ----------------------------------------
 
     def mute_mic(self, muted: bool):
-        """Mute or unmute the mic output via player volume.
+        """Mute or unmute AutoDJ's music output by setting the player volume.
 
-        Sets player volume to 0 when muted, restores previous volume when unmuted.
-        This affects AutoDJ's music output, not the Camfrog mic device directly.
+        Despite the historical name, this does NOT mute the Camfrog microphone
+        device; it only silences the bot's own playback. Restores the previous
+        volume on unmute.
         """
         if muted:
             self._mic_prev_volume = self.volume
             self.set_volume(0)
             self.mute_enabled = True
-            log.info("Mic muted by admin")
+            log.info("Music output muted by admin (Camfrog mic is not affected)")
         else:
             self.set_volume(getattr(self, "_mic_prev_volume", 70))
             self.mute_enabled = False
-            log.info("Mic unmuted by admin")
+            log.info("Music output unmuted by admin")
 
     # ---- admin: kick / ban / unban / punish ------------------------------
 
@@ -2549,15 +2583,17 @@ class Engine:
         self.say(f"/unban {nick}")
         log.info("Unbanned user: %s", nick)
 
-    def punish_user(self, nick: str):
-        """Punish a user via Camfrog /punish command."""
+    def _send_punish(self, nick: str, kind: str) -> None:
         self.say(f"/punish {nick}")
-        log.info("Punished user: %s", nick)
+        log.info("Punished %s: %s", kind, nick)
 
-    def punish_bot(self, nick: str):
+    def punish_user(self, nick: str) -> None:
+        """Punish a user via Camfrog /punish command."""
+        self._send_punish(nick, "user")
+
+    def punish_bot(self, nick: str) -> None:
         """Punish a bot via Camfrog /punish command."""
-        self.say(f"/punish {nick}")
-        log.info("Punished bot: %s", nick)
+        self._send_punish(nick, "bot")
 
     # ---- admin: delete message -------------------------------------------
 

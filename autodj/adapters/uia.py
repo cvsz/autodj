@@ -26,6 +26,227 @@ def _read(ctrl) -> str:
     return ""
 
 
+# Room message box (WebView2): time for the editor to take the focus after the click,
+# and for the pasted text to land before Enter.
+_WEB_FOCUS_DELAY = 0.5
+_WEB_PASTE_DELAY = 0.3
+
+
+class RoomHiddenError(RuntimeError):
+    """Camfrog's window shows another page (the room list, another tab): there is
+    no room chat to read or type into until the room tab is selected again."""
+
+
+def _window_title(handle: int) -> str:
+    import ctypes
+
+    buf = ctypes.create_unicode_buffer(512)
+    ctypes.windll.user32.GetWindowTextW(handle, buf, 512)  # type: ignore[attr-defined]
+    return buf.value
+
+
+# Foreground sends take the keyboard focus.  Live 2026-11-23 the operator was
+# typing on the bot PC ("ตรวจ ภาษา") while the bot pasted: their keystrokes went
+# into the Camfrog message box and were posted glued to the bot's lines
+# ("วเข้าคิวที่ 1 ...").  So a foreground send first waits until nobody has used
+# the keyboard or mouse for a moment, and types nothing if the PC stays busy.
+_IDLE_REQUIRED_S = 2.5
+_IDLE_MAX_WAIT_S = 30.0
+
+
+def _idle_seconds() -> float:
+    """Seconds since the last keyboard/mouse input on this desktop (inf if unknown)."""
+    import ctypes
+    from ctypes import wintypes
+
+    class _LastInputInfo(ctypes.Structure):
+        _fields_ = [("cbSize", wintypes.UINT), ("dwTime", wintypes.DWORD)]
+
+    try:
+        info = _LastInputInfo()
+        info.cbSize = ctypes.sizeof(info)
+        if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(info)):  # type: ignore[attr-defined]
+            return float("inf")
+        now = ctypes.windll.kernel32.GetTickCount() & 0xFFFFFFFF  # type: ignore[attr-defined]
+    except (AttributeError, OSError):  # not Windows / API unavailable: never block sends
+        return float("inf")
+    return ((now - info.dwTime) & 0xFFFFFFFF) / 1000.0
+
+
+def _wait_user_idle(what: str) -> None:
+    """Wait until the user has been idle for _IDLE_REQUIRED_S; RuntimeError after
+    _IDLE_MAX_WAIT_S of continuous activity (nothing is typed)."""
+    deadline = time.monotonic() + _IDLE_MAX_WAIT_S
+    waited = False
+    while True:
+        idle = _idle_seconds()
+        if idle >= _IDLE_REQUIRED_S:
+            if waited:
+                log.info("%s: waited for the user to stop typing", what)
+            return
+        if time.monotonic() >= deadline:
+            raise RuntimeError(
+                f"{what}: someone is using the keyboard/mouse on this PC; nothing typed"
+            )
+        waited = True
+        time.sleep(min(0.5, _IDLE_REQUIRED_S - idle + 0.05))
+
+
+def _press_ctrl_v() -> None:
+    """Press Ctrl+V by virtual-key code, whatever the keyboard layout.
+
+    pywinauto's ``send_keys("^v")`` looks the 'v' up with VkKeyScanW() in the
+    *current* layout.  With the Thai layout active there is no 'v' (-1), so
+    only Ctrl was pressed and nothing was pasted, while the following Enter
+    still went through: live 2026-11-22 every room send was empty, and a draft
+    left in the message box was posted instead of the bot's text.
+    """
+    import ctypes
+
+    u32 = ctypes.windll.user32  # type: ignore[attr-defined]
+    vk_control, vk_v, keyup = 0x11, 0x56, 0x0002
+    u32.keybd_event(vk_control, 0, 0, 0)
+    u32.keybd_event(vk_v, 0, 0, 0)
+    u32.keybd_event(vk_v, 0, keyup, 0)
+    u32.keybd_event(vk_control, 0, keyup, 0)
+
+
+def _bring_to_front(u32, handle: int) -> None:
+    """BringWindowToTop + SetForegroundWindow while attached to the input queue of
+    the current foreground window.
+
+    Windows refuses SetForegroundWindow from a background process for the
+    foreground lock time-out (200 s by default) after the user's last input: live
+    2026-11-23 every send failed with "could not be brought to the front" while
+    the operator worked in a terminal.  Attaching to the foreground thread's input
+    queue for the call is the documented way around the lock; no key is pressed.
+    """
+    import threading
+
+    fg = u32.GetForegroundWindow()
+    fg_thread = u32.GetWindowThreadProcessId(fg, None) if fg and fg != handle else 0
+    me = threading.get_native_id()
+    attached = (
+        bool(fg_thread) and fg_thread != me and bool(u32.AttachThreadInput(me, fg_thread, True))
+    )
+    try:
+        u32.BringWindowToTop(handle)
+        u32.SetForegroundWindow(handle)
+    finally:
+        if attached:
+            u32.AttachThreadInput(me, fg_thread, False)
+
+
+def _foreground_is_elevated(u32) -> bool:
+    """True when the foreground window belongs to a process running as administrator
+    while we do not: Windows (UIPI) never lets a normal process take the focus
+    from it, whatever the code does.  False when unknown."""
+    import ctypes
+    from ctypes import wintypes
+
+    try:
+        # private DLL objects: typed handles here must not change ctypes.windll users
+        adv = ctypes.WinDLL("advapi32")  # type: ignore[attr-defined]
+        k32 = ctypes.WinDLL("kernel32")  # type: ignore[attr-defined]
+    except (AttributeError, OSError):  # not Windows
+        return False
+    k32.OpenProcess.restype = wintypes.HANDLE
+    k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    k32.GetCurrentProcess.restype = wintypes.HANDLE
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    adv.OpenProcessToken.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.HANDLE),
+    ]
+    adv.GetTokenInformation.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
+    adv.GetSidSubAuthorityCount.restype = ctypes.POINTER(ctypes.c_ubyte)
+    adv.GetSidSubAuthorityCount.argtypes = [ctypes.c_void_p]
+    adv.GetSidSubAuthority.restype = ctypes.POINTER(wintypes.DWORD)
+    adv.GetSidSubAuthority.argtypes = [ctypes.c_void_p, wintypes.DWORD]
+
+    def level(proc) -> int:
+        tok = wintypes.HANDLE()
+        if not adv.OpenProcessToken(proc, 0x0008, ctypes.byref(tok)):  # TOKEN_QUERY
+            return -1
+        try:
+            need = wintypes.DWORD()
+            adv.GetTokenInformation(tok, 25, None, 0, ctypes.byref(need))  # TokenIntegrityLevel
+            buf = ctypes.create_string_buffer(need.value or 64)
+            if not adv.GetTokenInformation(tok, 25, buf, len(buf), ctypes.byref(need)):
+                return -1
+            sid = ctypes.cast(buf, ctypes.POINTER(ctypes.c_void_p))[0]
+            count = adv.GetSidSubAuthorityCount(sid)[0]
+            return int(adv.GetSidSubAuthority(sid, count - 1)[0])
+        finally:
+            k32.CloseHandle(tok)
+
+    try:
+        pid = wintypes.DWORD()
+        u32.GetWindowThreadProcessId(u32.GetForegroundWindow(), ctypes.byref(pid))
+        if not pid.value:
+            return False
+        other = k32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not other:
+            return False
+        try:
+            theirs = level(other)
+        finally:
+            k32.CloseHandle(other)
+        ours = level(k32.GetCurrentProcess())
+        return ours >= 0 and theirs > ours
+    except (AttributeError, OSError, ValueError, ctypes.ArgumentError):
+        return False
+
+
+def _focus_target(handle: int, x: int, y: int, what: str) -> None:
+    """Make *handle* the foreground window and check that (x, y) belongs to it.
+
+    Keystrokes go to whatever window has the focus.  Without these checks a
+    send that could not take the focus (Windows refuses focus changes while the
+    user works in another app) clicked and pasted + Enter into that other app:
+    live 2026-11-22, no announcement reached the room for ~1.5 h while a
+    terminal was the foreground window.  Raises RuntimeError and types nothing
+    when the window cannot be brought to the front or is covered.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    u32 = ctypes.windll.user32  # type: ignore[attr-defined]
+    if u32.IsIconic(handle):
+        u32.ShowWindow(handle, 9)  # SW_RESTORE
+    deadline = time.monotonic() + 2.0
+    while u32.GetForegroundWindow() != handle and time.monotonic() < deadline:
+        _bring_to_front(u32, handle)
+        time.sleep(0.1)
+    if u32.GetForegroundWindow() != handle:
+        if _foreground_is_elevated(u32):
+            # live 2026-11-23: an administrator Windows Terminal was in front
+            raise RuntimeError(
+                f"{what} could not be brought to the front: the window in front belongs "
+                "to a program running as administrator (Windows does not let AutoDJ take "
+                "the focus from it; minimize or close that window); nothing typed"
+            )
+        raise RuntimeError(f"{what} could not be brought to the front; nothing typed")
+    hit = u32.WindowFromPoint(wintypes.POINT(x, y))
+    if not hit or u32.GetAncestor(hit, 2) != handle:  # GA_ROOT
+        raise RuntimeError(f"{what} message box is covered by another window; nothing typed")
+
+
+def _still_front(handle: int, what: str) -> None:
+    """Abort before a keystroke if another window took the focus meanwhile."""
+    import ctypes
+
+    if ctypes.windll.user32.GetForegroundWindow() != handle:  # type: ignore[attr-defined]
+        raise RuntimeError(f"{what} lost the focus before typing; nothing typed")
+
+
 def _keys_literal(text: str) -> str:
     """*text* as literal keystrokes for pywinauto.send_keys (newlines become spaces)."""
     text = text.replace("\r", " ").replace("\n", " ")
@@ -61,6 +282,17 @@ class UiaAdapter(ChatAdapter):
     - text: plain Document/Edit controls chosen by view_type/view_index, input_type/input_index
     view_kind = auto | web | text. `AutoDJ.exe --discover` fills in what it finds."""
 
+    # Web room chat: the window title seen when the chat panes were found.  Camfrog
+    # shows the room list (or another tab) in the same window; the cached panes
+    # then still answer with the old room's text and position, so a changed title
+    # means "look the panes up again" (see _check_room_shown).  Class-level
+    # defaults so subclasses and test doubles that skip __init__ keep working.
+    _web_room: bool = False
+    _room_title: str | None = None
+    _room_hidden: bool = False
+    _hidden_title: str | None = None
+    _hidden_checked: float = 0.0
+
     def __init__(self, cfg):
         self.cfg = cfg
         self.rx = re.compile(cfg.line_regex)
@@ -89,6 +321,11 @@ class UiaAdapter(ChatAdapter):
         self._web = False
         self._bg_fails = 0  # consecutive unconfirmed background sends (auto mode only)
         self._bg_fails_lock = threading.Lock()  # protects _bg_fails across reader/sender threads
+        self._web_room = False
+        self._room_title = None
+        self._room_hidden = False
+        self._hidden_title = None
+        self._hidden_checked = 0.0
         self._attach()
 
     def _attach(self):
@@ -151,6 +388,8 @@ class UiaAdapter(ChatAdapter):
             view, inp = find_web_panes(self.win, self.cfg.web_view_title, self.cfg.web_input_title)
             if view is not None:
                 self._web, self._view, self._input = True, view, inp
+                self._web_room = True
+                self._room_title = _window_title(self.handle)
                 log.info(
                     "chat: web view found (message box %s)",
                     "found" if inp is not None else "MISSING",
@@ -177,9 +416,50 @@ class UiaAdapter(ChatAdapter):
         else:
             log.debug("UIA adapter test_connection: OK (no lines yet)")
 
+    def _check_room_shown(self) -> None:
+        """Raise RoomHiddenError unless the window still shows the room chat.
+
+        Live 2026-11-22: Camfrog switched to its room list (same window, title
+        'รายชื่อห้องสนทนา') and for 5 h every send clicked and pasted into that
+        page through the cached message-box position, while the reader kept
+        re-reading the cached history pane.  Same title: nothing to do (one
+        GetWindowTextW).  Changed title (room list, another tab, a new topic):
+        the panes are looked up again; none found -> RoomHiddenError.
+        """
+        title = _window_title(self.handle)
+        if self._view is not None and title == self._room_title:
+            return
+        now = time.monotonic()
+        if self._room_hidden and title == self._hidden_title and now - self._hidden_checked < 5.0:
+            raise RoomHiddenError(f"Camfrog shows {title!r}, not the room chat")
+        from ..webchat import find_web_panes
+
+        if self.win is None:
+            self._attach()
+        view, inp = find_web_panes(self.win, self.cfg.web_view_title, self.cfg.web_input_title)
+        if view is not None:
+            self._web, self._view, self._input = True, view, inp
+            self._room_title = title
+            if self._room_hidden:
+                log.info("room chat is shown again (%r): reading and sending resume", title)
+                self._room_hidden = False
+            return
+        self._view = self._input = None  # stale panes of the hidden room page
+        self._hidden_title, self._hidden_checked = title, now
+        if not self._room_hidden:
+            log.warning(
+                "Camfrog shows %r instead of the room chat: nothing is read from or "
+                "typed into the room until its tab is selected again",
+                title,
+            )
+            self._room_hidden = True
+        raise RoomHiddenError(f"Camfrog shows {title!r}, not the room chat")
+
     def _lines(self) -> list[str]:
         with self.com_lock:
-            if self._view is None:
+            if self._web_room:
+                self._check_room_shown()
+            elif self._view is None:
                 self._resolve()
             if self._web:
                 from ..webchat import read_web
@@ -305,31 +585,38 @@ class UiaAdapter(ChatAdapter):
         self._im_not_im &= live
         return out
 
+    def _room_events(self, prev: list[str] | None, lines: list[str]):
+        """ChatMessages for one room read: the first read only reports who is present."""
+        if prev is None:
+            # First read: the history is a baseline and is never replayed, but
+            # the people in it are (most likely) still in the room.  Without
+            # this, after a restart everyone already present counted as "not
+            # in the room" until they spoke again, and their IM requests were
+            # refused (im_require_room_presence).
+            for nick in self._recent_nicks(lines):
+                yield ChatMessage(nick, "", event="seen")
+            return
+        for line in diff_lines(prev, lines):
+            m = self._room_line_message(line)
+            if m:
+                yield m
+
     def messages(self):
         prev = None
         while True:
             try:
-                lines = self._lines()
+                lines: list[str] | None = self._lines()
+            except RoomHiddenError:
+                lines = None  # room page not shown: keep the baseline, still read IMs
             except (OSError, RuntimeError) as e:
                 log.debug("chat read failed: %s", e)
                 with self.com_lock:  # protect _view/win against reader/sender race
                     self._view = self.win = None  # drop everything: the next poll re-attaches fresh
                 time.sleep(1)
                 continue
-            if prev is None:
-                # First read: the history is a baseline and is never replayed, but
-                # the people in it are (most likely) still in the room.  Without
-                # this, after a restart everyone already present counted as "not
-                # in the room" until they spoke again, and their IM requests were
-                # refused (im_require_room_presence).
-                for nick in self._recent_nicks(lines):
-                    yield ChatMessage(nick, "", event="seen")
-            else:
-                for line in diff_lines(prev, lines):
-                    m = self._room_line_message(line)
-                    if m:
-                        yield m
-            prev = lines  # first poll only sets the baseline: old history is never replayed
+            if lines is not None:
+                yield from self._room_events(prev, lines)
+                prev = lines  # first poll only sets the baseline: old history is never replayed
             # Private messages live in a different web pane; read them too.
             try:
                 for im in self._im_lines():
@@ -425,28 +712,36 @@ class UiaAdapter(ChatAdapter):
 
         from .. import winmsg
 
+        _wait_user_idle("Camfrog room window")  # before touching focus or clipboard
         prev = winmsg.foreground()
         try:
             old_clip = pyperclip.paste()
         except (pyperclip.PyperclipException, OSError):
             old_clip = None
         try:
-            try:
-                if self.win.is_minimized():
-                    self.win.restore()
-            except (RuntimeError, AttributeError):
-                pass  # window may have closed; proceed with foreground send
-            self.win.set_focus()  # keystrokes go to the foreground window, so bring Camfrog up first
+            # No pywinauto restore()/set_focus(): they are cross-process UIA calls, and
+            # UIA SetFocus blocked the sender thread for good when Windows refused the
+            # focus (live 2026-11-23: no room message after 02:27:49).  _focus_target()
+            # restores and raises the window with plain Win32 calls that never block.
             # _ensure_controls() guarantees self._input is not None here
             if self._input is None:  # explicit check: asserts are stripped under python -O
                 raise RuntimeError("_ensure_controls must be called before _send_fg")
+            handle = int(self.win.handle)
+            r = self._input.rectangle()  # measured after the window came forward
+            x, y = (r.left + r.right) // 2, (r.top + r.bottom) // 2
+            _focus_target(handle, x, y, "Camfrog room window")
+            pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
             if self._web:
                 self._input.click_input()  # the message box is a web editor: only a click focuses it
+                # the web editor takes the focus a moment after the click (~0.35 s
+                # measured on the IM editor): do not paste before that
+                time.sleep(_WEB_FOCUS_DELAY)
             else:
                 self._input.set_focus()
-            pyperclip.copy(text)  # clipboard paste keeps Thai/Unicode intact
-            send_keys("^v")
-            time.sleep(0.15)
+            _still_front(handle, "Camfrog room window")
+            _press_ctrl_v()
+            time.sleep(_WEB_PASTE_DELAY)
+            _still_front(handle, "Camfrog room window")  # never press Enter in another app
             send_keys("{ENTER}")
         finally:
             time.sleep(0.1)
@@ -516,18 +811,15 @@ class UiaAdapter(ChatAdapter):
         from .. import winmsg
 
         u32 = ctypes.windll.user32  # type: ignore[attr-defined]
+        _wait_user_idle("IM window")  # before touching focus
         prev = winmsg.foreground()
         try:
             if u32.IsIconic(handle):
                 u32.ShowWindow(handle, 9)  # SW_RESTORE
-            try:
-                win.set_focus()
-            except (RuntimeError, AttributeError, OSError):
-                pass  # the checks below decide
+            # (no UIA win.set_focus(): it can block forever, see _send_fg)
             deadline = time.monotonic() + 2.0
             while u32.GetForegroundWindow() != handle and time.monotonic() < deadline:
-                u32.BringWindowToTop(handle)
-                u32.SetForegroundWindow(handle)
+                _bring_to_front(u32, handle)
                 time.sleep(0.1)
             if u32.GetForegroundWindow() != handle:
                 raise RuntimeError("IM window could not be brought to the front; nothing typed")
@@ -572,6 +864,8 @@ class UiaAdapter(ChatAdapter):
         """
         mode = self.cfg.send_mode
         try:
+            if self._web_room:
+                self._check_room_shown()  # never type into the room list / another tab
             self._ensure_controls()
             if mode in ("auto", "background"):
                 decision = self._attempt_background_send(text, mode)
@@ -585,8 +879,17 @@ class UiaAdapter(ChatAdapter):
                         )
                     return
                 # mode == "auto" and background did not confirm: fall through to foreground
+            # Compare against the history read *before* typing.  With [] every line of the
+            # history counted as new, so an auto-reply posted earlier (they repeat) made
+            # a send that never reached the room look delivered.
+            before_fg: list[str] = []
+            if self.cfg.send_verify:
+                try:
+                    before_fg = self._lines()
+                except (OSError, RuntimeError):
+                    before_fg = []
             self._send_fg(text)
-            if self.cfg.send_verify and not self._appeared(text, []):
+            if self.cfg.send_verify and not self._appeared(text, before_fg):
                 log.warning(
                     "sent via foreground paste but NOT seen in the room within 3s "
                     "(the message box may not have received the paste/enter)"

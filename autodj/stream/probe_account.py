@@ -16,13 +16,14 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import os
 import threading
 import time
 from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Optional
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 
 log = logging.getLogger("autodj.stream.probe_account")
 
@@ -120,26 +121,39 @@ class ProbeAccountStore:
         self._accounts: dict[str, ProbeAccount] = {}
         self._load()
 
+    # OWASP 2023 guidance for PBKDF2-HMAC-SHA256.
+    PBKDF2_ITERATIONS = 600_000
+
     def _init_fernet(self, passphrase: str | None) -> Fernet:
-        """Initialize Fernet encryption from passphrase or key file."""
+        """Initialize Fernet encryption from passphrase or key file.
+
+        With a passphrase the key is derived on every start and never written
+        to disk; only a random per-store salt is stored (``<store>.salt``).
+        The previous code wrote the derived key to ``<store>.key`` beside the
+        data with a fixed salt, so the passphrase protected nothing: anyone
+        who could read the folder could decrypt the store.  An existing
+        ``.key`` file is still honoured so stores created that way open.
+        """
         key_file = self.store_path.with_suffix(".key")
         if key_file.exists():
             key = key_file.read_bytes()
         elif passphrase:
-            # Derive key from passphrase using PBKDF2
             from cryptography.hazmat.primitives import hashes
             from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-            salt = b"autodj-probe-account-salt"
+            salt_file = self.store_path.with_suffix(".salt")
+            if salt_file.exists():
+                salt = salt_file.read_bytes()
+            else:
+                salt = os.urandom(16)
+                salt_file.write_bytes(salt)
             kdf = PBKDF2HMAC(
                 algorithm=hashes.SHA256(),
                 length=32,
                 salt=salt,
-                iterations=100000,
+                iterations=self.PBKDF2_ITERATIONS,
             )
             key = base64.urlsafe_b64encode(kdf.derive(passphrase.encode()))
-            key_file.write_bytes(key)
-            key_file.chmod(0o600)
         else:
             key = Fernet.generate_key()
             key_file.write_bytes(key)
@@ -172,6 +186,13 @@ class ProbeAccountStore:
                 acct.api_key = self._decrypt(acct.api_key)
                 self._accounts[key] = acct
             log.info("Loaded %d probe accounts from %s", len(self._accounts), self.store_path)
+        except InvalidToken:
+            # Wrong passphrase / key.  Continuing with an empty store used to let
+            # the next add() -> save() overwrite every stored credential.
+            self._accounts.clear()
+            raise ValueError(
+                f"cannot decrypt {self.store_path}: wrong passphrase or key file"
+            ) from None
         except Exception as exc:  # noqa: BLE001
             log.warning("Failed to load probe accounts: %s", exc)
 

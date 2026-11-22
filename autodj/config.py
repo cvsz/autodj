@@ -276,6 +276,11 @@ class Config:
     mic_greeting_enabled: bool = True  # greet users who receive the room mic
     mic_greeting_message: str = ""  # {user} = nick; "" = localized default (messages.py)
     mic_greeting_cooldown: float = 300.0  # seconds between mic greetings for same user
+    # Room bots trusted to announce that *another* nick took the mic, e.g. ["ZeazBot"]
+    # for "Seaza กำลังรับไมค์".  Other users can only announce themselves.
+    mic_notice_senders: list[str] = field(default_factory=list)
+    # Nicks never greeted on the mic (e.g. the account AutoDJ streams the music from).
+    mic_greeting_ignore: list[str] = field(default_factory=list)
 
     # Camfrog RE Integrations (Gift / Avatar / Status / Status Alert)
     gift_announce_enabled: bool = True  # announce virtual-gift messages sent to the room
@@ -325,7 +330,7 @@ class Config:
     auto_update_apply_on_start: bool = True
 
     # AI: optional chat-completion integration (enabled by default)
-    ai_enabled: bool = True  # enable AI chat replies
+    ai_enabled: bool = True  # allow `!ai ask` answers (needs ai_api_key)
     ai_api_key: str = ""  # API key for the AI provider
     ai_base_url: str = "https://integrate.api.nvidia.com/v1"  # NVIDIA Inference API endpoint
     ai_model: str = "nvidia/llama-3.3-nemotron-super-49b-v1.5"  # NVIDIA API catalog model id

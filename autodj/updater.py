@@ -56,6 +56,60 @@ class UpdateError(AutoDJError):
     """Auto-update related failure."""
 
 
+# Authenticode signer pin.  The SHA-256 check only proves the file is the one
+# GitHub published; a compromised release account could publish any exe with
+# a matching digest.  The downloaded exe must also be signed by this
+# certificate (CN=ZEAZDEV COMPANY LIMITED; v0.3.9 and v0.3.10 assets).  The
+# certificate is self-signed, so on machines that do not trust it Windows
+# reports "UnknownError" (untrusted root) rather than "Valid"; pinning the
+# thumbprint is what establishes the publisher.  Add the new thumbprint here
+# before rotating the signing certificate.
+TRUSTED_SIGNER_THUMBPRINTS = frozenset({"CED7DDB1604B5906CCD1C8E358557B4EEB20FF03"})
+_ACCEPTED_SIGNATURE_STATUS = ("Valid", "UnknownError")
+
+# The path reaches PowerShell through an environment variable, never through
+# the command text, so a crafted file name cannot inject PowerShell.
+_PS_VERIFY = (
+    "$s = Get-AuthenticodeSignature -LiteralPath $env:AUTODJ_VERIFY_PATH; "
+    "$t = if ($s.SignerCertificate) { $s.SignerCertificate.Thumbprint } else { '' }; "
+    "[Console]::Out.Write(([string]$s.Status) + '|' + $t)"
+)
+
+
+def verify_authenticode(path: Path) -> tuple[bool, str]:
+    """Check that *path* carries an Authenticode signature by a pinned certificate.
+
+    Returns ``(ok, reason)``.  Fail-closed: no Windows, PowerShell missing or
+    timing out, an unsigned / tampered file (``NotSigned``, ``HashMismatch``)
+    or any other signer all return ``False``.
+    """
+    if os.name != "nt":
+        return False, "Authenticode verification requires Windows"
+    root = os.environ.get("SystemRoot", r"C:\Windows")
+    # plain string (not Path): no WindowsPath is instantiated, so the decision logic is
+    # testable on any OS with os.name patched
+    ps = os.path.join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    env = dict(os.environ, AUTODJ_VERIFY_PATH=str(path))
+    try:
+        # security review: fixed argv, absolute powershell.exe, path passed via env
+        res = subprocess.run(  # nosec B603
+            [ps, "-NoProfile", "-NonInteractive", "-Command", _PS_VERIFY],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired) as ex:
+        return False, f"cannot run Authenticode check: {ex}"
+    status, _, thumb = res.stdout.strip().partition("|")
+    thumb = thumb.strip().upper()
+    if status not in _ACCEPTED_SIGNATURE_STATUS:
+        return False, f"signature status is {status or 'unknown'}"
+    if thumb not in TRUSTED_SIGNER_THUMBPRINTS:
+        return False, f"signed by an untrusted certificate ({thumb or 'none'})"
+    return True, f"signed by pinned certificate {thumb[:8]} ({status})"
+
+
 _VERSION_RE = re.compile(r"^v?(\d+(?:\.\d+)*)")
 
 
@@ -117,6 +171,8 @@ class Updater:
         self._announced_tag: str | None = None
         # Called (from the updater thread) once per newly seen release tag.
         self.on_available: Callable[[dict], None] | None = None
+        # Publisher check for downloaded executables (replaceable in tests).
+        self.verify_signature: Callable[[Path], tuple[bool, str]] = verify_authenticode
 
     # Settings are read live from ``self.cfg`` so a config reload takes effect.
     @property
@@ -310,6 +366,44 @@ class Updater:
                     return parts[0].lower()
         return None
 
+    @staticmethod
+    def _fetch_to(url: str, tmp: Path) -> str | None:
+        """Stream *url* (already validated as https://github.com) into *tmp*.
+
+        Returns the SHA-256 hex digest, or None on a non-200 response.
+        """
+        req = Request(url, headers={"User-Agent": UA, "Accept": "application/octet-stream"})  # noqa: S310
+        # security review: callers validate the URL (https/github.com only) first
+        with urlopen(req, timeout=60) as resp:  # noqa: S310 - url is fail-closed to github.com by the caller  # nosec B310
+            if resp.status != 200:
+                log.error("auto-update: download HTTP %s", resp.status)
+                return None
+            h = hashlib.sha256()
+            with open(tmp, "wb") as f:
+                while True:
+                    chunk = resp.read(65536)
+                    if not chunk:
+                        break
+                    h.update(chunk)
+                    f.write(chunk)
+        return h.hexdigest()
+
+    def _publisher_ok(self, asset: dict, dest: Path) -> bool:
+        """Authenticode-check a downloaded executable; delete it when rejected.
+
+        Run on the final ``.exe`` name: Windows picks the signature verifier by
+        file type, and a ``.part`` file is not recognised as a PE image.
+        """
+        if dest.suffix.lower() != ".exe":
+            return True
+        ok, why = self.verify_signature(dest)
+        if not ok:
+            log.error("auto-update: %s rejected: %s; discarded", asset.get("name"), why)
+            dest.unlink(missing_ok=True)
+            return False
+        log.info("auto-update: %s %s", asset.get("name"), why)
+        return True
+
     def download_asset(self, asset: dict, dest: Path) -> bool:
         """Download *asset* to *dest*.  Returns True on success.
 
@@ -334,30 +428,21 @@ class Updater:
 
         tmp = dest.with_suffix(dest.suffix + ".part")
         try:
-            req = Request(url, headers={"User-Agent": UA, "Accept": "application/octet-stream"})  # noqa: S310
-            # security review: URL scheme/host validated just above (https/github.com only)
-            with urlopen(req, timeout=60) as resp:  # noqa: S310 - url is fail-closed to github.com above  # nosec B310
-                if resp.status != 200:
-                    log.error("auto-update: download HTTP %s", resp.status)
-                    return False
-                h = hashlib.sha256()
-                with open(tmp, "wb") as f:
-                    while True:
-                        chunk = resp.read(65536)
-                        if not chunk:
-                            break
-                        h.update(chunk)
-                        f.write(chunk)
-            if h.hexdigest() != expected:
+            got = self._fetch_to(url, tmp)
+            if got is None:
+                return False
+            if got != expected:
                 log.error(
                     "auto-update: SHA-256 mismatch for %s (expected %s, got %s); discarded",
                     url,
                     expected,
-                    h.hexdigest(),
+                    got,
                 )
                 tmp.unlink(missing_ok=True)
                 return False
             tmp.replace(dest)
+            if not self._publisher_ok(asset, dest):
+                return False
             log.info(
                 "auto-update: downloaded %s -> %s (%d bytes)",
                 url,

@@ -2,11 +2,19 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
+## What's new in 0.3.11
+
+- **AI answers only `!ai ask <question>`** (Thai `!เอไอ ถาม ...`, everyone). `ai_enabled = true` by default, but the AI stays off until `ai_api_key` is set (Settings → AI API key, masked). Ordinary room chat is never sent to the AI endpoint (NVIDIA by default).
+- **Room messages are delivered reliably:** Ctrl+V works with the Thai keyboard layout, nothing is typed while Camfrog shows its room list or another tab, the bot waits until nobody is typing on the bot PC, and it never types into another application. "send ok" is logged only when the line really appeared in the room.
+- **Mic greeting from a room bot:** a trusted bot's announcement (`mic_notice_senders`, e.g. ZeazBot's "<nick> กำลังรับไมค์") greets the user who took the mic; `mic_greeting_ignore` skips the streaming account.
+- **Opening the room after start works:** AutoDJ attaches to the room window when it opens later.
+- **Only one AutoDJ per config;** `AutoDJ.exe` without arguments opens the GUI; the bot never greets its own account.
+- **Security:** auto-update accepts only an `AutoDJ.exe` signed by the pinned ZEAZDEV certificate; probe-account store keys are derived from the passphrase (not stored beside the data); admin targets are single tokens; local config backups are no longer tracked; Settings masks the AI key and webhook secret.
+
 ## What's new in 0.3.10
 
 - **Mic/DJ greeting:** when the room shows `<nick> is now speaking` (or `<nick> กำลังรับไมค์`), AutoDJ announces "{user} is now the DJ." once per `mic_greeting_cooldown` (300 s). Only whole notice lines from that user count, so ordinary chat ("who is the dj?") never triggers it. Settings: `mic_greeting_enabled`, `mic_greeting_message` ("" = localized default), `mic_greeting_cooldown` — also in the Settings dialog.
 - **`!ai help`** sends the full command list to you by IM; `!ai` alone shows the AI status.
-- **AI is on by default** (`ai_enabled = true`) but stays off until `ai_api_key` is set. With a key, non-command room chat goes to the AI endpoint (NVIDIA by default).
 - **Default `bot_nick` is `AutoDJ`.**
 - **Duplicate-message suppression:** identical lines re-dumped by Camfrog after a reconnect no longer run the same command several times (3 s per-user window).
 - **Settings dialog:** `user_request_limit` and `rate_limit_window` are now editable.
@@ -82,7 +90,7 @@ Highlights: **Enterprise-grade exception hierarchy** with structured error codes
 6. **New Thai Aliases**: `!ขอเพลง` (request song), `!เล่นเพลง` (play song).
 7. **Auto-Reply**: Every 60 seconds (1 minute) from `ads-list.json` (configurable `auto_reply_interval`, min 60s).
 8. **REA Reverse Engineering**: Documented Camfrog font logic (GDI imports, chat/IM font settings, HTML rendering for display only).
-9. **Mic Mute/Unmute**: Admin commands `!mute` / `!unmute` to mute/unmute the mic (config-gated: `admin_mute_mic`, `admin_unmute_mic`).
+9. **Music Mute/Unmute**: Admin commands `!mute` / `!unmute` silence / restore AutoDJ's music by setting the player volume to 0 and back. They do not mute the Camfrog microphone (config-gated: `admin_mute_mic`, `admin_unmute_mic`; the key names are kept for compatibility).
 10. **Block/Unblock Bot**: Admin commands `!blockbot` / `!unblockbot` to block/unblock bots (config-gated: `admin_block_bot`, `admin_unblock_bot`).
 11. **Kick/Ban/Unban User**: Admin commands `!kick` / `!ban` / `!unban` (config-gated: `admin_kick_user`, `admin_ban_user`, `admin_unban_user`).
 12. **Punish User/Bot**: Admin commands `!punish` / `!punishbot` (config-gated: `admin_punish_user`, `admin_punish_bot`).
@@ -116,7 +124,7 @@ Keys: `Space` pause/resume (when no text box has focus), `Ctrl+Right` skip. A re
 ## Commands (prefix `!`; Thai aliases in brackets)
 Everyone: `np` (เพลงนี้; replies with live progress, e.g. `(1:05/3:20)`), `next` (ถัดไป), `queue` (คิว), `history` (ประวัติ), `voteskip` (โหวตข้าม), `remove <n>` (ลบ), `help` (ช่วยเหลือ), `mute` (ปิดไมค์), `unmute` (เปิดไมค์), `welcome` (ต้อนรับ).
 Requester/admin: `skip` (ข้าม).
-Admin: `pause` (หยุดชั่วคราว), `resume` (เล่นต่อ), `vol` (เสียง), `shuffle` (สุ่ม), `repeat` (วนซ้ำ), `clear` (ล้างคิว), `load` (โหลด), `say` (พูด), `speak` (ออกเสียง), `block <nick>` (บล็อก) / `unblock <nick>` (เลิกบล็อก), `blockbot <nick>` (บล็อกบอท) / `unblockbot <nick>` (เลิกบล็อกบอท), `kick <nick>` (เตะ), `ban <nick>` (แบน), `unban <nick>` (เลิกแบน), `punish <nick>` (ลงโทษ), `punishbot <nick>` (ลงโทษบอท), `deletehistory <all|N>` (ลบประวัติ), `delete <msg id>` (ลบข้อความ), `welcome <text>` (ต้อนรับ), `ai on|off|status|model <id>|prompt <text>` (เอไอ), `update` / `update apply` (อัปเดต): a blocked nick's commands are ignored silently (admins cannot be blocked; also settable as `blocked_users` in config).
+Admin: `pause` (หยุดชั่วคราว), `resume` (เล่นต่อ), `vol` (เสียง), `shuffle` (สุ่ม), `repeat` (วนซ้ำ), `clear` (ล้างคิว), `load` (โหลด), `say` (พูด), `speak` (ออกเสียง), `block <nick>` (บล็อก) / `unblock <nick>` (เลิกบล็อก), `blockbot <nick>` (บล็อกบอท) / `unblockbot <nick>` (เลิกบล็อกบอท), `kick <nick>` (เตะ), `ban <nick>` (แบน), `unban <nick>` (เลิกแบน), `punish <nick>` (ลงโทษ), `punishbot <nick>` (ลงโทษบอท), `deletehistory <all|N>` (ลบประวัติ), `delete <msg id>` (ลบข้อความ), `welcome <text>` (ต้อนรับ), `ai on|off|status|model <id>|prompt <text>` (เอไอ; everyone may use `ai ask <question>` / `เอไอ ถาม`), `update` / `update apply` (อัปเดต): a blocked nick's commands are ignored silently (admins cannot be blocked; also settable as `blocked_users` in config).
 
 **"What song is this?"** Room lines containing `np_question_keywords` (e.g. "เพลงอะไร", "ชื่อเพลง", "what song") get the `!np` reply without a command; room-wide cooldown `np_question_cooldown` (default 20 s); disable with `np_question_reply = false` or in Settings. `msg_now` / `msg_next` templates accept `{title} {duration} {requester} {elapsed} {remaining} {eta}`. AI replies never answer private IMs; auto-update is off by default and only keeps SHA-256-verified downloads; webhook requests need `X-Timestamp` + `X-Signature` and a `webhook_secret` of at least 16 chars (see `docs/admin-manual.en.md`).
 

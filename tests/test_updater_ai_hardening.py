@@ -96,6 +96,7 @@ def test_download_accepts_matching_digest(tmp_path):
         "digest": "sha256:" + hashlib.sha256(data).hexdigest(),
     }
     dest = tmp_path / "AutoDJ.next.exe"
+    up.verify_signature = lambda p: (True, "signed by pinned certificate (test)")
     with patch("autodj.updater.urlopen", return_value=_Resp(data)):
         assert up.download_asset(asset, dest) is True
     assert dest.read_bytes() == data
@@ -151,41 +152,40 @@ def _fake_ai_engine():
     fake._ai_inflight_lock = threading.Lock()
     fake.ai.is_enabled.return_value = True
     fake.ai.can_reply.return_value = True
+    fake.t.side_effect = lambda key, **kw: key
     return fake
 
 
-def test_ai_room_reply_is_async_and_cooldown_gated():
+def test_ai_ask_is_async_and_cooldown_gated():
     from autodj.engine import Engine
 
     fake = _fake_ai_engine()
-    Engine._ai_handle_room(fake, SimpleNamespace(user="bob", text="hello"))
+    Engine.ai_ask(fake, "bob", "hello")
     fake.ai.chat.assert_not_called()  # not on the chat thread
     # dedicated AI pool, never the command executor
-    fake._ai_exec.submit.assert_called_once_with(fake._ai_reply, "hello")
+    fake._ai_exec.submit.assert_called_once_with(fake._ai_reply, "bob", "hello")
     fake.exec.submit.assert_not_called()
 
     fake._ai_exec.reset_mock()
     fake.ai.can_reply.return_value = False
-    Engine._ai_handle_room(fake, SimpleNamespace(user="amy", text="again"))
+    Engine.ai_ask(fake, "amy", "again")
     fake._ai_exec.submit.assert_not_called()
+    fake.say.assert_called_with("amy: ai_wait")
 
 
-def test_ai_skips_blocked_users_and_caps_inflight_calls():
+def test_ai_ask_caps_inflight_calls():
     from autodj.engine import AI_MAX_INFLIGHT, Engine
 
     fake = _fake_ai_engine()
-    fake.blocked = {"troll"}
-    Engine._ai_handle_room(fake, SimpleNamespace(user="Troll", text="hi"))
-    fake.ai.can_reply.assert_not_called()
-    fake._ai_exec.submit.assert_not_called()
-
     for n in range(AI_MAX_INFLIGHT + 3):
-        Engine._ai_handle_room(fake, SimpleNamespace(user=f"u{n}", text="hi"))
-    assert fake._ai_exec.submit.call_count == AI_MAX_INFLIGHT  # slow provider: drop the rest
+        Engine.ai_ask(fake, f"u{n}", "hi")
+    assert fake._ai_exec.submit.call_count == AI_MAX_INFLIGHT  # slow provider: refuse the rest
+    fake.say.assert_called_with(f"u{AI_MAX_INFLIGHT + 2}: ai_busy")
 
     fake.ai.chat.return_value = "ok"
-    Engine._ai_reply(fake, "hi")  # a finished call frees its slot
+    Engine._ai_reply(fake, "u0", "hi")  # a finished call frees its slot
     assert fake._ai_inflight == AI_MAX_INFLIGHT - 1
+    fake.say.assert_called_with("u0: ok")
 
 
 def test_ai_numeric_settings_are_range_checked(tmp_path):

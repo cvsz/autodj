@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import time
 from pathlib import Path
@@ -22,6 +23,20 @@ COMMANDS: dict[str, tuple] = {}
 # request limit and allow_play_in_room — a hard-coded name tuple used to miss
 # aliases such as aplay/addm/ขอเพลง/เล่นเพลง/เปิดเพลง (Thai command aliases).
 REQUEST_COMMANDS: set[str] = set()
+
+
+# A single room-command target (nick or message id). Whitespace, control characters
+# and "/" are rejected so the value cannot add arguments to, or start, a Camfrog
+# slash command such as "/kick <nick>" or "/delete <id>".
+_TARGET_RE = re.compile(r"[^\s\x00-\x1f\x7f-\x9f/]{1,64}")
+
+
+def _single_target(e: "Engine", a: str, usage_key: str) -> str:
+    """Return the stripped argument if it is exactly one safe token, else raise usage."""
+    token = a.strip()
+    if not _TARGET_RE.fullmatch(token):
+        raise UserError(e.t(usage_key, p=e.cfg.prefix))
+    return token
 
 
 def command(*names: str, admin: bool = False, request: bool = False):
@@ -668,9 +683,7 @@ def _unblockbot(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 def _kick_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not getattr(e.cfg, "admin_kick_user", False):
         raise UserError(e.t("admin_only"))
-    nick = a.strip()
-    if not nick:
-        raise UserError(e.t("kick_user_usage", p=e.cfg.prefix))
+    nick = _single_target(e, a, "kick_user_usage")
     if nick.lower() in e.admins:
         raise UserError(e.t("cannot_block_admin"))
     e.kick_user(nick)
@@ -681,9 +694,7 @@ def _kick_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 def _ban_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not getattr(e.cfg, "admin_ban_user", False):
         raise UserError(e.t("admin_only"))
-    nick = a.strip()
-    if not nick:
-        raise UserError(e.t("ban_user_usage", p=e.cfg.prefix))
+    nick = _single_target(e, a, "ban_user_usage")
     if nick.lower() in e.admins:
         raise UserError(e.t("cannot_block_admin"))
     e.ban_user(nick)
@@ -694,9 +705,7 @@ def _ban_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 def _unban_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not getattr(e.cfg, "admin_unban_user", False):
         raise UserError(e.t("admin_only"))
-    nick = a.strip()
-    if not nick:
-        raise UserError(e.t("unban_user_usage", p=e.cfg.prefix))
+    nick = _single_target(e, a, "unban_user_usage")
     e.unban_user(nick)
     e.say(e.t("unbanned_user", nick=nick))
 
@@ -708,9 +717,7 @@ def _unban_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 def _punish_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not getattr(e.cfg, "admin_punish_user", False):
         raise UserError(e.t("admin_only"))
-    nick = a.strip()
-    if not nick:
-        raise UserError(e.t("punish_user_usage", p=e.cfg.prefix))
+    nick = _single_target(e, a, "punish_user_usage")
     if nick.lower() in e.admins:
         raise UserError(e.t("cannot_block_admin"))
     e.punish_user(nick)
@@ -721,9 +728,7 @@ def _punish_user(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 def _punish_bot(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not getattr(e.cfg, "admin_punish_bot", False):
         raise UserError(e.t("admin_only"))
-    nick = a.strip()
-    if not nick:
-        raise UserError(e.t("punish_bot_usage", p=e.cfg.prefix))
+    nick = _single_target(e, a, "punish_bot_usage")
     if nick.lower() == e.cfg.bot_nick.lower():
         raise UserError(e.t("cannot_block_bot_admin"))
     if nick.lower() in e.admins:
@@ -739,9 +744,7 @@ def _punish_bot(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
 def _delete_message(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     if not getattr(e.cfg, "admin_delete_message_enabled", False):
         raise UserError(e.t("admin_only"))
-    msg_id = a.strip()
-    if not msg_id:
-        raise UserError(e.t("delete_message_usage", p=e.cfg.prefix))
+    msg_id = _single_target(e, a, "delete_message_usage")
     ok = e.delete_message(msg_id)
     if ok:
         e.say(e.t("message_deleted"))
@@ -764,21 +767,47 @@ def _welcome_message(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None
 # ---- AI (OpenAI-compatible chat) -------------------------------------------
 
 
-@command("ai", "เอไอ", admin=True)
-def _ai_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
-    """Configure or check AI auto-reply.
+def _ai_state(e: "Engine") -> str:
+    """'enabled', 'disabled', or 'enabled but no API key' (it used to say 'enabled')."""
+    if e.ai.is_enabled():
+        return e.t("ai_enabled")
+    if e.cfg.ai_enabled and not e.cfg.ai_api_key:
+        return e.t("ai_no_key")
+    return e.t("ai_disabled")
 
-    Usage: !ai on|off           — enable/disable AI replies
-           !ai status           — show current AI settings
-           !ai model <name>     — set AI model
-           !ai prompt <text>    — set system prompt
+
+def _ai_ask(e: "Engine", m: "ChatMessage", question: str) -> None:
+    if not question:
+        raise UserError(e.t("ai_ask_usage", p=e.cfg.prefix))
+    if not e.ai.is_enabled():
+        raise UserError(e.t("chatbot_ai_unavailable") if e.cfg.ai_enabled else e.t("ai_disabled"))
+    e.ai_ask(m.user, question)
+
+
+@command("ai", "เอไอ")
+def _ai_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
+    """Ask the AI, or configure it.
+
+    Usage: !ai ask <question>   — ask the AI (everyone; Thai: !เอไอ ถาม ...)
+           !ai on|off           — enable/disable AI answers (admin)
+           !ai status           — show current AI settings (admin; also !ai alone)
+           !ai model <name>     — set AI model (admin)
+           !ai prompt <text>    — set system prompt (admin)
+           !ai help             — full command list by IM (admin)
+
+    Only the text after "ask" is sent to the AI provider; ordinary room chat never is.
     """
     raw = a.strip()
+    sub, _, rest = raw.partition(" ")
+    if sub.lower() in ("ask", "ถาม"):
+        _ai_ask(e, m, rest.strip())
+        return
+    if not admin:
+        # everything except "ask" changes or reveals settings
+        raise UserError(e.t("ai_ask_usage", p=e.cfg.prefix))
     arg = raw.lower()
-    if not arg:
-        # No argument: show current AI status instead of a usage error.
-        state = e.t("ai_enabled") if e.ai.is_enabled() else e.t("ai_disabled")
-        e.say(e.t("ai_status", state=state, model=e.cfg.ai_model, url=e.cfg.ai_base_url))
+    if not arg or arg == "status":
+        e.say(e.t("ai_status", state=_ai_state(e), model=e.cfg.ai_model, url=e.cfg.ai_base_url))
         return
 
     if arg == "help":
@@ -786,20 +815,20 @@ def _ai_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
         base = e.t("help_base", p=e.cfg.prefix)
         admin_cmds = e.t("help_admin", p=e.cfg.prefix)
         text = e.t("ai_help", p=e.cfg.prefix, base=base, admin=admin_cmds, BOT=e.cfg.bot_nick)
-        e.send_im(m.user, text)
+        if not e.send_im(m.user, text):
+            # Live 2026-11-23: with no IM window open the help was dropped silently
+            raise UserError(e.t("ai_help_no_im", p=e.cfg.prefix))
         return
 
     if arg == "on":
         e.cfg.ai_enabled = True
         e.refresh_ai()
-        e.say(e.t("ai_enabled"))
+        # without an API key the AI stays off: say so instead of "AI enabled."
+        e.say(e.t("ai_enabled") if e.ai.is_enabled() else e.t("chatbot_ai_unavailable"))
     elif arg == "off":
         e.cfg.ai_enabled = False
         e.refresh_ai()
         e.say(e.t("ai_disabled"))
-    elif arg == "status":
-        state = e.t("ai_enabled") if e.ai.is_enabled() else e.t("ai_disabled")
-        e.say(e.t("ai_status", state=state, model=e.cfg.ai_model, url=e.cfg.ai_base_url))
     elif arg.startswith("model "):
         # keep original case: model ids are case-sensitive on some providers
         e.cfg.ai_model = raw[len("model ") :].strip()

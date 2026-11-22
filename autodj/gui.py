@@ -2659,6 +2659,14 @@ class App(tk.Tk):
         self.s_mic_greeting_cooldown.insert(0, str(self.e.cfg.mic_greeting_cooldown))
         _setting_row("g_settings_mic_greeting_cooldown", self.s_mic_greeting_cooldown)
 
+        # mic_notice_senders / mic_greeting_ignore (comma-separated nicks)
+        self.s_mic_notice_senders = self._entry(sp_inner)
+        self.s_mic_notice_senders.insert(0, ", ".join(self.e.cfg.mic_notice_senders))
+        _setting_row("g_settings_mic_notice_senders", self.s_mic_notice_senders)
+        self.s_mic_greeting_ignore = self._entry(sp_inner)
+        self.s_mic_greeting_ignore.insert(0, ", ".join(self.e.cfg.mic_greeting_ignore))
+        _setting_row("g_settings_mic_greeting_ignore", self.s_mic_greeting_ignore)
+
         # join_line_regex: room notice that someone entered (greets them on arrival)
         self.s_join_line_regex = self._entry(sp_inner)
         self.s_join_line_regex.insert(0, self.e.cfg.join_line_regex)
@@ -2861,6 +2869,7 @@ class App(tk.Tk):
 
         # webhook_secret
         self.s_webhook_secret = self._entry(sp_inner)
+        self.s_webhook_secret.configure(show="•")  # secret: never shown on screen
         self.s_webhook_secret.insert(0, self.e.cfg.webhook_secret)
         _setting_row(
             "g_settings_webhook_secret",
@@ -2888,6 +2897,15 @@ class App(tk.Tk):
         self.s_plugins = self._entry(sp_inner)
         self.s_plugins.insert(0, ", ".join(self.e.cfg.plugins))
         _setting_row("g_settings_plugins", self.s_plugins, "g_settings_save")
+
+        # AI: answers only `!ai ask`; the key is masked and saved to config.toml
+        self.s_ai_api_key = self._entry(sp_inner)
+        self.s_ai_api_key.configure(show="•")
+        self.s_ai_api_key.insert(0, self.e.cfg.ai_api_key)
+        _setting_row("g_settings_ai_api_key", self.s_ai_api_key)
+        self.s_ai_model = self._entry(sp_inner)
+        self.s_ai_model.insert(0, self.e.cfg.ai_model)
+        _setting_row("g_settings_ai_model", self.s_ai_model)
 
         # Save bar (Close is in the header): pinned to the bottom so it is always
         # reachable (it used to sit after ~120 rows of scrolling), plus a status line
@@ -3678,6 +3696,16 @@ class App(tk.Tk):
         if new_cfg.ui_theme != previous_theme:
             self._retheme(new_cfg.ui_theme)
 
+    def _read_ai_settings(self, cfg) -> None:
+        """AI key/model rows -> cfg (persisted by _append_remaining_keys).  The dialog
+        may be a test double without these rows: then cfg keeps its values."""
+        ai_key = getattr(self, "s_ai_api_key", None)
+        if ai_key is not None:
+            cfg.ai_api_key = ai_key.get().strip()
+        ai_model = getattr(self, "s_ai_model", None)
+        if ai_model is not None:
+            cfg.ai_model = ai_model.get().strip() or cfg.ai_model
+
     def save_settings(self):
         """Save settings from the settings tab back to config.toml.
 
@@ -3811,6 +3839,7 @@ class App(tk.Tk):
             cfg.webhook_host = self.s_webhook_host.get().strip()
             cfg.webhook_port = self._parse_int(self.s_webhook_port, "webhook port")
             cfg.webhook_secret = self.s_webhook_secret.get().strip()
+            self._read_ai_settings(cfg)
             cfg.webhook_rate_limit_per_ip = self._parse_int(
                 self.s_webhook_rate_limit_per_ip, "webhook rate limit per IP"
             )
@@ -3994,6 +4023,22 @@ class App(tk.Tk):
             lines.append(f"mic_greeting_enabled = {str(cfg.mic_greeting_enabled).lower()}")
             lines.append(f"mic_greeting_message = {_toml_str(cfg.mic_greeting_message)}")
             lines.append(f"mic_greeting_cooldown = {cfg.mic_greeting_cooldown}")
+            cfg.mic_notice_senders = [
+                s.strip() for s in self.s_mic_notice_senders.get().split(",") if s.strip()
+            ]
+            cfg.mic_greeting_ignore = [
+                s.strip() for s in self.s_mic_greeting_ignore.get().split(",") if s.strip()
+            ]
+            lines.append(
+                "mic_notice_senders = ["
+                + ", ".join(_toml_str(s) for s in cfg.mic_notice_senders)
+                + "]"
+            )
+            lines.append(
+                "mic_greeting_ignore = ["
+                + ", ".join(_toml_str(s) for s in cfg.mic_greeting_ignore)
+                + "]"
+            )
             cfg.join_line_regex = self.s_join_line_regex.get().strip()
             lines.append(f"join_line_regex = {_toml_str(cfg.join_line_regex)}")
 

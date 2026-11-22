@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .adapters import NullAdapter, build_adapter
+from .adapters import ReattachingAdapter, build_adapter
 from .config import Config, ConfigError
 from .engine import Engine
 from .logging_json import add_json_file_handler, configure_json_logging
@@ -89,6 +89,10 @@ def main():
 
     prepare_comtypes()
     a = _parser().parse_args()
+    if getattr(sys, "frozen", False) and len(sys.argv) == 1:
+        # AutoDJ.exe is a windowed build: started with no arguments (double-click,
+        # a launcher) a headless bot is invisible and cannot be stopped.  Open the GUI.
+        a.gui = True
     if a.write_install_paths:
         # Called by the NSIS installer: persist absolute media-tool paths so a
         # deployed client never depends on CWD or relative resolution.
@@ -195,6 +199,7 @@ def _run(a, level):
         return
     if _run_say(a, cfg):
         return
+    _require_single_instance(a.config)
     if _apply_startup_update(cfg):
         return  # the batch file relaunches the freshly installed exe
 
@@ -219,6 +224,64 @@ def _run(a, level):
     # Cleanup streaming on shutdown
     if stream_mgr is not None:
         _stop_stream_infrastructure(stream_mgr)
+
+
+_INSTANCE_MUTEX = None  # held for the life of the process
+
+
+def _create_mutex(name: str) -> tuple[object, bool]:
+    """(handle, already_existed) for a named Win32 mutex; (None, False) elsewhere."""
+    if os.name != "nt":
+        return None, False
+    import ctypes
+
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+    k32.CreateMutexW.restype = ctypes.c_void_p
+    handle = k32.CreateMutexW(None, False, name)
+    already = ctypes.get_last_error() == 183  # type: ignore[attr-defined]  # ERROR_ALREADY_EXISTS
+    return handle, already
+
+
+def _single_instance(config_path: str) -> bool:
+    """Claim this config for the bot; False if another AutoDJ already runs with it.
+
+    Live 2026-11-23 a second AutoDJ.exe started on the same install and both
+    attached to the room: every line would be posted twice and two mpv players
+    ran at once.  One bot per config file (a second room needs its own config).
+    """
+    import hashlib
+
+    global _INSTANCE_MUTEX
+    key = os.path.normcase(os.path.abspath(config_path))
+    name = "Local\\CamfrogAutoDJ-" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
+    handle, existed = _create_mutex(name)
+    if existed:
+        _show_already_running()
+        return False
+    _INSTANCE_MUTEX = handle
+    return True
+
+
+def _require_single_instance(config_path: str) -> None:
+    if not _single_instance(config_path):
+        raise RuntimeError(
+            f"AutoDJ is already running with {os.path.abspath(config_path)}; "
+            "not starting a second copy (it would post and play everything twice)"
+        )
+
+
+def _show_already_running() -> None:
+    """Tell a double-clicking user why no window opens (windowed exe has no console)."""
+    if not getattr(sys, "frozen", False):
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.user32.MessageBoxW(  # type: ignore[attr-defined]
+            None, "AutoDJ is already running.", "AutoDJ", 0x40
+        )
+    except (AttributeError, OSError):
+        pass
 
 
 def _run_gui(eng) -> None:
@@ -465,11 +528,14 @@ def _build_adapter(a, cfg):
         if a.gui:
             # The window must still open so the user can run --check / --discover
             # from inside it; chat degrades to silent until Camfrog is reachable.
+            # It keeps retrying, so opening the room later starts chat (and IMs)
+            # without restarting AutoDJ.
             log.error(
-                "cannot attach to Camfrog chat (%s); opening the GUI without chat",
+                "cannot attach to Camfrog chat (%s); opening the GUI and retrying "
+                "every 15 s until the room window is open",
                 ex,
             )
-            return NullAdapter()
+            return ReattachingAdapter(cfg)
         raise
 
 
