@@ -106,10 +106,11 @@ class AIClient:
                 {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": text},
             ],
-            # Reasoning models (the NVIDIA default) spend tokens on <think> before
-            # answering, and Thai needs several tokens per word: max_chars // 4 (50)
-            # left nothing for the answer.  The reply is still cut to max_chars below.
-            "max_tokens": max(256, self.max_chars * 2),
+            # Reasoning models spend most tokens thinking before they answer: live
+            # 2026-11-23 a one-line Thai question used 368 completion tokens, 322 of
+            # them reasoning.  max_chars // 4 (50) never left room for an answer, so
+            # allow 1024; the posted reply is still cut to max_chars below.
+            "max_tokens": max(1024, self.max_chars * 4),
             "temperature": 0.7,
         }
         try:

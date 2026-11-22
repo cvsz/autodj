@@ -127,7 +127,7 @@ def test_client_strips_reasoning_and_leaves_room_for_the_answer(monkeypatch):
 
     monkeypatch.setattr(c, "_post_json", post)
     assert c.chat("hi") == "สวัสดีครับ"
-    assert sent["max_tokens"] >= 256
+    assert sent["max_tokens"] >= 1024
 
 
 def test_client_unfinished_reasoning_is_no_answer(monkeypatch):
