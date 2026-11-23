@@ -82,7 +82,11 @@ def test_installer_scripts_use_shared_renderer_and_app_version_define():
 def test_release_workflow_passes_app_version_without_tag_prefix():
     workflow = RELEASE.read_text(encoding="utf-8")
 
-    assert "/DAPP_VERSION=" in workflow
+    # The release builds the installer through scripts/build_installer.ps1 (which stages
+    # start.bat/check.bat/readme.txt and passes /DAPP_VERSION, checked above); calling
+    # makensis directly aborted the v0.3.11 release on 'dist\start.bat -> no files found'.
+    assert "scripts/build_installer.ps1 -Version $version" in workflow
+    assert "makensis.exe" not in workflow
     assert "/DVERSION=${{ github.ref_name }}" not in workflow
     # Tags are vX.Y.Z while pyproject/NSIS use X.Y.Z.
     assert "GITHUB_REF_NAME" in workflow

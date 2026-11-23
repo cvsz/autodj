@@ -145,8 +145,17 @@ jobs:
         shell: pwsh
         run: |
           # Tags are vX.Y.Z; pyproject.toml and installer.nsi use X.Y.Z.
+          # Use the same script as windows-build.yml: it stages config.example.toml,
+          # readme.txt, start.bat and check.bat into dist\ before running makensis
+          # (calling makensis directly aborted v0.3.11: 'dist\start.bat -> no files found').
+          # -OutDir . keeps the installer in the repo root, where the steps below look.
           $version = $env:GITHUB_REF_NAME -replace '^v', ''
-          & "C:\\Program Files (x86)\\NSIS\\makensis.exe" "/DAPP_VERSION=$version" installer.nsi
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_installer.ps1 -Version $version -OutDir .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "Camfrog-AutoDJ-Setup-$version.exe")) {
+            Write-Error "Installer not found after build"
+            exit 1
+          }
 
       - name: Sign NSIS installer
         shell: pwsh
