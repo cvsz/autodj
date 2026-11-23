@@ -14,7 +14,7 @@
 
 ## 1. Verdict
 
-**READY TO MERGE; release publication pending.**
+**MERGED to `main` (merge commit `d705950`, 2026-11-23 03:10 +07); release publication pending.**
 
 - **Every feature exercised live works on the signed 0.3.11 build in room ZeaZDev:**
   - room announcements;
@@ -30,7 +30,7 @@
 
 Still open before a public release (§9):
 
-- **Release publication:** the `v0.3.11` tag and GitHub release are not created. `release.yml` publishes only on a `v*` tag, so publishing needs that tag.
+- **Release publication:** the `v0.3.11` tag and GitHub release are not created. `release.yml` publishes only on a `v*` tag. Creating and pushing the tag from the assistant session was refused by its safety controls, so the operator pushes it (§9.2).
 - **Exposed NVIDIA key:** the owner has to confirm that the key exposed in v0.3.10 (F1 of the previous report) is revoked. A new key is now configured locally and was never committed.
 - **Independent review:** the policedbc approval on #270 was performed by Claude with the policedbc account, as instructed by the operator. It is disclosed as a self-review, not an independent human review.
 
@@ -114,6 +114,7 @@ Each item has a regression test unless marked *live-only*. "PR" is where the fix
 | 11-23 (script) | #269 code | live NVIDIA call: Thai 3.5 s, English 2.0 s | VERIFIED |
 | 11-23 02:27 | 0.3.11 cand. | attach; mutex: same config refused / other allowed | VERIFIED |
 | 11-23 02:27–02:37 | 0.3.11 cand. | admin terminal in front → sends refused (D6/D7 found, fixed) | VERIFIED |
+| 11-23 12:17 | 0.3.11 final (installed) | PC rebooted 09:43; bot restarted with `--gui`: attached to ZeaZDev, played a track, `send ok` for now-playing / thank-you / welcome, own account recognised | VERIFIED |
 | — | 0.3.11 final | `!ai ask` typed by a room user | **UNVERIFIED** (no user asked during the window) |
 | — | 0.3.11 final | IM request flow (`/aplay` by IM) | **UNVERIFIED** live; covered by tests |
 | — | 0.3.11 final | reattach without restart after the room opens | **UNVERIFIED** live; covered by tests (#262) |
@@ -162,13 +163,13 @@ Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
 - **Commits:** all new commits are GPG-signed by `cvsz`. There was no force-push and no history rewrite.
 - **Branch protection:** respected. Every change goes through a PR.
 - **Preserved stashes:** all 4 operator stashes are intact.
-- **Release PR #270:** opened by `cvsz`. The review and approval with the `policedbc` account were performed by Claude at the operator's instruction. This is **not an independent human review** and is disclosed as such. The merge is done by `cvsz` with `--match-head-commit`.
+- **Release PR #270:** opened by `cvsz`. The review and approval with the `policedbc` account were performed by Claude at the operator's instruction. This is **not an independent human review** and is disclosed as such. Merged by `cvsz` with `gh pr merge 270 --merge --match-head-commit 5663075…` → merge commit `d705950` (GitHub: verified). Post-merge on `main`: 843 passed / 1 skipped, ruff and mypy clean; #262–#269 show MERGED.
 - **Merging and publishing:** merging does **not** publish anything. `release.yml` runs only on `v*` tags.
 
 ## 9. Open items and residual risks
 
 1. **Revoke the old NVIDIA key** `nvapi-2h…`, published in v0.3.10 (previous report F1), if not done yet. The new key must stay only in `config.toml`.
-2. **Publish v0.3.11** when the operator decides: tag `v0.3.11` on the merged `main` and let `release.yml` build the signed installer, SBOM and `SHA256SUMS`. v0.3.10.1 bypassed this workflow (F12).
+2. **Publish v0.3.11:** run `git tag -s v0.3.11 d705950 -m "AutoDJ v0.3.11"` and `git push origin v0.3.11` on `main`; `release.yml` then validates, builds and signs the exe and installer, and attaches the SBOM, full zip and `SHA256SUMS`. The v0.3.10.1 run failed on a missing `requests` dependency, which is now declared in `pyproject.toml`, and v0.3.10 failed on version tests; both are fixed on `main`. v0.3.10.1 had bypassed this workflow (F12).
 3. **Foreground sending is a desktop-sharing limitation.** The bot must take the keyboard focus to post. It now waits for idle, never types elsewhere and diagnoses elevated windows, but a dedicated PC or user session remains the robust deployment.
 4. **IM replies need an open IM window** with the user. Camfrog offers no API to open one.
 5. **Headless CLI** (`python -m autodj` without `--gui`) can stall on sends. This is a COM message-pump issue, not fixed. Use `--gui`; the exe now opens the GUI by default.
@@ -193,7 +194,7 @@ Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
 
 ## 11. Rollback
 
-- **Code:** revert the merge commit of #270.
+- **Code:** revert the merge commit of #270 (`git revert -m 1 d705950` through a PR).
 - **Bot PC:** `D:\CamfrogAutoDJ\AutoDJ.exe.bak-pre-0.3.11`. Older backups are `AutoDJ.exe.bak-ai2`, `.bak-ai1`, `.bak-roomhidden`, `.bak-ctrlv`, `.bak-guard-delay` and `.bak-1c4853b`.
 - **Config:** `config.toml.bak*` beside the install.
 - **System settings:**
