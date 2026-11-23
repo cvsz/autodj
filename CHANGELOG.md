@@ -1,6 +1,10 @@
-## 0.3.12 — 2026-11-23
+## 0.3.13 — 2026-11-23
 
-First published release of the 0.3.11 changes below. The `v0.3.11` tag exists but its release run failed before publishing anything (see the first bullet); a published tag is never moved, so the fix ships as 0.3.12.
+First published release of the 0.3.11 changes below. The `v0.3.11` and `v0.3.12` tags exist, but both release runs failed before publishing anything; a pushed tag is never moved, so the fixes ship as 0.3.13.
+
+- **The release can sign the installer** - `tools/sign_exe.ps1` loaded the PFX with `Get-PfxCertificate -Password`, which exists only in PowerShell 7; `release.yml` runs it with Windows PowerShell 5.1, so the `v0.3.12` run stopped at "Sign NSIS installer" (`A parameter cannot be found that matches parameter name 'Password'`). It now loads the PFX with `X509Certificate2`, as `build.ps1` already did (verified locally under 5.1: installer signature `Valid`, ZEAZDEV signer, timestamped). `tests/test_release_signing_ps51.py` keeps both scripts free of the PowerShell 7-only parameter.
+
+## 0.3.12 — 2026-11-23 (tagged, not published)
 
 - **The tagged release now builds its installer the same way CI does** - `release.yml` called `makensis` directly, so the launchers and `readme.txt` were never staged and the `v0.3.11` run stopped at `File: "dist\start.bat" -> no files found` before anything was published. It now runs `scripts/build_installer.ps1 -Version <tag without v> -OutDir .` (the script `windows-build.yml` already uses) and fails if the installer is missing.
 
