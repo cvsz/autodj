@@ -7,7 +7,7 @@
 **Repository:** https://github.com/cvsz/autodj  
 **Owner:** cvsz  
 **Default branch:** main  
-**Version:** 0.3.11 (Python 3.11+)  
+**Version:** 0.3.12 (Python 3.11+)  
 **Description:** Music bot for Camfrog rooms — YouTube + local MP3/MP4 autoplay, `!commands`, now/next announcements, TTS, bilingual EN/TH GUI and chat.
 
 ---
