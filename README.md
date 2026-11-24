@@ -2,9 +2,9 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
-## What's new in 0.3.12
+## What's new in 0.3.13
 
-0.3.12 is the first published build of the 0.3.11 changes (the v0.3.11 tag was never released).
+0.3.13 is the first published build of the 0.3.11 changes (the v0.3.11 and v0.3.12 tags were never released: their release runs failed before publishing).
 
 
 - **AI answers only `!ai ask <question>`** (Thai `!เอไอ ถาม ...`, everyone). `ai_enabled = true` by default, but the AI stays off until `ai_api_key` is set (Settings → AI API key, masked). Ordinary room chat is never sent to the AI endpoint (NVIDIA by default).

@@ -54,7 +54,7 @@ class FacebookAdapter(StreamAdapter):
         self._comment_cursor: Optional[str] = None
         self._poll_interval = 10.0  # seconds between polls
         self._session = requests.Session()
-        self._session.headers.update({"User-Agent": "AutoDJ/0.3.12 (facebook-live-adapter)"})
+        self._session.headers.update({"User-Agent": "AutoDJ/0.3.13 (facebook-live-adapter)"})
         self._login_manager = login_manager
 
     # ------------------------------------------------------------------

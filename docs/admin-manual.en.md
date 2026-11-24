@@ -1,6 +1,6 @@
 # AutoDJ Admin Manual — English
 
-**Version:** 0.3.12  
+**Version:** 0.3.13  
 **Audience:** Room administrators and bot operators  
 **Language:** English
 

@@ -24,8 +24,13 @@ if ($PSVersionTable.PSVersion.Major -le 5) {
 if (-not (Test-Path $File)) { throw "not found: $File (build first)" }
 $cert = $null
 if ($Pfx) {
-  $sec = if ($Password) { ConvertTo-SecureString $Password -AsPlainText -Force } else { $null }
-  $cert = Get-PfxCertificate -FilePath $Pfx -Password $sec
+  # X509Certificate2 works in Windows PowerShell 5.1 too: Get-PfxCertificate -Password is
+  # PowerShell 7+ only, and release.yml runs this script with powershell.exe (the v0.3.12
+  # release run failed here signing the installer). Same loader as build.ps1.
+  $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(
+    (Resolve-Path $Pfx).Path, $Password,
+    [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::DefaultKeySet)
+  if (-not $cert.HasPrivateKey) { throw "PFX $Pfx has no private key: cannot sign" }
 } elseif ($Thumbprint) {
   $tp = $Thumbprint -replace "\s", ""
   $cert = Get-ChildItem Cert:\CurrentUser\My, Cert:\LocalMachine\My | Where-Object Thumbprint -eq $tp | Select-Object -First 1
