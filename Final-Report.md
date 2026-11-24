@@ -118,6 +118,7 @@ Each item has a regression test unless marked *live-only*. "PR" is where the fix
 | — | 0.3.11 final | `!ai ask` typed by a room user | **UNVERIFIED** (no user asked during the window) |
 | — | 0.3.11 final | IM request flow (`/aplay` by IM) | **UNVERIFIED** live; covered by tests |
 | 11-24 12:47–12:50 | v0.3.13 release exe | started while Camfrog showed the room list (`cannot attach`); when the room window opened: `attached to Camfrog chat (the room window is open now)` at 12:48:15, then `send ok` for now-playing, ads and welcome lines, no restart | VERIFIED |
+| 11-24 13:06 | v0.3.14 release exe | `ConfigWatcher started` (hot reload present), attach, play, `send ok`, own account recognised | VERIFIED |
 
 ## 5. Security assessment
 
@@ -143,6 +144,8 @@ Each item has a regression test unless marked *live-only*. "PR" is where the fix
 | gh / git transport | `git_protocol` was `https` globally | `gh config set git_protocol ssh` in both `%APPDATA%\GitHub CLI` and `~/.config/gh` (backup `config.yml.bak-20261123`); `ssh -T git@github.com` → "Hi cvsz!" |
 | Elevated terminal in front blocks the bot (D7) | integrity HIGH vs medium | keep admin windows minimized/closed while the bot runs; a dedicated bot PC or Windows user session is the robust setup |
 | System Python's `comtypes` cache under Program Files is stale/not writable | `PermissionError` / "Typelib different than module" when importing pywinauto from `py -3.14` | affects dev scripts only (the exe bundles its own); tests made hermetic |
+| Bot not running after a power cycle | 11-23 19:42 power-off by `SYSTEM` (Event 1074), boot 11-24 04:25; AutoDJ has no autostart entry | start it after boot, or add a Startup shortcut (§9.9); adding it from the assistant session was refused by its safety controls |
+| Bot stopped 11-23 18:33:56 | log shows the normal GUI close sequence (plugins unloaded, track ended) and no error; the same sequence was reproduced on 11-24 13:06 by closing the window (WM_CLOSE). No crash | closed by a window close, not by a defect |
 
 Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
 
@@ -178,6 +181,7 @@ Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
    - F13: the probe-account store without a passphrase keeps a key file. Use DPAPI before enabling streams.
    - F12: release process.
 8. **Not verified live:** `!ai ask` typed by a room user and an IM request (§4); both are covered by tests. Reattach without restart is now verified live (§4).
+9. **Autostart:** AutoDJ does not start with Windows. To start it at logon: PowerShell `$s=(New-Object -ComObject WScript.Shell).CreateShortcut("$([Environment]::GetFolderPath('Startup'))\AutoDJ.lnk"); $s.TargetPath='D:\CamfrogAutoDJ\AutoDJ.exe'; $s.Arguments='--gui'; $s.WorkingDirectory='D:\CamfrogAutoDJ'; $s.Save()`. The single-instance lock prevents a second copy; the bot attaches when the room window opens.
 
 ## 10. Production readiness
 
@@ -218,4 +222,5 @@ Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
 | Tag `v0.3.13` (GPG-signed, on `dd17408`, PR #274), run 45334719906 | all jobs passed; release published 2026-11-24 05:44 UTC, immutable, 5 assets; `SHA256SUMS` match; exe and installer Authenticode `Valid`, signer `CED7DDB1…`, timestamped; build-provenance attestation verified (`release.yml@refs/tags/v0.3.13`); `updater.verify_authenticode` accepts the exe; signed-exe test 16/16 | VERIFIED |
 | v0.3.13 on the bot PC | installed from the release (sha256 `8337e345…`), started: log shows `config hot reload unavailable: watchdog is not installed` — the release build installed no extras (local builds had them) | VERIFIED defect |
 | Fix (this PR, 0.3.14) | release build installs `.[webhook,hotreload]` like `windows-build.yml`; `tests/test_release_build_extras.py` (fails on the old workflow) | VERIFIED (tests) |
-| Publish | GPG-signed tag `v0.3.14` on the merged `main`; `release.yml` validates, builds, signs exe and installer, SBOM, full zip, `SHA256SUMS`, attestation, then publishes | see the GitHub release `v0.3.14` and its Actions run |
+| Tag `v0.3.14` (GPG-signed, on `30d7865`, PR #275), run 45337017240 | all jobs passed; release published 2026-11-24 06:03 UTC, **Latest**, immutable, 5 assets; `SHA256SUMS` match all 4 files; exe and installer Authenticode `Valid`, signer `CED7DDB1…`, timestamped; FileVersion 0.3.14.0; build-provenance attestation verified (`release.yml@refs/tags/v0.3.14`); SBOM lists watchdog 7.1.1, fastapi 0.165.0, uvicorn 0.54.0, pydantic 2.14.4, httpx 0.28.1; signed-exe updater test 16/16 | VERIFIED |
+| v0.3.14 on the bot PC | 0.3.13 closed through its window (WM_CLOSE), backup `AutoDJ.exe.bak-0.3.13`; release exe installed (sha256 `6bb21eac…`, matches release), started 13:06: `ConfigWatcher started`, attached to ZeaZDev, track playing, `send ok`, own account recognised | VERIFIED |
