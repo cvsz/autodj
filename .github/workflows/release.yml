@@ -90,7 +90,10 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python -m pip install -e . pyinstaller cyclonedx-bom
+          # Same extras as windows-build.yml: PyInstaller bundles only what is installed,
+          # and v0.3.13's exe shipped without watchdog ("config hot reload unavailable")
+          # and without the webhook server dependencies.
+          python -m pip install -e ".[webhook,hotreload]" pyinstaller cyclonedx-bom
 
       - name: Install NSIS
         run: |

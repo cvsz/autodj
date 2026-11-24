@@ -1,6 +1,6 @@
 # AutoDJ Commands Reference — English
 
-**Version:** 0.3.13  
+**Version:** 0.3.14  
 **Prefix:** `!` (configurable via `prefix` in config.toml)  
 **Language:** English (`lang = "en"`)
 
