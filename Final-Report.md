@@ -1,4 +1,4 @@
-# Final Report — AutoDJ v0.3.13 (the 0.3.11 changes, first published release)
+# Final Report — AutoDJ v0.3.14 (the 0.3.11 changes, published release)
 
 **Repository:** https://github.com/cvsz/autodj (public)
 **Release PR:** #270 `release/v0.3.11` → `main`. It consolidates #262, #264, #265, #266, #267, #268 and #269, plus the release fixes.
@@ -14,7 +14,7 @@
 
 ## 1. Verdict
 
-**MERGED to `main` (#270 merge `d705950`); published as v0.3.13 by `release.yml` (§12).** The `v0.3.11` and `v0.3.12` tags exist but their release runs failed before publishing anything; the fixes ship as 0.3.13.
+**MERGED to `main` (#270 merge `d705950`); published as v0.3.14 by `release.yml` (§12).** `v0.3.11`/`v0.3.12` failed before publishing; `v0.3.13` was published but its exe lacked the optional hot-reload/webhook packages; 0.3.14 is the release to use.
 
 - **Every feature exercised live works on the signed 0.3.11 build in room ZeaZDev:**
   - room announcements;
@@ -30,7 +30,7 @@
 
 Still open before a public release (§9):
 
-- **Release publication:** done through `release.yml` on tag `v0.3.13` (§12). The `v0.3.11` and `v0.3.12` tags stay as they are (a pushed tag is never moved or deleted); no GitHub release exists for either.
+- **Release publication:** done through `release.yml` on tag `v0.3.14` (§12). Pushed tags are never moved or deleted: `v0.3.11` and `v0.3.12` have no release; `v0.3.13` stays published (immutable) and is superseded by 0.3.14.
 - **Exposed NVIDIA key:** the owner has to confirm that the key exposed in v0.3.10 (F1 of the previous report) is revoked. A new key is now configured locally and was never committed.
 - **Independent review:** the policedbc approval on #270 was performed by Claude with the policedbc account, as instructed by the operator. It is disclosed as a self-review, not an independent human review.
 
@@ -117,7 +117,7 @@ Each item has a regression test unless marked *live-only*. "PR" is where the fix
 | 11-23 12:17 | 0.3.11 final (installed) | PC rebooted 09:43; bot restarted with `--gui`: attached to ZeaZDev, played a track, `send ok` for now-playing / thank-you / welcome, own account recognised | VERIFIED |
 | — | 0.3.11 final | `!ai ask` typed by a room user | **UNVERIFIED** (no user asked during the window) |
 | — | 0.3.11 final | IM request flow (`/aplay` by IM) | **UNVERIFIED** live; covered by tests |
-| — | 0.3.11 final | reattach without restart after the room opens | **UNVERIFIED** live; covered by tests (#262) |
+| 11-24 12:47–12:50 | v0.3.13 release exe | started while Camfrog showed the room list (`cannot attach`); when the room window opened: `attached to Camfrog chat (the room window is open now)` at 12:48:15, then `send ok` for now-playing, ads and welcome lines, no restart | VERIFIED |
 
 ## 5. Security assessment
 
@@ -169,7 +169,7 @@ Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
 ## 9. Open items and residual risks
 
 1. **Revoke the old NVIDIA key** `nvapi-2h…`, published in v0.3.10 (previous report F1), if not done yet. The new key must stay only in `config.toml`.
-2. **Release:** published from tag `v0.3.13` (§12). If a release run fails, fix it in a PR and publish the next patch version; never move a pushed tag.
+2. **Release:** published from tag `v0.3.14` (§12). If a release run fails, fix it in a PR and publish the next patch version; never move a pushed tag.
 3. **Foreground sending is a desktop-sharing limitation.** The bot must take the keyboard focus to post. It now waits for idle, never types elsewhere and diagnoses elevated windows, but a dedicated PC or user session remains the robust deployment.
 4. **IM replies need an open IM window** with the user. Camfrog offers no API to open one.
 5. **Headless CLI** (`python -m autodj` without `--gui`) can stall on sends. This is a COM message-pump issue, not fixed. Use `--gui`; the exe now opens the GUI by default.
@@ -177,7 +177,7 @@ Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
 7. **Open from the previous report:**
    - F13: the probe-account store without a passphrase keeps a key file. Use DPAPI before enabling streams.
    - F12: release process.
-8. **Not verified live:** `!ai ask` from a room user, an IM request, and reattach without restart on the final build (§4).
+8. **Not verified live:** `!ai ask` typed by a room user and an IM request (§4); both are covered by tests. Reattach without restart is now verified live (§4).
 
 ## 10. Production readiness
 
@@ -203,7 +203,7 @@ Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
   - `D:\data\autodj\logs\sys-backup-20261122\`;
   - startup apps can be re-enabled in Task Manager › Startup apps.
 
-## 12. Release (v0.3.11 → v0.3.12 → v0.3.13)
+## 12. Release (v0.3.11 → v0.3.14)
 
 | Step | Evidence | State |
 |---|---|---|
@@ -215,4 +215,7 @@ Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
 | Version 0.3.12 | every version declaration bumped (`tests/test_version_consistency.py` requires `X.Y.Z`); CHANGELOG `## 0.3.12` explains the relationship to 0.3.11 | VERIFIED (tests) |
 | Tag `v0.3.12` (GPG-signed, on `b43c3dc`, PR #273), run 45120752782 | `validate-release` passed; exe built and signed; installer built (the #272 fix worked); **failed** at "Sign NSIS installer": `tools/sign_exe.ps1` used `Get-PfxCertificate -Password` (PowerShell 7 only) under Windows PowerShell 5.1. Nothing published | VERIFIED |
 | Fix (this PR, 0.3.13) | `sign_exe.ps1` loads the PFX with `X509Certificate2` like `build.ps1`; local run under PowerShell 5.1 with an exported test PFX (deleted afterwards): installer signature `Valid`, signer `CED7DDB1…`, timestamped; regression test `tests/test_release_signing_ps51.py`. All later release steps (SBOM, zip, checksums, attestation, draft + publish) are unchanged since the successful v0.3.9 run | VERIFIED |
-| Publish | GPG-signed tag `v0.3.13` on the merged `main`; `release.yml` validates, builds, signs exe and installer, SBOM, full zip, `SHA256SUMS`, attestation, then publishes | see the GitHub release `v0.3.13` and its Actions run |
+| Tag `v0.3.13` (GPG-signed, on `dd17408`, PR #274), run 45334719906 | all jobs passed; release published 2026-11-24 05:44 UTC, immutable, 5 assets; `SHA256SUMS` match; exe and installer Authenticode `Valid`, signer `CED7DDB1…`, timestamped; build-provenance attestation verified (`release.yml@refs/tags/v0.3.13`); `updater.verify_authenticode` accepts the exe; signed-exe test 16/16 | VERIFIED |
+| v0.3.13 on the bot PC | installed from the release (sha256 `8337e345…`), started: log shows `config hot reload unavailable: watchdog is not installed` — the release build installed no extras (local builds had them) | VERIFIED defect |
+| Fix (this PR, 0.3.14) | release build installs `.[webhook,hotreload]` like `windows-build.yml`; `tests/test_release_build_extras.py` (fails on the old workflow) | VERIFIED (tests) |
+| Publish | GPG-signed tag `v0.3.14` on the merged `main`; `release.yml` validates, builds, signs exe and installer, SBOM, full zip, `SHA256SUMS`, attestation, then publishes | see the GitHub release `v0.3.14` and its Actions run |

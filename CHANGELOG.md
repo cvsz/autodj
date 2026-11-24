@@ -1,3 +1,7 @@
+## 0.3.14 — 2026-11-24
+
+- **The published exe includes config hot reload and the webhook server again** - `release.yml` installed the package without extras before PyInstaller, so the v0.3.13 `AutoDJ.exe` started with `config hot reload unavailable: watchdog is not installed` (seen live on the bot PC) and had no `fastapi`/`uvicorn`/`pydantic`/`httpx` for the webhook. The release build now installs `.[webhook,hotreload]`, the same runtime extras as `windows-build.yml`; `tests/test_release_build_extras.py` keeps them in step.
+
 ## 0.3.13 — 2026-11-23
 
 First published release of the 0.3.11 changes below. The `v0.3.11` and `v0.3.12` tags exist, but both release runs failed before publishing anything; a pushed tag is never moved, so the fixes ship as 0.3.13.
