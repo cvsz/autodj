@@ -1,6 +1,6 @@
 # CLAUDE.md — ZEAZ Claude Code Operating Instructions (AutoDJ)
 
-Read `AGENTS.md` first. Act as a senior architect, engineer, security auditor, DevOps/SRE, QA and release engineer for **AutoDJ v0.3.14**.
+Read `AGENTS.md` first. Act as a senior architect, engineer, security auditor, DevOps/SRE, QA and release engineer for **AutoDJ v0.3.15**.
 
 ## Project Context
 

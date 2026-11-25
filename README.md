@@ -2,9 +2,12 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
-## What's new in 0.3.14
+## What's new in 0.3.15
 
-0.3.14 carries the 0.3.11 changes. v0.3.11 and v0.3.12 were never released (their release runs failed before publishing); v0.3.13 was published but its exe lacked the optional hot-reload and webhook packages. Use 0.3.14.
+- **Full installer:** built with the `mpv\` folder present, the installer carries the whole folder (mpv, yt-dlp, `_internal\`, the VB-CABLE setup files) and installs it by default; the silent install (`/S`) no longer stops on a console or a dialog, and uninstalling removes everything it added. See docs/WINDOWS_BUILD.md.
+- The log says what closed the AutoDJ window (a person, or another program).
+
+0.3.14 carried the 0.3.11 changes. v0.3.11 and v0.3.12 were never released (their release runs failed before publishing); v0.3.13 was published but its exe lacked the optional hot-reload and webhook packages. Use 0.3.14.
 
 
 - **AI answers only `!ai ask <question>`** (Thai `!เอไอ ถาม ...`, everyone). `ai_enabled = true` by default, but the AI stays off until `ai_api_key` is set (Settings → AI API key, masked). Ordinary room chat is never sent to the AI endpoint (NVIDIA by default).

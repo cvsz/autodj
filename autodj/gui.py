@@ -688,7 +688,7 @@ class App(tk.Tk):
         install_clipboard(self, lambda: self.e.lang)
         self.relabel()
         self.show_tab("queue")
-        self.protocol("WM_DELETE_WINDOW", self.close)
+        self.protocol("WM_DELETE_WINDOW", self._on_window_close)
         self.bind_all("<space>", self._key_space)
         self.bind_all("<Control-Right>", lambda _e: self._off_thread(self.e.skip))
         self.after(60, self._dark_titlebar)
@@ -4148,6 +4148,32 @@ class App(tk.Tk):
             self._settings_close()
         else:
             self.open_settings()
+
+    # A close within this many seconds of keyboard/mouse input is reported as a user action.
+    _USER_CLOSE_INPUT_S = 5.0
+
+    def _on_window_close(self):
+        """WM_DELETE_WINDOW: the title-bar X, Alt+F4, or another program's WM_CLOSE.
+
+        The bot was found stopped twice with only the normal shutdown lines in the log
+        (2026-11-23 18:33, 2026-11-24 13:21), so say what closed it: recent keyboard or
+        mouse input means a person; none means another program (taskkill without /f,
+        a tool that closes windows) or the end of the Windows session.
+        """
+        from .adapters.uia import _idle_seconds
+
+        idle = _idle_seconds()
+        if idle == float("inf"):
+            why = "user input time unknown"
+        elif idle <= self._USER_CLOSE_INPUT_S:
+            why = f"user action (keyboard/mouse input {idle:.1f} s before)"
+        else:
+            why = (
+                f"no keyboard/mouse input for {idle:.0f} s: another program "
+                "(WM_CLOSE, taskkill without /f) or the end of the Windows session"
+            )
+        log.warning("AutoDJ window closed: %s; stopping the bot", why)
+        self.close()
 
     def close(self):
         self._closing = True
