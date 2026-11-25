@@ -112,11 +112,31 @@ INSTALLER_NAME="Camfrog-AutoDJ-Setup-${VERSION}.exe"
 mkdir -p "$OUTDIR"
 echo "Building installer: $INSTALLER_NAME..."
 
+# Full installer (same rule as scripts/build_installer.ps1): mirror the whole mpv/
+# folder into $SRCDIR/mpv and pass /DBUNDLE_MPV when it holds mpv.exe and yt-dlp.exe.
+if [[ -f "$REPO_ROOT/mpv/mpv.exe" ]]; then
+    mkdir -p "$SRCDIR/mpv"
+    if command -v rsync >/dev/null 2>&1; then
+        # --checksum: compare content, not just size + mtime (a same-size update with a
+        # preserved timestamp would otherwise be skipped and the stale copy packaged).
+        rsync -a --delete --checksum "$REPO_ROOT/mpv/" "$SRCDIR/mpv/"
+    else
+        rm -rf "${SRCDIR:?}/mpv" && cp -a "$REPO_ROOT/mpv" "$SRCDIR/mpv"
+    fi
+fi
+BUNDLE_MPV_DEFINE="/DBUNDLE_MPV_OFF"
+if [[ -f "$SRCDIR/mpv/mpv.exe" && -f "$SRCDIR/mpv/yt-dlp.exe" ]]; then
+    BUNDLE_MPV_DEFINE="/DBUNDLE_MPV"
+    echo "Installer type: full (mpv bundle installed by default)"
+else
+    echo "Installer type: without mpv bundle"
+fi
+
 run_makensis() {
     if [[ "$MAKENSIS_KIND" == "native" ]]; then
-        "$MAKENSIS" -NOCD /DAPP_VERSION="$VERSION" /DSRCDIR=. /DOUTDIR="$OUTDIR" "$RENDERED_NSI"
+        "$MAKENSIS" -NOCD /DAPP_VERSION="$VERSION" /DSRCDIR=. /DOUTDIR="$OUTDIR" "$BUNDLE_MPV_DEFINE" "$RENDERED_NSI"
     else
-        "$WINE_BIN" "$MAKENSIS" -NOCD /DAPP_VERSION="$VERSION" /DSRCDIR=. /DOUTDIR="$OUTDIR" "$RENDERED_NSI"
+        "$WINE_BIN" "$MAKENSIS" -NOCD /DAPP_VERSION="$VERSION" /DSRCDIR=. /DOUTDIR="$OUTDIR" "$BUNDLE_MPV_DEFINE" "$RENDERED_NSI"
     fi
 }
 

@@ -13,7 +13,13 @@ param(
     [string]$Version = "",
     [string]$SrcDir = "dist",
     [string]$OutDir = "dist",
-    [switch]$Sign
+    [switch]$Sign,
+    # Full installer: the whole mpv folder (mpv.exe, yt-dlp.exe, _internal\, vbcable\, ...)
+    # is mirrored into $SrcDir\mpv and installed by default. -NoMpv builds without it;
+    # -RequireMpv fails the build when there is no bundle to package.
+    [string]$MpvDir = "mpv",
+    [switch]$NoMpv,
+    [switch]$RequireMpv
 )
 
 $ErrorActionPreference = "Stop"
@@ -98,6 +104,49 @@ if (Test-Path (Join-Path $SrcDir "AutoDJ.exe") -PathType Leaf) {
     }
 }
 
+# Bundle the complete mpv folder.  robocopy /MIR makes $SrcDir\mpv an exact copy (files
+# removed from mpv\ disappear from the installer too). robocopy treats files with the same
+# size and timestamps as unchanged without reading them, so every file is then compared
+# by relative path, size and SHA-256: the installer never ships a partial or stale bundle.
+function Get-TreeListing([string]$Root) {
+    $base = (Resolve-Path $Root).Path.TrimEnd('\')
+    Get-ChildItem -LiteralPath $base -Recurse -File | Sort-Object FullName |
+        ForEach-Object {
+            "{0}|{1}|{2}" -f $_.FullName.Substring($base.Length + 1), $_.Length,
+                (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+        }
+}
+$mpvDest = Join-Path $SrcDir "mpv"
+$bundleMpv = $false
+if ($NoMpv) {
+    Write-Host "mpv bundle: skipped (-NoMpv)"
+} elseif (Test-Path (Join-Path $MpvDir "mpv.exe") -PathType Leaf) {
+    robocopy $MpvDir $mpvDest /MIR /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+    $rc = $LASTEXITCODE
+    $global:LASTEXITCODE = 0
+    if ($rc -ge 8) { throw "mirroring $MpvDir -> $mpvDest failed (robocopy exit $rc): close any mpv/AutoDJ running from $mpvDest and retry" }
+    # robocopy skips a file whose size and timestamps match even when its content differs
+    # (it reports it as "same" or, on newer Windows, "modified"), and /IM does not exist on
+    # older Windows. Re-copy every file whose hash differs, then verify again.
+    $stale = @(Compare-Object @(Get-TreeListing $MpvDir) @(Get-TreeListing $mpvDest) |
+        Where-Object SideIndicator -eq '<=' | ForEach-Object { ($_.InputObject -split '\|')[0] })
+    foreach ($rel in $stale) {
+        Copy-Item -LiteralPath (Join-Path $MpvDir $rel) -Destination (Join-Path $mpvDest $rel) -Force
+    }
+    if ($stale.Count) { Write-Host "mpv bundle: re-copied $($stale.Count) file(s) whose content differed from $MpvDir" }
+    $diff = Compare-Object @(Get-TreeListing $MpvDir) @(Get-TreeListing $mpvDest)
+    if ($diff) { throw "$mpvDest is not an exact copy of $MpvDir after mirroring: $($diff | Select-Object -First 5 | Out-String)" }
+    $files = Get-ChildItem -LiteralPath $mpvDest -Recurse -File
+    Write-Host ("mpv bundle: {0} files, {1:N1} MB mirrored from {2}" -f $files.Count, (($files | Measure-Object Length -Sum).Sum / 1MB), $MpvDir)
+}
+if (-not $NoMpv -and (Test-Path (Join-Path $mpvDest "mpv.exe") -PathType Leaf) -and (Test-Path (Join-Path $mpvDest "yt-dlp.exe") -PathType Leaf)) {
+    $bundleMpv = $true
+}
+if ($RequireMpv -and -not $bundleMpv) {
+    throw "-RequireMpv: no complete mpv bundle (mpv.exe + yt-dlp.exe) in $MpvDir or $mpvDest"
+}
+Write-Host ("Installer type: {0}" -f $(if ($bundleMpv) { "full (mpv bundle installed by default)" } else { "without mpv bundle" }))
+
 # Verify source files exist
 $requiredFiles = @(
     "AutoDJ.exe",
@@ -154,7 +203,10 @@ if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out
 # so a rendered-script path containing spaces would be split. /DOUTDIR makes installer.nsi
 # write the installer into $OutDir (it used to land in the repo root, where `make` and
 # build-all-hybrid.ps1 -- which look in dist\ -- could not find it).
-& $makensis -NOCD "/DAPP_VERSION=$Version" "/DSRCDIR=." "/DOUTDIR=$OutDir" $renderedNsi
+$nsisArgs = @("-NOCD", "/DAPP_VERSION=$Version", "/DSRCDIR=.", "/DOUTDIR=$OutDir")
+if ($bundleMpv) { $nsisArgs += "/DBUNDLE_MPV" }
+if ($NoMpv) { $nsisArgs += "/DNO_MPV" }  # leave any staged dist\mpv out entirely
+& $makensis @nsisArgs $renderedNsi
 if ($LASTEXITCODE -ne 0) {
     Write-Error "NSIS build failed with exit code $LASTEXITCODE"
     exit 1

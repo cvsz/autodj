@@ -26,7 +26,7 @@
 ; Metadata (overridable from command line)
 ; -----------------------------------------------------------------------------
 !define /IfNDef APP_NAME "Camfrog AutoDJ"
-!define /IfNDef APP_VERSION "0.3.14"
+!define /IfNDef APP_VERSION "0.3.15"
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
 !define /IfNDef APP_EXE "AutoDJ.exe"
@@ -156,26 +156,40 @@ Section "Playlist Directory" SEC_PLAYLIST
     SetOverwrite on
 SectionEnd
 
+; Full installer: scripts/build_installer.ps1 mirrors the repo's mpv\ folder (all of it:
+; mpv.exe, mpv.com, yt-dlp.exe, _internal\, vbcable\, libbluray jars, register scripts,
+; LICENSE.GPL) into dist\mpv\ and passes /DBUNDLE_MPV when it holds mpv.exe and
+; yt-dlp.exe. The component is then installed by default and a missing file fails the
+; build. Without the define (CI release builds: mpv\ is not in git) it stays optional
+; and may be empty.
+!ifdef BUNDLE_MPV
+Section "mpv + yt-dlp (bundled)" SEC_MPV
+!else
 Section /o "mpv + yt-dlp" SEC_MPV
+!endif
     ; Keep the bundled mpv inside our own install folder.  Never use $APPDATA\mpv:
     ; that is mpv's per-user config folder (mpv.conf, scripts, input.conf), and the
     ; uninstaller's RMDir /r would delete the user's own mpv settings.
     SetOutPath "$INSTDIR\mpv"
-    ; /nonfatal: CI runners have no vendored mpv/ folder (it is not in git); a
-    ; missing binary must not abort the whole installer build (SEC_MPV is optional)
-    ; Copy the entire mpv folder (mpv.exe, yt-dlp.exe, _internal, vbcable,
-    ; libbluray, icons, docs, etc.) so the bundled mpv is fully functional.
+!ifdef BUNDLE_MPV
+    File /r "dist\mpv\*.*"
+!else ifndef NO_MPV
     File /nonfatal /r "dist\mpv\*.*"
-    ; Register mpv file associations and protocols (optional, requires admin)
-    ; Run hidden so user doesn't see command window flash
-    IfFileExists "$INSTDIR\mpv\mpv-register.bat" do_register skip_register
-do_register:
-    ExecWait '"$INSTDIR\mpv\mpv-register.bat"'
+!endif
+    ; Register mpv as a media player for the current user (mpv --register writes HKCU).
+    ; mpv.exe is called directly and hidden: mpv-register.bat ends with `pause` unless
+    ; /S is passed, which stalled the installer on a console waiting for a key.
+    IfFileExists "$INSTDIR\mpv\mpv.exe" 0 skip_register
+    nsExec::ExecToLog '"$INSTDIR\mpv\mpv.exe" --register'
+    Pop $0
+    DetailPrint "mpv --register: exit code $0"
 skip_register:
 SectionEnd
 
-; VB-CABLE is not bundled (donationware licence). install.ps1 downloads the
-; current Driver Pack 46 from vb-audio.com and runs its setup with admin rights.
+; VB-CABLE: the full installer copies the setup files that are in mpv\vbcable\ but does
+; not install the driver (it needs administrator rights). Run
+; mpv\vbcable\VBCABLE_Setup_x64.exe as administrator, or install.ps1, which downloads
+; Driver Pack 46 from vb-audio.com and runs its setup.
 
 Section "Documentation" SEC_DOCS
     SetOutPath "$INSTDIR\docs"
@@ -211,7 +225,11 @@ FunctionEnd
 
 Function .onInstSuccess
     HideWindow
-    MessageBox MB_ICONINFORMATION|MB_OK "AutoDJ has been installed successfully.$\n$\nThe bundled mpv and yt-dlp files are available in the installation folder.$\n$\nVB-CABLE is not bundled. Run install.ps1 to use the existing VB-CABLE setup workflow."
+!ifdef BUNDLE_MPV
+    MessageBox MB_ICONINFORMATION|MB_OK "AutoDJ has been installed successfully.$\n$\nmpv, yt-dlp and the VB-CABLE setup files are in $INSTDIR\mpv.$\n$\nThe VB-CABLE driver is not installed automatically: run mpv\vbcable\VBCABLE_Setup_x64.exe as administrator, or install.ps1." /SD IDOK
+!else
+    MessageBox MB_ICONINFORMATION|MB_OK "AutoDJ has been installed successfully.$\n$\nmpv and yt-dlp are not bundled in this installer: run install.ps1, or set mpv_path in config.toml.$\n$\nRun install.ps1 to set up VB-CABLE." /SD IDOK
+!endif
 FunctionEnd
 
 ; -----------------------------------------------------------------------------
@@ -288,7 +306,18 @@ Section Uninstall
 
     ; Remove application registration without deleting unrelated app settings.
     DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ"
+    ; App Paths entries belong to whichever copy registered last: remove them (and the
+    ; mpv media-player registration made by SEC_MPV) only when they point into THIS
+    ; install folder, so another AutoDJ or mpv on the PC keeps working.
+    ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" ""
+    StrCmp $0 "$INSTDIR\AutoDJ.exe" 0 +2
     DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe"
+    ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\mpv.exe" ""
+    StrCmp $0 "$INSTDIR\mpv\mpv.exe" 0 mpv_unregister_done
+    IfFileExists "$INSTDIR\mpv\mpv.exe" 0 mpv_unregister_done
+    nsExec::ExecToLog '"$INSTDIR\mpv\mpv.exe" --unregister'
+    Pop $0
+mpv_unregister_done:
     DeleteRegValue HKCU "Software\AutoDJ" "InstallDir"
     DeleteRegValue HKCU "Software\AutoDJ" "mpv_path"
     DeleteRegValue HKCU "Software\AutoDJ" "ytdlp_path"
@@ -303,6 +332,10 @@ Section Uninstall
     Delete "$INSTDIR\CHANGELOG.md"
     Delete "$INSTDIR\LICENSE"
     Delete "$INSTDIR\run_autodj.py"
+    ; Launchers and the client readme installed by SEC_MAIN (were left behind).
+    Delete "$INSTDIR\start.bat"
+    Delete "$INSTDIR\check.bat"
+    Delete "$INSTDIR\readme.txt"
     Delete "$INSTDIR\install.ps1"
     Delete "$INSTDIR\install.bat"
     Delete "$INSTDIR\uninstall.exe"

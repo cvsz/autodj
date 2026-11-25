@@ -127,9 +127,13 @@ def test_buttons_do_what_they_say(monkeypatch):
         _gui, e, app = _app(monkeypatch)
         app.ent_add.insert(0, "my song")
         app.add()
-        app.update()  # process Tk events so async callback clears entry
-        time.sleep(0.1)
-        app.update()
+        # add() resolves the request on a worker thread and clears the box through
+        # after(0, ...): pump Tk events until that happens. A fixed 0.1 s sleep was too
+        # short on loaded CI runners (PR #269 ubuntu/3.15, PR #277 ubuntu/3.13).
+        deadline = time.monotonic() + 5.0
+        while app.ent_add.get() and time.monotonic() < deadline:
+            app.update()
+            time.sleep(0.02)
         assert app.ent_add.get() == ""  # request accepted and the box cleared
         _click(app.c_shuffle)
         assert e.queue.shuffle is False or e.queue.shuffle is True
