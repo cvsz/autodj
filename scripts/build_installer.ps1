@@ -105,12 +105,16 @@ if (Test-Path (Join-Path $SrcDir "AutoDJ.exe") -PathType Leaf) {
 }
 
 # Bundle the complete mpv folder.  robocopy /MIR makes $SrcDir\mpv an exact copy (files
-# removed from mpv\ disappear from the installer too); the file list and sizes are then
-# compared one by one, so the installer never ships a partial or stale bundle.
+# removed from mpv\ disappear from the installer too). robocopy treats files with the same
+# size and timestamps as unchanged without reading them, so every file is then compared
+# by relative path, size and SHA-256: the installer never ships a partial or stale bundle.
 function Get-TreeListing([string]$Root) {
     $base = (Resolve-Path $Root).Path.TrimEnd('\')
     Get-ChildItem -LiteralPath $base -Recurse -File | Sort-Object FullName |
-        ForEach-Object { "{0}|{1}" -f $_.FullName.Substring($base.Length + 1), $_.Length }
+        ForEach-Object {
+            "{0}|{1}|{2}" -f $_.FullName.Substring($base.Length + 1), $_.Length,
+                (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+        }
 }
 $mpvDest = Join-Path $SrcDir "mpv"
 $bundleMpv = $false
@@ -121,6 +125,15 @@ if ($NoMpv) {
     $rc = $LASTEXITCODE
     $global:LASTEXITCODE = 0
     if ($rc -ge 8) { throw "mirroring $MpvDir -> $mpvDest failed (robocopy exit $rc): close any mpv/AutoDJ running from $mpvDest and retry" }
+    # robocopy skips a file whose size and timestamps match even when its content differs
+    # (it reports it as "same" or, on newer Windows, "modified"), and /IM does not exist on
+    # older Windows. Re-copy every file whose hash differs, then verify again.
+    $stale = @(Compare-Object @(Get-TreeListing $MpvDir) @(Get-TreeListing $mpvDest) |
+        Where-Object SideIndicator -eq '<=' | ForEach-Object { ($_.InputObject -split '\|')[0] })
+    foreach ($rel in $stale) {
+        Copy-Item -LiteralPath (Join-Path $MpvDir $rel) -Destination (Join-Path $mpvDest $rel) -Force
+    }
+    if ($stale.Count) { Write-Host "mpv bundle: re-copied $($stale.Count) file(s) whose content differed from $MpvDir" }
     $diff = Compare-Object @(Get-TreeListing $MpvDir) @(Get-TreeListing $mpvDest)
     if ($diff) { throw "$mpvDest is not an exact copy of $MpvDir after mirroring: $($diff | Select-Object -First 5 | Out-String)" }
     $files = Get-ChildItem -LiteralPath $mpvDest -Recurse -File

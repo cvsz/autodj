@@ -70,8 +70,13 @@ def test_uninstaller_removes_every_launcher_the_installer_adds():
 
 def test_build_scripts_mirror_the_mpv_folder_and_define_bundle():
     assert "robocopy $MpvDir $mpvDest /MIR" in PS1
+    # robocopy skips same-size/same-time files: those whose hash differs are re-copied.
+    assert "Where-Object SideIndicator -eq '<='" in PS1
+    assert "Copy-Item -LiteralPath (Join-Path $MpvDir $rel)" in PS1
     assert "Compare-Object @(Get-TreeListing $MpvDir) @(Get-TreeListing $mpvDest)" in PS1
     assert 'if ($bundleMpv) { $nsisArgs += "/DBUNDLE_MPV" }' in PS1
     assert "[switch]$RequireMpv" in PS1 and "[switch]$NoMpv" in PS1
-    assert 'rsync -a --delete "$REPO_ROOT/mpv/" "$SRCDIR/mpv/"' in SH
+    # Content, not size + timestamp, decides that the staged copy is current.
+    assert "(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash" in PS1
+    assert 'rsync -a --delete --checksum "$REPO_ROOT/mpv/" "$SRCDIR/mpv/"' in SH
     assert 'BUNDLE_MPV_DEFINE="/DBUNDLE_MPV"' in SH

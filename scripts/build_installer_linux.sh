@@ -117,7 +117,9 @@ echo "Building installer: $INSTALLER_NAME..."
 if [[ -f "$REPO_ROOT/mpv/mpv.exe" ]]; then
     mkdir -p "$SRCDIR/mpv"
     if command -v rsync >/dev/null 2>&1; then
-        rsync -a --delete "$REPO_ROOT/mpv/" "$SRCDIR/mpv/"
+        # --checksum: compare content, not just size + mtime (a same-size update with a
+        # preserved timestamp would otherwise be skipped and the stale copy packaged).
+        rsync -a --delete --checksum "$REPO_ROOT/mpv/" "$SRCDIR/mpv/"
     else
         rm -rf "${SRCDIR:?}/mpv" && cp -a "$REPO_ROOT/mpv" "$SRCDIR/mpv"
     fi
