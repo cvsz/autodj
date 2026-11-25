@@ -47,6 +47,9 @@ def test_get_time_pos_refreshes_after_ttl(monkeypatch):
 
 
 class _Proc:
+    def poll(self):
+        return None  # still running when the hang check looks
+
     def terminate(self):
         self.terminated = True
 

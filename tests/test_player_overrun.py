@@ -26,6 +26,10 @@ class _Cfg:
 
 class _Proc:
     terminated = False
+    exit_after_probe: int | None = None  # rc returned by poll() once probed
+
+    def poll(self):
+        return self.exit_after_probe
 
     def terminate(self):
         self.terminated = True
@@ -41,9 +45,10 @@ class _Proc:
 def run(monkeypatch):
     """play() a 302 s track with scripted waits, IPC answers and played time."""
 
-    def _run(waits, answers, played=0.0, duration=302.0):
+    def _run(waits, answers, played=0.0, duration=302.0, exit_after_probe=None):
         p = MpvPlayer(_Cfg())
         proc = _Proc()
+        proc.exit_after_probe = exit_after_probe
         waits = list(waits)
         queries: list[str] = []
         answers = {k: list(v) for k, v in answers.items()}
@@ -105,6 +110,20 @@ def test_stalled_short_of_the_end_is_still_a_failure(run, caplog):
         )
     assert ok is False and proc.terminated
     assert "mpv stopped at 100 of 302 s" in caplog.text
+
+
+def test_exit_during_the_position_probe_is_a_normal_end(run, caplog):
+    # Review (PR #279): mpv reaches EOF during the 1 s probe, the second read is empty.
+    # The process already exited, so it must not be classed as hung or terminated.
+    with caplog.at_level("INFO", logger="autodj"):
+        ok, proc, _q, _ = run(
+            waits=[(None, True)],
+            answers={"time-pos": [301.0, None]},
+            played=303.0,
+            exit_after_probe=0,
+        )
+    assert ok is True and not proc.terminated
+    assert "checking position" not in caplog.text
 
 
 def test_extensions_are_bounded(run):

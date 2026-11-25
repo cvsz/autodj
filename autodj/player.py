@@ -163,8 +163,17 @@ class MpvPlayer:
         """Wait for mpv; while it is still playing past the limit, extend it (bounded)."""
         rc, hung = self._wait_for_mpv_end(p, started, limit)
         extensions = 0
-        while hung and extensions < MAX_OVERRUN_EXTENSIONS:
-            left = self._remaining_if_playing(duration)
+        while hung:
+            left = (
+                self._remaining_if_playing(duration)
+                if extensions < MAX_OVERRUN_EXTENSIONS
+                else None
+            )
+            # mpv may have finished on its own during the 1 s position probe (an
+            # empty second read): that is a normal exit, never a hang.
+            exited = p.poll()
+            if isinstance(exited, int):
+                return exited, False
             if left is None:
                 break
             extensions += 1
