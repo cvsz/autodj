@@ -1,6 +1,6 @@
 # AutoDJ User Manual — English
 
-**Version:** 0.3.15  
+**Version:** 0.3.16  
 **Audience:** Room participants (non-admin users)  
 **Language:** English
 

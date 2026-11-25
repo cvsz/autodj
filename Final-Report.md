@@ -242,5 +242,13 @@ Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
 | Bot PC | v0.3.15 release exe installed (sha256 `474700cc…`, matches release), started 15:56: `ConfigWatcher started`, playing; Camfrog showed its room list since 15:41 (room left), so the bot waits and attaches when the room is opened (attach-on-open verified 11-24 12:48 and 11-25 15:10) | VERIFIED |
 | Full installer 0.3.15 (local, not on GitHub: `mpv\` is not in git and the release is immutable) | `dist\Camfrog-AutoDJ-Setup-0.3.15.exe`, 109.3 MB, sha256 `80c4338d…`; contains the release `AutoDJ.exe` (hash checked) and the 181-file mpv bundle; Authenticode `Valid`, signer `CED7DDB1…`, timestamped | VERIFIED |
 | Full installer install/uninstall test | silent install exit 0 (27 s), 181/181 mpv files identical (path, size; SHA-256 of mpv.exe, yt-dlp.exe, VB-CABLE setup), mpv v0.42.0-38 and yt-dlp 2026.10.26 run, config `mpv_path` set, live bot untouched; silent uninstall exit 0, mpv/exe/launchers/App Paths/keys/shortcuts removed, only config and logs kept; registry restored: 0 differences in 228 values | VERIFIED |
-| Open | `!ai ask` and IM requests from another room user (tests only); requests that end with mpv exit code 1 after a 30 s overrun are logged as FAILED (several on 11-25; not re-queued, see the player's hang check); VB-CABLE redistribution terms before sharing the full installer outside the operator's PCs | OPEN |
+| Open | `!ai ask` and IM requests from another room user (tests only); VB-CABLE redistribution terms before sharing the full installer outside the operator's PCs | OPEN |
+
+## 14. Songs cut off at the end / logged FAILED (0.3.16)
+
+| Step | Evidence | State |
+|---|---|---|
+| Symptom | 11-25 15:21 `รักเอ๋ย` (5:02, started 15:15:51), 15:28 `มากกว่ารัก (REMIX)` (2:05), 15:32 `รัก` (3:56), 15:36 `มากกว่ารัก` (3:29), 15:42 `เก็บตะวัน` (4:41): `mpv still running 30s after the expected end` → `exited with code 1` → `state=FAILED` | VERIFIED (log) |
+| Cause | the grace clock starts at mpv launch (yt-dlp resolution ~5–8 s before audio, plus buffering), and the end check used the GUI's cached 0.15 s position query; an empty answer meant "not at the end", so mpv was terminated (the song's last seconds cut) and counted as failed | VERIFIED (code) |
+| Fix | advancing position → wait for the remaining time + grace (max 3 extensions); end check with a 2 s IPC timeout plus `eof-reached`; an mpv that does not answer, or a position stalled short of the end, still fails (position logged); `tests/test_player_overrun.py` (5) | VERIFIED (tests) |
 

@@ -2,6 +2,10 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
+## What's new in 0.3.16
+
+- Requested songs are no longer cut off in their last seconds or logged as failed when the stream started late or buffered.
+
 ## What's new in 0.3.15
 
 - **Full installer:** built with the `mpv\` folder present, the installer carries the whole folder (mpv, yt-dlp, `_internal\`, the VB-CABLE setup files) and installs it by default; the silent install (`/S`) no longer stops on a console or a dialog, and uninstalling removes everything it added. See docs/WINDOWS_BUILD.md.
