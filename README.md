@@ -6,6 +6,7 @@ Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now
 
 - **Full installer:** built with the `mpv\` folder present, the installer carries the whole folder (mpv, yt-dlp, `_internal\`, the VB-CABLE setup files) and installs it by default; the silent install (`/S`) no longer stops on a console or a dialog, and uninstalling removes everything it added. See docs/WINDOWS_BUILD.md.
 - The log says what closed the AutoDJ window (a person, or another program).
+- Songs that already played are no longer queued again when Camfrog re-renders the room chat.
 
 0.3.14 carried the 0.3.11 changes. v0.3.11 and v0.3.12 were never released (their release runs failed before publishing); v0.3.13 was published but its exe lacked the optional hot-reload and webhook packages. Use 0.3.14.
 

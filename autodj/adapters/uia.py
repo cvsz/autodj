@@ -596,7 +596,24 @@ class UiaAdapter(ChatAdapter):
             for nick in self._recent_nicks(lines):
                 yield ChatMessage(nick, "", event="seen")
             return
-        for line in diff_lines(prev, lines):
+        new = diff_lines(prev, lines)
+        if prev and lines and prev[-1] not in lines:
+            # The last line we saw is gone: Camfrog re-rendered or trimmed it (live
+            # 2026-11-25 15:34: a long ZeazBot line came back split in two), so
+            # diff_lines cannot anchor and returns the whole buffer.  Never replay
+            # history: drop every line the previous read already had.  Old
+            # `!ขอเพลง` commands were run again and re-queued songs that had played.
+            seen = set(prev)
+            fresh = [ln for ln in new if ln not in seen]
+            if len(fresh) != len(new):
+                log.warning(
+                    "chat: room history re-read (last seen line changed); "
+                    "%d old line(s) ignored, %d new",
+                    len(new) - len(fresh),
+                    len(fresh),
+                )
+            new = fresh
+        for line in new:
             m = self._room_line_message(line)
             if m:
                 yield m
