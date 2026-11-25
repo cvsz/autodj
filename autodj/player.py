@@ -23,6 +23,11 @@ _WHY = ("error", "fail", "not found", "unable", "[ytdl_hook]", "cannot", "no suc
 # mpv-reported position for one poll cycle avoids opening a new IPC connection
 # on every poll while keeping the progress bar imperceptibly current.
 _POS_CACHE_TTL = 0.5
+# A track that is still playing when its grace limit runs out (yt-dlp resolves the
+# URL for several seconds before audio starts, and streams buffer) gets this many
+# extensions of "remaining time + grace" before it is treated as hung.
+MAX_OVERRUN_EXTENSIONS = 3
+_OVERRUN_IPC_TIMEOUT = 2.0  # player thread, not the Tk thread: a slower mpv may answer
 
 
 def _is_windows() -> bool:
@@ -147,6 +152,54 @@ class MpvPlayer:
                     break
         return rc, hung
 
+    def _wait_with_overrun(
+        self,
+        p: subprocess.Popen,
+        source: str,
+        started: float,
+        limit: float | None,
+        duration: float | None,
+    ) -> tuple[int | None, bool]:
+        """Wait for mpv; while it is still playing past the limit, extend it (bounded)."""
+        rc, hung = self._wait_for_mpv_end(p, started, limit)
+        extensions = 0
+        while hung and extensions < MAX_OVERRUN_EXTENSIONS:
+            left = self._remaining_if_playing(duration)
+            if left is None:
+                break
+            extensions += 1
+            log.info(
+                "mpv still playing %s with %.0f s left (late start or buffering): waiting",
+                source,
+                left,
+            )
+            limit = self._played(started) + left + float(self.cfg.mpv_timeout or 0.0)
+            rc, hung = self._wait_for_mpv_end(p, started, limit)
+        return rc, hung
+
+    def _query(self, prop: str) -> object:
+        """One mpv property over IPC with the overrun timeout (None if unavailable)."""
+        self._invalidate_pos_cache()
+        return self._cmd_get("get_property", prop, timeout=_OVERRUN_IPC_TIMEOUT)
+
+    def _remaining_if_playing(self, duration: float | None) -> float | None:
+        """Seconds left when mpv is still playing short of the end, else None.
+
+        Two position reads one second apart: an advancing position means the song
+        is playing (it started late or buffered), not hung.
+        """
+        if duration is None:
+            return None
+        first = self._query("time-pos")
+        if not isinstance(first, (int, float)) or isinstance(first, bool):
+            return None
+        time.sleep(1.0)
+        second = self._query("time-pos")
+        if not isinstance(second, (int, float)) or isinstance(second, bool) or second <= first:
+            return None
+        left = float(duration) - float(second)
+        return left if left > 2.0 else None
+
     def _stop_after_hang(
         self, p: subprocess.Popen, source: str, duration: float | None
     ) -> tuple[int, bool]:
@@ -157,14 +210,28 @@ class MpvPlayer:
             source,
         )
         # Wrong/short metadata duration or a stalled end-of-stream can keep mpv
-        # alive past the limit even though the song played to the end.
-        self._invalidate_pos_cache()
-        pos = self.get_time_pos()
-        reached_end = (
+        # alive past the limit even though the song played to the end.  Ask mpv
+        # with a real timeout (the cached GUI query uses 0.15 s and returned
+        # nothing from a busy mpv, so finished songs were logged as FAILED).
+        raw = self._query("time-pos")
+        pos = float(raw) if isinstance(raw, (int, float)) and not isinstance(raw, bool) else None
+        eof = self._query("eof-reached")  # True / False, or None when mpv does not answer
+        reached_end = eof is True or (
             pos is not None and duration is not None and pos >= max(0.0, float(duration) - 2.0)
         )
         if reached_end:
             log.info("mpv reached the end of %s before the hang timeout: completed", source)
+        elif pos is None and eof is None:
+            # No answer within 2 s: mpv itself is hung; that stays a failure.
+            log.info("mpv did not answer for %s: treating it as hung", source)
+        else:
+            log.info(
+                "mpv stopped at %s of %s s for %s (eof-reached=%s)",
+                "unknown" if pos is None else f"{pos:.0f}",
+                "unknown" if duration is None else f"{float(duration):.0f}",
+                source,
+                eof,
+            )
         with self._lock:
             if not reached_end:
                 self.skipped = True
@@ -228,7 +295,7 @@ class MpvPlayer:
             float(duration) + float(self.cfg.mpv_timeout or 0.0) if duration is not None else None
         )
         started = time.monotonic()
-        rc, hung = self._wait_for_mpv_end(p, started, limit)
+        rc, hung = self._wait_with_overrun(p, source, started, limit, duration)
         reached_end = False
         if hung:
             rc, reached_end = self._stop_after_hang(p, source, duration)

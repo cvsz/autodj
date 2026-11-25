@@ -74,7 +74,10 @@ def test_hang_after_track_ended_is_not_a_failure(monkeypatch):
     proc = _Proc()
     monkeypatch.setattr("autodj.player.subprocess.Popen", lambda *a, **k: proc)
     monkeypatch.setattr(player, "_wait_for_mpv_end", lambda *a: (None, True))
-    monkeypatch.setattr(player, "get_time_pos", lambda: 59.0)
+    # The hang check asks mpv directly (2 s timeout), not the cached GUI query.
+    monkeypatch.setattr(
+        player, "_cmd_get", lambda *cmd, **kw: 59.0 if cmd[-1] == "time-pos" else False
+    )
     monkeypatch.setattr(MpvPlayer, "_report", lambda *a: None)
     assert player.play("http://track", 100, duration=60.0) is True
     assert getattr(proc, "terminated", False)
