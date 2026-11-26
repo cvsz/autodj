@@ -11,20 +11,20 @@ dependencies = [
   # autodj/__main__.py imports autodj.stream at startup, which imports these
   # (stream/probe_login.py, stream/adapters/facebook.py, stream/probe_account.py);
   # undeclared, a clean install failed with ModuleNotFoundError before main().
-  "requests>=2.32,<3",
-  "cryptography>=44",
+  "requests>=2.34.2,<3",
+  "cryptography>=50.0.2",
 ]
 [project.optional-dependencies]
 dev = ["pytest"]
 build = ["pyinstaller"]
-hotreload = ["watchdog>=7.1.0,<8"]
+hotreload = ["watchdog>=7.1.1,<8"]
 webhook = [
   # Upper bounds prevent a future major release from silently changing the
   # webhook API in a signed build; yt-dlp is intentionally left unbounded so
   # its extractors can keep up with site changes.
-  "fastapi>=0.163.1,<1",
+  "fastapi>=0.165.0,<1",
   "uvicorn>=0.54.0,<1",
-  "pydantic>=2.14.3,<3",
+  "pydantic>=2.14.4,<3",
   "httpx>=0.28.1,<1",
 ]
 [project.scripts]
