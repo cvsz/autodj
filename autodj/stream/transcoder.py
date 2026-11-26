@@ -14,9 +14,11 @@ broadcasts for playback on any platform.
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
+import queue
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import threading
 import time
 from dataclasses import dataclass, field
@@ -24,6 +26,8 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from .stream_id import validate_stream_id
+
+_LOG = logging.getLogger("autodj.stream")
 
 
 class TranscoderError(Exception):
@@ -163,7 +167,7 @@ class Worker:
         while not ctx.is_set():
             try:
                 job = jobs.get(timeout=0.2)
-            except Exception:  # noqa: BLE001, S110, S112 - queue empty is normal
+            except queue.Empty:  # nothing to do yet
                 continue
             if job is None:
                 continue
@@ -189,7 +193,7 @@ class Worker:
                     self._finish_job(job, InterruptedError())
                     return
                 args = self._build_ffmpeg_args(job, profile)
-                cmd = subprocess.Popen(
+                cmd = subprocess.Popen(  # nosec B603
                     args,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
@@ -203,8 +207,8 @@ class Worker:
                     try:
                         for chunk in iter(lambda: src.read(65536), b""):
                             dst.write(chunk)
-                    except Exception:  # noqa: BLE001, S110 - pump thread must not crash
-                        pass
+                    except Exception:  # noqa: BLE001 - pump thread must not crash
+                        _LOG.debug("ffmpeg output pump stopped", exc_info=True)
 
                 t1 = threading.Thread(target=_pump, args=(cmd.stdout, progress_buf), daemon=True)
                 t2 = threading.Thread(target=_pump, args=(cmd.stderr, stderr_buf), daemon=True)
@@ -385,8 +389,8 @@ class Worker:
             return
         try:
             job.on_complete(err)
-        except Exception:  # noqa: BLE001, S110
-            pass
+        except Exception:  # noqa: BLE001 - a callback must not stop the worker
+            _LOG.warning("transcode completion callback failed", exc_info=True)
 
     def _logger_error(
         self,
@@ -606,14 +610,14 @@ class Manager:
             return
         try:
             job.on_complete(InterruptedError())
-        except Exception:  # noqa: BLE001, S110
-            pass
+        except Exception:  # noqa: BLE001 - a callback must not stop the worker
+            _LOG.warning("transcode cancel callback failed", exc_info=True)
 
     @staticmethod
     def _detect_hardware(ffmpeg_path: str) -> HardwareInfo:
         info = HardwareInfo(ffmpeg_path=ffmpeg_path)
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # nosec B603
                 [ffmpeg_path, "-hide_banner", "-nostdin", "-encoders"],
                 capture_output=True,
                 text=True,

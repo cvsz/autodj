@@ -10,11 +10,14 @@ Ported from cvsz/streamdbc bounded protocol adapter pattern.
 
 from __future__ import annotations
 
+import logging
 import queue
 import threading
 from collections.abc import Iterator
 
 from .base import AdapterState, ChatMessage, StreamAdapter
+
+_LOG = logging.getLogger("autodj.stream")
 
 
 class CompositeStreamAdapter(StreamAdapter):
@@ -47,8 +50,7 @@ class CompositeStreamAdapter(StreamAdapter):
                 adapter.connect()
             except Exception:  # noqa: BLE001
                 # One platform failing must not kill the others
-                if _LOG:
-                    _LOG.exception("adapter %s connect failed", name)
+                _LOG.exception("adapter %s connect failed", name)
                 continue
 
         self._stop.clear()
@@ -78,10 +80,10 @@ class CompositeStreamAdapter(StreamAdapter):
             if not self._stop.is_set():
                 try:
                     adapter.connect()
-                except Exception:  # noqa: BLE001, S110
-                    pass
-        except Exception:  # noqa: BLE001, S110
-            pass
+                except Exception:  # noqa: BLE001 - the reader thread must not die
+                    _LOG.debug("adapter %s reconnect failed", platform, exc_info=True)
+        except Exception:  # noqa: BLE001 - the reader thread must not die
+            _LOG.warning("adapter %s message loop stopped", platform, exc_info=True)
 
     def messages(self) -> Iterator[ChatMessage]:
         """Yield chat messages from all platforms."""
@@ -102,8 +104,7 @@ class CompositeStreamAdapter(StreamAdapter):
                 adapter.send(text)
             except Exception:  # noqa: BLE001, S110
                 # One platform failing must not block the others
-                if _LOG:
-                    _LOG.exception("send to %s failed", _name)
+                _LOG.exception("send to %s failed", _name)
 
     def close(self) -> None:
         """Close all sub-adapters and stop pump threads."""
@@ -112,14 +113,11 @@ class CompositeStreamAdapter(StreamAdapter):
         for _name, adapter in self._adapters.items():
             try:
                 adapter.close()
-            except Exception:  # noqa: BLE001, S110
-                pass
+            except Exception:  # noqa: BLE001 - closing must reach every adapter
+                _LOG.debug("adapter %s close failed", _name, exc_info=True)
         for t in self._threads:
             t.join(timeout=5.0)
         self._set_state(AdapterState.DISCONNECTED)
 
     def _is_closed(self) -> bool:
         return self._stop.is_set()
-
-
-_LOG = None  # injected logging placeholder

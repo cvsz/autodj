@@ -39,6 +39,20 @@ def _make_auto_reply_engine(tmp_path, enabled=True, interval=60, file_name="ads-
     return e, ads
 
 
+class _OneTick:
+    """stop_evt stand-in: lets the auto-reply loop run one slot, then stops it."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def wait(self, _timeout=None):
+        self.calls += 1
+        return self.calls > 1
+
+    def is_set(self):
+        return self.calls > 1
+
+
 def test_auto_reply_disabled_loop_returns_immediately(tmp_path):
     e, _ = _make_auto_reply_engine(tmp_path, enabled=False)
     # _auto_reply_loop should return without sending anything
@@ -54,6 +68,7 @@ def test_auto_reply_no_file_warns_and_returns(tmp_path):
         auto_reply_file=str(tmp_path / "nonexistent.json"),
     )
     e = Engine(cfg, FakeAdapter(), player=FakePlayer(), index=None)
+    e.stop_evt = _OneTick()  # the loop now waits for the file instead of ending
     e._auto_reply_loop()
     assert out(e) == []  # no messages to send
 
@@ -124,6 +139,7 @@ def test_auto_reply_invalid_file_graceful(tmp_path):
         auto_reply_file=str(ads),
     )
     e = Engine(cfg, FakeAdapter(), player=FakePlayer(), index=None)
+    e.stop_evt = _OneTick()
     e._auto_reply_loop()
     assert out(e) == []  # no crash, no messages
 

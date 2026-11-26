@@ -76,7 +76,8 @@ class ProbeLoginManager:
 
     def _refresh_youtube_token(self, acct: ProbeAccount) -> None:
         """Refresh YouTube OAuth2 access token."""
-        token_url = "https://oauth2.googleapis.com/token"  # noqa: S105 - OAuth2 token endpoint URL
+        # OAuth2 token endpoint URL, not a secret
+        token_url = "https://oauth2.googleapis.com/token"  # noqa: S105  # nosec B105
         data = {
             "client_id": acct.client_id,
             "client_secret": acct.client_secret,
@@ -234,7 +235,7 @@ class ProbeLoginManager:
         key = f"{platform}:{username}"
         if key not in self._sessions:
             session = requests.Session()
-            session.headers.update({"User-Agent": "AutoDJ/0.3.16 (probe-account)"})
+            session.headers.update({"User-Agent": "AutoDJ/0.3.17 (probe-account)"})
             self._sessions[key] = session
         return self._sessions[key]
 

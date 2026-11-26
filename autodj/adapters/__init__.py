@@ -122,6 +122,11 @@ class Composite(ChatAdapter):
         return bool(getattr(self.sender, "delivers", True))
 
     @property
+    def room_ready(self) -> bool:
+        """False while the sender cannot reach the room chat (room page not shown)."""
+        return bool(getattr(self.sender, "room_ready", True))
+
+    @property
     def send_im(self) -> Callable[[str, str], None] | None:
         """Private-message sender of the wrapped adapters, or None.
 
@@ -338,6 +343,12 @@ class ReattachingAdapter(ChatAdapter):
     def delivers(self) -> bool:
         inner = self._inner
         return inner is not None and bool(getattr(inner, "delivers", True))
+
+    @property
+    def room_ready(self) -> bool:
+        """True once attached and the room chat is shown (not the room list)."""
+        inner = self._inner
+        return inner is not None and bool(getattr(inner, "room_ready", True))
 
     @property
     def send_im(self) -> Callable[[str, str], None] | None:

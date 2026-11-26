@@ -118,6 +118,17 @@ def _toml_value(v: object) -> str | None:
     return None
 
 
+def _toml_list(v: object) -> str:
+    """TOML array for a list of plain values.
+
+    The settings writer used Python ``repr``: a single-quoted TOML literal keeps
+    ``\\`` as two characters, so ``D:\\Music`` doubled its backslashes on every
+    save, and a value holding both ``'`` and ``"`` produced invalid TOML.
+    """
+    out = _toml_value(list(v) if isinstance(v, (list, tuple)) else [])
+    return out if out is not None else "[]"
+
+
 def _append_remaining_keys(lines: list[str], cfg: object) -> None:
     """Append ``key = value`` for every Config field not already in *lines*.
 
@@ -2666,6 +2677,13 @@ class App(tk.Tk):
         self.s_mic_greeting_ignore = self._entry(sp_inner)
         self.s_mic_greeting_ignore.insert(0, ", ".join(self.e.cfg.mic_greeting_ignore))
         _setting_row("g_settings_mic_greeting_ignore", self.s_mic_greeting_ignore)
+        # greeting_ignore / greeting_ignore_regex: never greeted by any greeting (room bots)
+        self.s_greeting_ignore = self._entry(sp_inner)
+        self.s_greeting_ignore.insert(0, ", ".join(self.e.cfg.greeting_ignore))
+        _setting_row("g_settings_greeting_ignore", self.s_greeting_ignore)
+        self.s_greeting_ignore_regex = self._entry(sp_inner)
+        self.s_greeting_ignore_regex.insert(0, self.e.cfg.greeting_ignore_regex)
+        _setting_row("g_settings_greeting_ignore_regex", self.s_greeting_ignore_regex)
 
         # join_line_regex: room notice that someone entered (greets them on arrival)
         self.s_join_line_regex = self._entry(sp_inner)
@@ -3246,12 +3264,27 @@ class App(tk.Tk):
         self.config(menu=menu_bar)
         settings_menu = tk.Menu(menu_bar, tearoff=0)
         settings_menu.add_command(label=self.e.t("g_settings"), command=self.show_settings)
+        settings_menu.add_command(label=self.e.t("g_ads_editor"), command=self.show_ads_editor)
         menu_bar.add_cascade(label=self.e.t("g_settings"), menu=settings_menu)
         help_menu = tk.Menu(menu_bar, tearoff=0)
         help_menu.add_command(label=self.e.t("g_about"), command=self.show_about)
         menu_bar.add_cascade(label=self.e.t("g_help"), menu=help_menu)
         self._menu_bar, self._settings_menu = menu_bar, settings_menu
         self._help_menu = help_menu
+
+    def show_ads_editor(self) -> None:
+        """Settings -> Ads list: edit ads-list.json (one editor window at a time)."""
+        from .gui_ads import AdsEditor
+
+        ed = getattr(self, "_ads_editor", None)
+        if ed is not None:
+            try:
+                if ed.win.winfo_exists():
+                    ed.show()
+                    return
+            except tk.TclError:
+                pass
+        self._ads_editor = AdsEditor(self)
 
     def show_about(self) -> None:
         """Help -> About: version and credit line."""
@@ -3272,6 +3305,7 @@ class App(tk.Tk):
         for menu, index, key in (
             (getattr(self, "_menu_bar", None), 1, "g_help"),
             (getattr(self, "_help_menu", None), 0, "g_about"),
+            (getattr(self, "_settings_menu", None), 1, "g_ads_editor"),
         ):
             try:
                 if menu is not None and hasattr(menu, "entryconfigure"):
@@ -3868,7 +3902,7 @@ class App(tk.Tk):
             # Build TOML text manually preserving comments is complex, so we write a clean version
             lines = []
             lines.append(f"bot_nick = {_toml_str(cfg.bot_nick)}")
-            lines.append(f"admins = {cfg.admins!r}")
+            lines.append(f"admins = {_toml_list(cfg.admins)}")
             lines.append(f"prefix = {_toml_str(cfg.prefix)}")
             lines.append(f"lang = {_toml_str(cfg.lang)}")
             lines.append("")
@@ -3903,10 +3937,10 @@ class App(tk.Tk):
             lines.append(f"audio_fade_in_sec = {cfg.audio_fade_in_sec}")
             lines.append(f"audio_fade_out_sec = {cfg.audio_fade_out_sec}")
             lines.append(f"audio_normalize = {str(cfg.audio_normalize).lower()}")
-            lines.append(f"music_dirs = {cfg.music_dirs!r}")
-            lines.append(f"autoplay_sources = {cfg.autoplay_sources!r}")
+            lines.append(f"music_dirs = {_toml_list(cfg.music_dirs)}")
+            lines.append(f"autoplay_sources = {_toml_list(cfg.autoplay_sources)}")
             lines.append(f"shuffle = {str(cfg.shuffle).lower()}")
-            lines.append(f"allowed_hosts = {cfg.allowed_hosts!r}")
+            lines.append(f"allowed_hosts = {_toml_list(cfg.allowed_hosts)}")
             lines.append(f"max_requests_per_user = {cfg.max_requests_per_user}")
             lines.append(f"user_request_limit = {cfg.user_request_limit}")
             lines.append(f"rate_limit_window = {cfg.rate_limit_window}")
@@ -3934,7 +3968,7 @@ class App(tk.Tk):
             lines.append(f"join_uri_template = {_toml_str(cfg.join_uri_template)}")
             lines.append(f"launch_timeout = {cfg.launch_timeout}")
             lines.append("")
-            lines.append(f"blocked_users = {cfg.blocked_users!r}")
+            lines.append(f"blocked_users = {_toml_list(cfg.blocked_users)}")
             lines.append(f"poll_interval = {cfg.poll_interval}")
             lines.append(f"log_file = {_toml_str(cfg.log_file)}")
             lines.append(f"log_path = {_toml_str(cfg.log_path)}")
@@ -4039,6 +4073,14 @@ class App(tk.Tk):
                 + ", ".join(_toml_str(s) for s in cfg.mic_greeting_ignore)
                 + "]"
             )
+            cfg.greeting_ignore = [
+                s.strip() for s in self.s_greeting_ignore.get().split(",") if s.strip()
+            ]
+            cfg.greeting_ignore_regex = self.s_greeting_ignore_regex.get().strip()
+            lines.append(
+                "greeting_ignore = [" + ", ".join(_toml_str(s) for s in cfg.greeting_ignore) + "]"
+            )
+            lines.append(f"greeting_ignore_regex = {_toml_str(cfg.greeting_ignore_regex)}")
             cfg.join_line_regex = self.s_join_line_regex.get().strip()
             lines.append(f"join_line_regex = {_toml_str(cfg.join_line_regex)}")
 
@@ -4055,10 +4097,10 @@ class App(tk.Tk):
             # webhook_secret (like ai_api_key) is persisted by the generic
             # remaining-keys loop below; config.toml is git-ignored local data.
             lines.append(f"webhook_rate_limit_per_ip = {cfg.webhook_rate_limit_per_ip}")
-            lines.append(f"webhook_cors_origins = {cfg.webhook_cors_origins!r}")
+            lines.append(f"webhook_cors_origins = {_toml_list(cfg.webhook_cors_origins)}")
 
             # Plugins
-            lines.append(f"plugins = {cfg.plugins!r}")
+            lines.append(f"plugins = {_toml_list(cfg.plugins)}")
 
             lines.append(
                 f"message_style = {{ font_family = {_toml_str(cfg.message_style.font_family)}, font_size = {cfg.message_style.font_size}, font_color = {_toml_str(cfg.message_style.font_color)}, bold = {str(cfg.message_style.bold).lower()}, italic = {str(cfg.message_style.italic).lower()}, underline = {str(cfg.message_style.underline).lower()} }}"

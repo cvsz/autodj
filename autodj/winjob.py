@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import ctypes
 import logging
-import subprocess  # nosec B404 - only used for type hints of existing Popen objects
+import subprocess  # only used for type hints of existing Popen objects  # nosec B404
 import sys
 import threading
 

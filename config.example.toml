@@ -230,6 +230,8 @@ mic_greeting_message = "" # {user} = nick; "" = the localized default from messa
 mic_greeting_cooldown = 300.0 # Seconds between mic greetings for the same user (0-86400)
 mic_notice_senders = [] # Room bots trusted to announce another nick on the mic, e.g. ["ZeazBot"] for "Seaza กำลังรับไมค์"
 mic_greeting_ignore = [] # Nicks never greeted on the mic, e.g. the account AutoDJ streams the music from
+greeting_ignore = [] # Nicks never greeted by any greeting (welcome, admin, mic), e.g. the room's bots ["ZeazBot", "CloudBot"]
+greeting_ignore_regex = "(?i)bot$" # Bot nicks never greeted (regex on the nick); default: any nick ending in "bot"; "" = off
 # Room notice for someone entering; must contain (?P<user>...). "" = greet on first message only.
 # The default covers "*** bob has joined the room", "bob has entered the room" and "สมชาย เข้าสู่ห้อง";
 # check what your Camfrog client actually shows and adjust (single quotes keep backslashes).

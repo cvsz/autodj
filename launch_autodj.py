@@ -14,7 +14,7 @@ AutoDJ - Launcher
 from __future__ import annotations
 
 import argparse
-import subprocess  # nosec B404 B603 - fixed argv list (sys.executable -m autodj), no shell
+import subprocess  # fixed argv list (sys.executable -m autodj), no shell  # nosec B404 B603
 import sys
 from pathlib import Path
 
@@ -82,7 +82,7 @@ def main() -> None:
     print("-" * 60)
 
     try:
-        subprocess.run(cmd, check=False)  # nosec B404 B603 - fixed argv list (sys.executable -m autodj), no shell
+        subprocess.run(cmd, check=False)  # fixed argv list (sys.executable -m autodj), no shell  # nosec B404 B603
     except KeyboardInterrupt:
         print("\n[AUTO DJ] ผู้ใช้หยุดการทำงาน")
     except Exception as exc:  # noqa: BLE001
@@ -114,5 +114,3 @@ def _build_launch_command(args, config_path: Path) -> list[str]:
 
 if __name__ == "__main__":
     main()
-
-

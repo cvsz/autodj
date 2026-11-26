@@ -83,11 +83,17 @@ class Router:
                 return
             if not self._channel_allowed(msg, name, is_im):
                 return
-            # Plugin commands are still chat commands: apply the same
-            # per-user cooldown/rate-limit gate as built-ins.
-            if not self._admit(msg, name, False, is_im):
-                return
-        e.plugin_command(name, msg.user, arg.strip(), admin)
+            # Plugin commands are still chat commands: the same per-user cooldown
+            # applies, but it is only spent when a plugin actually handled the
+            # command. In an IM every message parses as a command, so "hi" (or a
+            # line read back from our own reply) used to spend the cooldown and
+            # the user's `!play` right after it was dropped.
+            with self._lock:
+                if not self._cooldown_over(msg, time.monotonic(), is_im):
+                    return
+        if e.plugin_command(name, msg.user, arg.strip(), admin) and not admin:
+            with self._lock:
+                self.last[msg.user.lower()] = time.monotonic()
 
     def handle(self, msg: "ChatMessage") -> None:
         e = self.e
@@ -181,6 +187,20 @@ class Router:
         name, _, arg = text[len(p) :].partition(" ")
         return name, arg
 
+    def _cooldown_over(self, msg: "ChatMessage", now: float, is_im: bool) -> bool:
+        """True when *msg*'s user may run a command now (caller holds ``self._lock``)."""
+        who = msg.user.lower()
+        cooldown = self.e.cfg.cooldown
+        if now - self.last.get(who, -1e9) < cooldown:
+            log.info(
+                "cooldown: dropping %s's command from %s (%.1fs to go)",
+                msg.user,
+                "IM" if is_im else "room",
+                cooldown - (now - self.last[who]),
+            )
+            return False
+        return True
+
     def _within_limits(self, msg: "ChatMessage", name: str, now: float, is_im: bool) -> bool:
         """Cooldown + per-user sliding-window request limit.
 
@@ -190,13 +210,7 @@ class Router:
         who = (
             msg.user.lower()
         )  # "Bob" and "bob" are one person: changing case must not dodge the cooldown
-        if now - self.last.get(who, -1e9) < e.cfg.cooldown:
-            log.info(
-                "cooldown: dropping %s's command from %s (%.1fs to go)",
-                msg.user,
-                "IM" if is_im else "room",
-                e.cfg.cooldown - (now - self.last[who]),
-            )
+        if not self._cooldown_over(msg, now, is_im):
             return False
         # Sliding window request limit per user
         if name.lower() in REQUEST_COMMANDS:

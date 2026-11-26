@@ -3,7 +3,7 @@
 
 import os
 import shutil
-import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
+import subprocess  # subprocess only with fixed argv lists, never shell=True  # nosec B404
 import sys
 
 
@@ -19,7 +19,7 @@ def _powershell() -> str:
 def run_ps(cmd):
     """Run a PowerShell command and return (success, output)."""
     try:
-        result = subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+        result = subprocess.run(  # argv list without shell; executable is sys.executable or a resolved, configured tool path  # nosec B603
             [_powershell(), "-NoProfile", "-Command", cmd],
             capture_output=True,
             text=True,
@@ -88,7 +88,7 @@ def check_mpv():
 def check_pyinstaller(pip_cmd):
     """Check if PyInstaller is installed."""
     try:
-        result = subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+        result = subprocess.run(  # argv list without shell; executable is sys.executable or a resolved, configured tool path  # nosec B603
             [sys.executable, "-c", "import PyInstaller"], capture_output=True, check=False
         )
         if result.returncode == 0:

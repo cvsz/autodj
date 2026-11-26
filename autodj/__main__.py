@@ -517,8 +517,8 @@ def _stop_stream_infrastructure(stream_mgr: dict) -> None:
     """Stop the multi-platform streaming manager on shutdown."""
     try:
         stream_mgr["manager"].stop()
-    except Exception:  # noqa: BLE001, S110
-        pass
+    except Exception:  # noqa: BLE001 - shutdown must continue
+        log.debug("stream manager stop failed", exc_info=True)
 
 
 def _build_adapter(a, cfg):

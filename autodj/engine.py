@@ -558,7 +558,9 @@ class Engine:
                 self.confirm_delivery(attempt_id)
                 self._record_send_success()
                 log.info("send ok: %r", m)
-            except (OSError, RuntimeError) as ex:
+            except Exception as ex:  # noqa: BLE001 - COMError is no OSError; the sender must live
+                if self.stop_evt.is_set():
+                    break
                 self.fail_delivery(attempt_id, FAIL_DELIVERY)
                 self._record_send_failure()
                 log.warning("send failed (%s); retrying once in 2s", ex)
@@ -1530,6 +1532,11 @@ class Engine:
         if norm(msg.user).lower() == self.cfg.bot_nick.lower():
             return True
         if self._is_echo(msg.text):
+            if getattr(msg, "is_im", False):
+                # Our own IM reply read back from the chat window: the window is
+                # titled with the *other* user's nick, so learning it would mark
+                # that user as our account and never greet them again.
+                return True
             nick = norm(msg.user).lower()
             own = self.__dict__.setdefault("_own_nicks", set())
             if nick and nick not in own:
@@ -1540,6 +1547,28 @@ class Engine:
 
     def _is_own_account(self, user: str) -> bool:
         return norm(user).lower() in getattr(self, "_own_nicks", ())
+
+    def _never_greet(self, user: str) -> bool:
+        """True for nicks no greeting may address: the bot itself, its own account,
+        blocked users, ``greeting_ignore`` / ``mic_greeting_ignore`` nicks and room
+        bots matching ``greeting_ignore_regex`` (default: a nick ending in "bot").
+
+        Live 2026-11-23..27: the room's own bot ZeazBot was welcomed five times.
+        """
+        nick = norm(user).lower()
+        if not nick or nick in self.blocked or self._is_own_account(user):
+            return True
+        names = list(self.cfg.greeting_ignore or []) + list(self.cfg.mic_greeting_ignore or [])
+        names.append(self.cfg.bot_nick)
+        if nick in {norm(s).lower() for s in names if s and s.strip()}:
+            return True
+        pattern = (self.cfg.greeting_ignore_regex or "").strip()
+        if pattern:
+            try:
+                return re.search(pattern, norm(user)) is not None
+            except re.error:  # validated at load; a hot-reloaded bad value must not crash
+                log.warning("greeting_ignore_regex is not a valid regex: %r", pattern)
+        return False
 
     def _handle_im(self, msg: ChatMessage) -> None:
         """Handle an instant/private message.
@@ -1766,7 +1795,7 @@ class Engine:
         """Greet *user* once per cooldown: admins get the admin greeting, everyone else
         the welcome message. Blocked users are never greeted (they are
         silently ignored everywhere else). Returns True if a greeting was sent."""
-        if user.lower() in self.blocked or self._is_own_account(user):
+        if self._never_greet(user):
             return False
         if user.lower() in self.admins and self.cfg.admin_greeting_enabled:
             return self._handle_admin_greeting(ChatMessage(user, ""))
@@ -1776,7 +1805,7 @@ class Engine:
         """Greet an admin who entered the room (or spoke first), if enabled."""
         if not self.cfg.admin_greeting_enabled:
             return False
-        if msg.user.lower() not in self.admins:
+        if msg.user.lower() not in self.admins or self._never_greet(msg.user):
             return False
         now = time.monotonic()
         last_greeting = self._admin_greeting_cooldowns.get(msg.user.lower(), float("-inf"))
@@ -1935,12 +1964,8 @@ class Engine:
 
     def _announce_mic_greeting(self, nick: str) -> None:
         """Greet a user who just received the room mic (became the DJ)."""
-        if nick.lower() in self.blocked:
-            return
-        skip = {norm(s).lower() for s in (self.cfg.mic_greeting_ignore or []) if s.strip()}
-        skip.add(norm(self.cfg.bot_nick).lower())
-        if norm(nick).lower() in skip or self._is_own_account(nick):
-            return  # e.g. the account AutoDJ itself streams the music from
+        if self._never_greet(nick):
+            return  # room bots, the bot itself, the account AutoDJ streams from, ...
         now = time.monotonic()
         last = self._mic_greeting_cooldowns.get(nick.lower(), float("-inf"))
         if now - last < self.cfg.mic_greeting_cooldown:
@@ -2027,7 +2052,7 @@ class Engine:
         If ``welcome_message_delay`` is greater than 0, the welcome is sent by a
         dedicated daemon timer after the delay instead of immediately.
         """
-        if not self.cfg.welcome_message_enabled or msg.is_im:
+        if not self.cfg.welcome_message_enabled or msg.is_im or self._never_greet(msg.user):
             return False
         now = time.monotonic()
         key = f"welcome:{msg.user.lower()}"
@@ -2049,7 +2074,9 @@ class Engine:
         if should_send:
             delay = getattr(self.cfg, "welcome_message_delay", 0.0)
             if delay and delay > 0:
-                timer = threading.Timer(delay, self._send_welcome_after_delay, args=(welcome_text,))
+                timer = threading.Timer(
+                    delay, self._send_welcome_after_delay, args=(welcome_text, msg.user)
+                )
                 timer.daemon = True
                 with self._welcome_timers_lock:
                     self._welcome_timers.add(timer)
@@ -2059,12 +2086,16 @@ class Engine:
                 log.info("Sent welcome message to %s", msg.user)
         return should_send
 
-    def _send_welcome_after_delay(self, text: str) -> None:
-        """Send a delayed welcome from its daemon timer, never from the worker pool."""
+    def _send_welcome_after_delay(self, text: str, user: str = "") -> None:
+        """Send a delayed welcome from its daemon timer, never from the worker pool.
+
+        *user* is checked again: during the delay the nick may have turned out to be
+        our own account, been blocked or added to greeting_ignore.
+        """
         try:
             with self._welcome_timers_lock:
                 self._welcome_timers.discard(threading.current_thread())
-            if self.stop_evt.is_set():
+            if self.stop_evt.is_set() or (user and self._never_greet(user)):
                 return
             self.say(text)
             log.info("Sent delayed welcome message")
@@ -2195,40 +2226,65 @@ class Engine:
         except Exception:  # noqa: BLE001 - auto-update must never crash
             log.exception("auto-update check failed")
 
+    def _auto_reply_path(self) -> str:
+        """ads-list.json, resolved against the config file's folder."""
+        from . import ads_list
+
+        return ads_list.resolve_path(self.cfg.auto_reply_file, self.cfg_path)
+
+    @staticmethod
+    def _auto_reply_reload(path: str, stamp: object) -> tuple[object, list[str]] | None:
+        """(new stamp, shuffled messages) when *path* or its contents changed, else None."""
+        from . import ads_list
+
+        now_stamp = (path, ads_list.mtime(path))
+        if now_stamp == stamp:
+            return None
+        messages = ads_list.load(path)
+        if messages:
+            log.info("auto-reply: %d message(s) loaded from %s", len(messages), path)
+        else:
+            log.warning("auto-reply enabled but no messages found in %r", path)
+        random.shuffle(messages)
+        return now_stamp, messages
+
     def _auto_reply_loop(self):
         """Send scheduled auto-reply messages from ads-list.json to the room.
 
-        Messages are selected randomly from ads-list.json and sent every
-        auto_reply_interval seconds (minimum 60s). The loop rotates through
-        all messages before repeating any, ensuring fair distribution.
+        Messages are sent every auto_reply_interval seconds (minimum 60s) in a
+        shuffled rotation: every message once before any repeats. Before each
+        slot the file is read again when it (or ``auto_reply_file``) changed, so an
+        ad edited or deleted in the GUI is never posted from the old list; an empty
+        or missing file keeps the loop waiting. Turning auto-reply off (Settings,
+        hot reload) ends the loop; turning it on starts it again. A slot is
+        skipped while the Camfrog room chat is not open, so no ad is dropped.
         """
         if not self.cfg.auto_reply_enabled:
             log.debug("auto-reply disabled; loop not started")
             return
-        path = self.cfg.auto_reply_file
-        # Resolve relative paths against the config file directory so the file
-        # is found regardless of the current working directory.
-        if not os.path.isabs(path) and self.cfg_path:
-            path = str(Path(self.cfg_path).parent / path)
-        messages = self._load_auto_reply_messages(path)
-        if not messages:
-            log.warning("auto-reply enabled but no messages found in %r", path)
-            return
-        interval = max(60.0, self.cfg.auto_reply_interval)  # minimum 60s to avoid spam
-        # Shuffled rotation: cycle through all messages randomly, reshuffle after each full cycle
-        shuffled = list(messages)
-        random.shuffle(shuffled)
+        stamp: object = None  # never equal to a real (path, mtime): forces the first load
+        shuffled: list[str] = []
         idx = 0
         while not self.stop_evt.is_set():
-            # Wait between messages, but wake up immediately on shutdown
-            if self.stop_evt.wait(interval):
+            # Wait between messages (minimum 60s), but wake up immediately on shutdown
+            if self.stop_evt.wait(max(60.0, self.cfg.auto_reply_interval)):
                 break
-            if self.stop_evt.is_set():
-                break
+            if not self.cfg.auto_reply_enabled:
+                log.info("auto-reply turned off: ads loop stopped")
+                return
+            reloaded = self._auto_reply_reload(self._auto_reply_path(), stamp)
+            if reloaded is not None:
+                (stamp, shuffled), idx = reloaded, 0
+            if self.stop_evt.is_set() or not shuffled:
+                continue
+            if not bool(getattr(self.adapter, "room_ready", True)):
+                # Live 2026-11-27: ads were logged "sent" while the room was closed and
+                # the adapter dropped them; keep this message for the next slot instead.
+                log.info("auto-reply skipped: the Camfrog room chat is not open")
+                continue
             msg = shuffled[idx]
             idx += 1
-            # Reshuffle when we've gone through all messages
-            if idx >= len(shuffled):
+            if idx >= len(shuffled):  # a full cycle: reshuffle
                 random.shuffle(shuffled)
                 idx = 0
             try:
@@ -2238,64 +2294,11 @@ class Engine:
                 log.exception("auto-reply send failed")
 
     @staticmethod
-    def _extract_entries_from_data(data, path: str):
-        """Extract entries list from various JSON formats."""
-        if isinstance(data, list):
-            return data
-        elif isinstance(data, dict):
-            for key in ("messages", "ads", "entries", "items"):
-                if key in data and isinstance(data[key], list):
-                    return data[key]
-            log.warning(
-                "auto-reply file %r: no valid messages list found (tried keys: messages, ads, entries, items)",
-                path,
-            )
-            return []
-        else:
-            log.warning("auto-reply file %r: root must be a list or dict", path)
-            return []
-
-    @staticmethod
-    def _sanitize_messages(entries):
-        """Filter and sanitize message entries."""
-        messages = []
-        for m in entries:
-            if m is None:
-                continue
-            s = str(m).strip()
-            if s:
-                messages.append(s)
-        return messages
-
-    @staticmethod
     def _load_auto_reply_messages(path: str) -> list[str]:
-        """Load messages from ads-list.json. Returns a list of message strings.
+        """Messages in ads-list.json (see :mod:`autodj.ads_list` for the formats)."""
+        from . import ads_list
 
-        Supports formats:
-        - {"messages": ["msg1", "msg2"]}
-        - {"version": 1, "messages": ["msg1", "msg2"]}
-        - ["msg1", "msg2"]
-        - {"ads": ["msg1", "msg2"]} (legacy)
-        """
-        try:
-            data = json.loads(Path(path).read_text("utf-8-sig"))
-        except FileNotFoundError:
-            log.debug("auto-reply file %r not found", path)
-            return []
-        except json.JSONDecodeError as ex:
-            log.warning("auto-reply file %r has invalid JSON: %s", path, ex)
-            return []
-        except Exception:
-            log.warning("cannot read auto-reply file %r", path, exc_info=True)
-            return []
-
-        entries = Engine._extract_entries_from_data(data, path)
-        messages = Engine._sanitize_messages(entries)
-
-        if not messages:
-            log.warning("auto-reply file %r: no valid messages after filtering", path)
-
-        return messages
+        return ads_list.load(path)
 
     def _im_auto_reply_loop(self):
         """Background cleanup for IM reply cooldowns.
@@ -2494,9 +2497,10 @@ class Engine:
             checks["mpv"] = {"ok": False, "details": str(ex)}
             ok = False
 
-        # Circuit breaker state (read under circuit breaker lock for consistent snapshot)
+        # Circuit breaker state. _is_circuit_open() takes the (non-reentrant) lock
+        # itself: calling it inside `with lock` deadlocked every health check.
+        cb_open = self._is_circuit_open()
         with self._circuit_breaker_lock:
-            cb_open = self._is_circuit_open()
             cb_failures = self._circuit_breaker_failures
             cb_open_until = self._circuit_breaker_open_until
         checks["circuit_breaker"] = {
@@ -2507,9 +2511,9 @@ class Engine:
         if cb_open:
             ok = False
 
-        # Send suspension state
+        # Send suspension state (_is_send_suspended takes its lock itself, see above)
+        send_suspended = self._is_send_suspended()
         with self._send_failure_lock:
-            send_suspended = self._is_send_suspended()
             send_failures = self._send_failure_count
         checks["chat_send"] = {
             "ok": not send_suspended,

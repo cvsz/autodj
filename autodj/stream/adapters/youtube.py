@@ -22,12 +22,15 @@ Configuration (config.toml):
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Iterator
 from typing import Any, Optional
 
 from ..probe_login import ProbeLoginError
 from .base import AdapterError, AdapterState, ChatMessage, StreamAdapter
+
+_LOG = logging.getLogger("autodj.stream")
 
 
 class YouTubeAdapter(StreamAdapter):
@@ -179,8 +182,8 @@ class YouTubeAdapter(StreamAdapter):
                 time.sleep(self._poll_interval)
                 try:
                     self.connect()
-                except Exception:  # noqa: BLE001, S110, S112
-                    continue
+                except Exception:  # noqa: BLE001 - retried after the next poll interval
+                    _LOG.debug("YouTube reconnect failed", exc_info=True)
 
     def send(self, text: str) -> None:
         """Post *text* as a chat message on YouTube Live."""

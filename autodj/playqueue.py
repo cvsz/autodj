@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import random
-import re
 import threading
+import unicodedata
 from collections import deque
 
 from .models import Track
@@ -95,7 +95,17 @@ class PlayQueue:
 
     @staticmethod
     def _dedupe_key(t: Track) -> str:
-        title = re.sub(r"\W+", " ", t.title or "").strip().lower()
+        """Title folded for "already queued" checks: case and punctuation ignored.
+
+        Combining marks (Thai vowels and tone marks, category Mn/Mc) are kept: ``\\W``
+        treated them as separators, so "ปิ่น" and "ปั่น" both became "ป น" and a
+        different Thai song was refused as already queued.
+        """
+        folded = unicodedata.normalize("NFKC", t.title or "").casefold()
+        kept = "".join(
+            ch if ch.isalnum() or unicodedata.category(ch) in ("Mn", "Mc") else " " for ch in folded
+        )
+        title = " ".join(kept.split())
         return title or (t.source or "").strip().lower()
 
     def add_pool(self, tracks: list[Track]):

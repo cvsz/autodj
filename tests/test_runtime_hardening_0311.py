@@ -54,6 +54,10 @@ def _engine():
     e.cfg.admin_greeting_enabled = True
     e._own_nicks = set()
     e._is_own_account = lambda u: Engine._is_own_account(e, u)
+    e.cfg.greeting_ignore = []
+    e.cfg.mic_greeting_ignore = []
+    e.cfg.greeting_ignore_regex = r"(?i)bot$"
+    e._never_greet = lambda u: Engine._never_greet(e, u)
     return e
 
 

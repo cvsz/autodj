@@ -1,6 +1,6 @@
 # AutoDJ Admin Manual — English
 
-**Version:** 0.3.16  
+**Version:** 0.3.17  
 **Audience:** Room administrators and bot operators  
 **Language:** English
 
@@ -272,6 +272,8 @@ auto_reply_enabled = true
 auto_reply_interval = 60.0        # seconds between auto-reply messages (min 60s)
 auto_reply_file = "ads-list.json"  # JSON file with messages to rotate through
 ```
+
+Edit the messages in the GUI: **Settings → Ads list…** (add, edit, delete, reorder, save). The file is saved atomically with an `ads-list.json.bak` copy of the previous version, and the running bot picks up the change on its next slot (no restart). Ads are held, not dropped, while the Camfrog room chat is not open.
 
 ### TTS (Text-to-Speech)
 

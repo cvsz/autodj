@@ -19,6 +19,7 @@ Configuration (config.toml):
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from collections.abc import Iterator
@@ -26,6 +27,8 @@ from typing import Any, Optional
 
 from ..probe_login import ProbeLoginError
 from .base import AdapterError, AdapterState, ChatMessage, StreamAdapter
+
+_LOG = logging.getLogger("autodj.stream")
 
 
 class TikTokAdapter(StreamAdapter):
@@ -165,8 +168,8 @@ class TikTokAdapter(StreamAdapter):
         if self._client is not None:
             try:
                 self._client.stop()
-            except Exception:  # noqa: BLE001, S110
-                pass
+            except Exception:  # noqa: BLE001 - closing must not raise
+                _LOG.debug("TikTok client stop failed", exc_info=True)
 
     def _is_closed(self) -> bool:
         return self._closed

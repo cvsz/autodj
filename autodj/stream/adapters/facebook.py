@@ -21,6 +21,7 @@ Configuration (config.toml):
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Iterator
 from typing import Optional
@@ -29,6 +30,8 @@ import requests
 
 from ..probe_login import ProbeLoginError
 from .base import AdapterError, AdapterState, ChatMessage, StreamAdapter
+
+_LOG = logging.getLogger("autodj.stream")
 
 
 class FacebookAdapter(StreamAdapter):
@@ -39,7 +42,8 @@ class FacebookAdapter(StreamAdapter):
     system; bot responses are posted back as comments.
     """
 
-    def __init__(
+    # access_token defaults to "" (none given), not a hard-coded secret
+    def __init__(  # nosec B107
         self,
         stream_id: str,
         page_id: str = "",
@@ -54,7 +58,7 @@ class FacebookAdapter(StreamAdapter):
         self._comment_cursor: Optional[str] = None
         self._poll_interval = 10.0  # seconds between polls
         self._session = requests.Session()
-        self._session.headers.update({"User-Agent": "AutoDJ/0.3.16 (facebook-live-adapter)"})
+        self._session.headers.update({"User-Agent": "AutoDJ/0.3.17 (facebook-live-adapter)"})
         self._login_manager = login_manager
 
     # ------------------------------------------------------------------
@@ -184,8 +188,8 @@ class FacebookAdapter(StreamAdapter):
                 time.sleep(self._poll_interval)
                 try:
                     self.connect()
-                except Exception:  # noqa: BLE001, S110, S112
-                    continue
+                except Exception:  # noqa: BLE001 - retried after the next poll interval
+                    _LOG.debug("Facebook reconnect failed", exc_info=True)
 
     def send(self, text: str) -> None:
         """Post *text* as a comment on the Facebook live video."""
