@@ -292,6 +292,13 @@ class UiaAdapter(ChatAdapter):
     _room_hidden: bool = False
     _hidden_title: str | None = None
     _hidden_checked: float = 0.0
+    # Seconds before a Camfrog window without an IM pane is looked at again.
+    IM_PANE_RECHECK_S = 10.0
+
+    @property
+    def room_ready(self) -> bool:
+        """False while Camfrog shows another page (room list, tab) instead of the room."""
+        return not self._room_hidden
 
     def __init__(self, cfg):
         self.cfg = cfg
@@ -531,7 +538,9 @@ class UiaAdapter(ChatAdapter):
         else:
             got = self._read_im_window(w)
         if got is None:
-            self._im_not_im.add(w.handle)  # no IM pane: stop re-scanning this window
+            # No IM pane (yet): a new chat window's web pane loads after the window
+            # appears, so check again later instead of ignoring this window for good.
+            self._im_not_im[w.handle] = time.monotonic() + self.IM_PANE_RECHECK_S
             return []
         lines, nick = got
         if not hasattr(self, "_im_handles"):
@@ -559,7 +568,10 @@ class UiaAdapter(ChatAdapter):
         if first_scan:
             self._im_prev: dict[int, list[str]] = {}
         if not hasattr(self, "_im_not_im"):
-            self._im_not_im: set[int] = set()  # windows without an IM pane (room list, ...)
+            # windows without an IM pane (room list, popups, a chat still loading) ->
+            # when to look at them again
+            self._im_not_im: dict[int, float] = {}
+        now = time.monotonic()
         try:
             from ..windows import candidates
 
@@ -576,13 +588,13 @@ class UiaAdapter(ChatAdapter):
             if w.pid == own_pid or w.handle == main_handle:
                 continue
             live.add(w.handle)
-            if w.handle in self._im_not_im:
+            if self._im_not_im.get(w.handle, 0.0) > now:
                 continue
             out.extend(self._im_window_messages(w, first_scan))
         # Forget closed windows (handles are reused by Windows).
         for gone in [h for h in self._im_prev if h not in live]:
             del self._im_prev[gone]
-        self._im_not_im &= live
+        self._im_not_im = {h: t for h, t in self._im_not_im.items() if h in live}
         return out
 
     def _room_events(self, prev: list[str] | None, lines: list[str]):

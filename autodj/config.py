@@ -281,6 +281,12 @@ class Config:
     mic_notice_senders: list[str] = field(default_factory=list)
     # Nicks never greeted on the mic (e.g. the account AutoDJ streams the music from).
     mic_greeting_ignore: list[str] = field(default_factory=list)
+    # Nicks never greeted by any greeting (welcome, admin greeting, mic greeting), e.g.
+    # the room's own bots ["ZeazBot", "CloudBot"]. mic_greeting_ignore nicks count too.
+    greeting_ignore: list[str] = field(default_factory=list)
+    # Bot nicks never greeted, as a regex on the nick; default: any nick ending in "bot"
+    # (ZeazBot, CloudBot, CamfrogBot). "" turns the rule off.
+    greeting_ignore_regex: str = r"(?i)bot$"
 
     # Camfrog RE Integrations (Gift / Avatar / Status / Status Alert)
     gift_announce_enabled: bool = True  # announce virtual-gift messages sent to the room
@@ -457,6 +463,7 @@ _REGEXES = (
     "line_regex",
     "client_title_re",
     "join_line_regex",
+    "greeting_ignore_regex",
 )
 _RANGES = {
     "volume": (0, 100),

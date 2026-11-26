@@ -252,3 +252,14 @@ Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
 | Cause | the grace clock starts at mpv launch (yt-dlp resolution ~5–8 s before audio, plus buffering), and the end check used the GUI's cached 0.15 s position query; an empty answer meant "not at the end", so mpv was terminated (the song's last seconds cut) and counted as failed | VERIFIED (code) |
 | Fix | advancing position → wait for the remaining time + grace (max 3 extensions); end check with a 2 s IPC timeout plus `eof-reached`; an mpv that does not answer, or a position stalled short of the end, still fails (position logged); `tests/test_player_overrun.py` (5) | VERIFIED (tests) |
 
+## 15. Room bots greeted / ads dropped while the room is closed (0.3.17)
+
+| Step | Evidence | State |
+|---|---|---|
+| Symptom: bot greeted | `Sent welcome message to ZeazBot` 5 times (latest 11-27 05:32:13) | VERIFIED (log) |
+| Symptom: ads lost | `auto-reply sent` followed by `Cannot send chat: Camfrog room window is not open yet. Message dropped` while the room was closed | VERIFIED (log) |
+| Fix | `_never_greet` on every greeting path + `greeting_ignore` / `greeting_ignore_regex`; `room_ready` on the adapters, ads loop holds the slot; `tests/test_never_greet_room_bots.py`, `tests/test_auto_reply_room_ready.py` | VERIFIED (tests) |
+| Live config | `mic_notice_senders` listed `AutoDJ` instead of the room bot `ZeazBot` that posts `<nick> กำลังรับไมค์`, so mic greetings never fired; corrected on the bot PC | VERIFIED (config) |
+| IM tab empty | log 11-23..27 has no IM read at all; a chat window whose web pane was still loading at the first read was ignored for the whole session (`_im_not_im`); now rechecked every 10 s, `tests/test_im_window_late_pane.py` | VERIFIED (code, tests); live IM from a second user UNVERIFIED |
+| Earlier IM fixes on other heads | all branches/stashes checked: `fix/im-autoreply-deadlock` is in main (`git cherry` -), `local/deploy-20261122` holds only merges already in main, stash@{1} is the old `[IM]`-marker reader replaced by IM-window reading | VERIFIED (git) |
+| Ads list editor | Settings → Ads list…; atomic save + `.bak`; loop reloads on change; `tests/test_ads_list.py`, `tests/test_gui_ads_editor.py` | VERIFIED (tests) |

@@ -2,6 +2,13 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
+## What's new in 0.3.17
+
+- The room's own bots (any nick ending in "bot", e.g. ZeazBot, CloudBot) are never greeted: no welcome, no admin greeting, no mic greeting. New settings `greeting_ignore` (nick list) and `greeting_ignore_regex` (default `(?i)bot$`, `""` turns it off).
+- Auto ads wait while the Camfrog room chat is not open instead of being dropped.
+- New **Settings → Ads list…** editor for `ads-list.json`; the bot reloads it without a restart.
+- Private messages (IM) from a chat window that opened while the bot was running are read again (a window whose chat pane was still loading was ignored for good).
+
 ## What's new in 0.3.16
 
 - Requested songs are no longer cut off in their last seconds or logged as failed when the stream started late or buffered.
