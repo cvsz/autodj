@@ -16,7 +16,7 @@ from __future__ import annotations
 import contextlib
 import os
 import signal
-import subprocess
+import subprocess  # nosec B404
 import threading
 import time
 import urllib.parse
@@ -168,7 +168,7 @@ class RecorderManager:
                 start_time=now,
                 state=_STATE_STARTING,
             )
-            cmd = subprocess.Popen(
+            cmd = subprocess.Popen(  # nosec B603
                 [
                     self._ffmpeg_path,
                     "-hide_banner",

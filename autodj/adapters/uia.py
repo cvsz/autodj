@@ -548,9 +548,12 @@ class UiaAdapter(ChatAdapter):
         self._im_handles[nick.lower()] = w.handle  # where send_im() answers this user
         prev = self._im_prev.get(w.handle)
         self._im_prev[w.handle] = lines
-        if prev is None:
-            if first_scan:
-                return []  # baseline: never replay old history
+        if prev is None and first_scan:
+            return []  # baseline: never replay old history
+        if not prev:
+            # A new window, or one whose pane was still empty when last read: its
+            # first message is already in it (diff_lines([], lines) returns nothing,
+            # so that message used to be lost).
             new_lines = [raw for raw in lines if self._is_recent(raw.split("|", 1)[0])]
         else:
             new_lines = diff_lines(prev, lines)
@@ -595,6 +598,10 @@ class UiaAdapter(ChatAdapter):
         for gone in [h for h in self._im_prev if h not in live]:
             del self._im_prev[gone]
         self._im_not_im = {h: t for h, t in self._im_not_im.items() if h in live}
+        handles = getattr(self, "_im_handles", None)
+        if handles:  # send_im must never answer into a closed (or reused) window handle
+            for nick in [n for n, h in handles.items() if h not in live]:
+                del handles[nick]
         return out
 
     def _room_events(self, prev: list[str] | None, lines: list[str]):
@@ -605,55 +612,81 @@ class UiaAdapter(ChatAdapter):
             # this, after a restart everyone already present counted as "not
             # in the room" until they spoke again, and their IM requests were
             # refused (im_require_room_presence).
-            for nick in self._recent_nicks(lines):
-                yield ChatMessage(nick, "", event="seen")
+            yield from self._seen_events(lines)
             return
-        new = diff_lines(prev, lines)
         if prev and lines and prev[-1] not in lines:
-            # The last line we saw is gone: Camfrog re-rendered or trimmed it (live
-            # 2026-11-25 15:34: a long ZeazBot line came back split in two), so
-            # diff_lines cannot anchor and returns the whole buffer.  Never replay
-            # history: drop every line the previous read already had.  Old
-            # `!ขอเพลง` commands were run again and re-queued songs that had played.
-            seen = set(prev)
-            fresh = [ln for ln in new if ln not in seen]
-            if len(fresh) != len(new):
-                log.warning(
-                    "chat: room history re-read (last seen line changed); "
-                    "%d old line(s) ignored, %d new",
-                    len(new) - len(fresh),
-                    len(fresh),
-                )
-            new = fresh
+            new = self._after_last_seen(prev, lines)
+            if new is None:
+                yield from self._seen_events(lines)
+                return
+        else:
+            new = diff_lines(prev, lines)
         for line in new:
             m = self._room_line_message(line)
             if m:
                 yield m
 
+    def _seen_events(self, lines: list[str]):
+        for nick in self._recent_nicks(lines):
+            yield ChatMessage(nick, "", event="seen")
+
+    @staticmethod
+    def _after_last_seen(prev: list[str], lines: list[str]) -> list[str] | None:
+        """New lines when the last line we saw is gone; None = take *lines* as a new baseline.
+
+        Camfrog re-rendered, trimmed or reloaded the history (live 2026-11-25 15:34:
+        a long line came back split in two; 2026-11-27 05:32: the first read was
+        taken while the room page was still loading and shared no line with the
+        full history read next). Everything up to the last line the previous read
+        also had is history; with no common line at all nothing can be told apart,
+        so nothing is replayed: old `!ขอเพลง` commands re-queued songs that had
+        already played.
+        """
+        seen = set(prev)
+        anchor = max((i for i, ln in enumerate(lines) if ln in seen), default=-1)
+        if anchor < 0:
+            log.warning(
+                "chat: the room history was replaced (%d line(s), none seen before): "
+                "taking it as a new baseline, nothing replayed",
+                len(lines),
+            )
+            return None
+        new = lines[anchor + 1 :]
+        log.warning(
+            "chat: room history re-read (last seen line changed); %d old line(s) ignored, %d new",
+            anchor + 1,
+            len(new),
+        )
+        return new
+
+    def _read_room(self) -> list[str] | None:
+        """One room read; None when the room page is hidden or the read failed."""
+        try:
+            return self._lines()
+        except RoomHiddenError:
+            return None  # room page not shown: keep the baseline, still read IMs
+        except Exception as e:  # noqa: BLE001 - COMError is not an OSError: reading must go on
+            log.debug("chat read failed: %s", e)
+            with self.com_lock:  # protect _view/win against reader/sender race
+                self._view = self.win = None  # drop everything: the next poll re-attaches fresh
+            return None
+
     def messages(self):
         prev = None
         while True:
-            try:
-                lines: list[str] | None = self._lines()
-            except RoomHiddenError:
-                lines = None  # room page not shown: keep the baseline, still read IMs
-            except (OSError, RuntimeError) as e:
-                log.debug("chat read failed: %s", e)
-                with self.com_lock:  # protect _view/win against reader/sender race
-                    self._view = self.win = None  # drop everything: the next poll re-attaches fresh
-                time.sleep(1)
-                continue
+            lines = self._read_room()
             if lines is not None:
                 yield from self._room_events(prev, lines)
                 prev = lines  # first poll only sets the baseline: old history is never replayed
-            # Private messages live in a different web pane; read them too.
+            # Private messages live in a different web pane; read them even when the
+            # room read failed (they used to be skipped then, so no IM arrived).
             try:
                 for im in self._im_lines():
                     log.info("IM received: %s: %s", im.user, im.text[:120])
                     yield im
-            except Exception:  # IM reading must never break room chat
+            except Exception:  # noqa: BLE001 - IM reading must never break room chat
                 log.debug("IM read failed", exc_info=True)
-            time.sleep(self.cfg.poll_interval)
+            time.sleep(self.cfg.poll_interval if lines is not None else 1.0)
 
     def _ensure_controls(self):
         if self._view is None:

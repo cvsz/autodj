@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import subprocess  # nosec B404 - subprocess only with fixed argv lists, never shell=True
+import subprocess  # subprocess only with fixed argv lists, never shell=True  # nosec B404
 import sys
 from typing import Any
 
@@ -35,7 +35,7 @@ def gh_api(method: str, endpoint: str, payload: dict[str, Any] | None = None) ->
     ]
     if payload is not None:
         cmd += ["--input", "-"]
-    proc = subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+    proc = subprocess.run(  # argv list without shell; executable is sys.executable or a resolved, configured tool path  # nosec B603
         cmd,
         input=json.dumps(payload) if payload is not None else None,
         text=True,
@@ -58,7 +58,7 @@ def _gh() -> str:
 
 
 def require_gh() -> None:
-    proc = subprocess.run(  # nosec B603 - argv list without shell; executable is sys.executable or a resolved, configured tool path
+    proc = subprocess.run(  # argv list without shell; executable is sys.executable or a resolved, configured tool path  # nosec B603
         [_gh(), "auth", "status"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,

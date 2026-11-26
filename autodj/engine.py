@@ -558,7 +558,9 @@ class Engine:
                 self.confirm_delivery(attempt_id)
                 self._record_send_success()
                 log.info("send ok: %r", m)
-            except (OSError, RuntimeError) as ex:
+            except Exception as ex:  # noqa: BLE001 - COMError is no OSError; the sender must live
+                if self.stop_evt.is_set():
+                    break
                 self.fail_delivery(attempt_id, FAIL_DELIVERY)
                 self._record_send_failure()
                 log.warning("send failed (%s); retrying once in 2s", ex)
@@ -1530,6 +1532,11 @@ class Engine:
         if norm(msg.user).lower() == self.cfg.bot_nick.lower():
             return True
         if self._is_echo(msg.text):
+            if getattr(msg, "is_im", False):
+                # Our own IM reply read back from the chat window: the window is
+                # titled with the *other* user's nick, so learning it would mark
+                # that user as our account and never greet them again.
+                return True
             nick = norm(msg.user).lower()
             own = self.__dict__.setdefault("_own_nicks", set())
             if nick and nick not in own:
@@ -2067,7 +2074,9 @@ class Engine:
         if should_send:
             delay = getattr(self.cfg, "welcome_message_delay", 0.0)
             if delay and delay > 0:
-                timer = threading.Timer(delay, self._send_welcome_after_delay, args=(welcome_text,))
+                timer = threading.Timer(
+                    delay, self._send_welcome_after_delay, args=(welcome_text, msg.user)
+                )
                 timer.daemon = True
                 with self._welcome_timers_lock:
                     self._welcome_timers.add(timer)
@@ -2077,12 +2086,16 @@ class Engine:
                 log.info("Sent welcome message to %s", msg.user)
         return should_send
 
-    def _send_welcome_after_delay(self, text: str) -> None:
-        """Send a delayed welcome from its daemon timer, never from the worker pool."""
+    def _send_welcome_after_delay(self, text: str, user: str = "") -> None:
+        """Send a delayed welcome from its daemon timer, never from the worker pool.
+
+        *user* is checked again: during the delay the nick may have turned out to be
+        our own account, been blocked or added to greeting_ignore.
+        """
         try:
             with self._welcome_timers_lock:
                 self._welcome_timers.discard(threading.current_thread())
-            if self.stop_evt.is_set():
+            if self.stop_evt.is_set() or (user and self._never_greet(user)):
                 return
             self.say(text)
             log.info("Sent delayed welcome message")
@@ -2221,10 +2234,10 @@ class Engine:
 
     @staticmethod
     def _auto_reply_reload(path: str, stamp: object) -> tuple[object, list[str]] | None:
-        """(new stamp, shuffled messages) when *path* changed since *stamp*, else None."""
+        """(new stamp, shuffled messages) when *path* or its contents changed, else None."""
         from . import ads_list
 
-        now_stamp = ads_list.mtime(path)
+        now_stamp = (path, ads_list.mtime(path))
         if now_stamp == stamp:
             return None
         messages = ads_list.load(path)
@@ -2239,25 +2252,29 @@ class Engine:
         """Send scheduled auto-reply messages from ads-list.json to the room.
 
         Messages are sent every auto_reply_interval seconds (minimum 60s) in a
-        shuffled rotation: every message once before any repeats. The file is read
-        again whenever it changes (the GUI's ads editor saves it), and an empty or
-        missing file keeps the loop waiting instead of ending it. A slot is skipped
-        while the Camfrog room chat is not open, so no ad is dropped.
+        shuffled rotation: every message once before any repeats. Before each
+        slot the file is read again when it (or ``auto_reply_file``) changed, so an
+        ad edited or deleted in the GUI is never posted from the old list; an empty
+        or missing file keeps the loop waiting. Turning auto-reply off (Settings,
+        hot reload) ends the loop; turning it on starts it again. A slot is
+        skipped while the Camfrog room chat is not open, so no ad is dropped.
         """
         if not self.cfg.auto_reply_enabled:
             log.debug("auto-reply disabled; loop not started")
             return
-        path = self._auto_reply_path()
-        stamp: object = object()  # never equal to a real mtime: forces the first load
+        stamp: object = None  # never equal to a real (path, mtime): forces the first load
         shuffled: list[str] = []
         idx = 0
         while not self.stop_evt.is_set():
-            reloaded = self._auto_reply_reload(path, stamp)
-            if reloaded is not None:
-                (stamp, shuffled), idx = reloaded, 0
             # Wait between messages (minimum 60s), but wake up immediately on shutdown
             if self.stop_evt.wait(max(60.0, self.cfg.auto_reply_interval)):
                 break
+            if not self.cfg.auto_reply_enabled:
+                log.info("auto-reply turned off: ads loop stopped")
+                return
+            reloaded = self._auto_reply_reload(self._auto_reply_path(), stamp)
+            if reloaded is not None:
+                (stamp, shuffled), idx = reloaded, 0
             if self.stop_evt.is_set() or not shuffled:
                 continue
             if not bool(getattr(self.adapter, "room_ready", True)):
@@ -2480,9 +2497,10 @@ class Engine:
             checks["mpv"] = {"ok": False, "details": str(ex)}
             ok = False
 
-        # Circuit breaker state (read under circuit breaker lock for consistent snapshot)
+        # Circuit breaker state. _is_circuit_open() takes the (non-reentrant) lock
+        # itself: calling it inside `with lock` deadlocked every health check.
+        cb_open = self._is_circuit_open()
         with self._circuit_breaker_lock:
-            cb_open = self._is_circuit_open()
             cb_failures = self._circuit_breaker_failures
             cb_open_until = self._circuit_breaker_open_until
         checks["circuit_breaker"] = {
@@ -2493,9 +2511,9 @@ class Engine:
         if cb_open:
             ok = False
 
-        # Send suspension state
+        # Send suspension state (_is_send_suspended takes its lock itself, see above)
+        send_suspended = self._is_send_suspended()
         with self._send_failure_lock:
-            send_suspended = self._is_send_suspended()
             send_failures = self._send_failure_count
         checks["chat_send"] = {
             "ok": not send_suspended,

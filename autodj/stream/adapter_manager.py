@@ -13,6 +13,7 @@ stream-scoped auth - adapted to Python.
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from typing import Optional
@@ -28,7 +29,7 @@ from .probe_account import ProbeAccountStore
 from .probe_login import ProbeLoginManager
 from .registry import StreamInfo, StreamRegistry, StreamState
 
-_LOG = None  # placeholder for injected logging
+_LOG = logging.getLogger("autodj.stream")
 
 
 class AdapterManager:
@@ -95,8 +96,8 @@ class AdapterManager:
                 # Stream may already exist; set state to IDLE
                 try:
                     self.registry.set_state(stream_id, StreamState.IDLE)
-                except Exception:  # noqa: BLE001, S110
-                    pass
+                except Exception:  # noqa: BLE001
+                    _LOG.debug("stream %s: cannot reset state", stream_id, exc_info=True)
 
             # Create adapter
             adapter = self._create_adapter(platform_name, platform_cfg, stream_id)
@@ -108,8 +109,7 @@ class AdapterManager:
                 self.registry.set_state(stream_id, StreamState.LIVE)
             except Exception as exc:  # noqa: BLE001, S110
                 self.registry.set_state(stream_id, StreamState.ERROR)
-                if _LOG:
-                    _LOG.exception("adapter %s connect failed: %s", platform_name, exc)
+                _LOG.exception("adapter %s connect failed: %s", platform_name, exc)
                 continue
 
             with self._lock:
@@ -138,12 +138,12 @@ class AdapterManager:
         for platform_name, adapter in adapters.items():
             try:
                 adapter.close()
-            except Exception:  # noqa: BLE001, S110
-                pass
+            except Exception:  # noqa: BLE001 - stopping must reach every adapter
+                _LOG.debug("adapter %s close failed", platform_name, exc_info=True)
             try:
                 self.registry.set_state(platform_name, StreamState.IDLE)
-            except Exception:  # noqa: BLE001, S110
-                pass
+            except Exception:  # noqa: BLE001
+                _LOG.debug("adapter %s: cannot reset state", platform_name, exc_info=True)
 
         for _platform_name, thread in threads.items():
             thread.join(timeout=5.0)
@@ -160,8 +160,7 @@ class AdapterManager:
         probe_account = platform_cfg.get("probe_account", {}) or {}
         factory = self._adapter_factories.get(platform_name)
         if factory is None:
-            if _LOG:
-                _LOG.warning("unknown platform %r", platform_name)
+            _LOG.warning("unknown platform %r", platform_name)
             return None
         return factory(platform_cfg, stream_id, probe_account)
 
@@ -171,8 +170,7 @@ class AdapterManager:
         chat_reader = getattr(self.config, "_ui_reader", None)
         chat_sender = getattr(self.config, "_ui_sender", None)
         if chat_reader is None or chat_sender is None:
-            if _LOG:
-                _LOG.warning("camfrog adapter skipped: UIA reader/sender not configured")
+            _LOG.warning("camfrog adapter skipped: UIA reader/sender not configured")
             return None
         return CamfrogAdapter(stream_id, chat_reader, chat_sender, probe_account)
 
@@ -182,12 +180,10 @@ class AdapterManager:
         api_key = platform_cfg.get("api_key", "")
         channel_id = platform_cfg.get("channel_id", "")
         if not api_key and not probe_account.get("api_key"):
-            if _LOG:
-                _LOG.warning("youtube adapter skipped: api_key missing")
+            _LOG.warning("youtube adapter skipped: api_key missing")
             return None
         if not channel_id and not probe_account.get("channel_id"):
-            if _LOG:
-                _LOG.warning("youtube adapter skipped: channel_id missing")
+            _LOG.warning("youtube adapter skipped: channel_id missing")
             return None
         return YouTubeAdapter(
             stream_id,
@@ -202,8 +198,7 @@ class AdapterManager:
     ) -> Optional[StreamAdapter]:
         room_id = platform_cfg.get("room_id", "") or probe_account.get("room_id", "")
         if not room_id:
-            if _LOG:
-                _LOG.warning("tiktok adapter skipped: room_id missing")
+            _LOG.warning("tiktok adapter skipped: room_id missing")
             return None
         return TikTokAdapter(
             stream_id,
@@ -218,12 +213,10 @@ class AdapterManager:
         access_token = platform_cfg.get("api_key", "") or probe_account.get("access_token", "")
         page_id = platform_cfg.get("page_id", "") or probe_account.get("page_id", "")
         if not access_token:
-            if _LOG:
-                _LOG.warning("facebook adapter skipped: access_token missing")
+            _LOG.warning("facebook adapter skipped: access_token missing")
             return None
         if not page_id:
-            if _LOG:
-                _LOG.warning("facebook adapter skipped: page_id missing")
+            _LOG.warning("facebook adapter skipped: page_id missing")
             return None
         return FacebookAdapter(
             stream_id,
@@ -245,13 +238,12 @@ class AdapterManager:
                         break
                     self._dispatch_message(platform_name, msg)
             except Exception:  # noqa: BLE001, S110
-                if _LOG:
-                    _LOG.exception("adapter %s message loop error", platform_name)
+                _LOG.exception("adapter %s message loop error", platform_name)
                 time.sleep(2.0)
                 try:
                     adapter.connect()
-                except Exception:  # noqa: BLE001, S110
-                    pass
+                except Exception:  # noqa: BLE001 - retried on the next loop
+                    _LOG.debug("adapter %s reconnect failed", platform_name, exc_info=True)
 
     def _dispatch_message(self, platform_name: str, msg: ChatMessage) -> None:
         """Route an inbound message through auth + command router."""
@@ -269,16 +261,15 @@ class AdapterManager:
                     if adapter is not None:
                         try:
                             adapter.send("❌ Not authorized to request songs on this stream.")
-                        except Exception:  # noqa: BLE001, S110
-                            pass
+                        except Exception:  # noqa: BLE001
+                            _LOG.debug("adapter %s: refusal not sent", platform_name, exc_info=True)
                     return
 
         # Forward to AutoDJ's command router
         try:
             self.command_callback(msg)
         except Exception:  # noqa: BLE001, S110
-            if _LOG:
-                _LOG.exception("command callback failed for %r", msg.text)
+            _LOG.exception("command callback failed for %r", msg.text)
 
     @staticmethod
     def _extract_token(text: str) -> str:
@@ -300,8 +291,7 @@ class AdapterManager:
         try:
             adapter.send(text)
         except Exception:  # noqa: BLE001, S110
-            if _LOG:
-                _LOG.exception("send to %s failed", platform_name)
+            _LOG.exception("send to %s failed", platform_name)
 
     def list_adapters(self) -> dict[str, str]:
         """Return {platform: state} for all connected adapters."""

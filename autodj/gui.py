@@ -118,6 +118,17 @@ def _toml_value(v: object) -> str | None:
     return None
 
 
+def _toml_list(v: object) -> str:
+    """TOML array for a list of plain values.
+
+    The settings writer used Python ``repr``: a single-quoted TOML literal keeps
+    ``\\`` as two characters, so ``D:\\Music`` doubled its backslashes on every
+    save, and a value holding both ``'`` and ``"`` produced invalid TOML.
+    """
+    out = _toml_value(list(v) if isinstance(v, (list, tuple)) else [])
+    return out if out is not None else "[]"
+
+
 def _append_remaining_keys(lines: list[str], cfg: object) -> None:
     """Append ``key = value`` for every Config field not already in *lines*.
 
@@ -3891,7 +3902,7 @@ class App(tk.Tk):
             # Build TOML text manually preserving comments is complex, so we write a clean version
             lines = []
             lines.append(f"bot_nick = {_toml_str(cfg.bot_nick)}")
-            lines.append(f"admins = {cfg.admins!r}")
+            lines.append(f"admins = {_toml_list(cfg.admins)}")
             lines.append(f"prefix = {_toml_str(cfg.prefix)}")
             lines.append(f"lang = {_toml_str(cfg.lang)}")
             lines.append("")
@@ -3926,10 +3937,10 @@ class App(tk.Tk):
             lines.append(f"audio_fade_in_sec = {cfg.audio_fade_in_sec}")
             lines.append(f"audio_fade_out_sec = {cfg.audio_fade_out_sec}")
             lines.append(f"audio_normalize = {str(cfg.audio_normalize).lower()}")
-            lines.append(f"music_dirs = {cfg.music_dirs!r}")
-            lines.append(f"autoplay_sources = {cfg.autoplay_sources!r}")
+            lines.append(f"music_dirs = {_toml_list(cfg.music_dirs)}")
+            lines.append(f"autoplay_sources = {_toml_list(cfg.autoplay_sources)}")
             lines.append(f"shuffle = {str(cfg.shuffle).lower()}")
-            lines.append(f"allowed_hosts = {cfg.allowed_hosts!r}")
+            lines.append(f"allowed_hosts = {_toml_list(cfg.allowed_hosts)}")
             lines.append(f"max_requests_per_user = {cfg.max_requests_per_user}")
             lines.append(f"user_request_limit = {cfg.user_request_limit}")
             lines.append(f"rate_limit_window = {cfg.rate_limit_window}")
@@ -3957,7 +3968,7 @@ class App(tk.Tk):
             lines.append(f"join_uri_template = {_toml_str(cfg.join_uri_template)}")
             lines.append(f"launch_timeout = {cfg.launch_timeout}")
             lines.append("")
-            lines.append(f"blocked_users = {cfg.blocked_users!r}")
+            lines.append(f"blocked_users = {_toml_list(cfg.blocked_users)}")
             lines.append(f"poll_interval = {cfg.poll_interval}")
             lines.append(f"log_file = {_toml_str(cfg.log_file)}")
             lines.append(f"log_path = {_toml_str(cfg.log_path)}")
@@ -4086,10 +4097,10 @@ class App(tk.Tk):
             # webhook_secret (like ai_api_key) is persisted by the generic
             # remaining-keys loop below; config.toml is git-ignored local data.
             lines.append(f"webhook_rate_limit_per_ip = {cfg.webhook_rate_limit_per_ip}")
-            lines.append(f"webhook_cors_origins = {cfg.webhook_cors_origins!r}")
+            lines.append(f"webhook_cors_origins = {_toml_list(cfg.webhook_cors_origins)}")
 
             # Plugins
-            lines.append(f"plugins = {cfg.plugins!r}")
+            lines.append(f"plugins = {_toml_list(cfg.plugins)}")
 
             lines.append(
                 f"message_style = {{ font_family = {_toml_str(cfg.message_style.font_family)}, font_size = {cfg.message_style.font_size}, font_color = {_toml_str(cfg.message_style.font_color)}, bold = {str(cfg.message_style.bold).lower()}, italic = {str(cfg.message_style.italic).lower()}, underline = {str(cfg.message_style.underline).lower()} }}"

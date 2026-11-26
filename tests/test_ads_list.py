@@ -82,6 +82,54 @@ def test_loop_waits_for_an_empty_file_and_reloads_after_an_edit(tmp_path):
         if call == 1:  # the operator saves the list in the GUI while the loop waits
             ads_list.save(str(ads), ["new ad"])
 
-    e.stop_evt = _Ticks(2, edit)
+    e.stop_evt = _Ticks(1, edit)
     e._auto_reply_loop()
     assert out(e) == ["new ad"]
+
+
+def test_an_edited_ad_is_never_posted_from_the_old_list(tmp_path):
+    ads = tmp_path / "ads-list.json"
+    ads_list.save(str(ads), ["old ad"])
+    cfg = Config(auto_reply_enabled=True, auto_reply_interval=60.0, auto_reply_file=str(ads))
+    e = Engine(cfg, FakeAdapter(), player=FakePlayer(), index=None)
+
+    def edit(call):
+        if call == 2:  # saved during the second wait
+            os.utime(ads, (1, 1))  # a different mtime even within the same tick
+            ads_list.save(str(ads), ["new ad"])
+
+    e.stop_evt = _Ticks(2, edit)
+    e._auto_reply_loop()
+    assert out(e) == ["old ad", "new ad"]
+
+
+def test_turning_auto_reply_off_ends_the_loop(tmp_path):
+    ads = tmp_path / "ads-list.json"
+    ads_list.save(str(ads), ["ad"])
+    cfg = Config(auto_reply_enabled=True, auto_reply_interval=60.0, auto_reply_file=str(ads))
+    e = Engine(cfg, FakeAdapter(), player=FakePlayer(), index=None)
+
+    def off(call):
+        if call == 2:
+            e.cfg.auto_reply_enabled = False  # Settings saved, hot reload applied
+
+    ticks = _Ticks(5, off)
+    e.stop_evt = ticks
+    e._auto_reply_loop()
+    assert out(e) == ["ad"] and ticks.calls == 2  # returned right after the switch
+
+
+def test_a_changed_ads_file_path_is_followed(tmp_path):
+    a1, a2 = tmp_path / "a1.json", tmp_path / "a2.json"
+    ads_list.save(str(a1), ["from a1"])
+    ads_list.save(str(a2), ["from a2"])
+    cfg = Config(auto_reply_enabled=True, auto_reply_interval=60.0, auto_reply_file=str(a1))
+    e = Engine(cfg, FakeAdapter(), player=FakePlayer(), index=None)
+
+    def switch(call):
+        if call == 2:
+            e.cfg.auto_reply_file = str(a2)
+
+    e.stop_evt = _Ticks(2, switch)
+    e._auto_reply_loop()
+    assert out(e) == ["from a1", "from a2"]

@@ -76,7 +76,8 @@ class ProbeLoginManager:
 
     def _refresh_youtube_token(self, acct: ProbeAccount) -> None:
         """Refresh YouTube OAuth2 access token."""
-        token_url = "https://oauth2.googleapis.com/token"  # noqa: S105 - OAuth2 token endpoint URL
+        # OAuth2 token endpoint URL, not a secret
+        token_url = "https://oauth2.googleapis.com/token"  # noqa: S105  # nosec B105
         data = {
             "client_id": acct.client_id,
             "client_secret": acct.client_secret,

@@ -28,6 +28,7 @@ _POS_CACHE_TTL = 0.5
 # extensions of "remaining time + grace" before it is treated as hung.
 MAX_OVERRUN_EXTENSIONS = 3
 _OVERRUN_IPC_TIMEOUT = 2.0  # player thread, not the Tk thread: a slower mpv may answer
+_CMD_IPC_TIMEOUT = 0.5  # pause / volume / seek: wait this long for a free pipe instance
 
 
 def _is_windows() -> bool:
@@ -410,8 +411,10 @@ class MpvPlayer:
         data = (json.dumps({"command": list(cmd)}) + "\n").encode()
         try:
             if _is_windows():
-                with open(ipc, "r+b", buffering=0) as f:
-                    f.write(data)
+                from .winpipe import request
+
+                # waits for a free pipe instance (the GUI's position poll may hold one)
+                request(ipc, data, _CMD_IPC_TIMEOUT, lambda _buf: True)
             else:
                 import socket
 
@@ -448,25 +451,17 @@ class MpvPlayer:
     def _ipc_read_windows(
         self, ipc: str, data: bytes, timeout: float = 2.0, request_id: int | None = None
     ) -> bytes | None:
-        """Read IPC response from Windows named pipe with timeout."""
-        import time
+        """Read the IPC reply from a Windows named pipe; *timeout* bounds connect + read."""
+        from .winpipe import request
 
-        start = time.monotonic()
         try:
-            with open(ipc, "r+b", buffering=0) as f:
-                f.write(data)
-                response = b""
-                while not self._have_reply(response, request_id):
-                    if time.monotonic() - start > timeout:
-                        log.debug("_cmd_get timed out reading from IPC pipe")
-                        return None
-                    chunk = f.read(4096)
-                    if not chunk:
-                        break
-                    response += chunk
-                return response
-        except OSError:
+            response = request(ipc, data, timeout, lambda buf: self._have_reply(buf, request_id))
+        except OSError as ex:
+            log.debug("mpv IPC request failed: %s", ex)
             return None
+        if response is None:
+            log.debug("_cmd_get timed out reading from IPC pipe")
+        return response
 
     def _ipc_read_unix(
         self, ipc: str, data: bytes, timeout: float = 2.0, request_id: int | None = None

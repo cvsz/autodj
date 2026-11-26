@@ -263,3 +263,37 @@ Backups of every changed setting: `D:\data\autodj\logs\sys-backup-20261122\`.
 | IM tab empty | log 11-23..27 has no IM read at all; a chat window whose web pane was still loading at the first read was ignored for the whole session (`_im_not_im`); now rechecked every 10 s, `tests/test_im_window_late_pane.py` | VERIFIED (code, tests); live IM from a second user UNVERIFIED |
 | Earlier IM fixes on other heads | all branches/stashes checked: `fix/im-autoreply-deadlock` is in main (`git cherry` -), `local/deploy-20261122` holds only merges already in main, stash@{1} is the old `[IM]`-marker reader replaced by IM-window reading | VERIFIED (git) |
 | Ads list editor | Settings → Ads list…; atomic save + `.bak`; loop reloads on change; `tests/test_ads_list.py`, `tests/test_gui_ads_editor.py` | VERIFIED (tests) |
+
+### 15.1 Validation (0.3.17, branch `fix/never-greet-room-bots`)
+
+| Check | Command | Result |
+|---|---|---|
+| Lint | `ruff check autodj tests tools scripts launch_autodj.py playlist` | PASS (0) |
+| Format | `ruff format --check ...` | PASS (180 files) |
+| Types | `mypy autodj` (win32) and `mypy --platform linux autodj` | PASS (67 files) |
+| Compile | `python -m compileall -q autodj tests tools` | PASS |
+| Shell | `shellcheck scripts/*.sh tools/*.sh` | PASS (0) |
+| Tests | `pytest -q -p no:faulthandler -p no:cacheprovider -W error::DeprecationWarning` | PASS (see PR) |
+| Security | `bandit -c pyproject.toml` on all tracked .py outside tests (89 files, 21,318 LOC) | PASS (0) |
+| CI | PR checks (CodeQL, build-and-test, test matrix Ubuntu/Windows 3.12-3.15, docker-audit-image, dependency-review) | see PR |
+
+Bandit metrics (before -> after):
+
+| | Undefined | Low | Medium | High |
+|---|---|---|---|---|
+| Severity | 0 -> 0 | 24 -> 0 | 0 -> 0 | 0 -> 0 |
+| Confidence | 0 -> 0 | 0 -> 0 | 2 -> 0 | 22 -> 0 |
+
+Not verified here: live IM from a second Camfrog user (needs another account), real streaming to YouTube/TikTok/Facebook (needs credentials) - BLOCKED.
+
+### 15.2 Live defects found during the follow-up (11-27) and the deep audit
+
+| Item | Evidence | Fix / test | State |
+|---|---|---|---|
+| Songs FAILED at the end | log 05:36-05:48: `mpv did not answer` 2 ms after the check, 4 tracks `state=FAILED` | `autodj/winpipe.py`; `tests/test_winpipe.py` (real pipe server); real mpv: 40/40 queries under a 0.1 s poller | VERIFIED (tests, real mpv); live bot after deploy: see §15.3 |
+| Old commands replayed | log 05:32:13: five old `!ขอเพลง` + `!ai` right after attach | `UiaAdapter._after_last_seen`; `tests/test_room_history_replay.py` | VERIFIED (tests) |
+| IM tab empty | no `IM received` line 11-23..27 | late pane recheck, IM read on room failure, empty-first-read delivery; `test_im_window_late_pane.py`, `test_audit_0317.py` | VERIFIED (tests); live IM needs a second user - BLOCKED |
+| Audit P1/P2 (subagent, read-only) | 22 findings, file:line + scenario | fixed: 1, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 22; `tests/test_audit_0317.py` | VERIFIED (tests) |
+| Audit not fixed in 0.3.17 | 2 IM text cut to the first segment (needs a live IM to see Camfrog's IM DOM), 5 `send_im` on the reader thread under `com_lock`, 15 background send never re-tried, 16 settings not pushed to the adapter until restart, 17 room users never expire, 19 unused circuit breaker, 20 metadata cache save race, 21 IM scan cost | documented | OPEN |
+| Bot closed 05:48:54 | `AutoDJ window closed: user action (keyboard/mouse input 0.0 s before)` | - | VERIFIED (log); by a person at the PC |
+

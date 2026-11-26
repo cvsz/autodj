@@ -30,7 +30,8 @@ def safe_print(*args, **kwargs) -> None:
     substitute glyph).
     """
     file = kwargs.get("file", sys.stdout)
-    assert file is not None
+    if file is None:  # no console (pythonw / windowed exe): nothing to print to
+        return
     sep = kwargs.get("sep", " ")
     end = kwargs.get("end", "\n")
     flush = kwargs.get("flush", False)
