@@ -16,7 +16,17 @@ import time
 
 import pytest
 
-pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows named pipes")
+windows_only = pytest.mark.skipif(sys.platform != "win32", reason="Windows named pipes")
+
+
+def test_non_windows_raises_an_oserror(monkeypatch):
+    """Callers catch OSError (as with the old open()); never an AttributeError."""
+    import autodj.winpipe as wp
+
+    monkeypatch.delattr(ctypes, "WinDLL", raising=False)
+    with pytest.raises(OSError):
+        wp.request(r"\\.\pipe\x", b"x\n", 0.1, lambda b: True)
+
 
 _n = itertools.count()
 
@@ -83,6 +93,7 @@ def _start(server: PipeServer) -> PipeServer:
     return server
 
 
+@windows_only
 def test_reply_is_read_after_mpv_event_lines():
     from autodj.winpipe import request
 
@@ -95,6 +106,7 @@ def test_reply_is_read_after_mpv_event_lines():
     s.join(2)
 
 
+@windows_only
 def test_busy_pipe_is_waited_for_instead_of_failing():
     """The GUI's poll holds the only instance for 0.3 s: the player's query still gets through."""
     from autodj.winpipe import request
@@ -111,6 +123,7 @@ def test_busy_pipe_is_waited_for_instead_of_failing():
     s.join(3)
 
 
+@windows_only
 def test_silent_server_times_out_on_time():
     """A hung mpv that never answers: the call returns None within the timeout."""
     from autodj.winpipe import request
@@ -122,6 +135,7 @@ def test_silent_server_times_out_on_time():
     s.join(3)
 
 
+@windows_only
 def test_missing_pipe_raises_after_the_deadline():
     from autodj.winpipe import PipeError, request
 
@@ -131,6 +145,7 @@ def test_missing_pipe_raises_after_the_deadline():
     assert time.monotonic() - t0 < 1.0
 
 
+@windows_only
 def test_player_query_uses_the_real_pipe(tmp_path):
     """MpvPlayer._cmd_get end to end over a real pipe (the call the hang check makes)."""
     from autodj.config import Config

@@ -11,6 +11,7 @@ and the read polls ``PeekNamedPipe``, so *timeout* bounds the whole exchange.
 from __future__ import annotations
 
 import ctypes
+import errno
 import time
 from collections.abc import Callable
 
@@ -30,9 +31,12 @@ class PipeError(OSError):
 
 
 def _kernel32():
+    win_dll = getattr(ctypes, "WinDLL", None)
+    if win_dll is None:  # not Windows: an OSError like any other unreachable pipe
+        raise PipeError(errno.ENOSYS, "named pipes need Windows")
     import ctypes.wintypes as w
 
-    k = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]  # Windows only
+    k = win_dll("kernel32", use_last_error=True)
     k.CreateFileW.argtypes = [
         w.LPCWSTR, w.DWORD, w.DWORD, ctypes.c_void_p, w.DWORD, w.DWORD, w.HANDLE,
     ]  # fmt: skip
