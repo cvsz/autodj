@@ -26,7 +26,7 @@
 ; Metadata (overridable from command line)
 ; -----------------------------------------------------------------------------
 !define /IfNDef APP_NAME "zAutoDJ"
-!define /IfNDef APP_VERSION "0.4.0"
+!define /IfNDef APP_VERSION "0.4.1"
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
 !define /IfNDef APP_EXE "zAutoDJ.exe"

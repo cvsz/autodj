@@ -1,3 +1,7 @@
+## 0.4.1 — 2026-11-27
+
+- **Bundled mpv installer** - the release installer now ships the full `mpv\` folder (mpv.exe, mpv.com, yt-dlp.exe, `_internal\`, `vbcable\`) so a default install has a working player out of the box; `installer.nsi` `APP_VERSION` bumped to 0.4.1, `install.bat` / `install.ps1` report 0.4.1.
+
 ## 0.4.0 — 2026-11-27
 
 - **IM Viewer shows messages even after being turned off and on** - `_refresh_im` advanced its `seen` pointer even when `im_viewer_enabled` was false, so every IM that arrived while the tab was hidden was permanently skipped. The pointer now only advances while the viewer is enabled; re-enabling the tab shows all IMs that arrived in the meantime.
