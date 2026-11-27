@@ -2,6 +2,11 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
+## What's new in 0.3.19
+
+- Private messages now reach the bot and the IM tab: this Camfrog shows them inside the room chat ("ข้อความส่วนตัวจาก <nick>"), not in separate IM windows.
+- Private messages from the room's bots are shown in the IM tab only: never answered, never run as commands.
+
 ## What's new in 0.3.18
 
 - Answering an IM no longer pauses reading the room (IM replies are sent by their own worker).

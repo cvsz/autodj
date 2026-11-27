@@ -235,7 +235,7 @@ class ProbeLoginManager:
         key = f"{platform}:{username}"
         if key not in self._sessions:
             session = requests.Session()
-            session.headers.update({"User-Agent": "AutoDJ/0.3.18 (probe-account)"})
+            session.headers.update({"User-Agent": "AutoDJ/0.3.19 (probe-account)"})
             self._sessions[key] = session
         return self._sessions[key]
 

@@ -1,4 +1,4 @@
-# Architecture — AutoDJ v0.3.18
+# Architecture — AutoDJ v0.3.19
 
 **Date:** 2026-11-16  
 **Branch:** main (HEAD: fecc053)  

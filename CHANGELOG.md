@@ -1,3 +1,8 @@
+## 0.3.19 — 2026-11-27
+
+- **Private messages never reached the bot or the IM tab** - live 2026-11-27 11:03: this Camfrog web room shows private messages inside the room history as a group `[avatar] "ข้อความส่วนตัวจาก" <Hyperlink nick> <time> <body...>`; there is no separate IM window for the IM reader to find. The room parser expected the nick as plain text and dropped every such group. `webchat._private_line` turns them into `time IM nick: text` (all body lines kept), which `parse_line` delivers as `is_im=True`; our own outgoing private messages ("ข้อความส่วนตัวถึง" / "Private message to") are skipped. Verified on the live room pane: all six private messages read.
+- **IMs from room bots / ignored nicks are shown only** - the same `_never_greet` rule as greetings: logged in the IM tab, never auto-answered (no bot-to-bot loop) and never run as commands.
+
 ## 0.3.18 — 2026-11-27
 
 Remaining findings of the 0.3.17 deep audit.
