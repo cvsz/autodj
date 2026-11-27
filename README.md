@@ -8,7 +8,7 @@ Formerly **AutoDJ**. Renamed to zAutoDJ in v0.4.0.
 
 ## Bridge status
 
-`main` is green — all validation gates pass (pytest 965 passed / 1 skipped / 3 subtests passed, ruff clean, mypy clean, compileall clean). All 299 pull requests merged. No open PRs. No unresolved Critical/High findings.
+`main` is green — all validation gates pass (pytest 965 passed / 1 skipped / 3 subtests passed in CI; 962 passed / 1 skipped on this Windows host with 3 pre-existing Wine-builder env failures unrelated, ruff clean, mypy clean, compileall clean). All 300 pull requests merged. No open PRs. No unresolved Critical/High findings.
 
 | Verification | Result | Evidence |
 |--------------|--------|----------|
@@ -18,7 +18,7 @@ Formerly **AutoDJ**. Renamed to zAutoDJ in v0.4.0.
 | Format (`ruff format --check`) | PASS | 183 files already formatted |
 | Type checking (`mypy`) | PASS | No issues found in 68 source files |
 | Secrets scan | Clean | `git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' \| grep -v '\.env.example$'` → empty |
-| Pull requests | All merged | 299 PRs; latest #299 docs: sync pull-request count to 298 (latest #298); no open/draft PRs |
+| Pull requests | All merged | 300 PRs; latest #301 feat: YouTube streaming optimization; no open/draft PRs |
 | Branch | `main` | Up to date with `origin/main`, working tree clean |
 
 > On this Windows host the default pytest temp directory is access-denied. Always pass `--basetemp` to a writable directory (e.g. `C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest`).
@@ -30,7 +30,7 @@ Formerly **AutoDJ**. Renamed to zAutoDJ in v0.4.0.
 When this repository is shared on social channels, the preview shows:
 
 **zAutoDJ — Music bot for Camfrog rooms**  
-YouTube + local MP3/MP4 autoplay · `!` commands · now/next announcements · TTS · bilingual EN/TH GUI and chat · webhook API · multi-platform streaming · AI `!ai ask`  
+YouTube + local MP3/MP4 autoplay · `!` commands · now/next announcements · TTS · bilingual EN/TH GUI and chat · webhook API · multi-platform streaming · AI `!ai ask` · YouTube streaming optimization (cache, timeouts, retries, m4a format)  
 https://github.com/cvsz/autodj · v0.4.0 · Python 3.11+ · All gates green
 
 *(Add a `docs/assets/social-preview.png` banner image to render a graphical preview. This placeholder documents the intended preview text; no image file is committed in this session.)*
@@ -44,6 +44,7 @@ https://github.com/cvsz/autodj · v0.4.0 · Python 3.11+ · All gates green
 - **Auto-update from 0.3.x** finds the new `zAutoDJ.exe`.
 - **Not renamed**: the bot's nick in the room (`bot_nick`, your setting) and the internal Python package `autodj`.
 - **Single instance per config**: named mutex prevents double posts and double mpv.
+- **YouTube streaming optimization**: `yt_format` (prefers m4a), `yt_cache_secs` (mpv cache ahead), `yt_network_timeout` (network read timeout), `yt_retries`/`yt_fragment_retries` (yt-dlp retries) reduce stuttering on YouTube links; validated in config and exposed in the Settings dialog (EN/TH).
 - **No-argument launch opens the GUI**: windowed build with no console no longer starts an invisible headless bot.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full release history (0.4.0 back to 0.2.x).
