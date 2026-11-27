@@ -35,7 +35,14 @@ jobs:
           python -m pip install -e ".[webhook,hotreload]" "pytest==8.3.3" ruff mypy
 
       - name: Install GUI test dependencies
-        run: sudo apt-get update -y && sudo apt-get install -y python3-tk xvfb
+        run: |
+          # The Microsoft package repository for Ubuntu 26.04 ("resolute") is
+          # unavailable (403 Forbidden / unsigned) and breaks apt-get update.
+          # Remove its sources.list entries so apt can refresh the Ubuntu
+          # archives and install python3-tk / xvfb from the official mirrors.
+          sudo rm -f /etc/apt/sources.list.d/microsoft*.list 2>/dev/null || true
+          sudo rm -f /etc/apt/sources.list.d/prod*.list 2>/dev/null || true
+          sudo apt-get update -y && sudo apt-get install -y python3-tk xvfb
 
       - name: Run unit tests
         # Same environment as tests.yml: optional extras (webhook/hotreload tests) + a display for Tk.
