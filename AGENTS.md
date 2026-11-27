@@ -377,7 +377,7 @@ scripts/gh-switch.sh status
 | `ruff format --check` | PASS | 183 files already formatted |
 | `mypy autodj` | PASS | No issues found in 68 source files |
 | Secrets scan | Clean | `git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' | grep -v '\.env.example$'` → empty |
-| Pull requests | All merged | 297 PRs, latest #297 docs: sync pull-request count to 296 (latest #296); no open/draft PRs |
+| Pull requests | All merged | 298 PRs, latest #298 docs: sync pull-request count to 297 (latest #297); no open/draft PRs |
 | Branch | `main` | Up to date with `origin/main`, working tree clean |
 
 > On this Windows host the default pytest temp directory is access-denied. Always pass `--basetemp` to a writable directory (e.g. `C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest`).
