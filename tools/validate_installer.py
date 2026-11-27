@@ -43,7 +43,7 @@ REQUIRED_SECTIONS = [
 ]
 
 REQUIRED_COMMANDS = [
-    'File "dist\\AutoDJ.exe"',
+    'File "dist\\zAutoDJ.exe"',
     'File "dist\\app.ico"',
     'File /nonfatal "dist\\ads-list.json"',
     'File "dist\\config.toml"',
@@ -58,7 +58,7 @@ REQUIRED_COMMANDS = [
 ]
 
 REQUIRED_STAGED_FILES = [
-    "AutoDJ.exe",
+    "zAutoDJ.exe",
     "app.ico",
     "config.toml",
     "mpv/yt-dlp.exe",
@@ -95,7 +95,7 @@ def validate_staged_payload() -> list[str]:
     dist = ROOT / "dist"
 
     # Source validation must work without a completed build.
-    if not (dist / "AutoDJ.exe").is_file():
+    if not (dist / "zAutoDJ.exe").is_file():
         return []
 
     errors = [

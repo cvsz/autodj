@@ -191,7 +191,7 @@ def discover(cfg) -> dict | None:
     )
     if not cands:
         log.warning(
-            "auto-discover: no such window. Run `AutoDJ.exe --windows` to see every window "
+            "auto-discover: no such window. Run `zAutoDJ.exe --windows` to see every window "
             "and its exe; adjust process_re to match the Camfrog exe"
         )
     for c in cands:

@@ -88,7 +88,7 @@ class TestLinuxExeBuilder:
             "WINE_PYTHON",  # interpreter override
             "AUTODJ_SKIP_SMOKE",  # smoke-test escape hatch
             "generate_spec.py",  # shared spec source
-            "dist/AutoDJ.exe",
+            "dist/zAutoDJ.exe",
             "UNSIGNED",  # artifact must be labelled unsigned
             "check_build_env.py",  # mirrors build.ps1 env verification
             "dist/config.toml",  # mirrors build.ps1 post-build copies

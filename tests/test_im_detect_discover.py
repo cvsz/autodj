@@ -113,15 +113,15 @@ ROOT = __import__("pathlib").Path(__file__).resolve().parent.parent
 
 def test_installer_name_matches_build_script_and_workflows():
     """installer.nsi once wrote AutoDJ-Setup-<v>.exe while every consumer looked for
-    Camfrog-AutoDJ-Setup-<v>.exe ("Installer not found after build")."""
+    zAutoDJ-Setup-<v>.exe ("Installer not found after build")."""
     nsi = (ROOT / "installer.nsi").read_text(encoding="utf-8")
     m = re.search(r'!define /IfNDef INSTALLER_NAME "([^"]+)"', nsi)
     assert m is not None
-    assert m.group(1) == "Camfrog-AutoDJ-Setup-${APP_VERSION}.exe"
+    assert m.group(1) == "zAutoDJ-Setup-${APP_VERSION}.exe"
     script = (ROOT / "scripts" / "build_installer.ps1").read_text(encoding="utf-8")
-    assert '"Camfrog-AutoDJ-Setup-$Version.exe"' in script
+    assert '"zAutoDJ-Setup-$Version.exe"' in script
     wf = (ROOT / ".github" / "workflows" / "windows-build.yml").read_text(encoding="utf-8")
-    assert "Camfrog-AutoDJ-Setup-" in wf
+    assert "zAutoDJ-Setup-" in wf
 
 
 def test_build_installer_stages_every_dist_file_the_nsi_packages():
@@ -142,8 +142,8 @@ def test_make_client_shortcuts_writes_launchers(tmp_path):
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    (tmp_path / "AutoDJ.exe").write_bytes(b"")
+    (tmp_path / "zAutoDJ.exe").write_bytes(b"")
     mod.main([str(tmp_path)])
     start = (tmp_path / "start.bat").read_text(encoding="utf-8")
-    assert '"AutoDJ.exe" --gui' in start
-    assert '"AutoDJ.exe" --check' in (tmp_path / "check.bat").read_text(encoding="utf-8")
+    assert '"zAutoDJ.exe" --gui' in start
+    assert '"zAutoDJ.exe" --check' in (tmp_path / "check.bat").read_text(encoding="utf-8")

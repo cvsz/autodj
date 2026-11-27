@@ -255,24 +255,24 @@ if ($pyCmd -and $nsisCmd) {
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$scriptRoot\build.ps1" @signArgs 2>&1
         $code = $LASTEXITCODE
         if ($code -ne 0) {
-            Write-Host ("EXIT CODE: $code (Build AutoDJ.exe)") -ForegroundColor Red
+            Write-Host ("EXIT CODE: $code (Build zAutoDJ.exe)") -ForegroundColor Red
             $script:OverallExitCode = 1
         } else {
-            Write-Host ("EXIT CODE: $code (Build AutoDJ.exe) - OK") -ForegroundColor Green
+            Write-Host ("EXIT CODE: $code (Build zAutoDJ.exe) - OK") -ForegroundColor Green
         }
     } catch {
-        Write-Host ("EXCEPTION: $_ (Build AutoDJ.exe)") -ForegroundColor Red
+        Write-Host ("EXCEPTION: $_ (Build zAutoDJ.exe)") -ForegroundColor Red
         $script:OverallExitCode = 1
     }
 
     # Verify exe exists
-    $exePath = Join-Path $scriptRoot "dist\AutoDJ.exe"
+    $exePath = Join-Path $scriptRoot "dist\zAutoDJ.exe"
     if (Test-Path $exePath) {
-        Write-Host ("AutoDJ.exe built: $exePath") -ForegroundColor Green
+        Write-Host ("zAutoDJ.exe built: $exePath") -ForegroundColor Green
         # Copy to artifacts
         Copy-Item -Path $exePath -Destination $artifactDir -ErrorAction Stop
     } else {
-        Write-Host "AutoDJ.exe not found at $exePath" -ForegroundColor Red
+        Write-Host "zAutoDJ.exe not found at $exePath" -ForegroundColor Red
         $script:OverallExitCode = 1
     }
 }
@@ -284,7 +284,7 @@ if ($pyCmd -and $nsisCmd) {
 Write-ScriptHeader "Step 7: Compile NSIS installer"
 
 if ($nsisCmd -and (Test-Path (Join-Path $scriptRoot "installer.nsi"))) {
-    $installerName = "Camfrog-AutoDJ-Setup-$Version.exe"
+    $installerName = "zAutoDJ-Setup-$Version.exe"
     $installerPath = Join-Path $artifactDir $installerName
 
     $makensisCmd = "& `"$nsisCmd`" /DVERSION=$Version `"$scriptRoot\installer.nsi`""
@@ -307,7 +307,7 @@ if ($nsisCmd -and (Test-Path (Join-Path $scriptRoot "installer.nsi"))) {
         Write-Host ("NSIS installer built: $installerPath") -ForegroundColor Green
     } else {
         # Check for any exe in artifact dir that matches pattern
-        $installerFiles = Get-ChildItem -Path $artifactDir -Filter "Camfrog-AutoDJ-Setup-*.exe" -ErrorAction SilentlyContinue
+        $installerFiles = Get-ChildItem -Path $artifactDir -Filter "zAutoDJ-Setup-*.exe" -ErrorAction SilentlyContinue
         if ($installerFiles) {
             Write-Host ("NSIS installer found: $($installerFiles[0].FullName)") -ForegroundColor Green
         } else {
@@ -345,7 +345,7 @@ if ($files) {
 Write-ScriptHeader "Step 9: Generate CycloneDX SBOM"
 
 if ($pyCmd) {
-    $sbomPath = Join-Path $artifactDir "Camfrog-AutoDJ-$Version.cdx.json"
+    $sbomPath = Join-Path $artifactDir "zAutoDJ-$Version.cdx.json"
     $code = Invoke-CommandWithCode -Command "& $pyCmd -m cyclonedx_py environment --pyproject pyproject.toml -o $sbomPath" -Description "Generate CycloneDX SBOM"
     if ($code -ne 0) { $script:OverallExitCode = 1 }
     if (Test-Path $sbomPath) {

@@ -1,6 +1,6 @@
 # AutoDJ User Manual — English
 
-**Version:** 0.3.21  
+**Version:** 0.4.0  
 **Audience:** Room participants (non-admin users)  
 **Language:** English
 
@@ -164,7 +164,7 @@ Just ask in the room — e.g. "what song is this?", "what's playing", "เพล
 
 | Issue | Solution |
 |-------|----------|
-| "YouTube lookup unavailable" | Bot needs yt-dlp. Ask admin to run `AutoDJ.exe --check` |
+| "YouTube lookup unavailable" | Bot needs yt-dlp. Ask admin to run `zAutoDJ.exe --check` |
 | "Could not play" | Song may be unavailable, region-locked, or mpv issue |
 | "Max requests reached" | Wait for your songs to play or remove old requests |
 | "Already queued" | Song is already in queue or playing |
@@ -199,4 +199,4 @@ Just ask in the room — e.g. "what song is this?", "what's playing", "เพล
 - Type `help` in IM for command list
 - Ask room admins for assistance
 - Check bot's log for detailed errors (admin only)
-- Run `AutoDJ.exe --check` for diagnostics (admin only)
+- Run `zAutoDJ.exe --check` for diagnostics (admin only)

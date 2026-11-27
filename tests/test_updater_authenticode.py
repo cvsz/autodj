@@ -1,7 +1,7 @@
-"""Auto-update: a downloaded AutoDJ.exe must be signed by the pinned certificate.
+"""Auto-update: a downloaded zAutoDJ.exe must be signed by the pinned certificate.
 
 The SHA-256 check alone only proves the file is what GitHub published; v0.3.10.1
-shipped an unsigned AutoDJ.exe that the updater would have installed.
+shipped an unsigned zAutoDJ.exe that the updater would have installed.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ class _Resp(io.BytesIO):
 
 def _up():
     cfg = SimpleNamespace(
-        auto_update_enabled=True, auto_update_repo="cvsz/autodj", auto_update_asset="AutoDJ.exe"
+        auto_update_enabled=True, auto_update_repo="cvsz/autodj", auto_update_asset="zAutoDJ.exe"
     )
     up = Updater(cfg)
     up._latest = {"assets": []}
@@ -43,7 +43,7 @@ def _up():
 
 def _asset(data: bytes) -> dict:
     return {
-        "name": "AutoDJ.exe",
+        "name": "zAutoDJ.exe",
         "browser_download_url": "https://github.com/cvsz/autodj/x",
         "digest": "sha256:" + hashlib.sha256(data).hexdigest(),
     }
@@ -159,7 +159,7 @@ def test_real_file_signed_by_someone_else_is_rejected():
 
 @windows
 def test_real_release_exe_is_accepted():
-    """Set AUTODJ_SIGNED_EXE to a signed AutoDJ.exe (e.g. the v0.3.10 asset) to run."""
+    """Set AUTODJ_SIGNED_EXE to a signed zAutoDJ.exe (e.g. the v0.3.10 asset) to run."""
     exe = os.environ.get("AUTODJ_SIGNED_EXE")
     if not exe:
         pytest.skip("AUTODJ_SIGNED_EXE not set")

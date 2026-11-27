@@ -109,18 +109,22 @@ def _read_registry_values() -> dict[str, str]:
         import winreg  # Windows-only module
 
         values: dict[str, str] = {}
-        try:
-            with winreg.OpenKey(  # type: ignore[attr-defined]
-                winreg.HKEY_CURRENT_USER,  # type: ignore[attr-defined]
-                r"Software\AutoDJ",
-            ) as key:
-                for valname in ("mpv_path", "ytdlp_path"):
-                    try:
-                        values[valname] = winreg.QueryValueEx(key, valname)[0]  # type: ignore[attr-defined]
-                    except FileNotFoundError:
-                        pass
-        except FileNotFoundError:
-            pass
+        # zAutoDJ installer (0.4.0+) first; the pre-rename key only fills what is missing
+        for subkey in (r"Software\zAutoDJ", r"Software\AutoDJ"):
+            try:
+                with winreg.OpenKey(  # type: ignore[attr-defined]
+                    winreg.HKEY_CURRENT_USER,  # type: ignore[attr-defined]
+                    subkey,
+                ) as key:
+                    for valname in ("mpv_path", "ytdlp_path"):
+                        if valname in values:
+                            continue
+                        try:
+                            values[valname] = winreg.QueryValueEx(key, valname)[0]  # type: ignore[attr-defined]
+                        except FileNotFoundError:
+                            pass
+            except FileNotFoundError:
+                pass
         return values
     except Exception:  # noqa: BLE001 - never let registry reads crash startup
         return {}

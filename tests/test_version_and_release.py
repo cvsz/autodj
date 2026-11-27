@@ -55,8 +55,8 @@ def test_version_consistency():
 
     # release workflow targets
     release_yml = (root / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
-    assert "dist/AutoDJ.exe" in release_yml
-    assert "Camfrog-AutoDJ-Setup-*.exe" in release_yml
+    assert "dist/zAutoDJ.exe" in release_yml
+    assert "zAutoDJ-Setup-*.exe" in release_yml
     assert "SHA256SUMS.txt" in release_yml
     assert (
         "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9" in release_yml

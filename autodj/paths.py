@@ -8,6 +8,29 @@ import shutil
 import sys
 from pathlib import Path
 
+APP_NAME = "zAutoDJ"
+EXE_NAME = APP_NAME + ".exe"
+# Per-user folder names used before the zAutoDJ rename (0.4.0), newest first.
+# ``%APPDATA%\\Camfrog AutoDJ`` was the CLI's config fallback, ``AutoDJ`` the GUI's.
+LEGACY_DIR_NAMES = ("AutoDJ", "Camfrog" + " AutoDJ")  # split: kept out of name sweeps
+
+
+def user_app_dir(base: str | os.PathLike[str] | None = None) -> Path:
+    """Per-user zAutoDJ folder under *base* (default %APPDATA%, else the home folder).
+
+    A folder from before the rename is kept when ``zAutoDJ`` does not exist yet and
+    the old one does, so an upgrade never loses a relocated config.toml.
+    """
+    root = Path(base or os.environ.get("APPDATA") or os.path.expanduser("~"))
+    new = root / APP_NAME
+    if new.exists():
+        return new
+    for name in LEGACY_DIR_NAMES:
+        old = root / name
+        if (old / "config.toml").is_file():
+            return old
+    return new
+
 
 def application_dir() -> Path:
     """Return the directory containing the frozen app, or the current project directory."""
@@ -51,7 +74,8 @@ def prepare_comtypes() -> Path | None:
         import comtypes.gen
     except Exception:  # comtypes is Windows-only / may be absent
         return None
-    target = Path(os.environ.get("APPDATA", os.path.expanduser("~"))) / "AutoDJ" / "comtypes_gen"
+    # generated wrappers are a cache: always the new folder (rebuilt on first use)
+    target = Path(os.environ.get("APPDATA", os.path.expanduser("~"))) / APP_NAME / "comtypes_gen"
     try:
         target.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -81,8 +105,7 @@ def log_directory() -> Path:
         probe.unlink()
         return install_logs
     except OSError:
-        app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-        fallback = Path(app_data) / "AutoDJ" / "logs"
+        fallback = user_app_dir() / "logs"
         fallback.mkdir(parents=True, exist_ok=True)
         return fallback
 

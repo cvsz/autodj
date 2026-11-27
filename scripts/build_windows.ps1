@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     AutoDJ Windows 11 Reproducible Build Script
-    Builds AutoDJ.exe and optional NSIS installer from the approved source SHA.
+    Builds zAutoDJ.exe and optional NSIS installer from the approved source SHA.
 
 .DESCRIPTION
     This script performs a complete, reproducible Windows 11 build of AutoDJ v0.2.6
@@ -42,7 +42,7 @@
     Subject for self-signed certificate. Default: "CN=ZEAZDEV COMPANY LIMITED, O=ZEAZDEV COMPANY LIMITED, C=TH"
 
 .PARAMETER Name
-    Output executable name. Default: "AutoDJ"
+    Output executable name. Default: "zAutoDJ"
 
 .PARAMETER Detailed
     Show detailed output.
@@ -89,7 +89,7 @@ param(
     [string]$Subject = "CN=ZEAZDEV COMPANY LIMITED, O=ZEAZDEV COMPANY LIMITED, C=TH",
 
     [ValidateNotNullOrEmpty()]
-    [string]$Name = "AutoDJ",
+    [string]$Name = "zAutoDJ",
 
     [switch]$Detailed
 )
@@ -104,7 +104,7 @@ $ScriptDir = $PSScriptRoot
 $RepoRoot = Join-Path $PSScriptRoot ".."
 $RepoRoot = Resolve-Path $RepoRoot
 $RepoUrl = "git@github.com:cvsz/autodj.git"
-$RequiredVersion = "0.3.21"
+$RequiredVersion = "0.4.0"
 
 # Output setup
 $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -512,7 +512,7 @@ function Sign-Installer {
         return
     }
 
-    $installerPath = Join-Path $WorktreeDir "Camfrog-AutoDJ-Setup-$RequiredVersion.exe"
+    $installerPath = Join-Path $WorktreeDir "zAutoDJ-Setup-$RequiredVersion.exe"
     if (-not (Test-Path $installerPath)) {
         throw "Installer not found at $installerPath - cannot sign"
     }
@@ -677,7 +677,7 @@ function Build-NSISInstaller {
     }
 
     Step "Building NSIS installer"
-    $installerName = "Camfrog-AutoDJ-Setup-$RequiredVersion.exe"
+    $installerName = "zAutoDJ-Setup-$RequiredVersion.exe"
     $nsisLog = Join-Path $InstallerDir "nsis-build.log"
     Write-Log "Running: & $nsisPath installer.nsi" "INFO" "INSTALLER"
 
@@ -726,7 +726,7 @@ function Verify-ExeIntegrityAfterPackaging {
         return
     }
 
-    $installerPath = Join-Path $WorktreeDir "Camfrog-AutoDJ-Setup-$RequiredVersion.exe"
+    $installerPath = Join-Path $WorktreeDir "zAutoDJ-Setup-$RequiredVersion.exe"
     if (-not (Test-Path $installerPath)) {
         Write-Log "Installer not found, cannot verify EXE integrity" "WARN" "INTEGRITY"
         return
@@ -756,10 +756,10 @@ function Verify-ExeIntegrityAfterPackaging {
             return
         }
 
-        # Find the extracted AutoDJ.exe
-        $extractedExe = Get-ChildItem -Path $extractDir -Recurse -Filter "AutoDJ.exe" | Select-Object -First 1
+        # Find the extracted zAutoDJ.exe
+        $extractedExe = Get-ChildItem -Path $extractDir -Recurse -Filter "zAutoDJ.exe" | Select-Object -First 1
         if (-not $extractedExe) {
-            Write-Log "AutoDJ.exe not found in extracted installer" "WARN" "INTEGRITY"
+            Write-Log "zAutoDJ.exe not found in extracted installer" "WARN" "INTEGRITY"
             return
         }
 
@@ -874,7 +874,7 @@ try {
     # Create evidence directories FIRST (before any logging)
     New-EvidenceDirs
 
-    Write-Log "=== AUTO DJ 0.3.21 WINDOWS 11 REPRODUCIBLE BUILD STARTED ===" "INFO" "MAIN"
+    Write-Log "=== AUTO DJ 0.4.0 WINDOWS 11 REPRODUCIBLE BUILD STARTED ===" "INFO" "MAIN"
     Write-Log "Build ID: $BuildId" "INFO" "MAIN"
     Write-Log "Approved SHA: $ApprovedSha" "INFO" "MAIN"
     Write-Log "Output Root: $OutputRoot" "INFO" "MAIN"

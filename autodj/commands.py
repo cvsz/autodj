@@ -864,7 +864,7 @@ def _update_command(e: "Engine", m: "ChatMessage", a: str, admin: bool) -> None:
     """Check GitHub for a newer AutoDJ version.
 
     Usage: !update           — check for updates
-           !update apply    — download and stage AutoDJ.exe.next (admin only)
+           !update apply    — download and stage zAutoDJ.exe.next (admin only)
     """
     from autodj import __version__ as _version
 

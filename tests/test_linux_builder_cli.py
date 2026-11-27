@@ -40,7 +40,7 @@ def test_accepts_version_and_clean_arguments():
 def test_clean_also_removes_the_generated_spec():
     script = SCRIPT.read_text(encoding="utf-8")
 
-    assert "rm -rf build dist AutoDJ.spec" in script
+    assert "rm -rf build dist zAutoDJ.spec" in script
 
 
 def test_wine_binary_can_be_overridden_for_tests():

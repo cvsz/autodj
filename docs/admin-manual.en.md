@@ -1,6 +1,6 @@
 # AutoDJ Admin Manual — English
 
-**Version:** 0.3.21  
+**Version:** 0.4.0  
 **Audience:** Room administrators and bot operators  
 **Language:** English
 
@@ -454,7 +454,7 @@ ai_user_cooldown = 30.0            # seconds between AI replies to the same user
 auto_update_enabled = false        # opt-in; when false there are no background requests to GitHub
 auto_update_repo = "cvsz/autodj"
 auto_update_check_interval = 21600.0   # seconds (min 300)
-auto_update_asset = "AutoDJ.exe"
+auto_update_asset = "zAutoDJ.exe"
 ```
 
 - Only a strictly newer version is offered; unparsable versions are never treated as newer.
@@ -532,7 +532,7 @@ Access via **⚙️ Settings** button. All config.toml settings editable with:
 - Atomic save with `.bak` backup
 - Saving keeps keys the dialog does not show (`ai_*`, `auto_update_*`, `webhook_secret`, `voteskip_cooldown`, `log_json*`) instead of resetting them
 - Toggle for answering "what song?" questions in the room (`np_question_reply`)
-- Auto-relocation to `%APPDATA%\AutoDJ\` if install dir not writable
+- Auto-relocation to `%APPDATA%\zAutoDJ\` if install dir not writable
 - Live language switch for labels
 
 ---
@@ -543,30 +543,30 @@ Access via **⚙️ Settings** button. All config.toml settings editable with:
 
 ```bash
 # Full diagnostic check
-AutoDJ.exe --check
+zAutoDJ.exe --check
 # or
 camfrog-autodj --check
 
 # Auto-discover room window
-AutoDJ.exe --discover
+zAutoDJ.exe --discover
 
 # List all windows (find Camfrog)
-AutoDJ.exe --windows
+zAutoDJ.exe --windows
 
 # Dump window control tree
-AutoDJ.exe --dump "Camfrog"
+zAutoDJ.exe --dump "Camfrog"
 
 # Send test message to room
-AutoDJ.exe --say "test message"
+zAutoDJ.exe --say "test message"
 
 # Run with GUI
-AutoDJ.exe --gui
+zAutoDJ.exe --gui
 
 # Run headless
-AutoDJ.exe
+zAutoDJ.exe
 
 # Console mode (type commands directly)
-AutoDJ.exe --console --lang th
+zAutoDJ.exe --console --lang th
 ```
 
 ### Health Check Output
@@ -586,7 +586,7 @@ AutoDJ.exe --console --lang th
 - **Default:** Console output (stdout/stderr)
 - **File:** Set `log_file = "autodj.log"` in config
 - **Rotation:** 1 MB × 3 files
-- **Location:** Relative paths resolve to `%APPDATA%\AutoDJ\`
+- **Location:** Relative paths resolve to `%APPDATA%\zAutoDJ\`
 
 ### Common Issues & Fixes
 
@@ -602,7 +602,7 @@ AutoDJ.exe --console --lang th
 
 ---
 
-## Building AutoDJ.exe (Windows)
+## Building zAutoDJ.exe (Windows)
 
 ### Prerequisites
 
@@ -625,8 +625,8 @@ python -m pip install -e . pyinstaller
 .\build.ps1 -Pfx cert.pfx -Password "secret"
 
 # 4. Verify
-dist\AutoDJ.exe --version
-dist\AutoDJ.exe --check
+dist\zAutoDJ.exe --version
+dist\zAutoDJ.exe --check
 ```
 
 ### Build Options
@@ -650,7 +650,7 @@ dist\AutoDJ.exe --check
 make installer        # or: powershell -ExecutionPolicy Bypass -File scripts/build_installer.ps1
 ```
 
-Build `dist\AutoDJ.exe` first (`make build`, or `make build-all` for exe + installer).
+Build `dist\zAutoDJ.exe` first (`make build`, or `make build-all` for exe + installer).
 `scripts/build_installer.ps1` copies the current `config.example.toml` to `dist\config.toml`
 (plus README, CHANGELOG and LICENSE) on every run, renders `installer.nsi` with the version
 from `pyproject.toml`, then runs `makensis`. Running `makensis installer.nsi` by hand skips that
@@ -658,12 +658,12 @@ staging and can ship a stale config template. A developer's local `config.toml` 
 
 ### Installer Features
 
-- Per-user install to `%APPDATA%\AutoDJ` (no admin)
+- Per-user install to `%APPDATA%\zAutoDJ` (no admin)
 - Ships `config.toml` from `config.example.toml`; an existing `config.toml` is kept on upgrade
-- Writes the absolute bundled `mpv_path` / `ytdlp_path` into `config.toml` (`AutoDJ.exe --write-install-paths`)
-- Optional component: bundled mpv + yt-dlp in `%APPDATA%\AutoDJ\mpv` (never `%APPDATA%\mpv`, which is mpv's own config folder)
+- Writes the absolute bundled `mpv_path` / `ytdlp_path` into `config.toml` (`zAutoDJ.exe --write-install-paths`)
+- Optional component: bundled mpv + yt-dlp in `%APPDATA%\zAutoDJ\mpv` (never `%APPDATA%\mpv`, which is mpv's own config folder)
 - Closes a running AutoDJ / mpv started from the install folder before upgrading or uninstalling
-- Start Menu shortcuts (AutoDJ, Edit Config, Uninstall) and a Desktop shortcut
+- Start Menu shortcuts (zAutoDJ, Edit Config, Uninstall) and a Desktop shortcut
 - Ships `install.ps1` for VB-CABLE and other prerequisites (VB-CABLE is not bundled)
 - Uninstaller keeps `config.toml`, playlists, logs and other user data
 
@@ -703,7 +703,7 @@ staging and can ship a stale config template. A developer's local `config.toml` 
 1. **Backup** your `config.toml` and `playlist.json`
 2. **Pull latest** code
 3. **Run** `python -m pip install -e . --upgrade`
-4. **Check** `AutoDJ.exe --check`
+4. **Check** `zAutoDJ.exe --check`
 5. **Verify** config migration (auto-runs on startup)
 
 ### Config Migration
@@ -719,7 +719,7 @@ AutoDJ automatically migrates:
 
 | File | Default Location | Description |
 |------|------------------|-------------|
-| `config.toml` | `%APPDATA%\AutoDJ\` | Main configuration |
+| `config.toml` | `%APPDATA%\zAutoDJ\` | Main configuration |
 | `playlist.json` | Same as config | Persisted user requests |
 | `ads-list.json` | Same as config | Auto-reply messages |
 | `autodj.log` | Same as config | Rotating log file |
@@ -764,7 +764,7 @@ rate_limit_window = 300.0        # Sliding window (seconds)
 
 ## Troubleshooting Checklist
 
-- [ ] Run `AutoDJ.exe --check` — all green?
+- [ ] Run `zAutoDJ.exe --check` — all green?
 - [ ] `mpv --audio-device=help` — correct device in config?
 - [ ] `yt-dlp -U` — latest version?
 - [ ] Config TOML valid? (no syntax errors)

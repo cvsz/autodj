@@ -1,11 +1,11 @@
-<#  Sign dist\AutoDJ.exe (Authenticode, SHA256 + timestamp).
+<#  Sign dist\zAutoDJ.exe (Authenticode, SHA256 + timestamp).
     Pick ONE certificate source:
       -Pfx C:\path\cert.pfx [-Password ...]   (or env AUTODJ_PFX / AUTODJ_PFX_PASSWORD)
       -Thumbprint <hex>                        (or env AUTODJ_CERT_THUMBPRINT; cert in CurrentUser\My / LocalMachine\My)
       (or defaults to auto-finding/creating self-signed cert and saving .cer to cert\autodj-codesign.cer)
     Optional: -File <exe>, -TimestampServer <url> #>
 param(
-  [string]$File = "dist\AutoDJ.exe",
+  [string]$File = "dist\zAutoDJ.exe",
   [string]$Pfx = $env:AUTODJ_PFX,
   [string]$Password = $env:AUTODJ_PFX_PASSWORD,
   [string]$Thumbprint = $env:AUTODJ_CERT_THUMBPRINT,

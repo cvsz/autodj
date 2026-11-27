@@ -16,7 +16,7 @@
         2 = Script error
 
 .PARAMETER ExePath
-    Path to AutoDJ.exe to test.
+    Path to zAutoDJ.exe to test.
 
 .PARAMETER TestRoot
     Root directory for disposable test fixtures. Default: ./runtime-test
@@ -25,7 +25,7 @@
     Keep test directories after execution (for debugging).
 
 .EXAMPLE
-    .\Test-AutoDJRuntime.ps1 -ExePath ./dist/AutoDJ.exe
+    .\Test-AutoDJRuntime.ps1 -ExePath ./dist/zAutoDJ.exe
 #>
 [CmdletBinding()]
 param(
@@ -113,12 +113,12 @@ try {
     $versionOut = Get-Content "$testRoot\version-out.txt" -ErrorAction SilentlyContinue
 
     if ($exitCode -eq 0 -and $versionOut) {
-        Write-Result -TestId "RUNTIME-01" -Status "PASS" -Detail "AutoDJ.exe --version exited 0: $versionOut" -Simulated
+        Write-Result -TestId "RUNTIME-01" -Status "PASS" -Detail "zAutoDJ.exe --version exited 0: $versionOut" -Simulated
     } else {
-        Write-Result -TestId "RUNTIME-01" -Status "FAIL" -Detail "AutoDJ.exe --version failed (exit code: $exitCode)"
+        Write-Result -TestId "RUNTIME-01" -Status "FAIL" -Detail "zAutoDJ.exe --version failed (exit code: $exitCode)"
     }
 } catch {
-    Write-Result -TestId "RUNTIME-01" -Status "FAIL" -Detail "AutoDJ.exe --version exception: $_"
+    Write-Result -TestId "RUNTIME-01" -Status "FAIL" -Detail "zAutoDJ.exe --version exception: $_"
 }
 
 # ---------------------------------------------------------------------------

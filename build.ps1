@@ -1,7 +1,7 @@
 <#
  AutoDJ: ONE script for build + sign.   usage (PowerShell, in the project folder):
-     .\build.ps1                 build dist\AutoDJ.exe and sign it
-     .\build.ps1 -Clean          delete build\, dist\ and AutoDJ.spec first (use after changing icon / version / options)
+     .\build.ps1                 build dist\zAutoDJ.exe and sign it
+     .\build.ps1 -Clean          delete build\, dist\ and zAutoDJ.spec first (use after changing icon / version / options)
      .\build.ps1 -NoSign         build only
      .\build.ps1 -Pfx cert\x.pfx -Password "..."     sign with a purchased certificate (or env AUTODJ_PFX / AUTODJ_PFX_PASSWORD)
      .\build.ps1 -Thumbprint <hex>                 sign with a certificate already in your store (or env AUTODJ_CERT_THUMBPRINT)
@@ -9,7 +9,7 @@
  this machine (Root + TrustedPublisher; Windows shows one confirmation dialog). A self-signed cert is only trusted
  where its .cer is imported; for other people's PCs / no SmartScreen warning you need a real code-signing certificate.
  Inputs kept next to this file: app.ico, version_info.txt (company / product text), run_autodj.py, config.toml.
- The PyInstaller options live in tools\generate_spec.py, which regenerates AutoDJ.spec before every
+ The PyInstaller options live in tools\generate_spec.py, which regenerates zAutoDJ.spec before every
  build (shared with the Linux/Wine builder scripts\build_exe_linux.sh).
  Before building it checks that every package the exe must contain is installed in the `python` it will use
  (tools\check_build_env.py), and after building it starts the exe once (--version) as a smoke test.
@@ -21,7 +21,7 @@ param(
   [string]$Password = $env:AUTODJ_PFX_PASSWORD,
   [string]$Thumbprint = $env:AUTODJ_CERT_THUMBPRINT,
   [string]$Subject = "CN=ZEAZDEV, O=ZEAZDEV COMPANY LIMITED, C=TH",
-  [string]$Name = "AutoDJ"
+  [string]$Name = "zAutoDJ"
 )
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
@@ -46,7 +46,7 @@ foreach ($f in "run_autodj.py", "app.ico", "version_info.txt", "autodj\__init__.
 if (Select-String -Path "autodj\__init__.py" -Pattern "from \.base" -Quiet) {
   throw "autodj\__init__.py contains the adapters __init__ content (from .base ...); it must only hold __version__"
 }
-# Kill any existing AutoDJ.exe processes before starting (leftover from previous runs)
+# Kill any existing zAutoDJ.exe processes before starting (leftover from previous runs)
 Get-Process -Name $Name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 500
 # Final check - if still running, it's a different process we can't kill (e.g. another user)

@@ -37,7 +37,7 @@
     Keep test directories after execution (for debugging).
 
 .EXAMPLE
-    .\Test-AutoDJInstaller.ps1 -InstallerPath ./dist/Camfrog-AutoDJ-Setup-0.2.6.exe
+    .\Test-AutoDJInstaller.ps1 -InstallerPath ./dist/zAutoDJ-Setup-0.2.6.exe
 #>
 [CmdletBinding()]
 param(
@@ -154,7 +154,7 @@ $installLog = Join-Path $testRoot "test1-install.log"
 & $InstallerPath /S /D="$installDir" > $installLog 2>&1
 $installCode = $LASTEXITCODE
 
-if ($installCode -eq 0 -and (Test-Path (Join-Path $installDir "AutoDJ.exe"))) {
+if ($installCode -eq 0 -and (Test-Path (Join-Path $installDir "zAutoDJ.exe"))) {
     Write-Result -TestId "INSTALL-01" -Status "PASS" -Detail "Fresh installation succeeded"
 } else {
     Write-Result -TestId "INSTALL-01" -Status "FAIL" -Detail "Fresh installation failed (exit code: $installCode)"
@@ -307,7 +307,7 @@ Set-Content -Path (Join-Path $installDir7 "playlist.json") -Value '{"version":1,
 # Upgrade
 & $InstallerPath /S /D="$installDir7" > $null 2>&1
 
-if (Test-Path (Join-Path $installDir7 "AutoDJ.exe")) {
+if (Test-Path (Join-Path $installDir7 "zAutoDJ.exe")) {
     $configPreserved7 = Test-Path (Join-Path $installDir7 "config.toml")
     $playlistPreserved7 = Test-Path (Join-Path $installDir7 "playlist.json")
     if ($configPreserved7 -and $playlistPreserved7) {
@@ -316,7 +316,7 @@ if (Test-Path (Join-Path $installDir7 "AutoDJ.exe")) {
         Write-Result -TestId "INSTALL-08" -Status "FAIL" -Detail "Upgrade completed but user data missing"
     }
 } else {
-    Write-Result -TestId "INSTALL-08" -Status "FAIL" -Detail "Upgrade did not produce AutoDJ.exe"
+    Write-Result -TestId "INSTALL-08" -Status "FAIL" -Detail "Upgrade did not produce zAutoDJ.exe"
 }
 
 # ---------------------------------------------------------------------------
@@ -356,7 +356,7 @@ if (Test-Path $uninstaller) {
     & $uninstaller /S > $uninstallLog 2>&1
     $uninstallCode = $LASTEXITCODE
 
-    $exeRemoved = -not (Test-Path (Join-Path $installDir9 "AutoDJ.exe"))
+    $exeRemoved = -not (Test-Path (Join-Path $installDir9 "zAutoDJ.exe"))
     $configPreserved9 = Test-Path (Join-Path $installDir9 "config.toml")
     $playlistPreserved9 = Test-Path (Join-Path $installDir9 "playlist.json")
     $musicPreserved9 = Test-Path (Join-Path $installDir9 "user-music.mp3")
@@ -409,7 +409,7 @@ $customDir = Join-Path $testRoot "test11-custom"
 $installDir11 = Join-Path $customDir "My Custom Install Dir"
 & $InstallerPath /S /D="$installDir11" > $null 2>&1
 
-if (Test-Path (Join-Path $installDir11 "AutoDJ.exe")) {
+if (Test-Path (Join-Path $installDir11 "zAutoDJ.exe")) {
     Write-Result -TestId "INSTALL-12" -Status "PASS" -Detail "Custom destination path accepted"
 } else {
     Write-Result -TestId "INSTALL-12" -Status "FAIL" -Detail "Custom destination path failed"

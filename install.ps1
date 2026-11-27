@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     AutoDJ - Windows 11 Automated Installer
-    Installs prerequisites, builds AutoDJ.exe, configures the bot, and creates shortcuts.
+    Installs prerequisites, builds zAutoDJ.exe, configures the bot, and creates shortcuts.
 
 .DESCRIPTION
     This script automates the complete setup of AutoDJ on Windows 11:
@@ -13,7 +13,7 @@
        - VB-Cable virtual audio driver (optional, with download link)
     3. Sets up the project (clones or uses existing directory)
     4. Installs Python dependencies
-    5. Builds AutoDJ.exe with PyInstaller and signs it
+    5. Builds zAutoDJ.exe with PyInstaller and signs it
     6. Creates config.toml from template
     7. Creates Start Menu and Desktop shortcuts
     8. Optionally configures auto-start
@@ -23,7 +23,7 @@
     Directory where the project will be installed (default: $env:USERPROFILE\AutoDJ)
 
 .PARAMETER NoBuild
-    Skip building AutoDJ.exe (use pre-built if available)
+    Skip building zAutoDJ.exe (use pre-built if available)
 
 .PARAMETER NoShortcuts
     Skip creating Start Menu and Desktop shortcuts
@@ -653,7 +653,7 @@ function Build-Exe {
         return $true
     }
 
-    Step "Building AutoDJ.exe"
+    Step "Building zAutoDJ.exe"
     if (-not $script:State.DepsInstalled) {
         SubStep "Dependencies not installed, cannot build" -Error
         return $false
@@ -673,8 +673,8 @@ function Build-Exe {
         $buildArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "build.ps1")
         if ($Force) { $buildArgs += "-Clean" }
         $proc = Start-Process powershell.exe -ArgumentList $buildArgs -Wait -PassThru -NoNewWindow -WorkingDirectory $ProjectDir
-        if ($proc.ExitCode -eq 0 -and (Test-Path "dist\AutoDJ.exe")) {
-            SubStep "AutoDJ.exe built successfully at $ProjectDir\dist\AutoDJ.exe" -Success
+        if ($proc.ExitCode -eq 0 -and (Test-Path "dist\zAutoDJ.exe")) {
+            SubStep "zAutoDJ.exe built successfully at $ProjectDir\dist\zAutoDJ.exe" -Success
             $script:State.ExeBuilt = $true
             return $true
         }
@@ -761,12 +761,12 @@ function Create-Shortcuts {
     }
 
     Step "Creating Shortcuts"
-    if ((-not $script:State.ExeBuilt) -and (-not (Test-Path "$ProjectDir\dist\AutoDJ.exe"))) {
-        SubStep "AutoDJ.exe not found, skipping shortcuts" -Warning
+    if ((-not $script:State.ExeBuilt) -and (-not (Test-Path "$ProjectDir\dist\zAutoDJ.exe"))) {
+        SubStep "zAutoDJ.exe not found, skipping shortcuts" -Warning
         return $false
     }
 
-    $exePath = "$ProjectDir\dist\AutoDJ.exe"
+    $exePath = "$ProjectDir\dist\zAutoDJ.exe"
     $iconPath = "$ProjectDir\app.ico"
     $wsh = New-Object -ComObject WScript.Shell
 
@@ -824,14 +824,14 @@ function Create-AutoStart {
     if (-not $AutoStart) { return $true }
 
     Step "Configuring Auto-Start"
-    if ((-not $script:State.ExeBuilt) -and (-not (Test-Path "$ProjectDir\dist\AutoDJ.exe"))) {
-        SubStep "AutoDJ.exe not found, skipping auto-start" -Warning
+    if ((-not $script:State.ExeBuilt) -and (-not (Test-Path "$ProjectDir\dist\zAutoDJ.exe"))) {
+        SubStep "zAutoDJ.exe not found, skipping auto-start" -Warning
         return $false
     }
 
     $startup = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
     $autoStartShortcut = Join-Path $startup "AutoDJ.lnk"
-    $exePath = "$ProjectDir\dist\AutoDJ.exe"
+    $exePath = "$ProjectDir\dist\zAutoDJ.exe"
     $wsh = New-Object -ComObject WScript.Shell
     $shortcut = $wsh.CreateShortcut($autoStartShortcut)
     $shortcut.TargetPath = $exePath
@@ -850,15 +850,15 @@ function Create-AutoStart {
 # ============================================================================
 function Run-Verification {
     Step "Running Verification Checks"
-    if ((-not $script:State.ExeBuilt) -and (-not (Test-Path "$ProjectDir\dist\AutoDJ.exe"))) {
-        SubStep "AutoDJ.exe not found, skipping verification" -Warning
+    if ((-not $script:State.ExeBuilt) -and (-not (Test-Path "$ProjectDir\dist\zAutoDJ.exe"))) {
+        SubStep "zAutoDJ.exe not found, skipping verification" -Warning
         return $false
     }
 
     Set-Location "$ProjectDir\dist"
-    $exe = ".\AutoDJ.exe"
+    $exe = ".\zAutoDJ.exe"
 
-    SubStep "Running AutoDJ.exe --check..."
+    SubStep "Running zAutoDJ.exe --check..."
     try {
         # Use temp files to capture output (must be different files for stdout/stderr)
         $tempOut = [System.IO.Path]::GetTempFileName()
@@ -899,7 +899,7 @@ function Run-Verification {
             return $true
         }
         else {
-            SubStep "Some checks failed (see above). Run 'AutoDJ.exe --check -v' for details." -Warning
+            SubStep "Some checks failed (see above). Run 'zAutoDJ.exe --check -v' for details." -Warning
             return $false
         }
     }
@@ -959,8 +959,8 @@ function Main {
     # Header
     Write-Host ""
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
-    Write-Host "           Camfrog AutoDJ - Windows 11 Automated Installer" -ForegroundColor $C_CYAN
-    Write-Host "                         Version 0.3.21" -ForegroundColor $C_CYAN
+    Write-Host "           zAutoDJ - Windows 11 Automated Installer" -ForegroundColor $C_CYAN
+    Write-Host "                         Version 0.4.0" -ForegroundColor $C_CYAN
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
     Write-Host ""
     Write-Log "=== AutoDJ Installer Started ==="
@@ -1096,7 +1096,7 @@ function Main {
         @{ Name = "VB-Cable"; Status = $script:State.VBCableInstalled },
         @{ Name = "Project cloned"; Status = $script:State.ProjectCloned },
         @{ Name = "Python deps"; Status = $script:State.DepsInstalled },
-        @{ Name = "AutoDJ.exe built"; Status = $script:State.ExeBuilt },
+        @{ Name = "zAutoDJ.exe built"; Status = $script:State.ExeBuilt },
         @{ Name = "Config created"; Status = $script:State.ConfigCreated },
         @{ Name = "Shortcuts"; Status = $script:State.ShortcutsCreated },
         @{ Name = "Auto-start"; Status = $script:State.AutoStartCreated },
@@ -1121,8 +1121,8 @@ function Main {
         Write-Host "  2. Open Camfrog and join your room" -ForegroundColor $C_WHITE
         Write-Host "  3. Run AutoDJ from Desktop/Start Menu or:" -ForegroundColor $C_WHITE
         Write-Host "     cd $ProjectDir\dist" -ForegroundColor $C_GRAY
-        Write-Host "     .\AutoDJ.exe --gui" -ForegroundColor $C_GRAY
-        Write-Host "  4. Run .\AutoDJ.exe --check to verify everything works" -ForegroundColor $C_WHITE
+        Write-Host "     .\zAutoDJ.exe --gui" -ForegroundColor $C_GRAY
+        Write-Host "  4. Run .\zAutoDJ.exe --check to verify everything works" -ForegroundColor $C_WHITE
         Write-Host ""
         if (-not $script:State.VBCableInstalled) {
             Write-Host "[WARN] VB-Cable not installed - you MUST install it for audio to work in Camfrog!" -ForegroundColor $C_YELLOW

@@ -9,7 +9,7 @@ QUICK START
 
 WHAT'S INSIDE
 -------------
-AutoDJ.exe   - The music bot (no Python installation needed)
+zAutoDJ.exe   - The music bot (no Python installation needed)
 mpv/         - Media player (mpv.exe) + YouTube downloader (yt-dlp.exe)
 config.toml  - Edit this to set your admins, music folders, etc.
 

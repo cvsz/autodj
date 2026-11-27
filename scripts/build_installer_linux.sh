@@ -74,7 +74,7 @@ if [[ ! -d "$SRCDIR" ]]; then
 fi
 
 REQUIRED_FILES=(
-    "AutoDJ.exe"
+    "zAutoDJ.exe"
     "app.ico"
     "config.example.toml"
     "README.md"
@@ -93,8 +93,8 @@ for f in "${REQUIRED_FILES[@]}"; do
     fi
 done
 # makensis would fail later with a far less obvious message; stop here for the exe itself.
-if [[ ! -f "$SRCDIR/AutoDJ.exe" ]]; then
-    echo "ERROR: $SRCDIR/AutoDJ.exe is missing -- run the exe build first (make build)."
+if [[ ! -f "$SRCDIR/zAutoDJ.exe" ]]; then
+    echo "ERROR: $SRCDIR/zAutoDJ.exe is missing -- run the exe build first (make build)."
     exit 1
 fi
 
@@ -108,7 +108,7 @@ echo "Generating installer.nsi with version $VERSION..."
 echo "Generated $RENDERED_NSI"
 
 # --- 4. build installer from repo root (so dist\\ paths resolve) ------------------
-INSTALLER_NAME="Camfrog-AutoDJ-Setup-${VERSION}.exe"
+INSTALLER_NAME="zAutoDJ-Setup-${VERSION}.exe"
 mkdir -p "$OUTDIR"
 echo "Building installer: $INSTALLER_NAME..."
 

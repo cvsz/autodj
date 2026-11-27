@@ -144,7 +144,7 @@ def find_web_panes(win, view_title: str, input_title: str):
     if view is None:
         log.debug(
             "web pane not found (view_title=%r): %d pane(s) checked; "
-            "run AutoDJ.exe --discover to update config.toml",
+            "run zAutoDJ.exe --discover to update config.toml",
             view_title,
             len(list(panes)) if hasattr(panes, "__len__") else -1,
         )

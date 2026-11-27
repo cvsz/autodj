@@ -6,9 +6,9 @@ This document describes how AutoDJ releases are built, validated, and published.
 
 ## Versioning
 
-AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.3.21`, declared in:
-- `pyproject.toml` (`version = "0.3.21"`)
-- `autodj/__init__.py` (`__version__ = "0.3.21"`)
+AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.4.0`, declared in:
+- `pyproject.toml` (`version = "0.4.0"`)
+- `autodj/__init__.py` (`__version__ = "0.4.0"`)
 - `version_info.txt` (Windows file version resource)
 - `installer.nsi` (`APP_VERSION` default), `install.bat`, `install.ps1` and `scripts/build_windows.ps1` (`$RequiredVersion`)
 - `CHANGELOG.md` (changelog entries)
@@ -41,7 +41,7 @@ Runs only if Gate 1 passed:
 1. **Checkout** the exact tag commit
 2. **Install dependencies** (`-e .`, pyinstaller, cyclonedx-bom)
 3. **Install NSIS** (choco)
-4. **Build AutoDJ.exe** — `build.ps1 -Clean -NoSign` (no automatic signing during remediation)
+4. **Build zAutoDJ.exe** — `build.ps1 -Clean -NoSign` (no automatic signing during remediation)
 5. **Build NSIS installer** — `makensis /DVERSION=<tag> installer.nsi`
 6. **Generate CycloneDX SBOM** — `cyclonedx-py environment`
 7. **Generate SHA256 checksums** — `SHA256SUMS.txt`

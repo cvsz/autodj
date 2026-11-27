@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 def _parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="camfrog-autodj")
     ap.add_argument("-c", "--config", default="config.toml")
-    ap.add_argument("--version", action="version", version=f"AutoDJ {__version__}")
+    ap.add_argument("--version", action="version", version=f"zAutoDJ {__version__}")
     ap.add_argument("--console", action="store_true", help="chat via stdin/stdout (no Camfrog)")
     ap.add_argument("--gui", action="store_true", help="open the desktop window")
     ap.add_argument("--lang", choices=["en", "th"], help="override config lang")
@@ -90,7 +90,7 @@ def main():
     prepare_comtypes()
     a = _parser().parse_args()
     if getattr(sys, "frozen", False) and len(sys.argv) == 1:
-        # AutoDJ.exe is a windowed build: started with no arguments (double-click,
+        # zAutoDJ.exe is a windowed build: started with no arguments (double-click,
         # a launcher) a headless bot is invisible and cannot be stopped.  Open the GUI.
         a.gui = True
     if a.write_install_paths:
@@ -150,7 +150,7 @@ def _configure_logging(a, cfg, level):
 
 
 def _apply_startup_update(cfg) -> bool:
-    """Download and apply a newer AutoDJ.exe before the bot starts.
+    """Download and apply a newer zAutoDJ.exe before the bot starts.
 
     Returns True when the swap script was launched and startup must stop.
     """
@@ -161,7 +161,7 @@ def _apply_startup_update(cfg) -> bool:
     updater = Updater(cfg)
     if not (updater.check_for_update() and updater.apply_update()):
         return False
-    log.info("auto-update: staged update, replacing the installed AutoDJ.exe")
+    log.info("auto-update: staged update, replacing the installed zAutoDJ.exe")
     return updater.launch_update_script()
 
 
@@ -226,7 +226,7 @@ def _run(a, level):
         _stop_stream_infrastructure(stream_mgr)
 
 
-_INSTANCE_MUTEX = None  # held for the life of the process
+_INSTANCE_MUTEX: object = None  # handles held for the life of the process
 
 
 def _create_mutex(name: str) -> tuple[object, bool]:
@@ -243,9 +243,9 @@ def _create_mutex(name: str) -> tuple[object, bool]:
 
 
 def _single_instance(config_path: str) -> bool:
-    """Claim this config for the bot; False if another AutoDJ already runs with it.
+    """Claim this config for the bot; False if another zAutoDJ already runs with it.
 
-    Live 2026-11-23 a second AutoDJ.exe started on the same install and both
+    Live 2026-11-23 a second zAutoDJ.exe started on the same install and both
     attached to the room: every line would be posted twice and two mpv players
     ran at once.  One bot per config file (a second room needs its own config).
     """
@@ -253,19 +253,24 @@ def _single_instance(config_path: str) -> bool:
 
     global _INSTANCE_MUTEX
     key = os.path.normcase(os.path.abspath(config_path))
-    name = "Local\\CamfrogAutoDJ-" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
-    handle, existed = _create_mutex(name)
-    if existed:
-        _show_already_running()
-        return False
-    _INSTANCE_MUTEX = handle
+    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
+    # The pre-0.4.0 name is claimed too: an old zAutoDJ.exe and a new zAutoDJ.exe on
+    # the same config must not both run (double posts, two mpv players).
+    handles = []
+    for prefix in ("Local\\zAutoDJ-", "Local\\CamfrogAutoDJ-"):
+        handle, existed = _create_mutex(prefix + digest)
+        if existed:
+            _show_already_running()
+            return False
+        handles.append(handle)
+    _INSTANCE_MUTEX = handles
     return True
 
 
 def _require_single_instance(config_path: str) -> None:
     if not _single_instance(config_path):
         raise RuntimeError(
-            f"AutoDJ is already running with {os.path.abspath(config_path)}; "
+            f"zAutoDJ is already running with {os.path.abspath(config_path)}; "
             "not starting a second copy (it would post and play everything twice)"
         )
 
@@ -278,7 +283,7 @@ def _show_already_running() -> None:
         import ctypes
 
         ctypes.windll.user32.MessageBoxW(  # type: ignore[attr-defined]
-            None, "AutoDJ is already running.", "AutoDJ", 0x40
+            None, "zAutoDJ is already running.", "zAutoDJ", 0x40
         )
     except (AttributeError, OSError):
         pass
@@ -341,7 +346,7 @@ def _handle_dump(a) -> bool:
 
 
 def _resolve_frozen_config_path(a) -> None:
-    # exe: also look next to AutoDJ.exe
+    # exe: also look next to zAutoDJ.exe
     if not os.path.exists(a.config) and getattr(sys, "frozen", False):
         alt = os.path.join(os.path.dirname(sys.executable), os.path.basename(a.config))
         if os.path.exists(alt):
@@ -381,8 +386,9 @@ def _relocate_config(a, cfg):
     p = Path(a.config)
     if p.exists() and os.access(p, os.W_OK):
         return cfg
-    app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-    app_cfg_dir = Path(app_data) / "Camfrog AutoDJ"
+    from .paths import user_app_dir
+
+    app_cfg_dir = user_app_dir()
     app_cfg_dir.mkdir(parents=True, exist_ok=True)
     app_cfg_path = app_cfg_dir / "config.toml"
     if p.exists() and not app_cfg_path.exists():

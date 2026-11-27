@@ -202,7 +202,7 @@ def test_is_link_detects_junction_like_entries():
 
 
 def test_update_script_quotes_and_escapes_paths(tmp_path):
-    exe = tmp_path / "Program Files (x86)" / "50%off" / "AutoDJ.exe"
+    exe = tmp_path / "Program Files (x86)" / "50%off" / "zAutoDJ.exe"
     exe.parent.mkdir(parents=True)
     Updater(Config())._write_update_script(exe, exe.with_name("AutoDJ.next.exe"), "v1&calc")
     text = (exe.parent / "autodj_update.bat").read_text(encoding="utf-8")

@@ -36,7 +36,7 @@ PIP         := $(PY) -m pip
 PROJECT     := autodj
 CONFIG      ?= config.toml
 VERSION     := $(shell $(PY) -c "import tomllib,sys; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])" 2>/dev/null || echo unknown)
-DIST_ZIP    := dist/camfrog-autodj-$(VERSION).zip
+DIST_ZIP    := dist/zautodj-$(VERSION).zip
 IS_WINDOWS  := $(filter Windows_NT,$(OS))
 
 # ruff may be installed only as a Python module (not on PATH): prefer `python -m ruff`.
@@ -284,18 +284,18 @@ else
 	bash scripts/build_installer_linux.sh $(VERSION) dist dist
 endif
 
-build:  ## Build AutoDJ.exe with PyInstaller (Windows PowerShell; Linux/WSL uses Wine builder)
+build:  ## Build zAutoDJ.exe with PyInstaller (Windows PowerShell; Linux/WSL uses Wine builder)
 ifeq ($(OS),Windows_NT)
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
 else
 	bash scripts/build_exe_linux.sh $(VERSION) $(BUILD_ARGS)
 endif
 
-portable:  ## Build the portable AutoDJ.exe distribution (dist/AutoDJ.exe + dist/mpv/, config.toml) — no installer
+portable:  ## Build the portable zAutoDJ.exe distribution (dist/zAutoDJ.exe + dist/mpv/, config.toml) — no installer
 ifeq ($(OS),Windows_NT)
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 -NoSign $(BUILD_ARGS)
-	@if not exist dist\AutoDJ.exe (echo ERROR: dist\AutoDJ.exe not found after build. & exit /b 1)
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$$s=New-Object -ComObject WScript.Shell; $$e=(Resolve-Path 'dist\AutoDJ.exe').Path; $$d=(Resolve-Path 'dist').Path; $$c=$$s.CreateShortcut($$d+'\AutoDJ-Check.lnk'); $$c.TargetPath=$$e; $$c.Arguments='--check'; $$c.WorkingDirectory=$$d; $$c.Save(); $$c=$$s.CreateShortcut($$d+'\Start-AutoDJ.lnk'); $$c.TargetPath=$$e; $$c.Arguments='--gui'; $$c.WorkingDirectory=$$d; $$c.Save()" 2>nul
+	@if not exist dist\zAutoDJ.exe (echo ERROR: dist\zAutoDJ.exe not found after build. & exit /b 1)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$$s=New-Object -ComObject WScript.Shell; $$e=(Resolve-Path 'dist\zAutoDJ.exe').Path; $$d=(Resolve-Path 'dist').Path; $$c=$$s.CreateShortcut($$d+'\AutoDJ-Check.lnk'); $$c.TargetPath=$$e; $$c.Arguments='--check'; $$c.WorkingDirectory=$$d; $$c.Save(); $$c=$$s.CreateShortcut($$d+'\Start-AutoDJ.lnk'); $$c.TargetPath=$$e; $$c.Arguments='--gui'; $$c.WorkingDirectory=$$d; $$c.Save()" 2>nul
 	mpv\mpv-register.bat /S
 	python tools\make_client_shortcuts.py
 	@if exist dist-readme.txt copy dist-readme.txt dist\readme.txt >nul
@@ -303,20 +303,20 @@ ifeq ($(OS),Windows_NT)
 	@echo "=== Portable build complete ==="
 	@echo "Run: dist\start.bat      (double-click to open AutoDJ GUI)"
 	@echo "Check: dist\check.bat    (double-click to verify setup)"
-	@echo "Files: dist/AutoDJ.exe  dist/mpv/  dist/config.toml  dist/readme.txt"
+	@echo "Files: dist/zAutoDJ.exe  dist/mpv/  dist/config.toml  dist/readme.txt"
 else
 	bash scripts/build_exe_linux.sh $(VERSION) $(BUILD_ARGS)
-	@if [ ! -f "dist/AutoDJ.exe" ]; then echo "ERROR: dist/AutoDJ.exe not found after build."; exit 1; fi
+	@if [ ! -f "dist/zAutoDJ.exe" ]; then echo "ERROR: dist/zAutoDJ.exe not found after build."; exit 1; fi
 	@echo ""
 	@echo "=== Portable build complete ==="
-	@echo "Run: dist/AutoDJ.exe --gui"
-	@echo "Files: dist/AutoDJ.exe  dist/mpv/  dist/config.toml"
+	@echo "Run: dist/zAutoDJ.exe --gui"
+	@echo "Files: dist/zAutoDJ.exe  dist/mpv/  dist/config.toml"
 endif
 
-portable-zip: portable  ## Build portable dist and zip it for distribution (dist/camfrog-autodj-portable-<ver>.zip)
+portable-zip: portable  ## Build portable dist and zip it for distribution (dist/zautodj-portable-<ver>.zip)
 	@mkdir -p dist
-	$(PY) -c "import zipfile, os, pathlib; z='dist/camfrog-autodj-portable-$(VERSION).zip'; base=pathlib.Path('dist'); zf=zipfile.ZipFile(z,'w',zipfile.ZIP_DEFLATED); [zf.write(p, os.path.relpath(p, base)) for p in base.rglob('*') if p.is_file()]; zf.close()"
-	@echo "Portable zip: dist/camfrog-autodj-portable-$(VERSION).zip"
+	$(PY) -c "import zipfile, os, pathlib; z='dist/zautodj-portable-$(VERSION).zip'; base=pathlib.Path('dist'); zf=zipfile.ZipFile(z,'w',zipfile.ZIP_DEFLATED); [zf.write(p, os.path.relpath(p, base)) for p in base.rglob('*') if p.is_file()]; zf.close()"
+	@echo "Portable zip: dist/zautodj-portable-$(VERSION).zip"
 
 build-clean:  ## Clean build artifacts then rebuild
 ifeq ($(OS),Windows_NT)
@@ -325,40 +325,40 @@ else
 	bash scripts/build_exe_linux.sh $(VERSION) --clean $(BUILD_ARGS)
 endif
 
-sign:  ## Sign existing AutoDJ.exe (Windows)
+sign:  ## Sign existing zAutoDJ.exe (Windows)
 ifeq ($(OS),Windows_NT)
-	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found. Run 'make build' first."; exit 1; fi
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/sign_exe.ps1 -File dist\AutoDJ.exe $(SIGN_ARGS)
+	@if [ ! -f dist/zAutoDJ.exe ]; then echo "ERROR: dist/zAutoDJ.exe not found. Run 'make build' first."; exit 1; fi
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/sign_exe.ps1 -File dist\zAutoDJ.exe $(SIGN_ARGS)
 else
 	@echo "sign requires Windows."
 	@exit 1
 endif
 
-build-all:  ## Full pipeline: build AutoDJ.exe -> connect Windows 11 -> make nsiswindows11
+build-all:  ## Full pipeline: build zAutoDJ.exe -> connect Windows 11 -> make nsiswindows11
 ifeq ($(OS),Windows_NT)
 	$(MAKE) win11-check SKIP_CHECKS=$(SKIP_CHECKS)
 	$(MAKE) mpv-check SKIP_CHECKS=$(SKIP_CHECKS)
 	$(MAKE) nsis-check SKIP_CHECKS=$(SKIP_CHECKS)
 	$(MAKE) pyinstaller-check SKIP_CHECKS=$(SKIP_CHECKS)
-	@echo "=== Step 1/2: Building AutoDJ.exe (PyInstaller) ==="
+	@echo "=== Step 1/2: Building zAutoDJ.exe (PyInstaller) ==="
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1 $(BUILD_ARGS)
-	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found after build."; exit 1; fi
+	@if [ ! -f dist/zAutoDJ.exe ]; then echo "ERROR: dist/zAutoDJ.exe not found after build."; exit 1; fi
 	@echo ""
 	@echo "=== Step 2/2: Building NSIS Installer ==="
 	$(MAKE) nsiswindows11 SKIP_CHECKS=$(SKIP_CHECKS)
 	@echo ""
 	@echo "=== Build Complete ==="
-	@echo "Installer: dist\\Camfrog-AutoDJ-Setup-$(VERSION).exe"
+	@echo "Installer: dist\\zAutoDJ-Setup-$(VERSION).exe"
 else
-	@echo "=== Step 1/2: Building AutoDJ.exe (Linux/Wine builder) ==="
+	@echo "=== Step 1/2: Building zAutoDJ.exe (Linux/Wine builder) ==="
 	bash scripts/build_exe_linux.sh $(VERSION) $(BUILD_ARGS)
-	@if [ ! -f "dist/AutoDJ.exe" ]; then echo "ERROR: dist/AutoDJ.exe not found after build."; exit 1; fi
+	@if [ ! -f "dist/zAutoDJ.exe" ]; then echo "ERROR: dist/zAutoDJ.exe not found after build."; exit 1; fi
 	@echo ""
 	@echo "=== Step 2/2: Building NSIS Installer (Linux/Wine builder) ==="
 	bash scripts/build_installer_linux.sh $(VERSION) dist dist
 	@echo ""
 	@echo "=== Build Complete ==="
-	@echo "Installer: dist/Camfrog-AutoDJ-Setup-$(VERSION).exe"
+	@echo "Installer: dist/zAutoDJ-Setup-$(VERSION).exe"
 endif
 
 build-all-linux:  ## Full pipeline on Linux via Wine (alias for build-all on Linux)
@@ -377,9 +377,9 @@ else
 	@exit 1
 endif
 
-nsiswindows11:  ## Build NSIS installer for Windows 11 (requires NSIS + AutoDJ.exe in dist/)
+nsiswindows11:  ## Build NSIS installer for Windows 11 (requires NSIS + zAutoDJ.exe in dist/)
 ifeq ($(OS),Windows_NT)
-	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found. Run 'make build' first."; exit 1; fi
+	@if [ ! -f dist/zAutoDJ.exe ]; then echo "ERROR: dist/zAutoDJ.exe not found. Run 'make build' first."; exit 1; fi
 	powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_installer.ps1 -Version $(VERSION) -Sign
 else
 	@echo "nsiswindows11 requires Windows 11 with NSIS installed"
@@ -406,12 +406,12 @@ trustsign:  ## Azure Trusted Signing: Sign EXE + Installer via Azure Key Vault (
 ifeq ($(OS),Windows_NT)
 	@echo "=== Azure Trusted Signing ==="
 	@if [ -z "$(AZURE_KEYVAULT_NAME)" ] || [ -z "$(AZURE_CERT_NAME)" ]; then echo "ERROR: set AZURE_KEYVAULT_NAME and AZURE_CERT_NAME"; exit 1; fi
-	@if [ ! -f dist/AutoDJ.exe ]; then echo "ERROR: dist/AutoDJ.exe not found. Run 'make build' first."; exit 1; fi
-	@echo "Signing AutoDJ.exe via Azure Key Vault: $(AZURE_KEYVAULT_NAME)/$(AZURE_CERT_NAME)"
-	az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist/AutoDJ.exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com
-	@if [ -f dist/Camfrog-AutoDJ-Setup-$(VERSION).exe ]; then \
+	@if [ ! -f dist/zAutoDJ.exe ]; then echo "ERROR: dist/zAutoDJ.exe not found. Run 'make build' first."; exit 1; fi
+	@echo "Signing zAutoDJ.exe via Azure Key Vault: $(AZURE_KEYVAULT_NAME)/$(AZURE_CERT_NAME)"
+	az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist/zAutoDJ.exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com
+	@if [ -f dist/zAutoDJ-Setup-$(VERSION).exe ]; then \
 		echo "Signing Installer via Azure Key Vault..." && \
-		az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist/Camfrog-AutoDJ-Setup-$(VERSION).exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com; \
+		az signtool sign --kva https://$(AZURE_KEYVAULT_NAME).vault.azure.net --cert-name $(AZURE_CERT_NAME) --file dist/zAutoDJ-Setup-$(VERSION).exe --hash-algorithm sha256 --timestamp-rfc3161 http://timestamp.digicert.com; \
 	fi
 	@echo "=== Azure Signing Complete ==="
 else
@@ -420,7 +420,7 @@ else
 endif
 
 installer-clean:  ## Clean installer artifacts
-	@rm -f dist/Camfrog-AutoDJ-Setup-*.exe dist/installer.nsi
+	@rm -f dist/zAutoDJ-Setup-*.exe dist/installer.nsi
 
 ## ---- housekeeping ---------------------------------------------------------------
 clean:  ## Remove Python caches and test artifacts
@@ -462,7 +462,7 @@ release: full-validation build $(RELEASE_SIGN) package  ## Full release pipeline
 	@echo "================================================"
 	@echo "  RELEASE BUILD COMPLETE for v$(VERSION)"
 	@echo "  Artifacts in dist/:"
-	@ls -la dist/AutoDJ.exe dist/Camfrog-AutoDJ-Setup-*.exe dist/camfrog-autodj-*.zip 2>/dev/null || true
+	@ls -la dist/zAutoDJ.exe dist/zAutoDJ-Setup-*.exe dist/zautodj-*.zip 2>/dev/null || true
 	@echo "================================================"
 
 all: pre-commit  ## Run all pre-commit checks (same as make pre-commit)
