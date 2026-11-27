@@ -482,7 +482,25 @@ def _print_discovery(ups: dict) -> None:
 def _auto_discover(a, cfg) -> bool:
     # Auto-discovery must never prevent the GUI from opening: log the failure
     # and continue with the existing config instead of crashing at startup.
+    log = logging.getLogger(__name__)
     uses_uia = "uia" in (cfg.chat_reader, cfg.chat_sender)
+
+    # --- First-run automatic discovery ---------------------------------------
+    # On the very first launch (config window controls still at their defaults:
+    # window_title_re=".*", view_type="Document", input_type="Edit") AutoDJ
+    # attempts to discover the Camfrog room window and chat controls and saves
+    # them to config.toml automatically, so the operator does not have to press
+    # the Discover button manually.  This only applies when UIA is available.
+    first_run = _is_first_run_config(cfg)
+    if first_run and uses_uia:
+        log.info(
+            "first run detected: window controls are still at defaults; "
+            "attempting automatic discovery of Camfrog room and chat controls"
+        )
+        # Force discovery even if auto_discover=False or --no-discover was passed.
+        a.discover = True
+        a.no_discover = False
+
     if a.discover and not uses_uia:
         # Returning False here used to fall through and start the whole bot.
         print("discovery needs chat_reader or chat_sender = 'uia' in config.toml")
@@ -494,7 +512,6 @@ def _auto_discover(a, cfg) -> bool:
     try:
         ups = discover.apply(cfg, a.config)
     except Exception as ex:  # pragma: no cover - defensive; discovery is best-effort
-        log = logging.getLogger(__name__)
         log.exception("auto-discover failed; continuing without it")
         # A corrupted comtypes_gen cache (SyntaxError in a generated COM module)
         # breaks pywinauto import.  Clean it so discovery can retry.
@@ -508,6 +525,24 @@ def _auto_discover(a, cfg) -> bool:
             print("nothing found: open the room window and try again")
         return True
     return False
+
+
+def _is_first_run_config(cfg) -> bool:
+    """Return True when the config window controls are still at factory defaults
+    (meaning AutoDJ has never discovered a Camfrog room on this machine).
+
+    Checks the keys that discovery fills in: window_title_re, view_type,
+    view_index, input_type, input_index.  If they all match the defaults in
+    Config, no discovery has ever succeeded.
+    """
+    defaults = {
+        "window_title_re": ".*",
+        "view_type": "Document",
+        "view_index": 0,
+        "input_type": "Edit",
+        "input_index": -1,
+    }
+    return all(getattr(cfg, key, None) == val for key, val in defaults.items())
 
 
 def _run_say(a, cfg) -> bool:

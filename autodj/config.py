@@ -128,7 +128,7 @@ class Config:
     max_queue: int = 50
     max_duration: int = 900
     voteskip_threshold: int = 3
-    cooldown: float = 3.0
+    cooldown: float = 0.5  # seconds between commands from same user (0 = instant)
     send_interval: float = 1.5
     max_msg_len: int = 180
     announce_next: bool = True
@@ -232,7 +232,9 @@ class Config:
     im_auto_reply_message: str = (
         "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
     )
-    im_auto_reply_cooldown: float = 60.0  # seconds between auto-replies to the same user
+    im_auto_reply_cooldown: float = (
+        5.0  # seconds between auto-replies to the same user (0 = instant)
+    )
     # Private reply to an IM sender who is not in the room (im_require_room_presence).
     # {room} = room name; Camfrog shows camfrog:join:<room> as a Join link. "" = no reply.
     im_join_room_message: str = "กรุณาเข้าห้อง camfrog:join:{room} ก่อนขอเพลงครับ"
@@ -354,7 +356,7 @@ class Config:
         "friendly, and on-topic. Do not claim to play music unless asked."
     )
     ai_max_chars: int = 200  # max characters in AI reply
-    ai_user_cooldown: float = 30.0  # seconds between AI replies to same user
+    ai_user_cooldown: float = 5.0  # seconds between AI replies to same user (0 = instant)
 
     # Multi-platform streaming (ported from cvsz/streamdbc architecture)
     # Stream/room registry tracks active broadcasts across platforms

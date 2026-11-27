@@ -76,6 +76,7 @@ This repository is a **production-ready DJ automation platform**, not a template
 - **Nested dataclass** — `MessageStyle` for font/style (GUI preview only; Camfrog sends plain text)
 - **Validation order** — type → choices → ranges → regexes → semantic (`_validate`)
 - **YouTube config keys** — `yt_format`, `yt_cache_secs`, `yt_network_timeout`, `yt_retries`, `yt_fragment_retries` validated in `_RANGES`; added to settings dialog, saved to config.toml
+- **First-run auto-discovery** — on first launch (window controls still at factory defaults: `window_title_re=".*"`, `view_type="Document"`, etc.) AutoDJ automatically scans Camfrog windows, discovers room/chat controls, and saves them to `config.toml`; requires `chat_reader=chat_sender="uia"` and an open Camfrog room window
 - **Local environment** — copy `.env.example` to `.env` for local development; `.env` is gitignored (`.gitignore` lines 2-4) and never committed. The application reads `config.toml` for runtime settings; `.env` is only for shell/tooling variables consumed via `os.environ.get()`.
 
 ---

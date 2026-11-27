@@ -136,6 +136,33 @@ view_type = "Document"              # (filled in by auto_discover)
 view_index = 0
 input_type = "Edit"
 input_index = -1
+
+### First-run automatic discovery
+
+On the **very first launch** (when `window_title_re`, `view_type`, `view_index`,
+`input_type`, `input_index` are still at their factory defaults) AutoDJ attempts
+to discover the Camfrog room window and its chat/input controls automatically,
+and saves them to `config.toml`.  You do **not** need to press the Discover
+button or run `--discover` manually on first start.
+
+**What happens on first launch:**
+
+1. AutoDJ loads `config.toml` (or built-in defaults if the file is missing).
+2. If the window-control keys are still at defaults, AutoDJ scans visible
+   Camfrog windows, finds the one whose chat pane matches `line_regex`, and
+   identifies the history view and message box controls.
+3. The discovered values (`window_title_re`, `view_type`, `view_index`,
+   `input_type`, `input_index`) are written to `config.toml` atomically
+   (with a `.bak` backup).
+4. If Camfrog is not open or no room window is found, discovery silently
+   fails and AutoDJ continues — open the Camfrog room window and restart, or
+   open the GUI and press **🔍 Discover room** to run discovery manually.
+
+**Requirements:**
+- `chat_reader` and `chat_sender` must both be `"uia"` (Windows only).
+- The Camfrog room window must be open and showing chat for discovery to succeed.
+- If discovery fails, the GUI still opens so you can run `--check` or
+  `--discover` from inside it.
 line_regex = '^(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*)?(?P<user>[^:\s][^:]{0,30}):\s(?P<text>.+)$'
 log_path = ""                       # also write the log to this file (rotating, 1 MB x 3)
 log_encoding = "utf-8"              # log file encoding
