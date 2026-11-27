@@ -275,7 +275,7 @@ gh pr merge <PR_NUMBER> --merge --match-head-commit
 git fetch origin
 git checkout main
 git pull origin main  # fast-forward
-# Verify: code present on main, full pytest suite passes (964 passed, 1 skipped at v0.4.0), ruff clean
+# Verify: code present on main, full pytest suite passes (965 passed, 1 skipped at v0.4.0), ruff clean
 ```
 
 ### Rules
@@ -372,12 +372,12 @@ scripts/gh-switch.sh status
 | Gate | Result | Evidence |
 |------|--------|----------|
 | `compileall` | PASS | `python -m compileall -q autodj tests tools` → exit 0 |
-| `pytest` | PASS | 964 passed, 1 skipped, 3 subtests passed |
+| `pytest` | PASS | 965 passed, 1 skipped, 3 subtests passed |
 | `ruff check` | PASS | All checks passed |
 | `ruff format --check` | PASS | 183 files already formatted |
 | `mypy autodj` | PASS | No issues found in 68 source files |
 | Secrets scan | Clean | `git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' | grep -v '\.env.example$'` → empty |
-| Pull requests | All merged | 289 PRs, latest #289 docs-sync zAutoDJ v0.4.0; no open/draft PRs |
+| Pull requests | All merged | 293 PRs, latest #293 fix(player): TTS IPC duck/restore; no open/draft PRs |
 | Branch | `main` | Up to date with `origin/main`, working tree clean |
 
 > On this Windows host the default pytest temp directory is access-denied. Always pass `--basetemp` to a writable directory (e.g. `C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest`).
