@@ -43,8 +43,15 @@ jobs:
 
       - name: Install NSIS
         run: |
-          choco install nsis --yes
-          echo "C:\\Program Files (x86)\\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          # Chocolatey community repository returns 406 for nsis.install; download
+          # the official NSIS installer directly from SourceForge instead.
+          $url = "https://sourceforge.net/projects/nsis/files/NSIS%203/3.13/nsis-3.13-setup.exe/download"
+          $out = Join-Path $env:RUNNER_TEMP "nsis-setup.exe"
+          Invoke-WebRequest -Uri $url -OutFile $out
+          Start-Process -FilePath $out -ArgumentList "/S" -Wait
+          $nsisDir = "C:\Program Files (x86)\NSIS"
+          if (-not (Test-Path $nsisDir)) { $nsisDir = "C:\Program Files\NSIS" }
+          echo "$nsisDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Install mpv via Chocolatey
         run: |

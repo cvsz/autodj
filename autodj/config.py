@@ -501,6 +501,7 @@ _RANGES = {
     "ai_max_chars": (1, 2000),
     "welcome_message_delay": (0.0, 3600.0),
     "mic_greeting_cooldown": (0.0, 86400.0),
+    "im_auto_reply_cooldown": (0.0, 86400.0),
     "yt_cache_secs": (0.0, 300.0),
     "yt_network_timeout": (5.0, 300.0),
     "yt_retries": (1, 100),
