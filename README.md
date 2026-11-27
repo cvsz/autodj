@@ -18,7 +18,7 @@ Formerly **AutoDJ**. Renamed to zAutoDJ in v0.4.0.
 | Format (`ruff format --check`) | PASS | 183 files already formatted |
 | Type checking (`mypy`) | PASS | No issues found in 68 source files |
 | Secrets scan | Clean | `git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' \| grep -v '\.env.example$'` → empty |
-| Pull requests | All merged | 293 PRs; latest #293 fix(player): TTS IPC duck/restore; no open/draft PRs |
+| Pull requests | All merged | 295 PRs; latest #295 docs: align Final-Report.md with verified post-merge state; no open/draft PRs |
 | Branch | `main` | Up to date with `origin/main`, working tree clean |
 
 > On this Windows host the default pytest temp directory is access-denied. Always pass `--basetemp` to a writable directory (e.g. `C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest`).
