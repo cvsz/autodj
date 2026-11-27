@@ -1,14 +1,14 @@
-# AGENTS.md — Repository Agent Contract (AutoDJ)
+# AGENTS.md — Repository Agent Contract (zAutoDJ / AutoDJ)
 
 > **READ FIRST — Canonical organization-wide policy:** https://github.com/cvsz/zeaz/blob/main/zeaz.md (SUPER ULTRA AI ORC v2.1). This reference is required reading and takes precedence per Section 13.3 instruction precedence. Local rules below may be stricter but must not weaken mandatory security, safety, evidence, validation, or release requirements.
 
-## Project: AutoDJ
+## Project: zAutoDJ (formerly AutoDJ)
 
 **Repository:** https://github.com/cvsz/autodj  
 **Owner:** cvsz  
 **Default branch:** main  
 **Version:** 0.4.0 (Python 3.11+)  
-**Description:** Music bot for Camfrog rooms — YouTube + local MP3/MP4 autoplay, `!commands`, now/next announcements, TTS, bilingual EN/TH GUI and chat.
+**Description:** Music bot for Camfrog rooms — YouTube + local MP3/MP4 autoplay, `!commands`, now/next announcements, TTS, bilingual EN/TH GUI and chat, webhook API, multi-platform streaming, AI `!ai ask`, config hot reload, audit logging.
 
 ---
 
@@ -76,7 +76,6 @@ This repository is a **production-ready DJ automation platform**, not a template
 - **Validation order** — type → choices → ranges → regexes → semantic (`_validate`)
 - **Local environment** — copy `.env.example` to `.env` for local development; `.env` is gitignored (`.gitignore` lines 2-4) and never committed. The application reads `config.toml` for runtime settings; `.env` is only for shell/tooling variables consumed via `os.environ.get()`.
 
-
 ---
 
 ## Security Rules
@@ -87,6 +86,8 @@ This repository is a **production-ready DJ automation platform**, not a template
 - **No `shell=True`** — all `subprocess` use argument lists
 - **No unsafe deserialization** — `tomllib` (stdlib), `json` (stdlib); no `pickle`/`yaml.load`
 - **Secrets never tracked** — `.env.example` only; real `.env` gitignored
+- **Webhook HMAC** — `X-Timestamp` + `X-Signature = HMAC-SHA256(secret, payload)`; replay cache; body size cap 64 KiB; secret >= 16 chars or fail-closed (503)
+- **Stream JWT auth** — HS256 tokens scoped per stream + action; API key validation; constant-time compare
 
 ---
 
@@ -215,7 +216,7 @@ git checkout -b feat/autodj-<feature-name>
 
 # Develop: fix bugs, add features, update docs
 # Run validation gates
-python -m pytest -q -p no:faulthandler -p no:cacheprovider
+python -m pytest -q -p no:faulthandler -p no:cacheprovider --basetemp="C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest"
 ruff check autodj tests tools
 ruff format --check autodj tests tools
 mypy autodj
@@ -267,14 +268,14 @@ gh auth status
 
 # Merge with exact head commit enforcement
 # Verify HEAD SHA first: gh pr view <PR_NUMBER> --json headRefOid --jq .headRefOid
-gh pr merge <PR_NUMBER> --merge
+gh pr merge <PR_NUMBER> --merge --match-head-commit
 # Exit 0; PR state MERGED, merge commit SHA recorded
 
 # Post-merge verification
 git fetch origin
 git checkout main
 git pull origin main  # fast-forward
-# Verify: code present on main, full pytest suite passes (711 at v0.3.10), ruff clean
+# Verify: code present on main, full pytest suite passes (964 passed, 1 skipped at v0.4.0), ruff clean
 ```
 
 ### Rules
@@ -364,3 +365,19 @@ scripts/gh-switch.sh status
 
 **GPG signing:** `commit.gpgsign=true` is set; merge commits are GPG-signed when cvsz merges.
 
+---
+
+## Current verified state (main @ HEAD, 2026-11-27)
+
+| Gate | Result | Evidence |
+|------|--------|----------|
+| `compileall` | PASS | `python -m compileall -q autodj tests tools` → exit 0 |
+| `pytest` | PASS | 964 passed, 1 skipped, 3 subtests passed |
+| `ruff check` | PASS | All checks passed |
+| `ruff format --check` | PASS | 183 files already formatted |
+| `mypy autodj` | PASS | No issues found in 68 source files |
+| Secrets scan | Clean | `git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' | grep -v '\.env.example$'` → empty |
+| Pull requests | All merged | 289 PRs, latest #289 docs-sync zAutoDJ v0.4.0; no open/draft PRs |
+| Branch | `main` | Up to date with `origin/main`, working tree clean |
+
+> On this Windows host the default pytest temp directory is access-denied. Always pass `--basetemp` to a writable directory (e.g. `C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest`).
