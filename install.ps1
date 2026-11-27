@@ -960,7 +960,7 @@ function Main {
     Write-Host ""
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
     Write-Host "           zAutoDJ - Windows 11 Automated Installer" -ForegroundColor $C_CYAN
-    Write-Host "                         Version 0.4.0" -ForegroundColor $C_CYAN
+    Write-Host "                         Version 0.4.1" -ForegroundColor $C_CYAN
     Write-Host "================================================================================" -ForegroundColor $C_CYAN
     Write-Host ""
     Write-Log "=== AutoDJ Installer Started ==="
