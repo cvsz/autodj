@@ -561,14 +561,30 @@ class MpvPlayer:
         kw: dict = {}
         if _is_windows():
             kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
-        # Duck the *music* mpv (its IPC stays live: the clip is a separate process),
-        # play the clip, then restore in `finally` — the duck/restore arguments used
-        # to be ignored, so TTS was spoken over full-volume music.
-        ducked = duck_volume is not None and self.set_volume(int(duck_volume))
+        # Dedicated IPC pipe for the clip so its volume can be ducked/restored
+        # while it plays (the clip is a separate mpv process). The music mpv's IPC
+        # (self._ipc set by play()) is saved and restored around the clip so the
+        # two tracks never target the wrong pipe. Without this, set_volume() is a
+        # no-op during TTS and duck/restore never took effect.
+        clip_ipc, clip_logf = self._ipc_log_paths(next(_ids))
+        old_ipc = None
+        ducked = False
         try:
+            with self._lock:
+                old_ipc = self._ipc
+                self._ipc = clip_ipc
+            ducked = duck_volume is not None and self.set_volume(int(duck_volume))
             # security review: argv list without shell; resolved mpv path
             clip = subprocess.Popen(  # nosec B603
-                self._base() + ["--volume=100", "--", path], **kw
+                self._base()
+                + [
+                    "--input-ipc-server=" + clip_ipc,
+                    "--log-file=" + clip_logf,
+                    "--volume=100",
+                    "--",
+                    path,
+                ],
+                **kw,
             )
             kill_with_parent(clip)  # the TTS mpv dies with AutoDJ too
             try:
@@ -578,6 +594,14 @@ class MpvPlayer:
                 clip.wait()
                 log.warning("TTS clip did not finish within %.0fs: stopped", timeout)
         finally:
+            # Restore music volume while the clip's IPC is still live.
             if ducked and restore_volume is not None:
                 # security review: argv list without shell; executable is sys.executable or a resolved, configured tool path
                 self.set_volume(int(restore_volume))
+            with self._lock:
+                if self._ipc == clip_ipc:
+                    self._ipc = old_ipc
+            try:
+                os.remove(clip_logf)
+            except OSError:
+                pass  # log file may never have been created (mpv failed to start)

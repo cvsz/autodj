@@ -108,6 +108,8 @@ test_regex*.bat
 
 # One-off test command output (do not commit)
 test_output.txt
+pytest_result.txt
+pytest_result*.txt
 
 # Build wrapper scripts (local dev, not source)
 scripts/build_installer_wrapper.ps1
