@@ -108,6 +108,19 @@ Project facts:
 - **Stack:** Python 3.11+, Tkinter GUI, mpv/yt-dlp for audio, UIA for Camfrog chat
 - **Key files:** `engine.py`, `gui.py`, `player.py`, `library.py`, `commands.py`, `config.py`
 
+Current verified state (main @ HEAD, 2026-11-27):
+
+| Gate | Result | Evidence |
+|------|--------|----------|
+| `compileall` | PASS | `python -m compileall -q autodj tests tools` → exit 0 |
+| `pytest` | PASS | 964 passed, 1 skipped, 3 subtests passed |
+| `ruff check` | PASS | All checks passed |
+| `ruff format --check` | PASS | 183 files already formatted |
+| `mypy autodj` | PASS | No issues found in 68 source files |
+| Secrets scan | Clean | `git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' | grep -v '\.env.example$'` → empty |
+| Pull requests | All merged | 289 PRs, latest #289 docs-sync zAutoDJ v0.4.0; no open/draft PRs |
+| Branch | `main` | Up to date with `origin/main`, working tree clean |
+
 Validation gates (run before claiming done):
 
 ```bash

@@ -75,6 +75,10 @@ zAutoDJ runs in a Camfrog room on the operator's PC. The threat model assumes:
 | Secrets never tracked | `.env.example` only; real `.env` and `config.toml.*` gitignored; guard test `test_no_committed_secrets` | `.gitignore`, `tests/test_no_committed_secrets.py` |
 | AI key masked in GUI | Settings dialog masks `ai_api_key` and `webhook_secret` | `autodj/gui.py` |
 | GPG-signed commits | `commit.gpgsign=true`; every commit signed | `.gitconfig`, AGENTS.md |
+| Input validation | `_TARGET_RE` rejects whitespace/control/slash for room-command targets; `max_msg_len` caps message length | `autodj/commands.py` |
+| Rate limiting | per-nick rolling window (`user_request_limit`, `rate_limit_window`); per-command cooldown; `_cooldown_over` under lock (TOCTOU protection) | `autodj/commands.py:Router` |
+| Circuit breaker | opens after 5 consecutive playback failures, 60 s pause | `autodj/engine.py` |
+| Path traversal | `_single_target` rejects `/`; executable resolution validates paths | `autodj/commands.py`, `autodj/paths.py` |
 
 ---
 
@@ -86,6 +90,8 @@ zAutoDJ runs in a Camfrog room on the operator's PC. The threat model assumes:
 | IM replies need an open IM window | Camfrog offers no API to open an IM window; replies may not reach the user | Documented; auto-reply cooldown prevents flooding |
 | Foreground sending requires keyboard focus | The bot must take focus to post; an elevated foreground window blocks it | `_wait_user_idle()` (2.5 s idle), `_foreground_is_elevated()` diagnosis; dedicated PC/session recommended |
 | No public Camfrog bot API | Chat read/send depends on UIA control indexes and `line_regex` per Camfrog version | `--discover` tunes controls per installation; `config.toml` stores results |
+| Rate limits are in-memory only | Limits reset on restart | Documented; persistence is P3 future work |
+| Signed config verification not implemented | Config changes are not tamper-evident | Fail-closed validation on load; atomic writes |
 
 ---
 
@@ -138,3 +144,5 @@ Report through SECURITY.md, not public issues.
 - Bandit scan (`bandit -c pyproject.toml`, all tracked code outside tests): 0 findings
 - No committed secrets (`git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' | grep -v '\.env.example$'`): clean
 - All commits GPG-signed: verified with `git verify-commit`
+- `ruff check` select includes security rules (`S`): all pass
+- `mypy --check-untyped-defs`: no type issues in 68 source files

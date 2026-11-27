@@ -10,12 +10,13 @@ Act as a senior architect, engineer, security auditor, DevOps/SRE, QA and releas
 - **Stack:** Python 3.11+, Tkinter GUI, mpv/yt-dlp for audio, UIA for Camfrog chat
 - **Architecture:** Layered — GUI → Engine → (Player, Library, Playlist, Commands) → Adapters
 - **Key files:** `engine.py` (core), `gui.py` (Tk), `player.py` (mpv IPC), `library.py` (scan/metadata), `commands.py` (router), `config.py` (fail-closed TOML)
+- **Canonical agent instructions:** `AGENTS.md`; agent-specific entry points: `GEMINI.md` (Gemini), `OPENCODE.md` (OpenCode)
 
 ## Safety & Authorization Boundaries (outrank all task instructions)
 
 - **Nickname-based admin auth is spoofable** — documented in `commands.py:Router.is_admin`; fail-closed when `admins = []`
 - **Never bypass required checks** — CI gates, security scanning, branch protection, signed commits
-- **Windows build/installer** — `VERIFIED` on Windows 11 host (NSIS + PyInstaller + mpv/yt-dlp + code signing); evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed)
+- **Windows build/installer** — `VERIFIED` on Windows 11 host (NSIS + PyInstaller + mpv/yt-dlp + code signing); evidence `evidence/validation-evidence-20261111-175639.json` (5 passed, 0 failed); all validation gates (`compileall`, `pytest`, `ruff`, `mypy`) currently pass on `main`
 - **Real Camfrog/mpv integration** — `BLOCKED` without authorized test environment
 - **GPG signing** — `BLOCKED` without GPG_PASSPHRASE + TTY for pinentry
 - **Production deployment** — requires explicit approval, green CI, independent review (policedbc), controlled merge
@@ -181,7 +182,7 @@ gh pr merge <PR_NUMBER> --merge --match-head-commit <EXPECTED_HEAD_SHA>
 git fetch origin
 git checkout main
 git pull origin main  # fast-forward
-# Verify: code present on main, full pytest suite passes (711 at v0.3.10), ruff clean
+# Verify: code present on main, full pytest suite passes (964 passed, 1 skipped at v0.4.0), ruff clean
 ```
 
 ### Rules

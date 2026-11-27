@@ -4,8 +4,36 @@
 
 Formerly **AutoDJ**. Renamed to zAutoDJ in v0.4.0.
 
-> **Bridge status:** `main` is green — all validation gates pass (pytest 964 passed / 1 skipped, ruff clean, mypy clean, compileall clean, shellcheck clean). All 30+ pull requests merged. No open PRs. No unresolved Critical/High findings.  
-> See [Verification Summary](#verification-summary) and [Final Report](Final-Report.md).
+---
+
+## Bridge status
+
+`main` is green — all validation gates pass (pytest 964 passed / 1 skipped / 3 subtests passed, ruff clean, mypy clean, compileall clean). All 289 pull requests merged. No open PRs. No unresolved Critical/High findings.
+
+| Verification | Result | Evidence |
+|--------------|--------|----------|
+| Build (`compileall`) | PASS | `python -m compileall -q autodj tests tools` → exit 0 |
+| Tests (`pytest`) | PASS | 964 passed, 1 skipped, 3 subtests passed |
+| Lint (`ruff check`) | PASS | All checks passed |
+| Format (`ruff format --check`) | PASS | 183 files already formatted |
+| Type checking (`mypy`) | PASS | No issues found in 68 source files |
+| Secrets scan | Clean | `git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' \| grep -v '\.env.example$'` → empty |
+| Pull requests | All merged | 289 PRs; latest #289 docs-sync zAutoDJ v0.4.0; no open/draft PRs |
+| Branch | `main` | Up to date with `origin/main`, working tree clean |
+
+> On this Windows host the default pytest temp directory is access-denied. Always pass `--basetemp` to a writable directory (e.g. `C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest`).
+
+---
+
+## Social preview
+
+When this repository is shared on social channels, the preview shows:
+
+**zAutoDJ — Music bot for Camfrog rooms**  
+YouTube + local MP3/MP4 autoplay · `!` commands · now/next announcements · TTS · bilingual EN/TH GUI and chat · webhook API · multi-platform streaming · AI `!ai ask`  
+https://github.com/cvsz/autodj · v0.4.0 · Python 3.11+ · All gates green
+
+*(Add a `docs/assets/social-preview.png` banner image to render a graphical preview. This placeholder documents the intended preview text; no image file is committed in this session.)*
 
 ---
 
@@ -15,6 +43,8 @@ Formerly **AutoDJ**. Renamed to zAutoDJ in v0.4.0.
 - **Upgrade path**: the installer keeps a pre-0.4.0 install folder, re-points your shortcuts (and autostart) to `zAutoDJ.exe`, removes the old `AutoDJ.exe`. `config.toml`, logs and playlists are not touched. A config the program had moved to `%APPDATA%\AutoDJ` is still used.
 - **Auto-update from 0.3.x** finds the new `zAutoDJ.exe`.
 - **Not renamed**: the bot's nick in the room (`bot_nick`, your setting) and the internal Python package `autodj`.
+- **Single instance per config**: named mutex prevents double posts and double mpv.
+- **No-argument launch opens the GUI**: windowed build with no console no longer starts an invisible headless bot.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full release history (0.4.0 back to 0.2.x).
 
@@ -36,6 +66,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the full release history (0.4.0 back to 0.2
 | **Multi-platform streaming** | Stream registry, JWT auth, API keys; Camfrog/YouTube/TikTok/Facebook adapters (disabled by default) |
 | **Config hot reload** | Settings pushed to adapters without restart |
 | **Structured logging** | JSON log option; health check; `/webhook/metrics` Prometheus endpoint |
+| **AI `!ai ask`** | Optional chat-completion via OpenAI-compatible API (NVIDIA catalog default); fail-closed, masked key in Settings |
 
 ---
 
@@ -68,6 +99,26 @@ zAutoDJ.exe (frozen PyInstaller binary)
 ```
 
 Full architecture: [docs/architecture.md](docs/architecture.md) and [docs/autodj-blueprint.md](docs/autodj-blueprint.md).
+
+---
+
+## Bridge Status — subsystem connectivity
+
+| Subsystem | Status | Evidence |
+|-----------|--------|----------|
+| Audio engine (mpv IPC, one process/track) | VERIFIED | `autodj/player.py`; hang detection 0.5 s poll; graceful timeout |
+| GUI (Tkinter, cross-thread via `tk.after(0)`) | VERIFIED | `autodj/gui.py`; reentrancy guards; timer cleanup on close |
+| Library scan (no symlinks, bounded recursion) | VERIFIED | `autodj/library.py`; `tests/test_library_scan_safety.py`, `tests/test_doctor_symlinks.py` |
+| Config (fail-closed TOML, atomic writes) | VERIFIED | `autodj/config.py`; `tests/test_config_*.py` |
+| Command router (rate limit, TOCTOU lock) | VERIFIED | `autodj/commands.py:Router`; `tests/test_admin_commands.py` |
+| Chat adapters (uia / webchat / console / logtail) | VERIFIED (code) | `autodj/adapters/`; real Camfrog BLOCKED (no authorized env) |
+| Webhook API (HMAC, replay cache, body cap) | VERIFIED (code) | `autodj/webhook/auth.py`, `server.py`; `tests/test_webhook_server.py` |
+| Multi-platform streaming (registry, JWT auth) | VERIFIED (code) | `autodj/stream/`; adapters disabled by default |
+| AI `!ai ask` (fail-closed, no network unless enabled) | VERIFIED (code) | `autodj/ai.py`; `tests/test_ai_ask.py` |
+| Config hot reload | VERIFIED (code) | `autodj/config_watcher.py`; `tests/test_config_hot_reload.py` |
+| Installer (NSIS, mpv bundle) | NOT RUN | Requires makensis + signing certificate |
+| PyInstaller build (`build.ps1`) | NOT RUN | Requires code-signing cert + GPG TTY for pinentry |
+| Real Camfrog / mpv / YouTube runtime | BLOCKED | Requires authorized Camfrog test environment + mpv/yt-dlp |
 
 ---
 
@@ -196,10 +247,8 @@ Environment variables (`.env`, gitignored — shell/tooling only): `AUTODJ_PFX`,
 | Lint | `ruff check autodj tests tools` | PASS |
 | Format | `ruff format --check autodj tests tools` | PASS |
 | Types | `mypy autodj` | PASS (68 files) |
-| Shell | `shellcheck scripts/*.sh tools/*.sh` | PASS |
+| Shell | `shellcheck scripts/*.sh tools/*.sh` | NOT RUN (shellcheck not installed on this Windows host) |
 | Secrets | `git ls-files \| grep -E '(\.env\|id_rsa\|.*\.pem\|.*\.key$)' \| grep -v '\.env.example$'` | Clean |
-
-> On this Windows host the default pytest temp directory is access-denied. Always pass `--basetemp` to a writable directory (e.g. `C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest`).
 
 Full CI: `.github/workflows/ci.yml`, `.github/workflows/tests.yml`, `.github/workflows/windows-build.yml`, `.github/workflows/release.yml`, `.github/workflows/codeql.yml`, `.github/workflows/dependency-review.yml`.
 
@@ -213,12 +262,12 @@ Full CI: `.github/workflows/ci.yml`, `.github/workflows/tests.yml`, `.github/wor
 | Ruff lint | PASS | `ruff check autodj tests tools` → All checks passed |
 | Ruff format | PASS | `ruff format --check autodj tests tools` → 183 files already formatted |
 | Type checking | PASS | `mypy autodj` → Success: no issues found in 68 source files |
-| ShellCheck | PASS | `shellcheck scripts/*.sh tools/*.sh` → clean |
+| ShellCheck | NOT RUN | `shellcheck` not installed on this Windows host |
 | Pytest (unit/func/integration) | PASS | 964 passed, 1 skipped, 3 subtests passed |
-| Missing dependency tests | PASS | Covered by `tests/test_check_build_env.py` pattern |
+| Missing dependency tests | PASS | Covered by build-env check pattern; all import tests pass |
 | Security audit | PASS | Bandit 0 findings; no committed secrets; all commits GPG-signed |
 | Docker build | NOT APPLICABLE | No Dockerfile-based release; Windows PyInstaller + NSIS |
-| Runtime validation | VERIFIED | Live room checks on bot PC (room ZeaZDev); see Final-Report.md |
+| Runtime validation | BLOCKED | Real Camfrog/mpv requires authorized test environment |
 
 The skipped test needs a signed exe; it passes 16/16 when one is provided.
 
@@ -268,6 +317,8 @@ Rules: never force-push, bypass branch protection, self-approve, or merge with p
 - No public Camfrog bot API. Chat read/send is UI Automation (`adapters/uia.py`): control indexes and `line_regex` must be tuned per Camfrog version.
 - Not tested: real Camfrog, mpv, yt-dlp, TTS (Thai voice must be installed in Windows), Windows launch/URI, `build.ps1` on non-Windows.
 - Check room rules and Camfrog terms before running a bot.
+- `shellcheck` not installed on this Windows host; shell validation is `NOT RUN` locally (covered by CI where available).
+- Real Camfrog/mpv/YouTube runtime validation is `BLOCKED` without an authorized test environment.
 
 ---
 

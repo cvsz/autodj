@@ -1,14 +1,15 @@
 # Roadmap — zAutoDJ
 
 zAutoDJ (formerly AutoDJ) is a music bot for Camfrog rooms: YouTube + local MP3/MP4
-autoplay, `!` commands, now/next announcements, TTS, bilingual EN/TH GUI and chat.
+autoplay, `!` commands, now/next announcements, TTS, bilingual EN/TH GUI and chat,
+webhook API, multi-platform streaming, AI `!ai ask`, config hot reload, audit logging.
 Current version: **0.4.0**.
 
 ---
 
 ## Released (0.4.0)
 
-- **Renamed to zAutoDJ**: exe `zAutoDJ.exe`, installer `zAutoDJ-Setup-<v>.exe`, default folder `%APPDATA%\zAutoDJ`, Start Menu/Desktop/Apps & Features show zAutoDJ
+- **Renamed to zAutoDJ**: exe `zAutoDJ.exe`; installer `zAutoDJ-Setup-<v>.exe`; default folder `%APPDATA%\zAutoDJ`; Start Menu/Desktop/Apps & Features show zAutoDJ
 - **Upgrade path**: installer keeps pre-0.4.0 install folder, re-points shortcuts and autostart to `zAutoDJ.exe`, removes old `AutoDJ.exe`; config, logs and playlists untouched
 - **Auto-update from 0.3.x**: finds the new `zAutoDJ.exe`
 - **Not renamed**: `bot_nick`/requester "AutoDJ", the `autodj` Python package, the repository, `AUTODJ_*` environment variables
@@ -35,7 +36,7 @@ Current version: **0.4.0**.
 |------|-------------|----------|
 | Config schema documentation | Document all `config.toml` keys with types, ranges, and examples | P1 |
 | `__all__` exports in all modules | Explicit public API surface | P2 |
-| Extract `ChatProcessor`, `PlaybackManager`, `ConfigManager` from Engine | Engine (1,569 lines) does too much; separate concerns | P1 |
+| Extract `ChatProcessor`, `PlaybackManager`, `ConfigManager` from Engine | Engine does too much; separate concerns | P1 |
 | GUI–Engine interface boundary | Reduce tight coupling between `gui.py` and `engine.py` | P1 |
 | Dependency injection | Replace module-level references with injected dependencies | P2 |
 
@@ -65,7 +66,7 @@ Current version: **0.4.0**.
 3. Developer (cvsz): confirm CI green, independent approval, no merge conflicts, merge with `--merge --match-head-commit`
 4. Release: `release.yml` runs on `v*` tags only; builds and signs `zAutoDJ.exe` + installer; publishes to GitHub Releases
 
-Never force-push, bypass branch protection, self-approve, or merge with pending checks.
+Never force-push, bypass branch protection, self-approve, or merge with pending checks.  
 Pushed tags are never moved or deleted.
 
 ---
