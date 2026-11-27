@@ -72,6 +72,8 @@ _MAX_CONSECUTIVE_SEND_FAILURES = 10  # stop retrying chat sends after this many 
 # Per-nick chat rate limiting (prevents spam flooding)
 _CHAT_RATE_LIMIT_WINDOW = 60.0  # seconds
 _CHAT_RATE_LIMIT_MAX = 20  # max messages per nick per window
+ROOM_PRESENCE_TTL_S = 2 * 3600.0  # a nick not seen this long no longer counts as in the room
+ACTIVE_WINDOW_S = 30 * 60.0  # nicks seen this recently count for the dynamic voteskip
 
 
 def _fill(template: str, **values: str) -> str:
@@ -129,6 +131,10 @@ class Engine:
         # AI calls wait on a remote provider (up to its timeout): give them their own
         # small pool so a slow provider can never starve command handling in self.exec.
         self._ai_exec = ThreadPoolExecutor(AI_MAX_INFLIGHT, thread_name_prefix="autodj-ai")
+        # IM replies from the chat reader thread: one worker keeps them in order and
+        # off the reader (see send_im).
+        self._im_exec = ThreadPoolExecutor(1, thread_name_prefix="autodj-im")
+        self._chat_thread_ident: int | None = None
         self._ai_inflight = 0
         self._ai_inflight_lock = threading.Lock()
         self.history: deque[Track] = deque(maxlen=20)  # newest first
@@ -322,7 +328,27 @@ class Engine:
         self.updater.cfg = new_cfg
         if self.updater.on_available is not None:  # services already started
             self.updater.start()  # no-op unless newly enabled and not yet running
+        self._reload_adapter_config(old_cfg, new_cfg)
         log.info("Config reload applied successfully")
+
+    def _reload_adapter_config(self, old_cfg, new_cfg) -> None:
+        """Push a reloaded config to the chat adapter; say what needs a restart.
+
+        The adapter kept its own config copy and compiled patterns: edited
+        line/join regexes, poll interval, send mode and pane titles only took
+        effect after a restart.
+        """
+        apply = getattr(self.adapter, "apply_config", None)
+        if callable(apply):
+            try:
+                apply(new_cfg)
+            except Exception:
+                log.exception("chat adapter could not take the new settings")
+        if list(new_cfg.music_dirs) != list(old_cfg.music_dirs):
+            log.info(
+                "music_dirs changed: the library is rescanned at the next start "
+                "(or load the folder in the GUI now)"
+            )
 
     def _start_auto_reply_loop(self) -> None:
         """Start the auto-reply loop if not already running."""
@@ -387,9 +413,9 @@ class Engine:
         """Queue a message for sending to the chat room.
 
         Returns True if the message was queued, False if it was empty after
-        cleaning.  Messages are queued even while sends are suspended after
-        repeated failures: the suspension only clears on a successful send,
-        so refusing to queue would make it permanent.
+        cleaning.  Messages are queued even after repeated send failures (the
+        health check reports those): only a successful send clears them, so
+        refusing to queue would make the failure state permanent.
         """
         text = clean_text(text)
         if not text:
@@ -1369,6 +1395,7 @@ class Engine:
             self._default_failed_until = time.monotonic() + 600.0
             log.warning("default track failed to play; using the autoplay pool for 10 minutes")
         self._announce_playback_failure(t, fails)
+        self._record_circuit_failure()
         delay = self.fail_delay(fails)
         self._backoff_until = time.monotonic() + delay
         log.info(
@@ -1446,6 +1473,7 @@ class Engine:
                 self._track_failed(t, fails)
                 return fails
             fails = 0
+            self._record_circuit_success()
             if not recorded:
                 t.state = "COMPLETED"
                 self._log_track(t, "COMPLETED")
@@ -1459,6 +1487,7 @@ class Engine:
 
     # ---- main -----------------------------------------------------------
     def _chat_loop(self):
+        self._chat_thread_ident = threading.get_ident()  # send_im() hands off from here
         try:
             for msg in self.adapter.messages():
                 if self.stop_evt.is_set():
@@ -1635,7 +1664,21 @@ class Engine:
         Needs an adapter with ``send_im(user, text)``; otherwise nothing is sent.
         The text is remembered for echo detection, because the IM window shows our
         own reply back without a sender name, and it is shown in the IM viewer.
+
+        Called on the chat reader thread (IM auto-reply, join-room notice) the send
+        is handed to the single IM worker and True means "queued": typing into a
+        Camfrog IM window waits for the user to stop typing and for the window, up
+        to ~36 s, and the reader used to stop reading the room and IMs meanwhile.
         """
+        if threading.get_ident() == getattr(self, "_chat_thread_ident", None):
+            if not clean_text(text):
+                return False
+            self._im_exec.submit(self._send_im_now, user, text)
+            return True
+        return self._send_im_now(user, text)
+
+    def _send_im_now(self, user: str, text: str) -> bool:
+        """send_im() on the calling thread (see there)."""
         text = clean_text(text)
         send = getattr(self.adapter, "send_im", None)
         if not text:
@@ -1771,9 +1814,28 @@ class Engine:
         return self._participant_count
 
     def _update_participant_count(self, user: str):
-        """Update participant tracking from chat activity."""
-        self._active_room_users.add(user.lower())
-        self._participant_count = len(self._active_room_users)
+        """Update participant tracking from chat activity (chat reader thread only).
+
+        Nicks expire: someone not seen for ROOM_PRESENCE_TTL_S no longer counts as
+        in the room (``im_require_room_presence`` meant "seen once since start"),
+        and only nicks seen in the last ACTIVE_WINDOW_S count for the dynamic
+        voteskip threshold (it only grew, until a skip could no longer pass).
+        """
+        now = time.monotonic()
+        nick = user.lower()
+        seen = self.__dict__.setdefault("_room_seen", {})
+        seen[nick] = now
+        if now - self.__dict__.get("_room_pruned_at", 0.0) > 60.0:
+            self._room_pruned_at = now
+            cutoff = now - ROOM_PRESENCE_TTL_S
+            for k in [k for k, t in seen.items() if t < cutoff]:
+                del seen[k]
+            self._active_room_users = set(
+                seen
+            )  # one reference swap: readers never see it half-built
+        else:
+            self._active_room_users.add(nick)
+        self._participant_count = sum(1 for t in seen.values() if now - t <= ACTIVE_WINDOW_S)
 
     def _log_im_message(self, msg: ChatMessage) -> None:
         """Log an IM / private message for the IM viewer GUI (read-only)."""
@@ -2393,15 +2455,21 @@ class Engine:
     # ---- Circuit breaker -------------------------------------------------------
 
     def _record_circuit_failure(self) -> None:
-        """Record a playback failure and open the circuit breaker if threshold exceeded."""
+        """Count a track that failed to play (``_track_failed``).
+
+        A health signal for ``health_check`` / ``/metrics``: after the threshold the
+        breaker reports "open" for the reset timeout. The player itself already
+        backs off (``fail_delay``: 1, 2, 4 ... s between attempts); the breaker
+        does not add a second pause. It used to be recorded nowhere, so health
+        always said "closed" even while every track failed.
+        """
         with self._circuit_breaker_lock:
             self._circuit_breaker_failures += 1
             if self._circuit_breaker_failures >= _CIRCUIT_BREAKER_FAILURE_THRESHOLD:
                 self._circuit_breaker_open_until = time.monotonic() + _CIRCUIT_BREAKER_RESET_TIMEOUT
                 log.warning(
-                    "Circuit breaker OPEN: %d consecutive failures; pausing playback for %.0fs",
+                    "playback health: %d tracks in a row failed (health check reports it)",
                     self._circuit_breaker_failures,
-                    _CIRCUIT_BREAKER_RESET_TIMEOUT,
                 )
 
     def _record_circuit_success(self) -> None:
@@ -2434,10 +2502,9 @@ class Engine:
             self._send_failure_count += 1
             count = self._send_failure_count
         if count >= _MAX_CONSECUTIVE_SEND_FAILURES:
-            log.error(
-                "Chat send circuit breaker: %d consecutive send failures; suspending sends",
-                count,
-            )
+            # Reported by health_check; sends are still attempted (each message is
+            # retried once): only a successful send clears it.
+            log.error("chat sends failing: %d in a row (health check reports it)", count)
 
     def _record_send_success(self) -> None:
         """Record a successful chat send and reset failure count."""
@@ -2644,6 +2711,7 @@ class Engine:
         self.adapter.close()
         self.exec.shutdown(wait=False, cancel_futures=True)
         self._ai_exec.shutdown(wait=False, cancel_futures=True)
+        self._im_exec.shutdown(wait=False, cancel_futures=True)
         # Shutdown TTS worker
         from .tts import shutdown_tts
 

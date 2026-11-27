@@ -6,9 +6,9 @@ This document describes how AutoDJ releases are built, validated, and published.
 
 ## Versioning
 
-AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.3.17`, declared in:
-- `pyproject.toml` (`version = "0.3.17"`)
-- `autodj/__init__.py` (`__version__ = "0.3.17"`)
+AutoDJ uses Semantic Versioning (MAJOR.MINOR.PATCH). The current version is `0.3.18`, declared in:
+- `pyproject.toml` (`version = "0.3.18"`)
+- `autodj/__init__.py` (`__version__ = "0.3.18"`)
 - `version_info.txt` (Windows file version resource)
 - `installer.nsi` (`APP_VERSION` default), `install.bat`, `install.ps1` and `scripts/build_windows.ps1` (`$RequiredVersion`)
 - `CHANGELOG.md` (changelog entries)

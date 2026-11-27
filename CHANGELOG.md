@@ -1,3 +1,14 @@
+## 0.3.18 — 2026-11-27
+
+Remaining findings of the 0.3.17 deep audit.
+
+- **IM replies no longer stall the chat reader** - `Engine.send_im` called on the reader thread (IM auto-reply, join-room notice) hands the send to a single IM worker; the UIA adapter waits for the user to stop typing *before* taking `com_lock`. Before, room and IM reading and every room send stopped for up to ~36 s per IM reply.
+- **Hot-reloaded settings reach the chat adapter** - `apply_config` on the UIA, Composite and reattaching adapters: line/join regexes recompiled, poll interval, send mode and pane titles used at once; window-selection keys and `music_dirs` are logged as "used from the next start".
+- **Background sending comes back** - after 2 unconfirmed background sends it was off for the rest of the session, and each failure was counted twice. Now counted once and tried again after 30 min.
+- **Room presence expires** - a nick not seen for 2 h no longer counts as in the room (`im_require_room_presence`); the dynamic voteskip counts nicks seen in the last 30 min (the count only grew until a skip could not pass).
+- **Playback health is real** - track failures/successes are recorded, so `health_check` and `/metrics` report consecutive playback failures (they always said OK); log texts no longer claim a pause/suspension that never happened.
+- **Metadata cache** - saved from a snapshot taken under its lock (it could raise "dictionary changed size during iteration" during GUI folder loads) and stored in the user cache folder (`%LOCALAPPDATA%\AutoDJ\cache`, `AUTODJ_CACHE_DIR`) instead of inside the music folders.
+
 ## 0.3.17 — 2026-11-27
 
 - **Room bots are never greeted** - live 2026-11-23..27 the room's own bot ZeazBot got `Sent welcome message to ZeazBot` five times, and the operator asked that the room's bots (CloudBot, ZeazBot, ...) are never greeted. One check, `Engine._never_greet`, now guards every greeting (join welcome, admin greeting, mic greeting): the bot itself, its own account, blocked users, the new `greeting_ignore` list, `mic_greeting_ignore` (now also skips the welcome) and the new `greeting_ignore_regex` (default `(?i)bot$`: any nick ending in "bot"; `""` turns it off; validated fail-closed at load). Both keys are in the Settings dialog and `config.example.toml`.

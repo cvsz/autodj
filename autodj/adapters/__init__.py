@@ -126,6 +126,13 @@ class Composite(ChatAdapter):
         """False while the sender cannot reach the room chat (room page not shown)."""
         return bool(getattr(self.sender, "room_ready", True))
 
+    def apply_config(self, cfg: "Config") -> None:
+        """Hand a hot-reloaded config to the reader and the sender (once each)."""
+        for part in dict.fromkeys((self.reader, self.sender)):  # same object: once
+            apply = getattr(part, "apply_config", None)
+            if callable(apply):
+                apply(cfg)
+
     @property
     def send_im(self) -> Callable[[str, str], None] | None:
         """Private-message sender of the wrapped adapters, or None.
@@ -349,6 +356,15 @@ class ReattachingAdapter(ChatAdapter):
         """True once attached and the room chat is shown (not the room list)."""
         inner = self._inner
         return inner is not None and bool(getattr(inner, "room_ready", True))
+
+    def apply_config(self, cfg: "Config") -> None:
+        """New config for the next attach and for the attached adapter, if any."""
+        with self._lock:
+            self.cfg = cfg
+            inner = self._inner
+        apply = getattr(inner, "apply_config", None)
+        if callable(apply):
+            apply(cfg)
 
     @property
     def send_im(self) -> Callable[[str, str], None] | None:
