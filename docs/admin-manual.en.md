@@ -155,6 +155,13 @@ youtube_cookies_file = ""           # path to Netscape cookies.txt for yt-dlp
 youtube_cookies_browser = ""        # browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
 youtube_ca_bundle = ""              # path to custom CA bundle PEM file for yt-dlp certificate verification
 
+# YouTube / mpv streaming optimization (reduce stuttering on YouTube links)
+yt_format = "bestaudio[ext=m4a]/bestaudio/best"   # Preferred yt-dlp format: m4a first (best streaming), then best audio
+yt_cache_secs = 10.0              # Seconds of network stream to cache ahead in mpv (0 = disable)
+yt_network_timeout = 30.0         # Seconds before mpv gives up on a network read (5-300)
+yt_retries = 10                   # yt-dlp retries for YouTube streams (1-100)
+yt_fragment_retries = 10          # yt-dlp fragment retries (1-100)
+
 # Audio output device (from: mpv --audio-device=help)
 audio_device = "auto"               # "auto" = system default; or wasapi/{GUID} for virtual cable
 
@@ -737,6 +744,23 @@ youtube_cookies_browser = ""     # e.g. "chrome", "firefox", "edge"
 youtube_ca_bundle = ""           # Custom CA bundle for cert verification
 ```
 
+### YouTube Streaming Optimization (reduce stuttering)
+
+```toml
+# Preferred yt-dlp format: m4a first (best streaming compatibility), then best audio
+yt_format = "bestaudio[ext=m4a]/bestaudio/best"
+# Seconds of network stream to cache ahead in mpv (0 = disable cache)
+yt_cache_secs = 10.0
+# Seconds before mpv gives up on a network read (5-300)
+yt_network_timeout = 30.0
+# yt-dlp retries for YouTube streams (1-100)
+yt_retries = 10
+# yt-dlp fragment retries (1-100)
+yt_fragment_retries = 10
+```
+
+**Why this helps:** YouTube serves audio as fragmented DASH streams. Without cache and retry settings, a brief network hiccup causes mpv to stall (the "กระตุก" / stutter effect). Caching 10 seconds ahead lets mpv absorb short glitches, network timeout prevents hanging on dead streams, and yt-dlp retries recover from transient fragment failures.
+
 ### Audio Engineering
 
 ```toml
@@ -759,6 +783,30 @@ voteskip_dynamic_pct = 30        # % of participants needed
 user_request_limit = 5           # Max requests
 rate_limit_window = 300.0        # Sliding window (seconds)
 ```
+
+### IM Viewer & Auto-Reply
+
+```toml
+# Show the IM / private message viewer tab in the GUI
+im_viewer_enabled = true
+# Auto-reply to private/instant messages
+im_auto_reply_enabled = true
+im_auto_reply_message = "Thanks for your message! I'm a bot and will respond when I can. Use !help for commands."
+im_auto_reply_cooldown = 60.0      # seconds between auto-replies to the same user (avoid spam)
+# Only users seen in room chat can DM the bot; others get a private join-room notice
+im_require_room_presence = true
+# Private notice sent to IM senders not in the room
+im_join_room_message = "กรุณาเข้าห้อง camfrog:join:{room} ก่อนขอเพลงครับ"
+# Allow song requests in room chat (false = IM only)
+allow_play_in_room = true
+```
+
+**How IM requests work:**
+1. User sends a private message (IM/DM) to the bot with `play <song>` or `ขอเพลง <song>`
+2. If `im_require_room_presence = true` (default), the bot only acts on IMs from users seen in the room chat. Others get a private "join the room first" notice.
+3. IMs are logged to the IM Viewer tab in the GUI (when `im_viewer_enabled = true`)
+4. IM auto-reply sends a private reply (cooldown-limited) when enabled
+5. IM commands are processed through the same command router as room messages (no `!` prefix required in IM)
 
 ---
 

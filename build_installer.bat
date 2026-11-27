@@ -10,13 +10,13 @@ echo.
 REM Check for NSIS
 where makensis >nul 2>nul
 if errorlevel 1 (
-    echo ERROR: NSIS (makensis) not found in PATH
+    echo ERROR: NSIS ^(makensis^) not found in PATH
     echo Please install NSIS 3.08+ from https://nsis.sourceforge.io/
     echo After installation, restart this command prompt.
     exit /b 1
 )
 
-echo Found NSIS: %~$PATH:makensis
+for %%m in (makensis.exe) do echo Found NSIS: %%~$PATH:m
 echo.
 
 REM Check for required files (built artifacts are in dist/)

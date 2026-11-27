@@ -1190,12 +1190,10 @@ class App(tk.Tk):
         bar = tk.Frame(panel, bg=SURFACE)
         bar.pack(fill="x", padx=px(14), pady=(px(14), px(8)))
         self.tabs = {}
-        for key, lab in (
-            ("queue", "g_queue"),
-            ("history", "g_history"),
-            ("chat", "g_chat"),
-            ("im", "g_im"),
-        ):
+        tab_entries = [("queue", "g_queue"), ("history", "g_history"), ("chat", "g_chat")]
+        if self.e.cfg.im_viewer_enabled:
+            tab_entries.append(("im", "g_im"))
+        for key, lab in tab_entries:
             b = self._btn(bar, lab, lambda k=key: self.show_tab(k), "tab", height=34)
             b.pack(side="left", padx=(0, px(6)))
             self.tabs[key] = b
@@ -1257,17 +1255,9 @@ class App(tk.Tk):
 
         # ---- IM / private message viewer panel ----
         ip = self.pages["im"]
-        ih = tk.Label(
-            ip,
-            text=self.e.t("g_im"),
-            bg=SURFACE,
-            fg=TEXT,
-            font=self.f_section,
-            anchor="w",
-        )
-        ih.pack(fill="x", padx=px(14), pady=(px(14), px(6)))
-        ihs = ttk.Scrollbar(ip, orient="vertical")
-        ihs.pack(side="right", fill="y")
+        # Always create im_chat so _refresh_im can safely reference it even when
+        # the IM tab is hidden (im_viewer_enabled=False).  The label, scrollbar
+        # and packing are only added when the viewer is enabled.
         self.im_chat = tk.Text(
             ip,
             bg=SURFACE,
@@ -1283,10 +1273,22 @@ class App(tk.Tk):
             selectbackground=VIOLET,
             bd=0,
         )
-        self.im_chat.pack(side="left", fill="both", expand=True)
-        self.im_chat.configure(yscrollcommand=ihs.set)
-        ihs.configure(command=self.im_chat.yview)
-        self.im_chat.tag_configure("who", foreground=PINK, font=self.f_bold)
+        if self.e.cfg.im_viewer_enabled:
+            ih = tk.Label(
+                ip,
+                text=self.e.t("g_im"),
+                bg=SURFACE,
+                fg=TEXT,
+                font=self.f_section,
+                anchor="w",
+            )
+            ih.pack(fill="x", padx=px(14), pady=(px(14), px(6)))
+            ihs = ttk.Scrollbar(ip, orient="vertical")
+            ihs.pack(side="right", fill="y")
+            self.im_chat.pack(side="left", fill="both", expand=True)
+            self.im_chat.configure(yscrollcommand=ihs.set)
+            ihs.configure(command=self.im_chat.yview)
+            self.im_chat.tag_configure("who", foreground=PINK, font=self.f_bold)
 
     def _build_modern(self):
         """Modern three-zone shell: nav rail / hero player / data panel.
@@ -1386,12 +1388,10 @@ class App(tk.Tk):
         rail = tk.Frame(body, bg=BG)
         rail.grid(row=0, column=0, sticky="nsew", padx=(0, px(12)))
         self.tabs = {}
-        for key, lab in (
-            ("queue", "g_queue"),
-            ("history", "g_history"),
-            ("chat", "g_chat"),
-            ("im", "g_im"),
-        ):
+        tab_entries = [("queue", "g_queue"), ("history", "g_history"), ("chat", "g_chat")]
+        if self.e.cfg.im_viewer_enabled:
+            tab_entries.append(("im", "g_im"))
+        for key, lab in tab_entries:
             b = self._btn(rail, lab, lambda k=key: self.show_tab(k), "tab", height=38, minw=px(118))
             b.pack(fill="x", pady=(0, px(6)))
             self.tabs[key] = b
@@ -1588,12 +1588,9 @@ class App(tk.Tk):
         self.chat.tag_configure("who", foreground=shade(VIOLET, 0.2), font=self.f_bold)
 
         ip = self.pages["im"]
-        ih = tk.Label(
-            ip, text=self.e.t("g_im"), bg=SURFACE, fg=TEXT, font=self.f_section, anchor="w"
-        )
-        ih.pack(fill="x", padx=px(10), pady=(px(10), px(5)))
-        ihs = ttk.Scrollbar(ip, orient="vertical")
-        ihs.pack(side="right", fill="y")
+        # Always create im_chat so _refresh_im can safely reference it even when
+        # the IM tab is hidden (im_viewer_enabled=False).  The label, scrollbar
+        # and packing are only added when the viewer is enabled.
         self.im_chat = tk.Text(
             ip,
             bg=SURFACE,
@@ -1609,10 +1606,17 @@ class App(tk.Tk):
             selectbackground=VIOLET,
             bd=0,
         )
-        self.im_chat.pack(side="left", fill="both", expand=True)
-        self.im_chat.configure(yscrollcommand=ihs.set)
-        ihs.configure(command=self.im_chat.yview)
-        self.im_chat.tag_configure("who", foreground=PINK, font=self.f_bold)
+        if self.e.cfg.im_viewer_enabled:
+            ih = tk.Label(
+                ip, text=self.e.t("g_im"), bg=SURFACE, fg=TEXT, font=self.f_section, anchor="w"
+            )
+            ih.pack(fill="x", padx=px(10), pady=(px(10), px(5)))
+            ihs = ttk.Scrollbar(ip, orient="vertical")
+            ihs.pack(side="right", fill="y")
+            self.im_chat.pack(side="left", fill="both", expand=True)
+            self.im_chat.configure(yscrollcommand=ihs.set)
+            ihs.configure(command=self.im_chat.yview)
+            self.im_chat.tag_configure("who", foreground=PINK, font=self.f_bold)
 
         # --- footer ------------------------------------------------------------
         footer = tk.Frame(root, bg=BG)
@@ -1791,7 +1795,34 @@ class App(tk.Tk):
         self.s_youtube_ca_bundle = self._entry(sp_inner)
         self.s_youtube_ca_bundle.insert(0, self.e.cfg.youtube_ca_bundle)
         _setting_row(
-            "g_settings_youtube_ca_bundle", self.s_youtube_ca_bundle, "g_settings_bot_nick"
+            "g_settings_youtube_ca_bundle", self.s_youtube_ca_bundle, "g_settings_yt_format"
+        )
+
+        # YouTube streaming optimization
+        self.s_yt_format = self._entry(sp_inner)
+        self.s_yt_format.insert(0, self.e.cfg.yt_format)
+        _setting_row("g_settings_yt_format", self.s_yt_format, "g_settings_yt_cache_secs")
+
+        self.s_yt_cache_secs = self._entry(sp_inner)
+        self.s_yt_cache_secs.insert(0, str(self.e.cfg.yt_cache_secs))
+        _setting_row(
+            "g_settings_yt_cache_secs", self.s_yt_cache_secs, "g_settings_yt_network_timeout"
+        )
+
+        self.s_yt_network_timeout = self._entry(sp_inner)
+        self.s_yt_network_timeout.insert(0, str(self.e.cfg.yt_network_timeout))
+        _setting_row(
+            "g_settings_yt_network_timeout", self.s_yt_network_timeout, "g_settings_yt_retries"
+        )
+
+        self.s_yt_retries = self._entry(sp_inner)
+        self.s_yt_retries.insert(0, str(self.e.cfg.yt_retries))
+        _setting_row("g_settings_yt_retries", self.s_yt_retries, "g_settings_yt_fragment_retries")
+
+        self.s_yt_fragment_retries = self._entry(sp_inner)
+        self.s_yt_fragment_retries.insert(0, str(self.e.cfg.yt_fragment_retries))
+        _setting_row(
+            "g_settings_yt_fragment_retries", self.s_yt_fragment_retries, "g_settings_bot_nick"
         )
 
         # bot_nick
@@ -3758,6 +3789,15 @@ class App(tk.Tk):
             cfg.youtube_cookies_file = self.s_youtube_cookies_file.get().strip()
             cfg.youtube_cookies_browser = self.s_youtube_cookies_browser.get().strip()
             cfg.youtube_ca_bundle = self.s_youtube_ca_bundle.get().strip()
+            cfg.yt_format = self.s_yt_format.get().strip()
+            cfg.yt_cache_secs = self._parse_float(self.s_yt_cache_secs, "YouTube cache secs")
+            cfg.yt_network_timeout = self._parse_float(
+                self.s_yt_network_timeout, "YouTube network timeout"
+            )
+            cfg.yt_retries = self._parse_int(self.s_yt_retries, "YouTube retries")
+            cfg.yt_fragment_retries = self._parse_int(
+                self.s_yt_fragment_retries, "YouTube fragment retries"
+            )
             cfg.audio_device = self.s_audio_device.get().strip()
             cfg.bot_nick = self.s_bot_nick.get().strip()
             cfg.prefix = self.s_prefix.get().strip()
@@ -3932,6 +3972,11 @@ class App(tk.Tk):
             lines.append(f"youtube_cookies_file = {_toml_str(cfg.youtube_cookies_file)}")
             lines.append(f"youtube_cookies_browser = {_toml_str(cfg.youtube_cookies_browser)}")
             lines.append(f"youtube_ca_bundle = {_toml_str(cfg.youtube_ca_bundle)}")
+            lines.append(f"yt_format = {_toml_str(cfg.yt_format)}")
+            lines.append(f"yt_cache_secs = {cfg.yt_cache_secs}")
+            lines.append(f"yt_network_timeout = {cfg.yt_network_timeout}")
+            lines.append(f"yt_retries = {cfg.yt_retries}")
+            lines.append(f"yt_fragment_retries = {cfg.yt_fragment_retries}")
             lines.append(f"volume = {cfg.volume}")
             lines.append(f"audio_fade = {str(cfg.audio_fade).lower()}")
             lines.append(f"audio_fade_in_sec = {cfg.audio_fade_in_sec}")
@@ -4266,8 +4311,12 @@ class App(tk.Tk):
                 self.im_chat.delete("1.0", f"{im_extra + 1}.0")
             self.im_chat.see("end")
             self.im_chat.configure(state="disabled")
-        self._im_seen = im_seq
-        self._im_seen_version = im_version
+        # Only advance the seen pointer when the viewer is enabled: otherwise
+        # re-enabling the tab later would skip every IM that arrived while it
+        # was off (the pointer already advanced past them).
+        if self.e.cfg.im_viewer_enabled:
+            self._im_seen = im_seq
+            self._im_seen_version = im_version
 
     def _refresh_now_playing(self, s: dict) -> None:
         """Refresh the now-playing section (title, progress bar, time)."""

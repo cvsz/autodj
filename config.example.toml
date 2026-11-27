@@ -65,6 +65,13 @@ youtube_cookies_file = "" # Path to Netscape cookies.txt for yt-dlp
 youtube_cookies_browser = "" # Browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
 youtube_ca_bundle = "" # Path to custom CA bundle PEM file for yt-dlp certificate verification
 
+# YouTube / mpv streaming optimization (reduce stuttering on YouTube links)
+yt_format = "bestaudio[ext=m4a]/bestaudio/best" # Preferred yt-dlp format: m4a first (best streaming), then best audio
+yt_cache_secs = 10.0 # Seconds of network stream to cache ahead in mpv (0 = disable)
+yt_network_timeout = 30.0 # Seconds before mpv gives up on a network read (5-300)
+yt_retries = 10 # yt-dlp retries for YouTube streams (1-100)
+yt_fragment_retries = 10 # yt-dlp fragment retries (1-100)
+
 # Audio output
 audio_device = "auto" # "auto" = system default; or wasapi/{GUID} for virtual cable (run: mpv --audio-device=help)
 volume = 70 # Playback volume 0-100
