@@ -91,3 +91,35 @@ Inspect first. Reason from evidence. Change the smallest necessary surface. Prot
 ## Repository administration evidence
 
 Repository-level controls such as protected branches, required reviews/checks, secret scanning, Dependabot/security settings, and Actions permissions are effective-state claims. Configuration files or helper scripts alone do not verify them. Prefer authenticated provider read-back of the effective settings, and classify missing provider permission as `BLOCKED` rather than assuming success.
+
+---
+
+## Project-specific tail — zAutoDJ (cvsz/autodj)
+
+The canonical agent instruction file for this repository is `AGENTS.md`; `GEMINI.md` and `CLAUDE.md`
+are agent-specific entry points. All zAutoDJ-specific operating rules, security rules,
+validation gates, and the GitHub PR workflow (cvsz ↔ policedbc) live in `AGENTS.md`.
+
+Project facts:
+
+- **Project:** zAutoDJ (formerly AutoDJ) v0.4.0 — Music bot for Camfrog rooms
+- **Repository:** https://github.com/cvsz/autodj
+- **Owner:** cvsz; default branch: `main`
+- **Stack:** Python 3.11+, Tkinter GUI, mpv/yt-dlp for audio, UIA for Camfrog chat
+- **Key files:** `engine.py`, `gui.py`, `player.py`, `library.py`, `commands.py`, `config.py`
+
+Validation gates (run before claiming done):
+
+```bash
+python -m compileall -q autodj tests tools
+python -m pytest -q -p no:faulthandler -p no:cacheprovider --basetemp="C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest"
+ruff check autodj tests tools
+ruff format --check autodj tests tools
+mypy autodj
+shellcheck scripts/*.sh tools/*.sh
+git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' | grep -v '\.env.example$'
+git verify-commit HEAD
+```
+
+> On this Windows host the default pytest temp directory is access-denied.
+> Always pass `--basetemp` to a writable directory.
