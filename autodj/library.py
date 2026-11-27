@@ -7,6 +7,7 @@ import re
 
 # security review: subprocess only with fixed argv lists, never shell=True
 import subprocess  # nosec B404
+import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -58,6 +59,18 @@ METADATA_CACHE_FILENAME = ".autodj_metadata_cache.json"
 SCAN_STATE_FILENAME = ".autodj_scan_state.json"
 
 
+def _user_cache_dir() -> Path:
+    """Per-user cache folder: ``AUTODJ_CACHE_DIR``, else %LOCALAPPDATA%\\AutoDJ\\cache
+    on Windows, else $XDG_CACHE_HOME/autodj (~/.cache/autodj)."""
+    override = os.environ.get("AUTODJ_CACHE_DIR", "").strip()
+    if override:
+        return Path(override)
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA") or str(Path.home())
+        return Path(base) / "AutoDJ" / "cache"
+    return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "autodj"
+
+
 class MetadataCache:
     """Thread-safe metadata cache with mtime-based invalidation.
 
@@ -66,13 +79,15 @@ class MetadataCache:
     Uses a single consolidated cache file for all music directories.
     """
 
-    def __init__(self, music_dirs: list[str]):
+    def __init__(self, music_dirs: list[str], cache_dir: Path | None = None):
         self._cache: dict[str, dict] = {}
         self._lock = threading.RLock()
         self._dirty = False
-        # Single consolidated cache file in the first music directory, or temp
-        base_dir = Path(music_dirs[0]).resolve() if music_dirs else Path.cwd()
-        self._cache_path = base_dir / METADATA_CACHE_FILENAME
+        # One consolidated file in the user's cache folder (keys are absolute
+        # paths). It used to be written into the first music folder, or into the
+        # folder of whichever file was looked up first: files in the user's
+        # music folders, and a cache that moved with them.
+        self._cache_path = (cache_dir or _user_cache_dir()) / METADATA_CACHE_FILENAME.lstrip(".")
         self._load()
 
     def _load(self) -> None:
@@ -94,20 +109,36 @@ class MetadataCache:
             log.debug("Failed to load metadata cache from %s: %s", self._cache_path, ex)
 
     def save(self) -> None:
-        """Save metadata cache to consolidated file (atomic write)."""
-        if not self._dirty:
-            return
-        data = {"version": METADATA_CACHE_VERSION, "entries": self._cache}
-        try:
-            # Atomic write: temp file + replace
-            temp_path = self._cache_path.with_suffix(".tmp")
-            with temp_path.open("w", encoding="utf-8") as f:
-                json.dump(data, f, separators=(",", ":"))
-            temp_path.replace(self._cache_path)
+        """Save metadata cache to consolidated file (atomic write).
+
+        The entries are copied under the lock: dumping the live dict while GUI
+        folder loads add entries raised "dictionary changed size during iteration".
+        """
+        with self._lock:
+            if not self._dirty:
+                return
+            entries = dict(self._cache)
             self._dirty = False
-            log.debug("Saved metadata cache (%d entries)", len(self._cache))
+        data = {"version": METADATA_CACHE_VERSION, "entries": entries}
+        tmp: str | None = None
+        try:
+            self._cache_path.parent.mkdir(parents=True, exist_ok=True)
+            fd, tmp = tempfile.mkstemp(prefix=".meta-", suffix=".tmp", dir=self._cache_path.parent)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, separators=(",", ":"))
+            os.replace(tmp, self._cache_path)
+            tmp = None
+            log.debug("Saved metadata cache (%d entries)", len(entries))
         except OSError as ex:
+            with self._lock:
+                self._dirty = True  # try again next time
             log.debug("Failed to save metadata cache to %s: %s", self._cache_path, ex)
+        finally:
+            if tmp is not None:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    log.debug("could not remove %s", tmp)
 
     def get(self, path: Path, mtime: float) -> dict | None:
         """Get cached metadata if mtime matches, else None."""

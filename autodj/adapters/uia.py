@@ -292,6 +292,9 @@ class UiaAdapter(ChatAdapter):
     _room_hidden: bool = False
     _hidden_title: str | None = None
     _hidden_checked: float = 0.0
+    # Background sends paused after 2 unconfirmed ones are tried again after this.
+    BG_RETRY_S = 1800.0
+    _bg_retry_at: float = 0.0
     # Seconds before a Camfrog window without an IM pane is looked at again.
     IM_PANE_RECHECK_S = 10.0
 
@@ -334,6 +337,26 @@ class UiaAdapter(ChatAdapter):
         self._hidden_title = None
         self._hidden_checked = 0.0
         self._attach()
+
+    # Keys that choose the window: changing them needs a new attach (restart).
+    _ATTACH_KEYS = ("window_title_re", "window_exclude_re", "room", "window_index", "process_re")
+
+    def apply_config(self, cfg) -> None:
+        """Take a hot-reloaded config: patterns, poll interval, send mode, pane titles.
+
+        The chat panes are looked up again with the new titles on the next read.
+        """
+        old = self.cfg
+        rx = re.compile(cfg.line_regex)  # validated at load; compile before swapping
+        join_rx = compile_join_rx(getattr(cfg, "join_line_regex", ""))
+        with self.com_lock:
+            self.cfg, self.rx, self.join_rx = cfg, rx, join_rx
+            self._view = self._input = None
+        changed = [k for k in self._ATTACH_KEYS if getattr(old, k, None) != getattr(cfg, k, None)]
+        if changed:
+            log.info(
+                "chat window settings changed (%s): used from the next start", ", ".join(changed)
+            )
 
     def _attach(self):
         """(Re)build the window wrapper. A COM failure can wedge the cached wrapper permanently
@@ -829,6 +852,9 @@ class UiaAdapter(ChatAdapter):
 
         from ..webchat import find_web_panes, read_items
 
+        # Wait for the user to stop typing *before* taking com_lock: holding it for
+        # up to 30 s stopped every room read and room send meanwhile.
+        _wait_user_idle("IM window")
         with self.com_lock:
             handle = getattr(self, "_im_handles", {}).get(user.lower())
             if handle is None:
@@ -981,12 +1007,20 @@ class UiaAdapter(ChatAdapter):
         return self._bg_after_loop(text, ok, before, mode)
 
     def _bg_allowed(self, mode: str) -> bool:
-        # after 2 unconfirmed background sends in a row, go straight to the foreground for a
-        # while: announcements must not stack seconds of verify+fallback latency every track
+        """After 2 unconfirmed background sends in a row, go straight to the foreground
+        for ``BG_RETRY_S``: announcements must not stack seconds of verify+fallback
+        latency every track. Then background is tried again (it used to stay off for
+        the rest of the session)."""
         if mode == "background":
             return True
         with self._bg_fails_lock:
-            return self._bg_fails < 2
+            if self._bg_fails < 2:
+                return True
+            if time.monotonic() >= self._bg_retry_at:
+                self._bg_fails = 0
+                log.info("trying background sends again")
+                return True
+            return False
 
     def _bg_before(self, text, mode):
         before = None
@@ -1021,28 +1055,17 @@ class UiaAdapter(ChatAdapter):
         return True
 
     def _bg_after_loop(self, text: str, ok: bool, before, mode: str) -> str:
-        """Decide what to do after the background retry loop exhausted its attempts."""
+        """Every background attempt failed: count it once, maybe pause background sends."""
         with self._bg_fails_lock:
             self._bg_fails += 1
             bg_fails = self._bg_fails
-        log.info(
-            "background send not confirmed in the room (%d in a row): falling back to foreground",
-            bg_fails,
-        )
+            if bg_fails >= 2:
+                self._bg_retry_at = time.monotonic() + self.BG_RETRY_S
         if mode == "background":
-            if not ok:
-                return "failed"
-            return "sent"
-        if ok and (not self.cfg.send_verify or before is None or self._appeared(text, before)):
-            log.debug("sent in background: %s", text)
-            with self._bg_fails_lock:
-                self._bg_fails = 0
-            return "sent"
-        with self._bg_fails_lock:
-            self._bg_fails += 1
-            bg_fails = self._bg_fails
+            return "failed"
         log.info(
-            "background send not confirmed in the room (%d in a row): falling back to foreground",
+            "background send not confirmed in the room (%d in a row): falling back to foreground%s",
             bg_fails,
+            f"; background paused for {self.BG_RETRY_S / 60:.0f} min" if bg_fails >= 2 else "",
         )
         return "fallback"

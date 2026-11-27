@@ -28,6 +28,18 @@ def posix_bash() -> str | None:
     return shutil.which("bash")
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _private_cache_dir(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
+    """Keep the library's metadata cache out of the real user cache folder."""
+    old = os.environ.get("AUTODJ_CACHE_DIR")
+    os.environ["AUTODJ_CACHE_DIR"] = str(tmp_path_factory.mktemp("autodj-cache"))
+    yield
+    if old is None:
+        os.environ.pop("AUTODJ_CACHE_DIR", None)
+    else:
+        os.environ["AUTODJ_CACHE_DIR"] = old
+
+
 @pytest.fixture(autouse=True)
 def _collect_garbage_on_main_thread() -> Iterator[None]:
     """Finalise objects left over by a test on the main thread.

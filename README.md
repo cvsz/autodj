@@ -2,6 +2,13 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
+## What's new in 0.3.18
+
+- Answering an IM no longer pauses reading the room (IM replies are sent by their own worker).
+- Settings saved while the bot runs now reach the chat reader at once (patterns, poll interval, send mode).
+- Background sending is tried again 30 minutes after it was paused.
+- Room presence and the dynamic voteskip count use recently seen nicks only.
+
 ## What's new in 0.3.17
 
 - The room's own bots (any nick ending in "bot", e.g. ZeazBot, CloudBot) are never greeted: no welcome, no admin greeting, no mic greeting. New settings `greeting_ignore` (nick list) and `greeting_ignore_regex` (default `(?i)bot$`, `""` turns it off).

@@ -297,3 +297,17 @@ Not verified here: live IM from a second Camfrog user (needs another account), r
 | Audit not fixed in 0.3.17 | 2 IM text cut to the first segment (needs a live IM to see Camfrog's IM DOM), 5 `send_im` on the reader thread under `com_lock`, 15 background send never re-tried, 16 settings not pushed to the adapter until restart, 17 room users never expire, 19 unused circuit breaker, 20 metadata cache save race, 21 IM scan cost | documented | OPEN |
 | Bot closed 05:48:54 | `AutoDJ window closed: user action (keyboard/mouse input 0.0 s before)` | - | VERIFIED (log); by a person at the PC |
 
+## 16. Open audit findings (0.3.18)
+
+| Finding | Fix | Test | State |
+|---|---|---|---|
+| 5 send_im on the reader thread under com_lock | IM worker; idle wait before the lock | `test_audit_0318.py::test_send_im_on_the_reader_thread_is_handed_off` | VERIFIED (tests) |
+| 15 background send off for good, double count | single count, retry after 30 min | `test_background_send_comes_back_after_the_pause` | VERIFIED (tests) |
+| 16 settings not pushed to the adapter | `apply_config` chain | `test_reloaded_config_reaches_the_adapter`, `test_engine_reload_calls_apply_config` | VERIFIED (tests) |
+| 17 room users never expire | 2 h presence TTL, 30 min active window | `test_room_presence_expires` | VERIFIED (tests) |
+| 19 circuit breaker never recorded | recorded on track fail/success; honest log text | `test_playback_failures_are_reported_by_health_check` | VERIFIED (tests) |
+| 20 metadata cache save race, files in music folders | snapshot under lock, user cache dir | `test_metadata_cache_save_is_safe_while_entries_are_added` | VERIFIED (tests) |
+| 2 IM text cut to the first segment | - | - | OPEN: needs a live IM to see Camfrog's IM DOM before changing the parser |
+| 21 IM window scan every 0.5 s outside com_lock | - | - | OPEN |
+| Second audit (stream, webhook, plugins, updater, config, installer, workflows) | - | - | OPEN: the audit agent stopped early (API rate limit) before reporting |
+
