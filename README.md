@@ -8,17 +8,17 @@ Formerly **AutoDJ**. Renamed to zAutoDJ in v0.4.0.
 
 ## Bridge status
 
-`main` is green — all validation gates pass (pytest 964 passed / 1 skipped / 3 subtests passed, ruff clean, mypy clean, compileall clean). All 289 pull requests merged. No open PRs. No unresolved Critical/High findings.
+`main` is green — all validation gates pass (pytest 965 passed / 1 skipped / 3 subtests passed, ruff clean, mypy clean, compileall clean). All 293 pull requests merged. No open PRs. No unresolved Critical/High findings.
 
 | Verification | Result | Evidence |
 |--------------|--------|----------|
 | Build (`compileall`) | PASS | `python -m compileall -q autodj tests tools` → exit 0 |
-| Tests (`pytest`) | PASS | 964 passed, 1 skipped, 3 subtests passed |
+| Tests (`pytest`) | PASS | 965 passed, 1 skipped, 3 subtests passed |
 | Lint (`ruff check`) | PASS | All checks passed |
 | Format (`ruff format --check`) | PASS | 183 files already formatted |
 | Type checking (`mypy`) | PASS | No issues found in 68 source files |
 | Secrets scan | Clean | `git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' \| grep -v '\.env.example$'` → empty |
-| Pull requests | All merged | 289 PRs; latest #289 docs-sync zAutoDJ v0.4.0; no open/draft PRs |
+| Pull requests | All merged | 293 PRs; latest #293 fix(player): TTS IPC duck/restore; no open/draft PRs |
 | Branch | `main` | Up to date with `origin/main`, working tree clean |
 
 > On this Windows host the default pytest temp directory is access-denied. Always pass `--basetemp` to a writable directory (e.g. `C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest`).
@@ -263,7 +263,7 @@ Full CI: `.github/workflows/ci.yml`, `.github/workflows/tests.yml`, `.github/wor
 | Ruff format | PASS | `ruff format --check autodj tests tools` → 183 files already formatted |
 | Type checking | PASS | `mypy autodj` → Success: no issues found in 68 source files |
 | ShellCheck | NOT RUN | `shellcheck` not installed on this Windows host |
-| Pytest (unit/func/integration) | PASS | 964 passed, 1 skipped, 3 subtests passed |
+| Pytest (unit/func/integration) | PASS | 965 passed, 1 skipped, 3 subtests passed |
 | Missing dependency tests | PASS | Covered by build-env check pattern; all import tests pass |
 | Security audit | PASS | Bandit 0 findings; no committed secrets; all commits GPG-signed |
 | Docker build | NOT APPLICABLE | No Dockerfile-based release; Windows PyInstaller + NSIS |
@@ -328,4 +328,4 @@ Rules: never force-push, bypass branch protection, self-approve, or merge with p
 
 ---
 
-*zAutoDJ v0.4.0 — https://github.com/cvsz/autodj*
+*zAutoDJ v0.4.0 — https://github.com/cvsz/autodj · PR #293 merged (fix TTS IPC duck/restore)*
