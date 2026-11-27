@@ -826,50 +826,77 @@ class UiaAdapter(ChatAdapter):
                     return True
         return False
 
-    def _send_bg(self, text) -> bool:
+    def _input_host(self, top: int) -> int | None:
+        """Native window that hosts the chat editor, as UIA reports it (None if unknown).
+
+        The editor is a DOM element without its own HWND; its nearest ancestor with a
+        handle is the browser window that must receive the posted messages (on the live
+        PC ``Internet Explorer_Server``).  Only a descendant of *top* is accepted.
+        """
+        el = getattr(self._input, "element_info", None)
+        for _ in range(40):
+            if el is None:
+                return None
+            h = getattr(el, "handle", None)
+            if h:
+                try:
+                    import ctypes
+
+                    if ctypes.windll.user32.IsChild(top, int(h)):  # type: ignore[attr-defined]
+                        return int(h)
+                except (AttributeError, OSError):
+                    return None
+                return None
+            el = getattr(el, "parent", None)
+        return None
+
+    def _send_bg(self, text, attempt: int = 1) -> bool:
+        """Post *text* (+ Enter) to the room editor without taking the focus.
+
+        "True" means some strategy queued its messages, not that the room got the line
+        (``WM_SETTEXT`` reports success for any window), so ``auto`` mode verifies and
+        tries again.  Each attempt starts with a different strategy: attempt 2 used to
+        repeat the exact strategy that had just failed.
+        """
         from .. import winmsg
 
         top = int(self.win.handle)
         winmsg.show_noactivate(top)
 
-        # Try multiple strategies in order of reliability for Chromium-based web editors
         # _ensure_controls() guarantees self._input is not None here
         if self._input is None:  # explicit check: asserts are stripped under python -O
             raise RuntimeError("_ensure_controls must be called before _send_bg")
         r = self._input.rectangle()
         pt = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
+        target = self._input_host(top)
 
-        # Strategy 1: WM_SETTEXT (most reliable for Chromium contenteditable)
-        # This sets the entire text at once via SendMessage
-        try:
-            if winmsg.post_text_rich(top, pt, text, enter=True, click=True):
-                log.debug("sent via WM_SETTEXT (rich)")
-                return True
-        except (OSError, RuntimeError) as e:
-            log.debug("WM_SETTEXT failed: %s", e)
+        def rich() -> bool:  # WM_SETTEXT: the whole text at once
+            return winmsg.post_text_rich(top, pt, text, enter=True, click=True, target=target)
 
-        # Strategy 2: UIA ValuePattern SetValue
-        try:
+        def set_value() -> bool:  # UIA ValuePattern, then a posted Enter
             if self._input is None:
                 raise RuntimeError("chat input control is not available")
             vp = self._input.iface_value
-            if self._input.iface.CurrentIsEnabled and not vp.CurrentIsReadOnly:
-                vp.SetValue(text)
-                # Send Enter via posted message
-                if winmsg.post_text(top, pt, "", enter=True, click=False):
-                    log.debug("sent via UIA SetValue + Enter")
+            if not self._input.iface.CurrentIsEnabled or vp.CurrentIsReadOnly:
+                return False
+            vp.SetValue(text)
+            return winmsg.post_text(top, pt, "", enter=True, click=False, target=target)
+
+        def chars() -> bool:  # posted WM_CHAR per UTF-16 unit
+            return winmsg.post_text(top, pt, text, enter=True, click=True, target=target)
+
+        # WM_CHAR first: verified live 2026-11-27 on Camfrog's MSHTML editor
+        # (Internet Explorer_Server): posted characters land in the box, WM_SETTEXT
+        # returns TRUE and changes nothing, and the editor has no UIA ValuePattern.
+        strategies = [("WM_CHAR", chars), ("WM_SETTEXT", rich), ("UIA SetValue", set_value)]
+        start = (max(attempt, 1) - 1) % len(strategies)
+        for name, fn in strategies[start:] + strategies[:start]:
+            try:
+                if fn():
+                    log.debug("sent via %s to hwnd %s (attempt %d)", name, target, attempt)
                     return True
-        except (OSError, RuntimeError, AttributeError) as e:
-            log.debug("UIA SetValue failed: %s", e)
-
-        # Strategy 3: Posted WM_CHAR with IME composition (fallback)
-        try:
-            if winmsg.post_text(top, pt, text, enter=True, click=True):
-                log.debug("sent via posted WM_CHAR")
-                return True
-        except (OSError, RuntimeError) as e:
-            log.debug("posted WM_CHAR failed: %s", e)
-
+            except Exception as e:  # noqa: BLE001 - pywinauto's NoPatternInterfaceError etc.
+                log.debug("%s failed: %s: %s", name, type(e).__name__, e)
         return False
 
     def _send_fg(self, text):
@@ -1115,7 +1142,7 @@ class UiaAdapter(ChatAdapter):
     def _bg_one_attempt(self, text, before, mode, attempt: int) -> bool:
         """One background send attempt (+ verify when auto). Returns True when done."""
         try:
-            ok = self._send_bg(text)
+            ok = self._send_bg(text, attempt)
         except (OSError, RuntimeError) as e:
             log.warning("background send attempt %d failed: %s", attempt, e)
             return False

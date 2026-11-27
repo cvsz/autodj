@@ -1,3 +1,8 @@
+## 0.3.21 — 2026-11-27
+
+- **Background sends reach the chat editor** - live 2026-11-27 12:56-13:16 every background send was "not confirmed" and, with the operator using the PC, the foreground fallback could not type either, so announcements were dropped. Under the message box Camfrog nests `#32770 > AtlAxWinLic140 > Shell Embedding > Shell DocObject View > Internet Explorer_Server`, all the same size; `winmsg.pick_child` kept the first (the dialog), where `WM_SETTEXT` returns TRUE without effect. Now the editor's host window comes from UIA (nearest ancestor with a handle, must be a child of the room window); `pick_child` breaks ties toward the deepest window.
+- **Strategy order** - verified live on the MSHTML editor: posted `WM_CHAR` lands in the box, `WM_SETTEXT` does nothing, there is no UIA ValuePattern. `WM_CHAR` is tried first and each retry starts with a different strategy (attempt 2 used to repeat the one that had just failed). A strategy raising any error (pywinauto's `NoPatternInterfaceError` is not an `OSError`) no longer aborts the send.
+
 ## 0.3.20 — 2026-11-27
 
 - **Room tab re-selected automatically** - live 2026-11-27 12:50: the room window was switched to the room list tab; nothing was read (room chat, private messages: the IM tab stayed empty) and nothing posted until a person clicked the room tab at 12:56. The tab is a native button (class `CButtonTS`) named like the room; after 45 s hidden, with no keyboard/mouse input for 30 s, the adapter posts `BM_CLICK` to it (no focus change; verified live), at most once per 45 s.

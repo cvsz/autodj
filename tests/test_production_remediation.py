@@ -917,7 +917,7 @@ def test_send_auto_mode_verifies_before_confirming(monkeypatch):
         def _appeared(self, text, before):
             return appeared["result"]
 
-        def _send_bg(self, text):
+        def _send_bg(self, text, attempt=1):
             bg_calls.append(text)
             return True
 

@@ -2,6 +2,10 @@
 
 Music bot for a Camfrog room: YouTube + local mp3/mp4 autoplay, `!commands`, now/next announcements, talk to room. Bot replies and GUI in English or Thai.
 
+## What's new in 0.3.21
+
+- The bot's messages reach the room again while someone is using the PC: background sends were typed into the wrong window and silently lost.
+
 ## What's new in 0.3.20
 
 - When Camfrog is switched to the room list, the bot selects the room tab again by itself (after 45 s, only while nobody uses the PC), so room chat and private messages keep coming in.

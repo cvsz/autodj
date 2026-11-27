@@ -328,3 +328,12 @@ Not verified here: live IM from a second Camfrog user (needs another account), r
 | Tab control | UIA dump: `Button name='ZeaZDev' class='CButtonTS'`; BM_CLICK posted to its handle switched the window back (`ZeaZDev: ห้องสนทนา`) without a focus change; log 12:56:24 `room chat is shown again`, 12:56:42 six private messages detected | VERIFIED (live) |
 | Fix | auto re-select after 45 s hidden + 30 s idle; old room-pane IMs ignored; `tests/test_room_tab_and_old_im.py` | VERIFIED (tests) |
 
+## 19. Bot messages dropped while the PC is in use (0.3.21)
+
+| Step | Evidence | State |
+|---|---|---|
+| Symptom | log 12:56-13:16: `background send not confirmed` x2 per line, then `someone is using the keyboard/mouse ... nothing typed`, `send retry failed too, dropped` | VERIFIED (log) |
+| Root cause | `logs/bg_target_probe.py`: 8 windows contain the input point; `pick_child` -> 66910 `#32770`, UIA host and WindowFromPoint -> 66946 `Internet Explorer_Server` (same area) | VERIFIED (live) |
+| Strategy | WM_SETTEXT to 66946: box stays empty; posted WM_CHAR 'zz' (no Enter): visible in the box, removed with posted Backspace | VERIFIED (live, screenshot) |
+| Fix | UIA host target, tie-break, WM_CHAR first, per-attempt rotation; `tests/test_bg_send_target.py` | VERIFIED (tests) |
+
