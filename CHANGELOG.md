@@ -1,3 +1,8 @@
+## 0.3.20 — 2026-11-27
+
+- **Room tab re-selected automatically** - live 2026-11-27 12:50: the room window was switched to the room list tab; nothing was read (room chat, private messages: the IM tab stayed empty) and nothing posted until a person clicked the room tab at 12:56. The tab is a native button (class `CButtonTS`) named like the room; after 45 s hidden, with no keyboard/mouse input for 30 s, the adapter posts `BM_CLICK` to it (no focus change; verified live), at most once per 45 s.
+- **Old private messages not replayed** - when the room tab came back Camfrog re-rendered the 12:19 private messages at the end of the history and they were taken as new. A private message read from the room pane must carry a stamp within 5 min (`IM_MAX_AGE_S`); older ones are logged and ignored (room lines are not age-filtered).
+
 ## 0.3.19 — 2026-11-27
 
 - **Private messages never reached the bot or the IM tab** - live 2026-11-27 11:03: this Camfrog web room shows private messages inside the room history as a group `[avatar] "ข้อความส่วนตัวจาก" <Hyperlink nick> <time> <body...>`; there is no separate IM window for the IM reader to find. The room parser expected the nick as plain text and dropped every such group. `webchat._private_line` turns them into `time IM nick: text` (all body lines kept), which `parse_line` delivers as `is_im=True`; our own outgoing private messages ("ข้อความส่วนตัวถึง" / "Private message to") are skipped. Verified on the live room pane: all six private messages read.

@@ -295,6 +295,13 @@ class UiaAdapter(ChatAdapter):
     # Background sends paused after 2 unconfirmed ones are tried again after this.
     BG_RETRY_S = 1800.0
     _bg_retry_at: float = 0.0
+    # A private message in the room pane older than this (by its stamp) is history.
+    IM_MAX_AGE_S = 300.0
+    # Room page hidden this long (and the PC idle) -> select the room tab again.
+    ROOM_TAB_RESELECT_S = 45.0
+    ROOM_TAB_IDLE_S = 30.0
+    _hidden_since: float = 0.0
+    _tab_tried_at: float = float("-inf")
     # Seconds before a Camfrog window without an IM pane is looked at again.
     IM_PANE_RECHECK_S = 10.0
 
@@ -483,7 +490,62 @@ class UiaAdapter(ChatAdapter):
                 title,
             )
             self._room_hidden = True
+            self._hidden_since = now
+        self._maybe_reselect_room_tab(now)
         raise RoomHiddenError(f"Camfrog shows {title!r}, not the room chat")
+
+    def _room_tab_name(self) -> str:
+        """The room's tab label: ``room`` from config, else the attached title's prefix."""
+        room = (getattr(self.cfg, "room", "") or "").strip()
+        if room:
+            return room
+        return re.split(r"[,:]", self._room_title or "", maxsplit=1)[0].strip()
+
+    def _maybe_reselect_room_tab(self, now: float) -> None:
+        """Switch Camfrog back to the room tab when nobody is using the PC.
+
+        Live 2026-11-27 12:50: the window was switched to the room list tab and the
+        bot read nothing (room chat, private messages) and posted nothing until a
+        person clicked the room tab again. The tab is a native button (class
+        CButtonTS) named like the room: BM_CLICK selects it without moving the
+        focus (verified live). Only after ROOM_TAB_RESELECT_S hidden, with no
+        keyboard/mouse input for ROOM_TAB_IDLE_S (never fight someone browsing the
+        room list), at most once per ROOM_TAB_RESELECT_S.
+        """
+        if now - self._hidden_since < self.ROOM_TAB_RESELECT_S:
+            return
+        if now - self._tab_tried_at < self.ROOM_TAB_RESELECT_S:
+            return
+        if _idle_seconds() < self.ROOM_TAB_IDLE_S:
+            return
+        self._tab_tried_at = now
+        name = self._room_tab_name()
+        if not name or self.win is None:
+            return
+        try:
+            buttons = self.win.descendants(control_type="Button")
+            tab = next(
+                (
+                    b
+                    for b in buttons
+                    if b.element_info.name == name and b.element_info.class_name == "CButtonTS"
+                ),
+                None,
+            )
+            handle = int(tab.element_info.handle or 0) if tab is not None else 0
+        except Exception as ex:  # noqa: BLE001 - COM can fail on a changing page
+            log.debug("room tab lookup failed: %s", ex)
+            return
+        if not handle:
+            log.info("room tab %r not found in the Camfrog window; select it by hand", name)
+            return
+        import ctypes
+
+        windll = getattr(ctypes, "windll", None)
+        if windll is None:  # not Windows
+            return
+        windll.user32.PostMessageW(handle, 0x00F5, 0, 0)  # BM_CLICK
+        log.info("selected the room tab %r again (nobody was using the PC)", name)
 
     def _lines(self) -> list[str]:
         with self.com_lock:
@@ -646,8 +708,27 @@ class UiaAdapter(ChatAdapter):
             new = diff_lines(prev, lines)
         for line in new:
             m = self._room_line_message(line)
+            if m and m.is_im and not self._im_line_is_recent(line):
+                # Live 2026-11-27 12:56: when the room tab was selected again Camfrog
+                # re-rendered private messages from 12:19 at the end of the history;
+                # they looked new. An old private command must never run again.
+                log.info("old private message ignored (history re-render): %r", line[:120])
+                continue
             if m:
                 yield m
+
+    def _im_line_is_recent(self, line: str) -> bool:
+        """True when a room-pane IM line's ``H:MM`` stamp is within IM_MAX_AGE_S."""
+        stamp = re.match(r"^\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*([AaPp][Mm])?\b", line)
+        if not stamp:
+            return True  # no stamp: nothing to judge by
+        hhmm = stamp.group(1)
+        ampm = (stamp.group(2) or "").lower()
+        if ampm:
+            parts = hhmm.split(":")
+            hour = int(parts[0]) % 12 + (12 if ampm == "pm" else 0)
+            hhmm = ":".join([str(hour), *parts[1:]])
+        return self._is_recent(hhmm, window_s=self.IM_MAX_AGE_S)
 
     def _seen_events(self, lines: list[str]):
         for nick in self._recent_nicks(lines):

@@ -320,3 +320,11 @@ Not verified here: live IM from a second Camfrog user (needs another account), r
 | Fix | `webchat._private_line` → `time IM nick: text`; room-bot IMs shown only; `tests/test_room_private_messages.py` (real items) | VERIFIED (tests + live pane read: 6/6 private messages parsed) |
 | Replying privately | `send_im` types into a separate IM window, which this Camfrog does not open; a private reply from the room pane is not implemented | OPEN |
 
+## 18. Room list tab / IM tab empty again (0.3.20)
+
+| Step | Evidence | State |
+|---|---|---|
+| Symptom | operator 12:55: IM tab shows nothing; log 12:50:41 `Camfrog shows 'รายชื่อห้องสนทนา' instead of the room chat` | VERIFIED (log) |
+| Tab control | UIA dump: `Button name='ZeaZDev' class='CButtonTS'`; BM_CLICK posted to its handle switched the window back (`ZeaZDev: ห้องสนทนา`) without a focus change; log 12:56:24 `room chat is shown again`, 12:56:42 six private messages detected | VERIFIED (live) |
+| Fix | auto re-select after 45 s hidden + 30 s idle; old room-pane IMs ignored; `tests/test_room_tab_and_old_im.py` | VERIFIED (tests) |
+
