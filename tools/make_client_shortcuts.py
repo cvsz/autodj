@@ -10,12 +10,12 @@ from pathlib import Path
 
 
 def make_batch(dist: Path, name: str, args: str) -> None:
-    """Write a batch file that launches AutoDJ.exe with relative paths."""
+    """Write a batch file that launches zAutoDJ.exe with relative paths."""
     content = f"""@echo off
 rem AutoDJ - {args.strip() or "gui"}
 rem Double-click to run. Works from any location.
 cd /d "%~dp0"
-start "" "AutoDJ.exe" {args}
+start "" "zAutoDJ.exe" {args}
 """
     (dist / name).write_text(content, encoding="utf-8")
 
@@ -26,8 +26,8 @@ def main(argv: list[str] | None = None) -> None:
     if not dist.is_dir():
         print(f"ERROR: {dist}/ not found. Run 'make portable' or 'portable.bat' first.")
         raise SystemExit(1)
-    if not (dist / "AutoDJ.exe").is_file():
-        print(f"ERROR: {dist}/AutoDJ.exe not found.")
+    if not (dist / "zAutoDJ.exe").is_file():
+        print(f"ERROR: {dist}/zAutoDJ.exe not found.")
         raise SystemExit(1)
 
     make_batch(dist, "start.bat", "--gui")

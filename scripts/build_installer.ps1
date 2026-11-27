@@ -75,7 +75,7 @@ Write-Host "Found NSIS: $makensis"
 
 # Stage the shipped config template and docs from the repo on every build, so the
 # installer always carries the current config.example.toml (installer.nsi packages
-# dist\config.toml) even when AutoDJ.exe was built earlier.  Never a developer's
+# dist\config.toml) even when zAutoDJ.exe was built earlier.  Never a developer's
 # local config.toml: it may hold an API key and site-specific admins.
 New-Item -ItemType Directory -Force -Path $SrcDir | Out-Null
 $staged = @{
@@ -97,7 +97,7 @@ foreach ($src in $staged.Keys) {
 # installer.nsi packages dist\start.bat and dist\check.bat.  Only `make portable`
 # created them, so a CI / release build (build.ps1 + this script) aborted with
 # 'File: "dist\start.bat" -> no files found'.  Generate them here, from the same tool.
-if (Test-Path (Join-Path $SrcDir "AutoDJ.exe") -PathType Leaf) {
+if (Test-Path (Join-Path $SrcDir "zAutoDJ.exe") -PathType Leaf) {
     & python tools\make_client_shortcuts.py $SrcDir
     if ($LASTEXITCODE -ne 0) {
         throw "tools\make_client_shortcuts.py failed (exit $LASTEXITCODE)"
@@ -149,7 +149,7 @@ Write-Host ("Installer type: {0}" -f $(if ($bundleMpv) { "full (mpv bundle insta
 
 # Verify source files exist
 $requiredFiles = @(
-    "AutoDJ.exe",
+    "zAutoDJ.exe",
     "app.ico",
     "config.toml",
     "README.md",
@@ -190,7 +190,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Generated installer.nsi with version $Version"
 
 # Build installer
-$installerName = "Camfrog-AutoDJ-Setup-$Version.exe"
+$installerName = "zAutoDJ-Setup-$Version.exe"
 
 Write-Host "Building installer: $installerName"
 # Run makensis from repo root so installer.nsi paths work correctly.

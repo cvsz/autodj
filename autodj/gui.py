@@ -645,7 +645,7 @@ class App(tk.Tk):
         self.k = max(
             1.0, self.winfo_fpixels("1i") / 96.0
         )  # display scaling: sizes below are for 96 dpi
-        self.title("AutoDJ")
+        self.title("zAutoDJ")
         self._set_icon()
         self.geometry(f"{self.px(1200)}x{self.px(780)}")
         self.minsize(self.px(1020), self.px(700))
@@ -3630,8 +3630,8 @@ class App(tk.Tk):
     def do_discover(self):
         """Run auto-discovery (saves the room window/controls to config.toml).
 
-        In the shipped PyInstaller exe ``sys.executable`` *is* AutoDJ.exe, so
-        the old ``AutoDJ.exe -m autodj --discover`` was rejected by
+        In the shipped PyInstaller exe ``sys.executable`` *is* zAutoDJ.exe, so
+        the old ``zAutoDJ.exe -m autodj --discover`` was rejected by
         argparse and the button silently did nothing.  It also ran on the Tk
         main thread, freezing the window for the whole scan.
         """
@@ -3667,7 +3667,7 @@ class App(tk.Tk):
             except (OSError, subprocess.TimeoutExpired) as ex:
                 log.exception("discover failed")
                 report = f"Discovery failed: {ex}"
-            self._ui(lambda: messagebox.showinfo("AutoDJ — Discover", report))
+            self._ui(lambda: messagebox.showinfo("zAutoDJ — Discover", report))
 
         threading.Thread(target=work, daemon=True, name="autodj-discover").start()
 
@@ -3688,7 +3688,7 @@ class App(tk.Tk):
             except Exception as ex:  # diagnostics must never break the GUI
                 log.exception("check failed")
                 report = f"Check failed: {ex}"
-            self._ui(lambda: messagebox.showinfo("AutoDJ — Setup check", report))
+            self._ui(lambda: messagebox.showinfo("zAutoDJ — Setup check", report))
 
         threading.Thread(target=work, daemon=True, name="autodj-check").start()
 
@@ -4141,8 +4141,9 @@ class App(tk.Tk):
                     os.chmod(tmp, 0o600)
                 os.replace(tmp, p)
             except (OSError, PermissionError):
-                app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
-                app_cfg_dir = Path(app_data) / "AutoDJ"
+                from .paths import user_app_dir
+
+                app_cfg_dir = user_app_dir()
                 app_cfg_dir.mkdir(parents=True, exist_ok=True)
                 app_cfg_path = app_cfg_dir / "config.toml"
                 if app_cfg_path.exists():
@@ -4214,7 +4215,7 @@ class App(tk.Tk):
                 f"no keyboard/mouse input for {idle:.0f} s: another program "
                 "(WM_CLOSE, taskkill without /f) or the end of the Windows session"
             )
-        log.warning("AutoDJ window closed: %s; stopping the bot", why)
+        log.warning("zAutoDJ window closed: %s; stopping the bot", why)
         self.close()
 
     def close(self):

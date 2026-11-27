@@ -16,7 +16,7 @@ def _cfg(**kw):
     base = {
         "auto_update_enabled": True,
         "auto_update_repo": "cvsz/autodj",
-        "auto_update_asset": "AutoDJ.exe",
+        "auto_update_asset": "zAutoDJ.exe",
     }
     base.update(kw)
     return SimpleNamespace(**base)
@@ -35,7 +35,7 @@ class _Resp(io.BytesIO):
 def test_startup_apply_setting_and_missing_script(tmp_path):
     assert Config().auto_update_apply_on_start is True
     updater = Updater(_cfg())
-    assert updater.launch_update_script(tmp_path / "AutoDJ.exe") is False
+    assert updater.launch_update_script(tmp_path / "zAutoDJ.exe") is False
 
 
 def test_version_compare_only_strictly_newer():
@@ -58,14 +58,14 @@ def test_repo_setting_cannot_inject_path():
 
 def test_find_asset_prefers_exact_name():
     up = Updater(_cfg())
-    up._latest = {"assets": [{"name": "AutoDJ.exe.sha256"}, {"name": "AutoDJ.exe"}]}
-    assert up.find_asset()["name"] == "AutoDJ.exe"
+    up._latest = {"assets": [{"name": "zAutoDJ.exe.sha256"}, {"name": "zAutoDJ.exe"}]}
+    assert up.find_asset()["name"] == "zAutoDJ.exe"
 
 
 def test_download_refused_without_digest(tmp_path):
     up = Updater(_cfg())
     up._latest = {"assets": []}
-    asset = {"name": "AutoDJ.exe", "browser_download_url": "https://github.com/cvsz/autodj/x"}
+    asset = {"name": "zAutoDJ.exe", "browser_download_url": "https://github.com/cvsz/autodj/x"}
     with patch("autodj.updater.urlopen") as uo:
         assert up.download_asset(asset, tmp_path / "AutoDJ.next.exe") is False
         uo.assert_not_called()
@@ -75,7 +75,7 @@ def test_download_rejects_digest_mismatch(tmp_path):
     up = Updater(_cfg())
     up._latest = {"assets": []}
     asset = {
-        "name": "AutoDJ.exe",
+        "name": "zAutoDJ.exe",
         "browser_download_url": "https://github.com/cvsz/autodj/x",
         "digest": "sha256:" + "0" * 64,
     }
@@ -91,7 +91,7 @@ def test_download_accepts_matching_digest(tmp_path):
     up = Updater(_cfg())
     up._latest = {"assets": []}
     asset = {
-        "name": "AutoDJ.exe",
+        "name": "zAutoDJ.exe",
         "browser_download_url": "https://github.com/cvsz/autodj/x",
         "digest": "sha256:" + hashlib.sha256(data).hexdigest(),
     }

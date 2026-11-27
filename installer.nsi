@@ -1,10 +1,10 @@
-; AutoDJ - NSIS Installer Script
+; zAutoDJ - NSIS Installer Script
 ; Builds a professional Windows installer (.exe) for distribution
 ;
 ; Usage: makensis installer.nsi
 ; Requires: NSIS 3.08+ (makensis)
 ;
-; This installer packages the built AutoDJ.exe + config + assets
+; This installer packages the built zAutoDJ.exe + config + assets
 ; and creates a proper Windows installer with:
 ; - License page
 ; - Component selection
@@ -25,14 +25,14 @@
 ; -----------------------------------------------------------------------------
 ; Metadata (overridable from command line)
 ; -----------------------------------------------------------------------------
-!define /IfNDef APP_NAME "Camfrog AutoDJ"
-!define /IfNDef APP_VERSION "0.3.21"
+!define /IfNDef APP_NAME "zAutoDJ"
+!define /IfNDef APP_VERSION "0.4.0"
 !define /IfNDef APP_PUBLISHER "ZEAZDEV COMPANY LIMITED"
 !define /IfNDef APP_WEBSITE "https://github.com/cvsz/autodj"
-!define /IfNDef APP_EXE "AutoDJ.exe"
+!define /IfNDef APP_EXE "zAutoDJ.exe"
 ; Keep in step with scripts/build_installer.ps1, windows-build.yml and release.yml,
-; which all look for Camfrog-AutoDJ-Setup-<version>.exe (tests/test_im_detect_discover.py).
-!define /IfNDef INSTALLER_NAME "Camfrog-AutoDJ-Setup-${APP_VERSION}.exe"
+; which all look for zAutoDJ-Setup-<version>.exe (tests/test_im_detect_discover.py).
+!define /IfNDef INSTALLER_NAME "zAutoDJ-Setup-${APP_VERSION}.exe"
 ; Directory the finished installer is written to (build scripts pass /DOUTDIR=...).
 ; Relative paths resolve against the makensis working directory (repo root).
 !define /IfNDef OUTDIR "."
@@ -50,8 +50,8 @@
 ; -----------------------------------------------------------------------------
 Name "${APP_NAME} ${APP_VERSION}"
 OutFile "${OUTDIR}\${INSTALLER_NAME}"
-InstallDir "$APPDATA\AutoDJ"
-InstallDirRegKey HKCU "Software\AutoDJ" "InstallDir"
+InstallDir "$APPDATA\zAutoDJ"
+InstallDirRegKey HKCU "Software\zAutoDJ" "InstallDir"
 ShowInstDetails show
 ShowUninstDetails show
 RequestExecutionLevel user
@@ -67,13 +67,13 @@ CRCCheck on
 !include "FileFunc.nsh"
 !include "x64.nsh"
 
-; Close a running AutoDJ (and an mpv) started from THIS install folder before
-; files are replaced or removed: a running AutoDJ.exe is locked, so an upgrade
+; Close a running zAutoDJ / pre-0.4.0 AutoDJ (and an mpv) started from THIS install folder before
+; files are replaced or removed: a running zAutoDJ.exe is locked, so an upgrade
 ; stopped with "Error opening file for writing" and an uninstall left files
 ; behind.  Matched by path, so another copy or the user's own mpv is untouched.
 !macro STOP_RUNNING_AUTODJ
-    DetailPrint "Closing AutoDJ if it is running from $INSTDIR ..."
-    nsExec::ExecToLog `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Get-Process AutoDJ,mpv -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like '$INSTDIR\*' } | Stop-Process -Force -ErrorAction SilentlyContinue"`
+    DetailPrint "Closing zAutoDJ if it is running from $INSTDIR ..."
+    nsExec::ExecToLog `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Get-Process zAutoDJ,AutoDJ,mpv -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like '$INSTDIR\*' } | Stop-Process -Force -ErrorAction SilentlyContinue"`
     Pop $0
     Sleep 1000
 !macroend
@@ -103,7 +103,7 @@ CRCCheck on
 !define MUI_DIRECTORYPAGE_TEXT_TOP "Choose the installation folder for ${APP_NAME}."
 !define MUI_DIRECTORYPAGE_TEXT_DESTINATION "Destination Folder"
 
-!define MUI_STARTMENUPAGE_DEFAULTFOLDER "AutoDJ"
+!define MUI_STARTMENUPAGE_DEFAULTFOLDER "zAutoDJ"
 !define MUI_STARTMENUPAGE_NODISABLE
 
 !define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "Installation Complete"
@@ -122,10 +122,10 @@ Section "!MainProgram" SEC_MAIN
     SectionIn RO
     SetOutPath "$INSTDIR"
     !insertmacro STOP_RUNNING_AUTODJ
-    ; Log destination: AutoDJ writes autodj.log (and rotations) here so operators
+    ; Log destination: zAutoDJ writes autodj.log (and rotations) here so operators
     ; can read bot actions from the install folder. Keep logs on upgrades.
     CreateDirectory "$INSTDIR\logs"
-    File "dist\AutoDJ.exe"
+    File "dist\zAutoDJ.exe"
     File "dist\app.ico"
     File "dist\README.md"
     File "dist\CHANGELOG.md"
@@ -138,10 +138,17 @@ Section "!MainProgram" SEC_MAIN
     File "dist\config.toml"
 config_exists:
     ; Bake this installation's absolute media-tool paths into config.toml.
-    ; AutoDJ.exe handles this without starting the bot or the GUI.
-    ExecWait '"$INSTDIR\AutoDJ.exe" --write-install-paths -c "$INSTDIR\config.toml"'
+    ; zAutoDJ.exe handles this without starting the bot or the GUI.
+    ExecWait '"$INSTDIR\zAutoDJ.exe" --write-install-paths -c "$INSTDIR\config.toml"'
     ; config.toml can be customized by install.ps1 on first run (interactive prompts)
     File "dist\run_autodj.py"
+    ; Upgrade from a pre-0.4.0 "AutoDJ" install in this folder: re-point shortcuts to
+    ; zAutoDJ.exe, drop the old exe and its registry entries (tools/migrate_to_zautodj.ps1).
+    InitPluginsDir
+    File "/oname=$PLUGINSDIR\migrate_to_zautodj.ps1" "tools\migrate_to_zautodj.ps1"
+    nsExec::ExecToLog `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\migrate_to_zautodj.ps1" -InstallDir "$INSTDIR"`
+    Pop $0
+    DetailPrint "migrate_to_zautodj.ps1: exit code $0"
     ; Client-friendly launchers (relative paths - work from any install folder)
     File "dist\start.bat"
     File "dist\check.bat"
@@ -221,14 +228,24 @@ Function .onInit
         MessageBox MB_ICONSTOP "This installer requires a 64-bit version of Windows."
         Abort
     ${EndIf}
+    ; Upgrading a pre-0.4.0 install: keep its folder (it holds config.toml, logs, playlists).
+    ; Only when nothing chose a folder yet: /D=... and the zAutoDJ key both win.
+    ReadRegStr $0 HKCU "Software\zAutoDJ" "InstallDir"
+    ${If} $0 == ""
+    ${AndIf} $INSTDIR == "$APPDATA\zAutoDJ"
+        ReadRegStr $0 HKCU "Software\AutoDJ" "InstallDir"
+        ${If} $0 != ""
+            StrCpy $INSTDIR $0
+        ${EndIf}
+    ${EndIf}
 FunctionEnd
 
 Function .onInstSuccess
     HideWindow
 !ifdef BUNDLE_MPV
-    MessageBox MB_ICONINFORMATION|MB_OK "AutoDJ has been installed successfully.$\n$\nmpv, yt-dlp and the VB-CABLE setup files are in $INSTDIR\mpv.$\n$\nThe VB-CABLE driver is not installed automatically: run mpv\vbcable\VBCABLE_Setup_x64.exe as administrator, or install.ps1." /SD IDOK
+    MessageBox MB_ICONINFORMATION|MB_OK "zAutoDJ has been installed successfully.$\n$\nmpv, yt-dlp and the VB-CABLE setup files are in $INSTDIR\mpv.$\n$\nThe VB-CABLE driver is not installed automatically: run mpv\vbcable\VBCABLE_Setup_x64.exe as administrator, or install.ps1." /SD IDOK
 !else
-    MessageBox MB_ICONINFORMATION|MB_OK "AutoDJ has been installed successfully.$\n$\nmpv and yt-dlp are not bundled in this installer: run install.ps1, or set mpv_path in config.toml.$\n$\nRun install.ps1 to set up VB-CABLE." /SD IDOK
+    MessageBox MB_ICONINFORMATION|MB_OK "zAutoDJ has been installed successfully.$\n$\nmpv and yt-dlp are not bundled in this installer: run install.ps1, or set mpv_path in config.toml.$\n$\nRun install.ps1 to set up VB-CABLE." /SD IDOK
 !endif
 FunctionEnd
 
@@ -240,44 +257,52 @@ Section -Post
     WriteUninstaller "$INSTDIR\uninstall.exe"
 
     ; Start Menu shortcuts
-    CreateDirectory "$SMPROGRAMS\AutoDJ"
-    CreateShortcut "$SMPROGRAMS\AutoDJ\AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
-    CreateShortcut "$SMPROGRAMS\AutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Uninstall AutoDJ"
-    CreateShortcut "$SMPROGRAMS\AutoDJ\Edit Config.lnk" "notepad.exe" "$INSTDIR\config.toml" "" 0 SW_SHOWNORMAL "" "Edit configuration"
+    CreateDirectory "$SMPROGRAMS\zAutoDJ"
+    CreateShortcut "$SMPROGRAMS\zAutoDJ\zAutoDJ.lnk" "$INSTDIR\zAutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
+    CreateShortcut "$SMPROGRAMS\zAutoDJ\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Uninstall zAutoDJ"
+    CreateShortcut "$SMPROGRAMS\zAutoDJ\Edit Config.lnk" "notepad.exe" "$INSTDIR\config.toml" "" 0 SW_SHOWNORMAL "" "Edit configuration"
 
-    ; Desktop shortcut
-    CreateShortcut "$DESKTOP\AutoDJ.lnk" "$INSTDIR\AutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
+    ; Shortcuts made by the pre-0.4.0 installer (the migration re-pointed them; the
+    ; zAutoDJ ones above replace them)
+    Delete "$SMPROGRAMS\AutoDJ\zAutoDJ.lnk"
+    Delete "$SMPROGRAMS\AutoDJ\AutoDJ.lnk"
+    Delete "$SMPROGRAMS\AutoDJ\Uninstall.lnk"
+    Delete "$SMPROGRAMS\AutoDJ\Edit Config.lnk"
+    RMDir "$SMPROGRAMS\AutoDJ"
+
+    ; Desktop shortcut (the migration may already have renamed AutoDJ.lnk to zAutoDJ.lnk)
+    CreateShortcut "$DESKTOP\zAutoDJ.lnk" "$INSTDIR\zAutoDJ.exe" "--gui" "$INSTDIR\app.ico" 0 SW_SHOWNORMAL "" "Music bot for Camfrog rooms"
 
     ; Registry entries for Add/Remove Programs (per-user)
     ; Required values per NSIS Appendix D
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "DisplayName" "AutoDJ"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "DisplayVersion" "${APP_VERSION}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "Publisher" "${APP_PUBLISHER}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "URLInfoAbout" "${APP_WEBSITE}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "InstallLocation" "$INSTDIR"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "UninstallString" '"$INSTDIR\uninstall.exe"'
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "DisplayIcon" "$INSTDIR\app.ico"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "HelpLink" "${APP_WEBSITE}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "URLUpdateInfo" "${APP_WEBSITE}"
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "NoModify" 1
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ" "NoRepair" 1
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "DisplayName" "${APP_NAME}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "DisplayVersion" "${APP_VERSION}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "Publisher" "${APP_PUBLISHER}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "URLInfoAbout" "${APP_WEBSITE}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "InstallLocation" "$INSTDIR"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "UninstallString" '"$INSTDIR\uninstall.exe"'
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "DisplayIcon" "$INSTDIR\app.ico"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "HelpLink" "${APP_WEBSITE}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "URLUpdateInfo" "${APP_WEBSITE}"
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "NoModify" 1
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ" "NoRepair" 1
     ; Save install directory for uninstaller to read ($INSTDIR may differ in uninstaller context)
-    WriteRegStr HKCU "Software\AutoDJ" "InstallDir" "$INSTDIR"
+    WriteRegStr HKCU "Software\zAutoDJ" "InstallDir" "$INSTDIR"
 
     ; App Paths for CLI access (per-user)
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "" "$INSTDIR\AutoDJ.exe"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" "Path" "$INSTDIR"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\zAutoDJ.exe" "" "$INSTDIR\zAutoDJ.exe"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\zAutoDJ.exe" "Path" "$INSTDIR"
 
     ; Register bundled media tools only when the optional component is present.
     IfFileExists "$INSTDIR\mpv\mpv.exe" media_tools_present media_tools_absent
 media_tools_present:
-    WriteRegStr HKCU "Software\AutoDJ" "mpv_path" "$INSTDIR\mpv\mpv.exe"
-    WriteRegStr HKCU "Software\AutoDJ" "ytdlp_path" "$INSTDIR\mpv\yt-dlp.exe"
+    WriteRegStr HKCU "Software\zAutoDJ" "mpv_path" "$INSTDIR\mpv\mpv.exe"
+    WriteRegStr HKCU "Software\zAutoDJ" "ytdlp_path" "$INSTDIR\mpv\yt-dlp.exe"
     Goto media_tools_registry_done
 media_tools_absent:
-    DeleteRegValue HKCU "Software\AutoDJ" "mpv_path"
-    DeleteRegValue HKCU "Software\AutoDJ" "ytdlp_path"
+    DeleteRegValue HKCU "Software\zAutoDJ" "mpv_path"
+    DeleteRegValue HKCU "Software\zAutoDJ" "ytdlp_path"
 media_tools_registry_done:
 SectionEnd
 
@@ -285,48 +310,48 @@ SectionEnd
 ; Uninstaller
 ; -----------------------------------------------------------------------------
 Function un.onInit
-    ReadRegStr $INSTDIR HKCU "Software\AutoDJ" "InstallDir"
+    ReadRegStr $INSTDIR HKCU "Software\zAutoDJ" "InstallDir"
     ${If} $INSTDIR == ""
-        StrCpy $INSTDIR "$APPDATA\AutoDJ"
+        StrCpy $INSTDIR "$APPDATA\zAutoDJ"
     ${EndIf}
 FunctionEnd
 
 Section Uninstall
     !insertmacro STOP_RUNNING_AUTODJ
     ; Remove shortcuts
-    Delete "$SMPROGRAMS\AutoDJ\AutoDJ.lnk"
-    Delete "$SMPROGRAMS\AutoDJ\Edit Config.lnk"
-    Delete "$SMPROGRAMS\AutoDJ\Uninstall.lnk"
-    RMDir /r "$SMPROGRAMS\AutoDJ"
-    Delete "$DESKTOP\AutoDJ.lnk"
-    Delete "$SMPROGRAMS\AutoDJ\Uninstall.lnk"
+    Delete "$SMPROGRAMS\zAutoDJ\zAutoDJ.lnk"
+    Delete "$SMPROGRAMS\zAutoDJ\Edit Config.lnk"
+    Delete "$SMPROGRAMS\zAutoDJ\Uninstall.lnk"
+    RMDir /r "$SMPROGRAMS\zAutoDJ"
+    Delete "$DESKTOP\zAutoDJ.lnk"
 
     ; Remove Startup shortcut if exists
+    Delete "$APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\zAutoDJ.lnk"
     Delete "$APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\AutoDJ.lnk"
 
     ; Remove application registration without deleting unrelated app settings.
-    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AutoDJ"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\zAutoDJ"
     ; App Paths entries belong to whichever copy registered last: remove them (and the
     ; mpv media-player registration made by SEC_MPV) only when they point into THIS
-    ; install folder, so another AutoDJ or mpv on the PC keeps working.
-    ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe" ""
-    StrCmp $0 "$INSTDIR\AutoDJ.exe" 0 +2
-    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\AutoDJ.exe"
+    ; install folder, so another zAutoDJ or mpv on the PC keeps working.
+    ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\zAutoDJ.exe" ""
+    StrCmp $0 "$INSTDIR\zAutoDJ.exe" 0 +2
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\zAutoDJ.exe"
     ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\mpv.exe" ""
     StrCmp $0 "$INSTDIR\mpv\mpv.exe" 0 mpv_unregister_done
     IfFileExists "$INSTDIR\mpv\mpv.exe" 0 mpv_unregister_done
     nsExec::ExecToLog '"$INSTDIR\mpv\mpv.exe" --unregister'
     Pop $0
 mpv_unregister_done:
-    DeleteRegValue HKCU "Software\AutoDJ" "InstallDir"
-    DeleteRegValue HKCU "Software\AutoDJ" "mpv_path"
-    DeleteRegValue HKCU "Software\AutoDJ" "ytdlp_path"
-    DeleteRegKey /ifempty HKCU "Software\AutoDJ"
+    DeleteRegValue HKCU "Software\zAutoDJ" "InstallDir"
+    DeleteRegValue HKCU "Software\zAutoDJ" "mpv_path"
+    DeleteRegValue HKCU "Software\zAutoDJ" "ytdlp_path"
+    DeleteRegKey /ifempty HKCU "Software\zAutoDJ"
 
     ; Remove application-owned files and directories only.
     ; Keep config.toml, playlist.json, logs, playlists, and other user-created data.
     ; Do NOT remove $INSTDIR itself: user data may still reside here.
-    Delete "$INSTDIR\AutoDJ.exe"
+    Delete "$INSTDIR\zAutoDJ.exe"
     Delete "$INSTDIR\app.ico"
     Delete "$INSTDIR\README.md"
     Delete "$INSTDIR\CHANGELOG.md"

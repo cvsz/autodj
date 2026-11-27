@@ -1,11 +1,11 @@
 """Auto-update client for AutoDJ.
 
-Checks GitHub releases for a newer AutoDJ.exe and downloads it from
+Checks GitHub releases for a newer zAutoDJ.exe and downloads it from
 ``https://github.com/cvsz/autodj/releases/latest`` only (fail-closed:
 never downloads from any host other than github.com).
 
 On Windows, ``apply_update()`` stages the new executable as
-``AutoDJ.exe.next`` in the same directory as the running exe and writes
+``zAutoDJ.exe.next`` in the same directory as the running exe and writes
 ``autodj_update.bat`` which, when run, replaces the running exe with the
 new one and relaunches AutoDJ.  This avoids file-lock issues with the
 running PyInstaller exe.
@@ -15,7 +15,7 @@ Config keys (``config.toml``):
     auto_update_enabled = true          # enable background checks
     auto_update_repo = "cvsz/autodj"    # GitHub repo (owner/name)
     auto_update_check_interval = 21600.0 # seconds between checks (default 6h)
-    auto_update_asset = "AutoDJ.exe"    # release asset filename to download
+    auto_update_asset = "zAutoDJ.exe"    # release asset filename to download
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ log = logging.getLogger("autodj")
 GITHUB_API = "https://api.github.com"
 DEFAULT_REPO = "cvsz/autodj"
 DEFAULT_CHECK_INTERVAL = 6 * 60 * 60  # 6 hours
-UA = f"AutoDJ/{__version__} (+https://github.com/cvsz/autodj)"
+UA = f"zAutoDJ/{__version__} (+https://github.com/cvsz/autodj)"
 
 
 class UpdateError(AutoDJError):
@@ -147,15 +147,15 @@ def default_exe_path() -> Path:
     """
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve()
-    return Path(__file__).resolve().parent.parent / "AutoDJ.exe"
+    return Path(__file__).resolve().parent.parent / "zAutoDJ.exe"
 
 
 class Updater:
-    """Background + on-demand update checker/downloader for AutoDJ.exe.
+    """Background + on-demand update checker/downloader for zAutoDJ.exe.
 
     Only GitHub releases are consulted and only github.com URLs are ever
     downloaded (fail-closed).  The new executable is staged as
-    ``<exe_dir>/AutoDJ.exe.next``; applying it requires a restart (see
+    ``<exe_dir>/zAutoDJ.exe.next``; applying it requires a restart (see
     :meth:`apply_update` and the generated ``autodj_update.bat``).
     """
 
@@ -192,7 +192,7 @@ class Updater:
 
     @property
     def asset_name(self) -> str:
-        return str(getattr(self.cfg, "auto_update_asset", "AutoDJ.exe") or "AutoDJ.exe")
+        return str(getattr(self.cfg, "auto_update_asset", "zAutoDJ.exe") or "zAutoDJ.exe")
 
     # ------------------------------------------------------------------ lifecycle
     def start(self) -> None:
@@ -295,7 +295,7 @@ class Updater:
             return None
         needle = (name_substring or self.asset_name).lower()
         assets = release.get("assets", []) or []
-        # Exact name first, so "AutoDJ.exe" never resolves to "AutoDJ.exe.sha256".
+        # Exact name first, so "zAutoDJ.exe" never resolves to "zAutoDJ.exe.sha256".
         for asset in assets:
             if (asset.get("name", "") or "").lower() == needle:
                 return asset
@@ -487,7 +487,7 @@ class Updater:
         return True
 
     def apply_update(self, exe_path: str | Path | None = None) -> bool:
-        """Download the latest AutoDJ.exe and stage it as ``AutoDJ.exe.next``.
+        """Download the latest zAutoDJ.exe and stage it as ``zAutoDJ.exe.next``.
 
         Also writes ``autodj_update.bat`` next to the exe which, when run,
         replaces the running executable with the staged one and relaunches.
@@ -499,7 +499,7 @@ class Updater:
             return False
         asset = self.find_asset(self.asset_name)
         if not asset:
-            log.warning("auto-update: no AutoDJ.exe asset in latest release")
+            log.warning("auto-update: no zAutoDJ.exe asset in latest release")
             return False
 
         exe = Path(exe_path) if exe_path else default_exe_path()
@@ -518,7 +518,7 @@ class Updater:
         )
         if self.engine:
             self.engine.say(
-                "AutoDJ version %s downloaded. Run autodj_update.bat or restart to apply."
+                "zAutoDJ version %s downloaded. Run autodj_update.bat or restart to apply."
                 % self._latest.get("tag", "")
             )
         return True

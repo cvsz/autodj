@@ -4,16 +4,16 @@
 
 ## 1. ติดตั้งด้วยตัวติดตั้งอัตโนมัติ (แนะนำ)
 
-ดาวน์โหลด `Camfrog-AutoDJ-Setup-x.y.z.exe` จาก [GitHub Releases](https://github.com/cvsz/autodj/releases) แล้วรันเป็นผู้ดูแลระบบ (Run as Administrator)
+ดาวน์โหลด `zAutoDJ-Setup-x.y.z.exe` จาก [GitHub Releases](https://github.com/cvsz/autodj/releases) แล้วรันเป็นผู้ดูแลระบบ (Run as Administrator)
 
 ตัวติดตั้งจะ:
 
-1. ติดตั้ง `AutoDJ.exe` ไปที่ `C:\Program Files\AutoDJ\`
+1. ติดตั้ง `zAutoDJ.exe` ไปที่ `C:\Program Files\AutoDJ\`
 2. สร้าง shortcut ใน Start Menu และ Desktop
 3. ลงทะเบียนใน Add/Remove Programs
 4. สร้าง `uninstall.exe` สำหรับถอนการติดตั้ง
 
-หลังติดตั้ง ให้รัน `AutoDJ.exe --check` เพื่อตรวจสอบว่าทุกอย่างพร้อมหรือไม่
+หลังติดตั้ง ให้รัน `zAutoDJ.exe --check` เพื่อตรวจสอบว่าทุกอย่างพร้อมหรือไม่
 
 ---
 
@@ -39,7 +39,7 @@ cd autodj
 :: ติดตั้งแพ็กเกจ Python
 pip install -e .
 
-:: สร้าง AutoDJ.exe (ตัวเลือก ถ้าต้องการสร้าง exe เอง)
+:: สร้าง zAutoDJ.exe (ตัวเลือก ถ้าต้องการสร้าง exe เอง)
 pip install pyinstaller
 .\build.ps1
 ```
@@ -69,8 +69,8 @@ lang = "th"
 # ytdlp_path = ""
 
 # สำหรับตัวติดตั้ง NSIS: ตัวติดตั้งเขียนพาธเต็มให้อัตโนมัติ
-# (%APPDATA%\AutoDJ\mpv\mpv.exe) ถ้าเลือกส่วน "mpv + yt-dlp"
-# mpv_path = "mpv/mpv.exe"     # relative = เทียบกับโฟลเดอร์ AutoDJ.exe
+# (%APPDATA%\zAutoDJ\mpv\mpv.exe) ถ้าเลือกส่วน "mpv + yt-dlp"
+# mpv_path = "mpv/mpv.exe"     # relative = เทียบกับโฟลเดอร์ zAutoDJ.exe
 # ytdlp_path = ""              # "" = หาอัตโนมัติข้าง mpv หรือใน PATH
 # อย่าตั้งเป็น $APPDATA/mpv: นั่นคือโฟลเดอร์ตั้งค่าของ mpv เอง
 
@@ -81,7 +81,7 @@ autoplay_sources = []                  # ปล่อยว่างได้ �
 ### ขั้นตอนที่ 4: ตรวจสอบการตั้งค่า
 
 ```cmd
-AutoDJ.exe --check
+zAutoDJ.exe --check
 ```
 
 จะแสดงสถานะของแต่ละส่วน: mpv, yt-dlp, โฟลเดอร์เพลง, แอดมิน, ห้อง Camfrog ฯลฯ
@@ -91,7 +91,7 @@ AutoDJ.exe --check
 เปิดหน้าต่างห้องแชทใน Camfrog แล้วรัน:
 
 ```cmd
-AutoDJ.exe --discover
+zAutoDJ.exe --discover
 ```
 
 จะค้นหาหน้าต่างห้องและปุ่มแชทโดยอัตโนมัติ แล้วบันทึกลง `config.toml`
@@ -99,20 +99,20 @@ AutoDJ.exe --discover
 หรือรัน `--windows` เพื่อดูรายการหน้าต่างทั้งหมดที่เปิดอยู่:
 
 ```cmd
-AutoDJ.exe --windows
+zAutoDJ.exe --windows
 ```
 
 ### ขั้นตอนที่ 6: รัน AutoDJ
 
 ```cmd
 # โหมดเดสก์ท็อป (มี GUI)
-AutoDJ.exe --gui
+zAutoDJ.exe --gui
 
 # โหมดบรรทัดคำสั่ง (ไม่มี GUI)
-AutoDJ.exe --console
+zAutoDJ.exe --console
 
 # โหมดเงียบ (ไม่มี GUI เลย)
-AutoDJ.exe
+zAutoDJ.exe
 ```
 
 ---
@@ -126,17 +126,17 @@ AutoDJ.exe
 | `mpv not found` | ไม่ได้ติดตั้ง mpv หรือ path ไม่ถูกต้อง | ติดตั้ง mpv แก้ไข `mpv_path` ใน `config.toml` ให้ชี้ไปที่ไฟล์ `mpv.exe` จริง |
 | `yt-dlp not found` | ไม่มี yt-dlp.exe หรือไม่ได้อยู่ใน PATH | โหลด `yt-dlp.exe` มาไว้ถัดจาก `mpv.exe` หรือตั้ง `ytdlp_path` ใน `config.toml` |
 | `Cannot start: TOML syntax error` | config.toml มีข้อผิดพลาดด้านไวยากรณ์ | ดูบรรทัดที่มีเครื่องหมาย `^` แล้วแก้ไข หรือคัดลอก `config.example.toml` มาทับ |
-| `No module named 'yt_dlp'` | Python module yt-dlp ไม่ได้ติดตั้ง | รัน `pip install yt-dlp` หรือสร้าง AutoDJ.exe ใหม่ด้วย `build.ps1` |
+| `No module named 'yt_dlp'` | Python module yt-dlp ไม่ได้ติดตั้ง | รัน `pip install yt-dlp` หรือสร้าง zAutoDJ.exe ใหม่ด้วย `build.ps1` |
 | `YouTube lookup is unavailable` | yt-dlp เวอร์ชันเก่า หรือไม่มี JavaScript runtime | รัน `yt-dlp -U` เพื่ออัปเดต หรือติดตั้ง deno: `winget install deno` |
 | `Nothing playing` | ไม่มีเพลงในคิว หรือยังไม่ได้เริ่มเล่น | ใช้ `!play <ชื่อเพลง>` หรือ `!เล่น <ชื่อเพลง>` เพื่อเพิ่มเพลง |
 | `คิวเต็มแล้ว` | คำขอในคิวเต็มแล้ว | รอให้เพลงในคิวเล่นจบ หรือใช้ `!ล้างคิว` (แอดมินเท่านั้น) |
 | `ข้ามได้เฉพาะคนขอเพลงหรือแอดมิน` | คุณไม่ใช่คนขอเพลงนั้น และไม่ใช่แอดมิน | ใช้ `!โหวตข้าม` แทน หรือขอให้แอดมินข้ามให้ |
 | `เล่นไม่ได้: {ชื่อเพลง}` | mpv เล่นเพลงนั้นไม่ได้ | ตรวจสอบว่าไฟล์มีอยู่จริง หรือลิงก์ YouTube ยังใช้งานได้ |
 | `ตอนนี้ค้นหาเพลงจาก YouTube ไม่ได้` | yt-dlp ไม่ทำงาน หรือไม่มี JavaScript runtime | อัปเดต yt-dlp: `yt-dlp -U` ติดตั้ง deno: `winget install deno` |
-| `ไม่พบหน้าต่างที่ตรงกับ ...` | ยังไม่ได้เปิดหน้าต่างห้อง Camfrog หรือ `window_title_re` ไม่ตรง | เปิดหน้าต่างห้องแชทใน Camfrog ก่อน หรือรัน `AutoDJ.exe --discover` |
+| `ไม่พบหน้าต่างที่ตรงกับ ...` | ยังไม่ได้เปิดหน้าต่างห้อง Camfrog หรือ `window_title_re` ไม่ตรง | เปิดหน้าต่างห้องแชทใน Camfrog ก่อน หรือรัน `zAutoDJ.exe --discover` |
 | `บล็อกแอดมินไม่ได้` | พยายามบล็อกนICK ที่เป็นแอดมิน | ไม่สามารถบล็อกแอดมินได้ โดยตั้งใจ |
 
-### ข้อผิดพลาดที่พบบ่อยใน `AutoDJ.exe --check`
+### ข้อผิดพลาดที่พบบ่อยใน `zAutoDJ.exe --check`
 
 | ระดับ | ข้อความ | ความหมาย |
 |-------|---------|-----------|
@@ -175,7 +175,7 @@ AutoDJ.exe
 
 ## 5. การลบการติดตั้ง (Uninstall)
 
-ใช้ตัวติดตั้งถอนการติดตั้งผ่าน **Start Menu → AutoDJ → Uninstall** หรือไปที่ **หน้าต่างการตั้งค่า → แอป → AutoDJ → ถอนการติดตั้ง**
+ใช้ตัวติดตั้งถอนการติดตั้งผ่าน **Start Menu → zAutoDJ → Uninstall** หรือไปที่ **หน้าต่างการตั้งค่า → แอป → AutoDJ → ถอนการติดตั้ง**
 
 หรือรัน `uninstall.exe` ในโฟลเดอร์ติดตั้งโดยตรง
 
@@ -187,7 +187,7 @@ AutoDJ.exe
 
 | ไฟล์/โฟลเดอร์ | ความหมาย |
 |---------------|-----------|
-| `AutoDJ.exe` | โปรแกรมหลัก |
+| `zAutoDJ.exe` | โปรแกรมหลัก |
 | `app.ico` | ไอคอนโปรแกรม |
 | `README.md` | คำอธิบายโดยสังเขป |
 | `CHANGELOG.md` | บันทึกการเปลี่ยนแปลง |
@@ -204,9 +204,9 @@ AutoDJ.exe
 
 ---
 
-## 7. การสร้าง AutoDJ.exe เอง (สำหรับนักพัฒนา)
+## 7. การสร้าง zAutoDJ.exe เอง (สำหรับนักพัฒนา)
 
-ถ้าต้องการสร้าง `AutoDJ.exe` เองแทนที่จะใช้ไฟล์ที่แจกจ่าย:
+ถ้าต้องการสร้าง `zAutoDJ.exe` เองแทนที่จะใช้ไฟล์ที่แจกจ่าย:
 
 ```powershell
 # ติดตั้งเครื่องมือสร้าง
@@ -230,7 +230,7 @@ make build
 
 ถ้ายังแก้ปัญหาไม่ได้:
 
-1. รัน `AutoDJ.exe --check` และแนบผลลัพธ์มาด้วย
+1. รัน `zAutoDJ.exe --check` และแนบผลลัพธ์มาด้วย
 2. เปิดไฟล์ `autodj.log` และค้นหาข้อผิดพลาด
 3. แจ้งปัญหาผ่าน [GitHub Issues](https://github.com/cvsz/autodj/issues) (อย่าลืมลบข้อมูลส่วนตัวออกจาก log ก่อนแนบ)
 

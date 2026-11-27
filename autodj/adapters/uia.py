@@ -280,7 +280,7 @@ class UiaAdapter(ChatAdapter):
     """Windows UI Automation. Two layouts:
     - web (Camfrog room window): history/message box are embedded-web panes, see webchat.py
     - text: plain Document/Edit controls chosen by view_type/view_index, input_type/input_index
-    view_kind = auto | web | text. `AutoDJ.exe --discover` fills in what it finds."""
+    view_kind = auto | web | text. `zAutoDJ.exe --discover` fills in what it finds."""
 
     # Web room chat: the window title seen when the chat panes were found.  Camfrog
     # shows the room list (or another tab) in the same window; the cached panes
@@ -327,7 +327,7 @@ class UiaAdapter(ChatAdapter):
         if c is None:
             raise RuntimeError(
                 f"no visible window matches {cfg.window_title_re!r} "
-                f"(open the room window, or run AutoDJ.exe --windows)"
+                f"(open the room window, or run zAutoDJ.exe --windows)"
             )
         log.info("attached to window %r (pid %s, class %s)", c.title, c.pid, c.cls)
         self.handle = c.handle
@@ -411,7 +411,7 @@ class UiaAdapter(ChatAdapter):
         if not -len(found) <= idx < len(found):
             raise RuntimeError(
                 f"chat control {ctype}[{idx}] not found ({len(found)} present); "
-                "room window not ready yet, or run AutoDJ.exe --discover"
+                "room window not ready yet, or run zAutoDJ.exe --discover"
             )
         return found[idx]
 

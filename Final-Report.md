@@ -337,3 +337,13 @@ Not verified here: live IM from a second Camfrog user (needs another account), r
 | Strategy | WM_SETTEXT to 66946: box stays empty; posted WM_CHAR 'zz' (no Enter): visible in the box, removed with posted Backspace | VERIFIED (live, screenshot) |
 | Fix | UIA host target, tie-break, WM_CHAR first, per-attempt rotation; `tests/test_bg_send_target.py` | VERIFIED (tests) |
 
+## 20. Rename to zAutoDJ (0.4.0)
+
+| Step | Evidence | State |
+|---|---|---|
+| Request | operator 13:19 / 13:23: rename CamfrogAutoDJ to zAutoDJ across the system, installer included | - |
+| Bot PC shortcuts | Start Menu folder + .lnk and Desktop .lnk renamed zAutoDJ, Uninstall DisplayName zAutoDJ (targets unchanged) | VERIFIED (live) |
+| Installer | makensis 3.13 compiles `zAutoDJ-Setup-0.4.0.exe` (stub dist; only the expected empty-mpv warning) | VERIFIED (local compile) |
+| Migration script | `tests/test_migrate_to_zautodj.py`: 13 checks in a temp folder + `HKCU\Software\zautodj-migrate-test`, second run idempotent, both removed | VERIFIED (Windows) |
+| Full installer run | not run on the bot PC: it would overwrite and, on uninstall, delete the operator's real zAutoDJ shortcuts | BLOCKED (needs a spare Windows account/VM) |
+

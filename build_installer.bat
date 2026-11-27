@@ -22,7 +22,7 @@ echo.
 REM Check for required files (built artifacts are in dist/)
 echo Checking required files...
 REM installer.nsi packages everything from dist\ (build.ps1 stages it there), so check dist\.
-set REQUIRED=dist\AutoDJ.exe dist\app.ico dist\config.toml dist\README.md dist\CHANGELOG.md dist\LICENSE dist\install.ps1 dist\run_autodj.py
+set REQUIRED=dist\zAutoDJ.exe dist\app.ico dist\config.toml dist\README.md dist\CHANGELOG.md dist\LICENSE dist\install.ps1 dist\run_autodj.py
 for %%f in (%REQUIRED%) do (
     if not exist "%%f" (
         echo WARNING: Missing required file: %%f
@@ -60,7 +60,7 @@ echo ==========================================
 echo.
 echo Next steps:
 echo   1. Test the installer on a clean VM
-echo   2. Sign with: signtool sign /f cert.pfx /p password /t http://timestamp.digicert.com "Camfrog-AutoDJ-Setup-*.exe"
+echo   2. Sign with: signtool sign /f cert.pfx /p password /t http://timestamp.digicert.com "zAutoDJ-Setup-*.exe"
 echo   3. Upload to GitHub Releases
 echo.
 

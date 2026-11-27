@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Generate the PyInstaller spec for AutoDJ.exe -- single source of build flags.
+"""Generate the PyInstaller spec for zAutoDJ.exe -- single source of build flags.
 
 ``build.ps1`` (Windows) and ``scripts/build_exe_linux.sh`` (Wine) both
-regenerate ``AutoDJ.spec`` from this file before every build, so the
+regenerate ``zAutoDJ.spec`` from this file before every build, so the
 PyInstaller options live in exactly one place.  Edit this file, not the
-generated spec (``AutoDJ.spec`` is a gitignored build artifact).
+generated spec (``zAutoDJ.spec`` is a gitignored build artifact).
 
 Flag mapping (was build.ps1's inline array):
   --onefile        -> everything passed to EXE(), no COLLECT()
@@ -86,9 +86,12 @@ def render(name: str) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--name", default="AutoDJ", help="exe name (default: AutoDJ)")
-    parser.add_argument("--output", default="AutoDJ.spec", help="spec path to write")
+    parser.add_argument("--name", default="zAutoDJ", help="exe name (default: zAutoDJ)")
+    parser.add_argument("--output", default="", help="spec path to write (default: <name>.spec)")
     args = parser.parse_args(argv)
+    if not args.output:
+        # build.ps1 runs PyInstaller on "$Name.spec": the spec must follow --name
+        args.output = f"{args.name}.spec"
 
     try:
         spec = render(args.name)

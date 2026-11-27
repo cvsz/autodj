@@ -29,7 +29,7 @@ def test_second_instance_with_the_same_config_is_refused(monkeypatch, tmp_path):
 def test_frozen_exe_without_arguments_opens_the_gui(monkeypatch):
     seen = {}
     monkeypatch.setattr(sys, "frozen", True, raising=False)
-    monkeypatch.setattr(sys, "argv", ["AutoDJ.exe"])
+    monkeypatch.setattr(sys, "argv", ["zAutoDJ.exe"])
     monkeypatch.setattr("autodj.paths.prepare_comtypes", lambda: None)
     monkeypatch.setattr(main_mod, "_run", lambda a, level: seen.setdefault("gui", a.gui))
     main_mod.main()

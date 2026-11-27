@@ -1,4 +1,4 @@
-"""Pre-flight for build.ps1: is everything AutoDJ.exe must contain installed in THIS Python?
+"""Pre-flight for build.ps1: is everything zAutoDJ.exe must contain installed in THIS Python?
 PyInstaller can only bundle what is importable at build time; a missing package does not stop the build, it just
 produces an exe that fails later (e.g. "No module named 'yt_dlp'"). Exit code 1 + a fix-it line if anything is missing.
 """

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the reproducible build process for AutoDJ v0.3.21 on Windows 11.
+This document describes the reproducible build process for AutoDJ v0.4.0 on Windows 11.
 
 ## Prerequisites
 
@@ -54,7 +54,7 @@ The script performs these steps:
 1. **Source Validation**
    - Creates isolated Git worktree at exact `ApprovedSha`
    - Verifies repository identity, branch, and working tree cleanliness
-   - Validates version metadata matches `0.3.21` (`$RequiredVersion` in `scripts/build_windows.ps1`)
+   - Validates version metadata matches `0.4.0` (`$RequiredVersion` in `scripts/build_windows.ps1`)
 
 2. **Prerequisite Checks**
    - Windows 11 (Build 22000+), x64
@@ -75,7 +75,7 @@ The script performs these steps:
    - Bundles: `autodj`, `pywinauto`, `pyttsx3`, `yt_dlp`, `comtypes`, `pyperclip`, `mutagen`
    - Copies `config.example.toml` (the shipped template, never a local `config.toml`) → `dist/config.toml`
    - Bundles `mpv/` directory
-   - Smoke test: `AutoDJ.exe --version`
+   - Smoke test: `zAutoDJ.exe --version`
 
 6. **Code Signing** (unless `-NoSign`)
    - PFX file (`-Pfx` / `AUTODJ_PFX`)
@@ -83,10 +83,10 @@ The script performs these steps:
    - Self-signed cert (default, trusted on build machine)
 
 7. **NSIS Installer Build** (unless `-SkipInstaller`)
-   - Runs `makensis installer.nsi` (`APP_VERSION` defaults to `0.3.21`)
-   - Output: `Camfrog-AutoDJ-Setup-0.3.21.exe`
+   - Runs `makensis installer.nsi` (`APP_VERSION` defaults to `0.4.0`)
+   - Output: `zAutoDJ-Setup-0.4.0.exe`
    - **Full installer:** when `mpv\mpv.exe` and `mpv\yt-dlp.exe` exist in the repo, `scripts/build_installer.ps1` mirrors the whole `mpv\` folder into `dist\mpv\` (`robocopy /MIR`, then a file-by-file check) and builds with `/DBUNDLE_MPV`: the "mpv + yt-dlp (bundled)" component is installed by default and a missing file fails the build. `-RequireMpv` fails when there is no bundle; `-NoMpv` builds without it. The VB-CABLE setup files in `mpv\vbcable\` are copied, the driver itself is not installed (run `VBCABLE_Setup_x64.exe` as administrator or `install.ps1`).
-   - Silent install / uninstall: `Camfrog-AutoDJ-Setup-<v>.exe /S /D=<folder>`, `uninstall.exe /S`.
+   - Silent install / uninstall: `zAutoDJ-Setup-<v>.exe /S /D=<folder>`, `uninstall.exe /S`.
 
 8. **Evidence Bundle Generation**
    - SHA-256 manifests for all artifacts
@@ -112,7 +112,7 @@ D:\temp\autodj-windows-build-<timestamp>\
 │   ├── build/
 │   │   ├── pyinstaller-build.log
 │   │   ├── artifact-inventory.json
-│   │   ├── AutoDJ.exe.sha256
+│   │   ├── zAutoDJ.exe.sha256
 │   │   └── signing-result.json
 │   ├── installer/
 │   │   ├── nsis-build.log
@@ -123,7 +123,7 @@ D:\temp\autodj-windows-build-<timestamp>\
 │   └── SHA256SUMS.sha256
 ├── worktree/          # (if -KeepWorktree)
 └── dist/
-    ├── AutoDJ.exe
+    ├── zAutoDJ.exe
     ├── config.toml
     └── mpv/
 ```
@@ -132,8 +132,8 @@ D:\temp\autodj-windows-build-<timestamp>\
 
 | Artifact | Description | Location |
 |----------|-------------|----------|
-| `AutoDJ.exe` | Signed/Unsigned executable | `worktree/dist/AutoDJ.exe` |
-| `Camfrog-AutoDJ-Setup-0.3.21.exe` | NSIS installer | Worktree root |
+| `zAutoDJ.exe` | Signed/Unsigned executable | `worktree/dist/zAutoDJ.exe` |
+| `zAutoDJ-Setup-0.4.0.exe` | NSIS installer | Worktree root |
 | `build-result.json` | Machine-readable build result | `evidence/build-result.json` |
 | `SHA256SUMS` | Manifest of all evidence files | `evidence/SHA256SUMS` |
 | `SHA256SUMS.sha256` | Manifest self-hash | `evidence/SHA256SUMS.sha256` |

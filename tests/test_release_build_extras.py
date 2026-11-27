@@ -1,7 +1,7 @@
 """The release exe must bundle the same optional features as the CI Windows build.
 
 PyInstaller freezes only installed packages. release.yml's build job installed
-``-e .`` without extras, so the published v0.3.13 AutoDJ.exe had no watchdog (config
+``-e .`` without extras, so the published v0.3.13 zAutoDJ.exe had no watchdog (config
 hot reload disabled at startup) and no webhook server dependencies, while the
 windows-build.yml build had both.
 """

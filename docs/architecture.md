@@ -7,7 +7,7 @@ AutoDJ is a music bot for Camfrog rooms. It plays YouTube tracks and local audio
 ## High-level structure
 
 ```
-AutoDJ.exe (frozen PyInstaller binary)
+zAutoDJ.exe (frozen PyInstaller binary)
 ├── autodj/__main__.py   — CLI entry point: --check, --discover, --windows, --dump, --say, --gui, --console
 ├── autodj/engine.py     — Engine: chat loop, player loop, command router, autoplay pool
 ├── autodj/commands.py   — Router: command registration, admin authorization, cooldowns, rate limits
@@ -38,7 +38,7 @@ AutoDJ.exe (frozen PyInstaller binary)
 - Choice fields (lang, chat_reader, view_kind, send_mode) are constrained
 - Ranges are validated (volume 0–100, max_duration 1–604800, etc.)
 - Regular expressions are compiled before acceptance
-- Relative log paths are resolved to `%APPDATA%\AutoDJ\` so they are writable even when installed to Program Files
+- Relative log paths are resolved to `%APPDATA%\zAutoDJ\` so they are writable even when installed to Program Files
 - Non-writable `config.toml` is relocated to APPDATA at startup
 
 ### 2. Chat I/O (`adapters/`, `webchat.py`, `winmsg.py`)
@@ -97,7 +97,7 @@ At startup (`auto_discover = true`) or via `--discover`, scans visible Camfrog w
 - Message box input control
 - Writes `window_title_re`, `view_type/view_index`, `input_type/input_index` to `config.toml` atomically (tmp + replace, with `.bak` backup)
 - Never replaces a working config with invalid TOML
-- comtypes' generated COM wrappers live in `%APPDATA%\AutoDJ\comtypes_gen` (`paths.prepare_comtypes`). If discovery fails on a corrupted wrapper, only the generated `*.py` / `__pycache__` in that folder are removed; the comtypes package is never touched
+- comtypes' generated COM wrappers live in `%APPDATA%\zAutoDJ\comtypes_gen` (`paths.prepare_comtypes`). If discovery fails on a corrupted wrapper, only the generated `*.py` / `__pycache__` in that folder are removed; the comtypes package is never touched
 
 ## Trust boundaries and security
 
@@ -130,7 +130,7 @@ return msg.local or msg.user.lower() in self.e.admins
 
 ## Installer and distribution
 
-- **NSIS installer** (`installer.nsi`): per-user install to `%APPDATA%\AutoDJ`, preserves `config.toml` and `playlist.json` on upgrade, uninstaller removes only application-owned files. Bundled mpv/yt-dlp go to `$INSTDIR\mpv` (never `%APPDATA%\mpv`, mpv's own config folder) and `AutoDJ.exe --write-install-paths` records their absolute paths in `config.toml`. `scripts/build_installer.ps1` (`make installer`) stages `config.example.toml` as `dist\config.toml` on every build
+- **NSIS installer** (`installer.nsi`): per-user install to `%APPDATA%\zAutoDJ`, preserves `config.toml` and `playlist.json` on upgrade, uninstaller removes only application-owned files. Bundled mpv/yt-dlp go to `$INSTDIR\mpv` (never `%APPDATA%\mpv`, mpv's own config folder) and `zAutoDJ.exe --write-install-paths` records their absolute paths in `config.toml`. `scripts/build_installer.ps1` (`make installer`) stages `config.example.toml` as `dist\config.toml` on every build
 - **PowerShell installers** (`install.ps1`, `install-full-auto.ps1`): staging-based installation with user-data backup/restore before any directory removal
 - **Build** (`build.ps1`): PyInstaller one-file exe, self-signing or real code-signing cert, `--noupx`, smoke-tested with `--version`
 - **Release workflow** (`.github/workflows/release.yml`): validation gate (tests, lint, typecheck, secret scan) before builder job; no automatic publish during remediation

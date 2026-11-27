@@ -326,12 +326,12 @@ class Config:
         ]
     )  # extra fields to include in JSON logs
 
-    # Auto-update: check GitHub releases for newer AutoDJ.exe
+    # Auto-update: check GitHub releases for newer zAutoDJ.exe
     auto_update_enabled: bool = False  # enable automatic update checks
     auto_update_repo: str = "cvsz/autodj"  # GitHub repo (owner/name) for release checks
     auto_update_check_interval: float = 21600.0  # seconds between checks (default 6h)
-    auto_update_asset: str = "AutoDJ.exe"  # release asset filename to download
-    # When auto_update_enabled, download the latest AutoDJ.exe on startup and
+    auto_update_asset: str = "zAutoDJ.exe"  # release asset filename to download
+    # When auto_update_enabled, download the latest zAutoDJ.exe on startup and
     # replace this installation (via autodj_update.bat) before starting the bot.
     auto_update_apply_on_start: bool = True
 

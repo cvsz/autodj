@@ -57,13 +57,13 @@ def test_uninstaller_unregisters_only_its_own_mpv_and_app_path():
     assert 'StrCmp $0 "$INSTDIR\\mpv\\mpv.exe" 0 mpv_unregister_done' in uninstall
     assert "--unregister" in uninstall
     assert uninstall.index("--unregister") < uninstall.index('RMDir /r "$INSTDIR\\mpv"')
-    assert 'StrCmp $0 "$INSTDIR\\AutoDJ.exe" 0 +2' in uninstall
+    assert 'StrCmp $0 "$INSTDIR\\zAutoDJ.exe" 0 +2' in uninstall
 
 
 def test_uninstaller_removes_every_launcher_the_installer_adds():
     main = NSI[NSI.index('Section "!MainProgram" SEC_MAIN') : NSI.index("SectionEnd")]
     uninstall = NSI[NSI.index("Section Uninstall") :]
-    for name in ("start.bat", "check.bat", "readme.txt", "run_autodj.py", "AutoDJ.exe"):
+    for name in ("start.bat", "check.bat", "readme.txt", "run_autodj.py", "zAutoDJ.exe"):
         assert f'File "dist\\{name}"' in main, name
         assert f'Delete "$INSTDIR\\{name}"' in uninstall, name
 

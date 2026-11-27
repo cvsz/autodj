@@ -54,7 +54,7 @@ line_regex = "^(?:\\[?\\d{1,2}:\\d{2}(?::\\d{2})?\\]?\\s*)?(?P<user>[^:\\s][^:]{
 # mpv and yt-dlp are installed alongside AutoDJ by the NSIS installer:
 #   $INSTDIR/mpv/mpv.exe        (mpv player)
 #   $INSTDIR/mpv/yt-dlp.exe     (YouTube downloader for mpv + title lookups)
-# The installer writes absolute paths here; a relative path is resolved against the AutoDJ.exe
+# The installer writes absolute paths here; a relative path is resolved against the zAutoDJ.exe
 # folder. Do not point these at $APPDATA/mpv: that is mpv's own per-user config folder.
 # Example: mpv_path = "C:/mpv/mpv.exe"
 mpv_path = "mpv/mpv.exe"
@@ -130,7 +130,7 @@ allow_play_in_room = true # Song requests in room chat too (IM works for users i
 
 # --- Logging -----------------------------------------------------------------
 log_file = "" # Log file (rotating, 1 MB x 3). Relative names go to <install>/logs/ (APPDATA fallback). Empty = default autodj.log there.
-# Relative paths are resolved to %APPDATA%/AutoDJ/ so they are
+# Relative paths are resolved to %APPDATA%/zAutoDJ/ so they are
 # writable even when AutoDJ is installed to Program Files.
 
 # JSON structured logging
@@ -268,8 +268,8 @@ plugins = ['builtin.stats', 'builtin.help'] # List of plugin modules to load (e.
 auto_update_enabled = false
 auto_update_repo = "cvsz/autodj" # owner/name only
 auto_update_check_interval = 21600.0 # seconds between background checks (min 300)
-auto_update_asset = "AutoDJ.exe" # release asset; must have a published SHA-256 digest
-auto_update_apply_on_start = true # download latest AutoDJ.exe from GitHub on launch and replace this install
+auto_update_asset = "zAutoDJ.exe" # release asset; must have a published SHA-256 digest
+auto_update_apply_on_start = true # download latest zAutoDJ.exe from GitHub on launch and replace this install
 
 # ---- AI answers (OpenAI-compatible API): only `!ai ask <question>` is sent to the provider; room chat never is
 # Answers non-command room lines (never private IMs). https required except for localhost.
@@ -309,7 +309,7 @@ allow_anonymous = false # Allow play tokens without authentication
 # review or rebroadcast.  One recording per stream at a time.
 [streams.recorder]
 enable = false # Record platform streams to MP4
-path = "$APPDATA/AutoDJ/recordings" # Recordings directory (APPDATA fallback)
+path = "$APPDATA/zAutoDJ/recordings" # Recordings directory (APPDATA fallback)
 ffmpeg_path = "ffmpeg" # FFmpeg executable
 max_active = 64 # Max concurrent recordings
 

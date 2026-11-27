@@ -61,8 +61,8 @@ function Ensure-Dir($Path) {
     if (-not (Test-Path $Path)) { New-Item -ItemType Directory -Path $Path -Force | Out-Null }
 }
 
-# dist\AutoDJ.exe is a windowed (no-console) PyInstaller build: it writes nothing to a pipe or
-# redirect, so `& AutoDJ.exe --check 2>&1` always came back empty and every output-based test
+# dist\zAutoDJ.exe is a windowed (no-console) PyInstaller build: it writes nothing to a pipe or
+# redirect, so `& zAutoDJ.exe --check 2>&1` always came back empty and every output-based test
 # failed. Run the same CLI through the console Python instead and capture its lines.
 function Invoke-AutoDJ {
     param([string[]]$CliArgs)
@@ -106,11 +106,11 @@ function Test-InstallerBuild {
             Write-Result "installer_build" "FAIL" "build_installer.ps1 failed"
             return
         }
-        $exePath = "$PSScriptRoot\..\dist\AutoDJ.exe"
-        $installerPath = "$PSScriptRoot\..\dist\Camfrog-AutoDJ-Setup-*.exe"
+        $exePath = "$PSScriptRoot\..\dist\zAutoDJ.exe"
+        $installerPath = "$PSScriptRoot\..\dist\zAutoDJ-Setup-*.exe"
         $installerFile = Get-ChildItem -Path $installerPath | Select-Object -First 1
         if (-not (Test-Path $exePath)) {
-            Write-Result "installer_build" "FAIL" "dist\AutoDJ.exe not found"
+            Write-Result "installer_build" "FAIL" "dist\zAutoDJ.exe not found"
             return
         }
         $version = (Get-Item $exePath).VersionInfo.ProductVersion
@@ -120,7 +120,7 @@ function Test-InstallerBuild {
             installerPath  = if ($installerFile) { $installerFile.FullName } else { $null }
             installerSize  = if ($installerFile) { $installerFile.Length } else { 0 }
         }
-        Write-Result "installer_build" "PASS" "AutoDJ.exe and installer built successfully" $evidence
+        Write-Result "installer_build" "PASS" "zAutoDJ.exe and installer built successfully" $evidence
     } catch {
         Write-Result "installer_build" "FAIL" $_.Exception.Message
     }
@@ -135,9 +135,9 @@ function Test-CodeSigning {
         return
     }
     try {
-        $exePath = "$PSScriptRoot\..\dist\AutoDJ.exe"
+        $exePath = "$PSScriptRoot\..\dist\zAutoDJ.exe"
         if (-not (Test-Path $exePath)) {
-            Write-Result "code_signing" "FAIL" "dist\AutoDJ.exe not found. Run build first."
+            Write-Result "code_signing" "FAIL" "dist\zAutoDJ.exe not found. Run build first."
             return
         }
         # Ensure Certificate provider is available (PS5.1 compat) - same fix as build.ps1
@@ -177,9 +177,9 @@ function Test-UiaAdapter {
     }
     try {
         # Check if camfrog-autodj is in PATH or use full path
-        $exePath = "$PSScriptRoot\..\dist\AutoDJ.exe"
+        $exePath = "$PSScriptRoot\..\dist\zAutoDJ.exe"
         if (-not (Test-Path $exePath)) {
-            Write-Result "uia_adapter" "FAIL" "dist\AutoDJ.exe not found. Run build first."
+            Write-Result "uia_adapter" "FAIL" "dist\zAutoDJ.exe not found. Run build first."
             return
         }
         
@@ -265,9 +265,9 @@ function Test-E2eIntegration {
         return
     }
     try {
-        $exePath = "$PSScriptRoot\..\dist\AutoDJ.exe"
+        $exePath = "$PSScriptRoot\..\dist\zAutoDJ.exe"
         if (-not (Test-Path $exePath)) {
-            Write-Result "e2e_integration" "FAIL" "dist\AutoDJ.exe not found. Run build first."
+            Write-Result "e2e_integration" "FAIL" "dist\zAutoDJ.exe not found. Run build first."
             return
         }
         

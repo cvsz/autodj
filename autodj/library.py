@@ -60,14 +60,15 @@ SCAN_STATE_FILENAME = ".autodj_scan_state.json"
 
 
 def _user_cache_dir() -> Path:
-    """Per-user cache folder: ``AUTODJ_CACHE_DIR``, else %LOCALAPPDATA%\\AutoDJ\\cache
-    on Windows, else $XDG_CACHE_HOME/autodj (~/.cache/autodj)."""
+    """Per-user cache folder: ``AUTODJ_CACHE_DIR``, else %LOCALAPPDATA%\\zAutoDJ\\cache
+    on Windows, else $XDG_CACHE_HOME/autodj (~/.cache/autodj).  A cache: the
+    pre-0.4.0 ``AutoDJ\\cache`` folder is not reused, it is rebuilt."""
     override = os.environ.get("AUTODJ_CACHE_DIR", "").strip()
     if override:
         return Path(override)
     if os.name == "nt":
         base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA") or str(Path.home())
-        return Path(base) / "AutoDJ" / "cache"
+        return Path(base) / "zAutoDJ" / "cache"
     return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "autodj"
 
 
@@ -761,12 +762,12 @@ def remote_tracks(
                     "yt-dlp not found: the yt-dlp executable failed "
                     f"({exe_error}) and this build has no yt_dlp Python module. "
                     "Put yt-dlp.exe next to mpv.exe (or set ytdlp_path in config.toml), "
-                    "or `pip install yt-dlp` and rebuild AutoDJ.exe."
+                    "or `pip install yt-dlp` and rebuild zAutoDJ.exe."
                 ) from None
             raise YtdlpMissingError(
                 "yt-dlp not found: there is no yt-dlp executable (next to mpv.exe or on PATH) and this build has no "
                 "yt_dlp Python module. Put yt-dlp.exe next to mpv.exe (or set ytdlp_path in config.toml), "
-                "or `pip install yt-dlp` and rebuild AutoDJ.exe."
+                "or `pip install yt-dlp` and rebuild zAutoDJ.exe."
             ) from None
     return parse_ytdlp_info(info, requester)
 

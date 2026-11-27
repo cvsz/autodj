@@ -1,8 +1,8 @@
 #!/bin/bash
-# AutoDJ - AutoDJ.exe builder for Linux/WSL (Wine + Windows Python).
+# AutoDJ - zAutoDJ.exe builder for Linux/WSL (Wine + Windows Python).
 #
-# Builds the SAME Windows AutoDJ.exe as build.ps1 does on Windows: it
-# regenerates AutoDJ.spec from the shared PyInstaller flags
+# Builds the SAME Windows zAutoDJ.exe as build.ps1 does on Windows: it
+# regenerates zAutoDJ.spec from the shared PyInstaller flags
 # (tools/generate_spec.py), runs PyInstaller with the Windows Python that
 # lives inside the Wine prefix, then stages the runtime/installer files
 # next to the exe (config, mpv/, docs set) exactly like build.ps1.
@@ -42,7 +42,7 @@ done
 VERSION="${POSITIONAL[0]:-}"
 
 echo "=========================================="
-echo "AutoDJ - AutoDJ.exe builder (Linux/Wine)"
+echo "AutoDJ - zAutoDJ.exe builder (Linux/Wine)"
 echo "=========================================="
 echo
 
@@ -50,7 +50,7 @@ echo
 # WINE_BIN can be overridden (tests do this with a fake wine).
 WINE_BIN="${WINE_BIN:-$(command -v wine || command -v wine64 || true)}"
 if [[ -z "$WINE_BIN" ]]; then
-    echo "ERROR: wine not found. AutoDJ.exe is a Windows binary; building it on"
+    echo "ERROR: wine not found. zAutoDJ.exe is a Windows binary; building it on"
     echo "Linux needs Wine. Install with:"
     echo "  sudo apt install wine          # or: sudo apt install wine64"
     exit 1
@@ -70,7 +70,7 @@ if [[ -z "$WINE_PYTHON" ]]; then
 fi
 if [[ -z "$WINE_PYTHON" ]]; then
     echo "ERROR: Windows Python not found in the Wine prefix ($WINEPREFIX/drive_c)."
-    echo "AutoDJ.exe must be built by the Windows Python, not the system one."
+    echo "zAutoDJ.exe must be built by the Windows Python, not the system one."
     echo "Install it once:"
     echo "  1. Download the Python 3.11 x86_64 installer: https://www.python.org/downloads/windows/"
     echo "  2. wine <installer>.exe /quiet InstallAllUsers=1 TargetDir=C:\\Python311"
@@ -115,24 +115,24 @@ fi
 
 # --- 4. build -------------------------------------------------------------------------
 if [[ "$CLEAN" == "1" ]]; then
-    echo "=== Cleaning build/, dist/ and AutoDJ.spec (--clean) ==="
-    rm -rf build dist AutoDJ.spec
+    echo "=== Cleaning build/, dist/ and zAutoDJ.spec (--clean) ==="
+    rm -rf build dist zAutoDJ.spec
 fi
 if [[ -n "$VERSION" ]]; then
     echo "Requested version: $VERSION (the exe's real version comes from version_info.txt / pyproject.toml)"
 fi
 echo
-echo "=== Generating AutoDJ.spec (shared PyInstaller flags) ==="
-"$GEN_PYTHON" tools/generate_spec.py --name AutoDJ
+echo "=== Generating zAutoDJ.spec (shared PyInstaller flags) ==="
+"$GEN_PYTHON" tools/generate_spec.py --name zAutoDJ
 
 echo
-echo "=== Building AutoDJ.exe with PyInstaller (under Wine) ==="
-"$WINE_BIN" "$WINE_PYTHON" -m PyInstaller --noconfirm AutoDJ.spec
-if [[ ! -f dist/AutoDJ.exe ]]; then
-    echo "ERROR: PyInstaller did not produce dist/AutoDJ.exe"
+echo "=== Building zAutoDJ.exe with PyInstaller (under Wine) ==="
+"$WINE_BIN" "$WINE_PYTHON" -m PyInstaller --noconfirm zAutoDJ.spec
+if [[ ! -f dist/zAutoDJ.exe ]]; then
+    echo "ERROR: PyInstaller did not produce dist/zAutoDJ.exe"
     exit 1
 fi
-echo "OK: dist/AutoDJ.exe built"
+echo "OK: dist/zAutoDJ.exe built"
 
 # --- 5. runtime + installer files next to the exe (mirrors build.ps1) ------------------
 if [[ -f config.example.toml ]]; then
@@ -167,7 +167,7 @@ if [[ -d playlist ]]; then
 fi
 
 echo
-echo "NOTICE: dist/AutoDJ.exe is UNSIGNED (Authenticode signing requires Windows)."
+echo "NOTICE: dist/zAutoDJ.exe is UNSIGNED (Authenticode signing requires Windows)."
 echo "Do not distribute it as a release without signing on Windows"
 echo "(make sign / build.ps1 / az signtool)."
 
@@ -176,9 +176,9 @@ if [[ "${AUTODJ_SKIP_SMOKE:-0}" == "1" ]]; then
     echo "Smoke test skipped (AUTODJ_SKIP_SMOKE=1)."
 else
     echo
-    echo "=== Smoke test: dist/AutoDJ.exe --version (under Wine) ==="
-    "$WINE_BIN" dist/AutoDJ.exe --version
+    echo "=== Smoke test: dist/zAutoDJ.exe --version (under Wine) ==="
+    "$WINE_BIN" dist/zAutoDJ.exe --version
 fi
 
 echo
-echo "=== AutoDJ.exe build complete ==="
+echo "=== zAutoDJ.exe build complete ==="

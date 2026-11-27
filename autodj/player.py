@@ -133,10 +133,10 @@ class MpvPlayer:
     def _ipc_log_paths(self, n: int) -> tuple[str, str]:
         """IPC server address and mpv log file for playback job *n*."""
         if _is_windows():
-            ipc = rf"\\.\pipe\camfrog-autodj-{os.getpid()}-{n}"
+            ipc = rf"\\.\pipe\zautodj-{os.getpid()}-{n}"
         else:
-            ipc = os.path.join(tempfile.gettempdir(), f"camfrog-autodj-{os.getpid()}-{n}.sock")
-        logf = os.path.join(tempfile.gettempdir(), f"camfrog-autodj-mpv-{os.getpid()}-{n}.log")
+            ipc = os.path.join(tempfile.gettempdir(), f"zautodj-{os.getpid()}-{n}.sock")
+        logf = os.path.join(tempfile.gettempdir(), f"zautodj-mpv-{os.getpid()}-{n}.log")
         return ipc, logf
 
     def _wait_for_mpv_end(

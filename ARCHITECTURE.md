@@ -1,4 +1,4 @@
-# Architecture — AutoDJ v0.3.21
+# Architecture — AutoDJ v0.4.0
 
 **Date:** 2026-11-16  
 **Branch:** main (HEAD: fecc053)  
@@ -17,7 +17,7 @@ The architecture is documented in detail at `docs/architecture.md`. This file pr
 ## High-Level Structure
 
 ```
-AutoDJ.exe (frozen PyInstaller binary)
+zAutoDJ.exe (frozen PyInstaller binary)
 ├── autodj/__main__.py   — CLI entry point
 ├── autodj/engine.py     — Engine: chat loop, player loop, command router, autoplay pool
 ├── autodj/commands.py   — Router: command registration, admin auth, cooldowns, rate limits
@@ -49,7 +49,7 @@ AutoDJ.exe (frozen PyInstaller binary)
 - Fail-closed: `ConfigError` with exact line + `^` marker
 - Validation order: type → choices → ranges → regexes → semantic
 - Atomic writes: temp file + `os.replace()` + `.bak` backup
-- Auto-relocation to `%APPDATA%\AutoDJ\` when not writable
+- Auto-relocation to `%APPDATA%\zAutoDJ\` when not writable
 
 ### 2. Audio Engine (`player.py`, `engine.py`)
 - **One mpv process per track** — no shared state between tracks

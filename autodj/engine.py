@@ -1372,7 +1372,7 @@ class Engine:
         elif fails == MAX_FAIL_ANNOUNCE + 1:
             log.warning(
                 "%d tracks in a row failed to play: not announcing further failures in the room "
-                "(check the lines above; run AutoDJ.exe --check)",
+                "(check the lines above; run zAutoDJ.exe --check)",
                 fails - 1,
             )
 

@@ -28,7 +28,7 @@ def test_uninstaller_removes_only_application_owned_files():
     assert 'RMDir "$INSTDIR"' not in uninstall, (
         "Uninstaller must not delete $INSTDIR itself — user data may remain"
     )
-    assert 'Delete "$INSTDIR\\AutoDJ.exe"' in uninstall
+    assert 'Delete "$INSTDIR\\zAutoDJ.exe"' in uninstall
     assert 'Delete "$INSTDIR\\config.toml"' not in uninstall, (
         "Uninstaller must not delete user config.toml"
     )

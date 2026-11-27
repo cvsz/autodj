@@ -42,7 +42,7 @@
 .EXAMPLE
     .\Test-AutoDJCodeSigning.ps1
     .\Test-AutoDJCodeSigning.ps1 -Pfx cert\autodj.pfx -Password "secret"
-    .\Test-AutoDJCodeSigning.ps1 -Thumbprint A1B2C3D4... -ExePath dist\AutoDJ.exe
+    .\Test-AutoDJCodeSigning.ps1 -Thumbprint A1B2C3D4... -ExePath dist\zAutoDJ.exe
 #>
 [CmdletBinding()]
 param(

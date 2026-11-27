@@ -95,7 +95,7 @@ def _create_base_app(config: WebhookConfig) -> "FastAPI":
         log.info("Webhook server shutting down")
 
     app = FastAPI(
-        title="AutoDJ Webhook API",
+        title="zAutoDJ Webhook API",
         version="1.0.0",
         lifespan=lifespan,
         docs_url="/webhook/docs" if config.enabled else None,

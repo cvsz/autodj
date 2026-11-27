@@ -1,6 +1,6 @@
 # คู่มือแอดมิน AutoDJ — ภาษาไทย
 
-**เวอร์ชัน:** 0.3.21  
+**เวอร์ชัน:** 0.4.0  
 **กลุ่มเป้าหมาย:** ผู้ดูแลห้องและผู้ปฏิบัติงานบอท  
 **ภาษา:** ไทย
 
@@ -450,7 +450,7 @@ ai_user_cooldown = 30.0            # วินาทีระหว่างค�
 auto_update_enabled = false        # ต้องเปิดเอง; ถ้าปิดจะไม่มีการเชื่อมต่อ GitHub เบื้องหลังเลย
 auto_update_repo = "cvsz/autodj"
 auto_update_check_interval = 21600.0   # วินาที (ขั้นต่ำ 300)
-auto_update_asset = "AutoDJ.exe"
+auto_update_asset = "zAutoDJ.exe"
 ```
 
 - เสนอเฉพาะเวอร์ชันที่ใหม่กว่าจริงเท่านั้น เวอร์ชันที่อ่านไม่ออกจะไม่ถือว่าใหม่กว่า
@@ -528,7 +528,7 @@ plugins = ["builtin.stats", "builtin.help"]  # list of plugin modules to load (e
 - บันทึกแบบ atomic พร้อม backup `.bak`
 - ตอนบันทึกจะคงค่าที่หน้าตั้งค่าไม่ได้แสดงไว้ (`ai_*`, `auto_update_*`, `webhook_secret`, `voteskip_cooldown`, `log_json*`) ไม่รีเซ็ตเป็นค่าเริ่มต้นแล้ว
 - ปุ่มเปิด/ปิดการตอบคำถาม "เพลงอะไร" ในห้อง (`np_question_reply`)
-- ย้ายไป `%APPDATA%\AutoDJ\` อัตโนมัติถ้าโฟลเดอร์ติดตั้งเขียนไม่ได้
+- ย้ายไป `%APPDATA%\zAutoDJ\` อัตโนมัติถ้าโฟลเดอร์ติดตั้งเขียนไม่ได้
 - สลับภาษา label แบบเรียลไทม์
 
 ---
@@ -539,30 +539,30 @@ plugins = ["builtin.stats", "builtin.help"]  # list of plugin modules to load (e
 
 ```bash
 # ตรวจสอบระบบเต็มรูปแบบ
-AutoDJ.exe --check
+zAutoDJ.exe --check
 # หรือ
 camfrog-autodj --check
 
 # ตรวจจับหน้าต่างห้องอัตโนมัติ
-AutoDJ.exe --discover
+zAutoDJ.exe --discover
 
 # แสดงหน้าต่างทั้งหมด (หา Camfrog)
-AutoDJ.exe --windows
+zAutoDJ.exe --windows
 
 # ดับ tree ควบคุมหน้าต่าง
-AutoDJ.exe --dump "Camfrog"
+zAutoDJ.exe --dump "Camfrog"
 
 # ส่งข้อความทดสอบไปห้อง
-AutoDJ.exe --say "test message"
+zAutoDJ.exe --say "test message"
 
 # รันพร้อม GUI
-AutoDJ.exe --gui
+zAutoDJ.exe --gui
 
 # รันแบบ headless
-AutoDJ.exe
+zAutoDJ.exe
 
 # โหมดคอนโซล (พิมพ์คำสั่งตรงๆ)
-AutoDJ.exe --console --lang th
+zAutoDJ.exe --console --lang th
 ```
 
 ### ผลลัพธ์ Health Check
@@ -582,7 +582,7 @@ AutoDJ.exe --console --lang th
 - **ค่าเริ่มต้น:** แสดงผลบนคอนโซล (stdout/stderr)
 - **ไฟล์:** ตั้ง `log_file = "autodj.log"` ใน config
 - **หมุนเวียน:** 1 MB × 3 ไฟล์
-- **ตำแหน่ง:** พาธสัมพัทธ์ resolve ไป `%APPDATA%\AutoDJ\`
+- **ตำแหน่ง:** พาธสัมพัทธ์ resolve ไป `%APPDATA%\zAutoDJ\`
 
 ### ปัญหาที่พบบ่อยและวิธีแก้
 
@@ -598,7 +598,7 @@ AutoDJ.exe --console --lang th
 
 ---
 
-## การสร้าง AutoDJ.exe (Windows)
+## การสร้าง zAutoDJ.exe (Windows)
 
 ### ข้อกำหนดเบื้องต้น
 
@@ -621,8 +621,8 @@ python -m pip install -e . pyinstaller
 .\build.ps1 -Pfx cert.pfx -Password "secret"
 
 # 4. ตรวจสอบ
-dist\AutoDJ.exe --version
-dist\AutoDJ.exe --check
+dist\zAutoDJ.exe --version
+dist\zAutoDJ.exe --check
 ```
 
 ### ตัวเลือก Build
@@ -646,7 +646,7 @@ dist\AutoDJ.exe --check
 make installer        # หรือ: powershell -ExecutionPolicy Bypass -File scripts/build_installer.ps1
 ```
 
-ต้อง build `dist\AutoDJ.exe` ก่อน (`make build` หรือ `make build-all` สำหรับ exe + installer)
+ต้อง build `dist\zAutoDJ.exe` ก่อน (`make build` หรือ `make build-all` สำหรับ exe + installer)
 `scripts/build_installer.ps1` จะคัดลอก `config.example.toml` ล่าสุดไปเป็น `dist\config.toml`
 (พร้อม README, CHANGELOG และ LICENSE) ทุกครั้งที่รัน ใส่เวอร์ชันจาก `pyproject.toml` ลงใน `installer.nsi`
 แล้วจึงรัน `makensis` การรัน `makensis installer.nsi` เองจะข้ามขั้นตอนนี้และอาจได้ config เก่าติดไปกับตัวติดตั้ง
@@ -654,12 +654,12 @@ make installer        # หรือ: powershell -ExecutionPolicy Bypass -File s
 
 ### คุณสมบัติ Installer
 
-- ติดตั้งต่อผู้ใช้ไป `%APPDATA%\AutoDJ` (ไม่ต้อง admin)
+- ติดตั้งต่อผู้ใช้ไป `%APPDATA%\zAutoDJ` (ไม่ต้อง admin)
 - ติดตั้ง `config.toml` จาก `config.example.toml`; ถ้ามี `config.toml` อยู่แล้วจะเก็บไว้ตอนอัปเกรด
-- เขียน `mpv_path` / `ytdlp_path` แบบพาธเต็มของ mpv ที่มากับตัวติดตั้งลงใน `config.toml` (`AutoDJ.exe --write-install-paths`)
-- ส่วนเสริม: mpv + yt-dlp ติดตั้งใน `%APPDATA%\AutoDJ\mpv` (ไม่ใช่ `%APPDATA%\mpv` ซึ่งเป็นโฟลเดอร์ตั้งค่าของ mpv เอง)
+- เขียน `mpv_path` / `ytdlp_path` แบบพาธเต็มของ mpv ที่มากับตัวติดตั้งลงใน `config.toml` (`zAutoDJ.exe --write-install-paths`)
+- ส่วนเสริม: mpv + yt-dlp ติดตั้งใน `%APPDATA%\zAutoDJ\mpv` (ไม่ใช่ `%APPDATA%\mpv` ซึ่งเป็นโฟลเดอร์ตั้งค่าของ mpv เอง)
 - ปิด AutoDJ / mpv ที่รันจากโฟลเดอร์ติดตั้งก่อนอัปเกรดหรือถอนการติดตั้ง
-- Shortcut ใน Start Menu (AutoDJ, Edit Config, Uninstall) และบน Desktop
+- Shortcut ใน Start Menu (zAutoDJ, Edit Config, Uninstall) และบน Desktop
 - มี `install.ps1` สำหรับติดตั้ง VB-CABLE และโปรแกรมที่จำเป็นอื่น (ไม่ได้รวม VB-CABLE มาในตัวติดตั้ง)
 - Uninstaller เก็บ `config.toml`, เพลย์ลิสต์, log และข้อมูลผู้ใช้ไว้
 
@@ -699,7 +699,7 @@ make installer        # หรือ: powershell -ExecutionPolicy Bypass -File s
 1. **Backup** `config.toml` และ `playlist.json`
 2. **Pull** โค้ดล่าสุด
 3. **รัน** `python -m pip install -e . --upgrade`
-4. **ตรวจสอบ** `AutoDJ.exe --check`
+4. **ตรวจสอบ** `zAutoDJ.exe --check`
 5. **ยืนยัน** การ migrate config (รันอัตโนมัติตอนเริ่มต้น)
 
 ### การ Migrate Config
@@ -715,7 +715,7 @@ AutoDJ migrate อัตโนมัติ:
 
 | ไฟล์ | ตำแหน่งค่าเริ่มต้น | คำอธิบาย |
 |------|------------------|-----------|
-| `config.toml` | `%APPDATA%\AutoDJ\` | การตั้งค่าหลัก |
+| `config.toml` | `%APPDATA%\zAutoDJ\` | การตั้งค่าหลัก |
 | `playlist.json` | เหมือน config | คำขอผู้ใช้ที่คงอยู่ |
 | `ads-list.json` | เหมือน config | ข้อความตอบกลับอัตโนมัติ |
 | `autodj.log` | เหมือน config | Log ไฟล์หมุนเวียน |
@@ -760,7 +760,7 @@ rate_limit_window = 300.0        # sliding window (วินาที)
 
 ## รายการตรวจสอบการแก้ปัญหา
 
-- [ ] รัน `AutoDJ.exe --check` — เขียวหมด?
+- [ ] รัน `zAutoDJ.exe --check` — เขียวหมด?
 - [ ] `mpv --audio-device=help` — อุปกรณ์ถูกต้องใน config?
 - [ ] `yt-dlp -U` — เวอร์ชันล่าสุด?
 - [ ] Config TOML ถูกต้อง? (ไม่มี syntax error)

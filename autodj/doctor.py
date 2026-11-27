@@ -1,4 +1,4 @@
-"""`AutoDJ.exe --check`: say in plain words what is and is not set up, before anything is started.
+"""`zAutoDJ.exe --check`: say in plain words what is and is not set up, before anything is started.
 Pure checks over a Config (and the machine): each returns (level, text) with level OK | INFO | WARN | FAIL.
 """
 
@@ -129,7 +129,7 @@ def _check_yt_dlp(cfg, out: list[Result]) -> None:
             out,
             "WARN",
             "no yt_dlp Python module either: YouTube links and song-name requests will be refused. "
-            "Install yt-dlp.exe (above) or `pip install yt-dlp` and rebuild AutoDJ.exe.",
+            "Install yt-dlp.exe (above) or `pip install yt-dlp` and rebuild zAutoDJ.exe.",
         )
 
 
@@ -222,7 +222,7 @@ def _check_windows_uia(cfg, out: list[Result], check_window: bool) -> None:
                     out,
                     "WARN",
                     f"no visible window matches window_title_re = {cfg.window_title_re!r} "
-                    "(open the room window, or run AutoDJ.exe --windows to see what is open)",
+                    "(open the room window, or run zAutoDJ.exe --windows to see what is open)",
                 )
         except (OSError, RuntimeError) as ex:
             _add(out, "WARN", f"could not look for the Camfrog window: {ex}")
