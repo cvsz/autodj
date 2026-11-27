@@ -1610,6 +1610,12 @@ class Engine:
         included: the nickname alone is spoofable from outside the room.
         """
         self._log_im_message(msg)
+        if self._never_greet(msg.user):
+            # Room bots (ZeazBot sends game/help IMs), our own account, blocked users:
+            # shown in the IM tab, never answered (a bot answering a bot loops) and
+            # never run as commands.
+            log.info("IM from %s shown only (room bot / ignored nick)", msg.user)
+            return
         if self.cfg.im_require_room_presence and msg.user.lower() not in self._active_room_users:
             log.info("IM from %s not acted on: not in the room", msg.user)
             self._im_join_room_notice(msg.user)

@@ -16,6 +16,9 @@ import re
 log = logging.getLogger("autodj")
 
 TIME_RX = re.compile(r"^\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?$")
+# Header of a private message group in the room pane (lower case, no trailing ":").
+PRIVATE_FROM = frozenset({"ข้อความส่วนตัวจาก", "private message from"})
+PRIVATE_TO = frozenset({"ข้อความส่วนตัวถึง", "private message to"})
 
 
 def tokens_to_lines(tokens: list[str]) -> list[str]:
@@ -56,10 +59,40 @@ def items_to_lines(items: list[tuple[str, str]], strict: bool = True) -> list[st
     return out
 
 
+def _private_line(toks: list[tuple[str, str]]) -> str | None:
+    """'time IM nick: text' for a private message shown in the room pane, else None.
+
+    Live 2026-11-27 (Camfrog web room): private messages are not separate IM
+    windows any more but groups in the room history:
+        [avatar] "ข้อความส่วนตัวจาก" <link nick> <time> <body...>
+    The nick is a Hyperlink after the header, so the plain parser dropped every
+    such group and no IM ever reached the bot or the IM tab. ``parse_line``
+    turns the "IM " marker into ``is_im=True``. All body texts are kept (a
+    multi-line private message is several adjacent texts). Our own outgoing
+    private messages ("ข้อความส่วนตัวถึง") are not messages to us: skipped.
+    """
+    head = toks[0][1].rstrip(":").strip().lower()
+    if head in PRIVATE_TO:
+        return ""  # handled: not a message for the bot
+    if head not in PRIVATE_FROM:
+        return None
+    if len(toks) < 4 or toks[1][0] not in ("link", "text") or not TIME_RX.match(toks[2][1]):
+        return ""
+    nick = toks[1][1].replace(":", " ").strip()
+    text = " ".join(n for k, n in toks[3:] if k in ("text", "link") and n)
+    if not nick or not text:
+        return ""
+    return f"{toks[2][1]} IM {nick}: {text}"
+
+
 def _group_line(g: list[tuple[str, str]], strict: bool) -> str | None:
     """Parse one avatar-delimited group into 'time nick: text', or None when it is not a message."""
     g = [(k, n.replace("\xa0", " ").strip()) for k, n in g]
     toks = [(k, n) for k, n in g if k != "emo" or n]  # keep emoticons as joiners
+    if toks and toks[0][0] == "text":
+        private = _private_line(toks)
+        if private is not None:
+            return private or None
     if (
         len(toks) < 3
         or toks[0][0] not in ("text", "link")

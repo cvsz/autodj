@@ -311,3 +311,12 @@ Not verified here: live IM from a second Camfrog user (needs another account), r
 | 21 IM window scan every 0.5 s outside com_lock | - | - | OPEN |
 | Second audit (stream, webhook, plugins, updater, config, installer, workflows) | - | - | OPEN: the audit agent stopped early (API rate limit) before reporting |
 
+## 17. Private messages in the room pane (0.3.19)
+
+| Step | Evidence | State |
+|---|---|---|
+| Symptom | operator: IM tab empty; no `IM received` / `IM detected` line in the log | VERIFIED (log) |
+| Cause | screen + UIA dump of the room pane 11:03: private messages are room-history groups `"ข้อความส่วนตัวจาก" <link nick> <time> <body>`, no IM window exists (probe: only the room window and the contact list); `_group_line` required a plain-text nick | VERIFIED (live UIA items) |
+| Fix | `webchat._private_line` → `time IM nick: text`; room-bot IMs shown only; `tests/test_room_private_messages.py` (real items) | VERIFIED (tests + live pane read: 6/6 private messages parsed) |
+| Replying privately | `send_im` types into a separate IM window, which this Camfrog does not open; a private reply from the room pane is not implemented | OPEN |
+
