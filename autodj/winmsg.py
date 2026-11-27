@@ -69,12 +69,20 @@ def make_lparam(x: int, y: int) -> int:
 def pick_child(
     rects: list[tuple[int, tuple[int, int, int, int]]], pt: tuple[int, int]
 ) -> int | None:
-    """Handle of the smallest window whose rect contains pt (the deepest control under the point)."""
+    """Handle of the smallest window whose rect contains pt (the deepest control under the point).
+
+    *rects* comes from ``EnumChildWindows`` (pre-order: a parent is listed before its
+    children).  On a tie in area the later entry wins: Camfrog nests the chat editor
+    as ``#32770 > AtlAxWin > Shell Embedding > Shell DocObject View >
+    Internet Explorer_Server``, all the same size.  Picking the first one sent the text
+    to the outer dialog, where WM_SETTEXT "succeeds" (it renames the dialog) and nothing
+    reaches the room (live 2026-11-27 12:56-13:16).
+    """
     best, best_area = None, None
     for h, (left, top, right, bottom) in rects:
         if left <= pt[0] < right and top <= pt[1] < bottom:
             a = (right - left) * (bottom - top)
-            if best_area is None or a < best_area:
+            if best_area is None or a <= best_area:
                 best, best_area = h, a
     return best
 
@@ -153,9 +161,11 @@ def post_text(
     enter: bool = True,
     click: bool = True,
     delay: float = 0.004,
+    target: int | None = None,
 ) -> bool:
     """Click the editor at screen_pt and type `text` (+ Enter) with posted messages. No focus change.
     Returns True if every message was queued (this does NOT prove the page accepted it).
+    *target*: the window hosting the editor when the caller knows it (UIA); else picked by point.
     """
     _require_windows()
     import ctypes
@@ -164,8 +174,8 @@ def post_text(
     from .textutil import clean_text
 
     u = _u32()
-    rects = child_rects(top)
-    target = pick_child(rects, screen_pt) or top
+    if not target:
+        target = pick_child(child_rects(top), screen_pt) or top
     pt = w.POINT(*screen_pt)
     u.ScreenToClient(target, ctypes.byref(pt))
     lp = make_lparam(pt.x, pt.y)
@@ -217,16 +227,21 @@ def post_text_rich(
     text: str,
     enter: bool = True,
     click: bool = True,
+    target: int | None = None,
 ) -> bool:
     """Alternative: Use WM_SETTEXT for the entire text, then Enter.
-    More reliable for Chromium contenteditable editors."""
+
+    A True result only means the messages were accepted by *some* window: WM_SETTEXT
+    returns TRUE for any window (a dialog just changes its title), so callers must
+    verify the line reached the room.
+    """
     _require_windows()
     import ctypes
     from ctypes import wintypes as w
 
     u = _u32()
-    rects = child_rects(top)
-    target = pick_child(rects, screen_pt) or top
+    if not target:
+        target = pick_child(child_rects(top), screen_pt) or top
     pt = w.POINT(*screen_pt)
     u.ScreenToClient(target, ctypes.byref(pt))
     lp = make_lparam(pt.x, pt.y)
