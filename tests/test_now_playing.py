@@ -396,6 +396,46 @@ def test_tts_play_file_ducks_and_restores_music(monkeypatch):
     assert vols == [20, 70]
 
 
+def test_play_file_sets_up_ipc_and_restores_it(monkeypatch):
+    """play_file must establish a dedicated IPC pipe for the clip so volume
+    duck/restore actually reach mpv, and must clear self._ipc afterwards so the
+    music track's IPC is unaffected."""
+    import threading
+
+    from autodj.config import Config
+    from autodj.player import MpvPlayer
+
+    p = MpvPlayer(Config(), threading.Event())
+    vols: list[int] = []
+    monkeypatch.setattr(p, "set_volume", lambda v: vols.append(v) or True)
+
+    captured: dict[str, object] = {}
+
+    class FakeClip:
+        def wait(self, timeout=None):
+            return 0
+
+    def fake_popen(*args, **kwargs):
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return FakeClip()
+
+    monkeypatch.setattr("autodj.player.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("autodj.player.kill_with_parent", lambda proc: True)
+
+    p.play_file("tts.wav", duck_volume=20, restore_volume=70)
+
+    cmd = captured["args"][0]
+    assert any(str(a).startswith("--input-ipc-server=") for a in cmd), (
+        "clip must get --input-ipc-server"
+    )
+    assert any(str(a).startswith("--log-file=") for a in cmd), "clip must get --log-file"
+    assert "--volume=100" in cmd, "clip must run at full volume"
+    assert vols == [20, 70], f"duck then restore expected, got {vols}"
+    # IPC cleared after the clip finishes (music track IPC untouched).
+    assert p._ipc is None, f"self._ipc should be cleared after play_file, got {p._ipc!r}"
+
+
 def test_player_never_starts_mpv_after_shutdown(monkeypatch):
     import threading
 
