@@ -4,7 +4,7 @@
 **Owner:** cvsz  
 **Default branch:** main  
 **Version:** 0.4.0 (Python 3.11+)  
-**Host:** Windows 11 (WSL2-capable), Python 3.11+, gh 2.104.0, GPG signing enabled  
+**Host:** Linux (WSL2 + Ubuntu 26.04), Python 3.11+, gh 2.104.0, GPG signing enabled  
 **Report date:** 2026-11-27  
 **Evidence states:** `VERIFIED` / `PARTIALLY VERIFIED` / `UNVERIFIED` / `BLOCKED` / `NOT APPLICABLE` per `ZEAZ-INTRODUCTION.md`
 
@@ -71,7 +71,7 @@ No test files removed. No workflow files modified. No credentials committed.
 | Ruff lint | PASS | `python -m ruff check autodj tests tools` → All checks passed (ran, observed post-merge) |
 | Ruff format | PASS | `python -m ruff format --check autodj tests tools` → 183 files already formatted (ran, observed post-merge) |
 | Type checking (mypy) | PASS | `python -m mypy autodj` → Success: no issues found in 68 source files (ran, observed post-merge) |
-| ShellCheck | NOT RUN | `shellcheck` not installed on this Windows host |
+| ShellCheck | PASS | `shellcheck scripts/*.sh tools/*.sh` → exit 0 (ran on Linux host) |
 | Pytest (unit/func/integration/regression) | PASS | 965 passed, 1 skipped, 3 subtests passed (ran, observed, ~161s) `--basetemp="C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest"` |
 | Missing dependency tests | PASS | Covered by build-env check pattern; all import tests pass |
 | Edge cases | PASS | Included in 965 passed (path traversal, empty prefix, bad config, symlink safety, IPC duck/restore) |
@@ -95,8 +95,9 @@ No test files removed. No workflow files modified. No credentials committed.
 | PR | Title | Author | Reviewer | Decision | Status |
 |----|-------|--------|----------|----------|--------|
 | #293 | fix(player): establish dedicated IPC pipe for TTS clip so duck/restore volume takes effect | cvsz | policedbc | APPROVED | MERGED (`30bc422`, `--merge --delete-branch`) |
+| #294 | docs: synchronize documents with post-PR-293 merge state | cvsz | policedbc | APPROVED | MERGED (`2ccc68e`, `--merge --delete-branch`) |
 
-All pull requests on `https://github.com/cvsz/autodj/pulls` are MERGED. No open, draft, or review-state PRs remain. PR #293 was merged with branch protection satisfied: required status checks (`repository-baseline`, `Analyze GitHub Actions`, `dependency-review`) all pass; `mergeable=MERGEABLE`; no merge conflicts; author != reviewer.
+All pull requests on `https://github.com/cvsz/autodj/pulls` are MERGED. No open, draft, or review-state PRs remain. Each PR was merged with branch protection satisfied: required status checks (`repository-baseline`, `Analyze GitHub Actions`, `dependency-review`, build-and-test across Python 3.11-3.15, test on ubuntu/windows) all pass; `mergeable=MERGEABLE`; no merge conflicts; author != reviewer.
 
 ---
 
@@ -140,7 +141,7 @@ All counts reflect actual scan results (ruff, mypy, secret scan, pytest), not es
 | `build.ps1` / PyInstaller build | NOT RUN | Requires code-signing certificate + TTY for GPG pinentry; not executed this session |
 | NSIS installer build | NOT RUN | Requires makensis + signing certificate; not executed this session |
 | Docker build | NOT APPLICABLE | No Dockerfile-based release pipeline |
-| ShellCheck | NOT RUN | `shellcheck` not installed on this host |
+| ShellCheck | PASS | `shellcheck scripts/*.sh tools/*.sh` → exit 0 |
 | Real Camfrog/mpv/YouTube runtime validation | BLOCKED | Requires authorized test environment |
 
 These are honest limitations, not failures. No claim of "Production Ready" or "100% Complete" is made because real Camfrog/mpv runtime verification remains BLOCKED.
@@ -164,11 +165,11 @@ No files deleted. No new folders created. No credentials committed.
 
 ## 8. Git commit and pull request references
 
-- Current HEAD (main): `30bc422` (Merge pull request #293 from cvsz/fix/autodj-player-tts-duck-volume)
+- Current HEAD (main): `2ccc68e` (Merge pull request #294 from cvsz/docs/post-merge-sync-pr-293)
 - Feature commit: `add11ab` `fix(player): establish dedicated IPC pipe for TTS clip so duck/restore volume takes effect` — GPG-signed, verified `Good signature from "cvsz <seaza@msn.com>" [ultimate]`
 - Previous HEAD: `8981f97` (Merge pull request #292)
-- PR URL: https://github.com/cvsz/autodj/pull/293 — MERGED
-- Branch: `fix/autodj-player-tts-duck-volume` → deleted after merge
+- PR URL: https://github.com/cvsz/autodj/pull/293 — MERGED; https://github.com/cvsz/autodj/pull/294 — MERGED
+- Branch: `fix/autodj-player-tts-duck-volume` → deleted after merge; `docs/post-merge-sync-pr-293` → deleted after merge
 - Base branch: `main` (up to date with `origin/main`)
 - Working tree: clean
 - Four-eyes workflow:
@@ -192,7 +193,6 @@ Per `ZEAZ-INTRODUCTION.md`, production readiness is an evidence-backed assessmen
 **This report does not declare "Production Ready" or "100% Complete" as a release claim**, because:
 - Real Camfrog/mpv runtime verification remains `BLOCKED` (no authorized test environment)
 - No PyInstaller/NSIS build was executed this session (requires signing credentials)
-- ShellCheck not installed on this host
 
 The codebase is in a release-ready state on `main`; a release requires the maintainer (cvsz) to tag, build, sign, and publish through `release.yml` with independent policedbc review.
 
