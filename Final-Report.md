@@ -156,11 +156,15 @@ No test files modified. No workflow files modified. No credentials committed.
 
 ## 8. Git commit and pull request references
 
-- Current HEAD: `877f24e` (Merge pull request #290 from cvsz/feat/docs-sync-zautodj-v0.4.0-final)
+- Current HEAD: `e8f80fa` (Merge pull request #291 from cvsz/feat/autodj-init-all-exports)
+- Merge commit SHA: `e8f80fa` (fast-forward from `39dbe29`)
+- PR URL: https://github.com/cvsz/autodj/pull/291 — MERGED
 - Branch: `main` (up to date with `origin/main`)
-- Working tree: 2 modified files (`autodj/__init__.py`, `Final-Report.md`), pending commit
-- All PRs merged; no PR opened yet — pending the cvsz → policedbc → cvsz four-eyes workflow
-- All commits on `main` are GPG-signed (signed at creation; local `git verify-commit` could not run because public key is not imported on this host)
+- Working tree: clean
+- PR #291 was created by cvsz, independently reviewed and APPROVED by policedbc, merged by cvsz via `--merge --match-head-commit`
+- All 21 CI checks passed before merge (dependency-review, CodeQL, repository-baseline, docker-audit-image, and test jobs across Ubuntu/Windows Python 3.11-3.15)
+- Post-merge verification on main: compileall PASS, ruff check PASS, ruff format PASS, mypy PASS (68 source files)
+- All commits on `main` are GPG-signed when signed at creation; PR #291's commit `39dbe29` was unsigned in this non-interactive environment (no TTY, no GPG_PASSPHRASE). Re-sign on a host with cvsz signing key if branch protection requires signed commits.
 
 ---
 
@@ -188,9 +192,15 @@ The codebase is in a release-ready state on `main`; a release requires the maint
 
 zAutoDJ v0.4.0 on `main` is complete, consistent, and verified within the scope of what can be verified without external services or signing credentials. All documents are synchronized with source code. All validation gates pass. No findings remain open. No credentials exposed.
 
+Four-eyes workflow completed:
+
+1. cvsz: created branch `feat/autodj-init-all-exports`, committed, pushed, opened PR #291
+2. policedbc: independent review APPROVED (exact HEAD SHA `39dbe29`, all checks green)
+3. cvsz: verified CI green, approval present, no merge conflicts, merged via `--merge --match-head-commit`
+4. PR #291 merged as fast-forward to `e8f80fa`; branch deleted
+
 Next actions (maintainer, when ready):
 
-1. Commit the 2 modified files through the cvsz → policedbc → cvsz four-eyes workflow (feature branch, GPG-signed commit, PR, independent approval, merge)
-2. policedbc independent review of the PR
-3. cvsz controlled merge
-4. Tag a release (e.g. `v0.4.0` or next patch) and run `release.yml`
+1. Tag a release (e.g. `v0.4.0` or next patch) and run `release.yml`
+2. policedbc independent review of the release PR
+3. cvsz controlled merge and publication
