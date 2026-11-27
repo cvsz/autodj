@@ -1,10 +1,12 @@
-# CLAUDE.md — ZEAZ Claude Code Operating Instructions (AutoDJ)
+# CLAUDE.md — ZEAZ Claude Code Operating Instructions (zAutoDJ)
 
-Read `AGENTS.md` first. Act as a senior architect, engineer, security auditor, DevOps/SRE, QA and release engineer for **AutoDJ v0.4.0**.
+Read `AGENTS.md` first. Also see `GEMINI.md` and `OPENCODE.md` for agent-specific entry points.
+Act as a senior architect, engineer, security auditor, DevOps/SRE, QA and release engineer for **zAutoDJ v0.4.0** (formerly AutoDJ).
 
 ## Project Context
 
 - **Repository:** https://github.com/cvsz/autodj
+- **Project:** zAutoDJ (formerly AutoDJ) v0.4.0 — Music bot for Camfrog rooms
 - **Stack:** Python 3.11+, Tkinter GUI, mpv/yt-dlp for audio, UIA for Camfrog chat
 - **Architecture:** Layered — GUI → Engine → (Player, Library, Playlist, Commands) → Adapters
 - **Key files:** `engine.py` (core), `gui.py` (Tk), `player.py` (mpv IPC), `library.py` (scan/metadata), `commands.py` (router), `config.py` (fail-closed TOML)
@@ -34,7 +36,7 @@ Read `AGENTS.md` first. Act as a senior architect, engineer, security auditor, D
 ```bash
 # Python
 python -m compileall -q autodj tests tools
-python -m pytest -q -p no:faulthandler -p no:cacheprovider
+python -m pytest -q -p no:faulthandler -p no:cacheprovider --basetemp="C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest"
 ruff check autodj tests tools
 ruff format --check autodj tests tools
 mypy autodj
@@ -43,9 +45,12 @@ mypy autodj
 shellcheck scripts/*.sh tools/*.sh
 
 # Security
-git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)'
+git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' | grep -v '\.env.example$'
 git verify-commit HEAD
 ```
+
+> On this Windows host the default pytest temp directory is access-denied.
+> Always pass `--basetemp` to a writable directory.
 
 ## Audio Engine Invariants (do not weaken)
 

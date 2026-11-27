@@ -118,7 +118,7 @@ This repository is a **production-ready DJ automation platform**, not a template
 - [x] No committed secrets (`git ls-files | grep -E '(\.env|id_rsa|.*\.pem|.*\.key$)' | grep -v '\.env.example$'`)
 - [ ] Consistency between README, config.example.toml, CHANGELOG, docs/
 - [ ] `python -m compileall -q autodj tests tools`
-- [ ] `python -m pytest -q -p no:faulthandler -p no:cacheprovider`
+- [ ] `python -m pytest -q -p no:faulthandler -p no:cacheprovider --basetemp="C:\Users\cvsz.ZEAZ\AppData\Local\Temp\opencode\pytest"`
 - [ ] `ruff check autodj tests tools`
 - [ ] `ruff format --check autodj tests tools`
 - [ ] `mypy autodj`
