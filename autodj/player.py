@@ -108,6 +108,16 @@ class MpvPlayer:
             "--no-terminal",
             "--really-quiet",
         ]
+        # YouTube streaming optimization: cache ahead so mpv doesn't stall on slow
+        # network reads, and bound network waits so a dead stream fails fast instead
+        # of stuttering forever.
+        cache_secs = float(getattr(self.cfg, "yt_cache_secs", 10.0) or 0.0)
+        if cache_secs > 0:
+            a.append("--cache=yes")
+            a.append(f"--cache-secs={cache_secs}")
+        net_timeout = float(getattr(self.cfg, "yt_network_timeout", 30.0) or 30.0)
+        if net_timeout > 0:
+            a.append(f"--network-timeout={net_timeout}")
         if self.cfg.audio_device:
             a.append(f"--audio-device={self.cfg.audio_device}")
         if getattr(self.cfg, "audio_normalize", False):
@@ -270,7 +280,7 @@ class MpvPlayer:
         )
         init_vol = 0 if fade_in else volume
         cmd = self._base() + [
-            "--ytdl-format=bestaudio/best",
+            "--ytdl-format=" + getattr(self.cfg, "yt_format", "bestaudio[ext=m4a]/bestaudio/best"),
             f"--input-ipc-server={ipc}",
             f"--log-file={logf}",
             f"--volume={init_vol}",
@@ -278,6 +288,12 @@ class MpvPlayer:
         ytdlp = find_ytdlp(getattr(self.cfg, "ytdlp_path", ""), self.cfg.mpv_path)
         if ytdlp:  # mpv's youtube hook must use the same yt-dlp our title lookups use; its own default search only looks on PATH
             cmd.append(f"--script-opts=ytdl_hook-ytdl_path={ytdlp}")
+            # Retry yt-dlp and its fragments so a transient YouTube glitch does not
+            # kill the track (stutter -> retry -> resume instead of FAILED).
+            retries = int(getattr(self.cfg, "yt_retries", 10) or 10)
+            frag_retries = int(getattr(self.cfg, "yt_fragment_retries", 10) or 10)
+            cmd.append(f"--script-opts=ytdl_hook-ytdl_retries={retries}")
+            cmd.append(f"--script-opts=ytdl_hook-ytdl_fragment_retries={frag_retries}")
         cmd += ["--", source]
         kw: dict = {}
         if _is_windows():

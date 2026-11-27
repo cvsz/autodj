@@ -171,6 +171,7 @@ Just ask in the room — e.g. "what song is this?", "what's playing", "เพล
 | "Live streams not allowed" | Non-admins cannot request live streams |
 | "Too long" | Song exceeds 15-minute limit |
 | "Not in room" | Join the Camfrog room and chat once before using IM |
+| "YouTube stutters / buffers" | Ask admin to increase `yt_cache_secs` (default 10s) and `yt_network_timeout` in config.toml, or add YouTube cookies for age-restricted content |
 
 ---
 

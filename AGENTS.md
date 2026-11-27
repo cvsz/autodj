@@ -44,6 +44,7 @@ This repository is a **production-ready DJ automation platform**, not a template
 - **Hang detection** — poll at 0.5s; terminate → kill after grace period exceeded
 - **Resource cleanup** — IPC log files removed on completion; `proc` reference cleared
 - **No audio I/O on GUI thread** — all playback in background thread; GUI polls position via IPC
+- **YouTube streaming optimization** — `yt_cache_secs` (mpv cache ahead), `yt_network_timeout` (network read timeout), `yt_retries`/`yt_fragment_retries` (yt-dlp retries) reduce stuttering on YouTube links; `yt_format` prefers m4a for best streaming compatibility
 
 ---
 
@@ -74,6 +75,7 @@ This repository is a **production-ready DJ automation platform**, not a template
 - **Auto-relocation** — if config not writable (e.g., Program Files), write to `%APPDATA%\zAutoDJ\`
 - **Nested dataclass** — `MessageStyle` for font/style (GUI preview only; Camfrog sends plain text)
 - **Validation order** — type → choices → ranges → regexes → semantic (`_validate`)
+- **YouTube config keys** — `yt_format`, `yt_cache_secs`, `yt_network_timeout`, `yt_retries`, `yt_fragment_retries` validated in `_RANGES`; added to settings dialog, saved to config.toml
 - **Local environment** — copy `.env.example` to `.env` for local development; `.env` is gitignored (`.gitignore` lines 2-4) and never committed. The application reads `config.toml` for runtime settings; `.env` is only for shell/tooling variables consumed via `os.environ.get()`.
 
 ---

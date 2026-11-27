@@ -197,6 +197,15 @@ class Config:
     youtube_ca_bundle: str = (
         ""  # path to custom CA bundle PEM file for yt-dlp certificate verification
     )
+    # YouTube / mpv streaming optimization (reduces stuttering on YouTube links)
+    yt_format: str = (
+        "bestaudio[ext=m4a]/bestaudio/best"
+        # preferred yt-dlp format: m4a first (best streaming compatibility), then any best audio
+    )
+    yt_cache_secs: float = 10.0  # seconds of network stream to cache ahead in mpv
+    yt_network_timeout: float = 30.0  # seconds before mpv gives up on a network read
+    yt_retries: int = 10  # yt-dlp retries for fragmented YouTube streams
+    yt_fragment_retries: int = 10  # yt-dlp fragment retries
     # Dynamic Moderation
     voteskip_dynamic: bool = False  # dynamic voteskip threshold based on participant count
     voteskip_dynamic_pct: int = 30  # percentage of participants required to skip
@@ -490,6 +499,10 @@ _RANGES = {
     "ai_max_chars": (1, 2000),
     "welcome_message_delay": (0.0, 3600.0),
     "mic_greeting_cooldown": (0.0, 86400.0),
+    "yt_cache_secs": (0.0, 300.0),
+    "yt_network_timeout": (5.0, 300.0),
+    "yt_retries": (1, 100),
+    "yt_fragment_retries": (1, 100),
 }
 
 

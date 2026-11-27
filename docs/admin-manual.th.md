@@ -155,6 +155,13 @@ youtube_cookies_file = ""           # path to Netscape cookies.txt for yt-dlp
 youtube_cookies_browser = ""        # browser name for --cookies-from-browser (e.g. chrome, edge, firefox)
 youtube_ca_bundle = ""              # path to custom CA bundle PEM file for yt-dlp certificate verification
 
+# การปรับสตรีม YouTube/mpv (ลดอาการกระตุกบนลิงก์ YouTube)
+yt_format = "bestaudio[ext=m4a]/bestaudio/best"   # รูปแบบ yt-dlp ที่ต้องการ: m4a ก่อน (สตรีมได้ดีที่สุด), แล้วค่อยเสียงที่ดีที่สุด
+yt_cache_secs = 10.0              # วินาทีของสตรีมเครือข่ายที่แคชไว้ล่วงหน้าใน mpv (0 = ปิดแคช)
+yt_network_timeout = 30.0         # วินาทีก่อนที่ mpv จะเลิกพยายามอ่านเครือข่าย (5-300)
+yt_retries = 10                   # yt-dlp ลองใหม่สำหรับสตรีม YouTube (1-100)
+yt_fragment_retries = 10          # yt-dlp ลองใหม่เฟร็กเมนต์ (1-100)
+
 # อุปกรณ์เอาท์พุตเสียง (จาก: mpv --audio-device=help)
 audio_device = "auto"               # "auto" = system default; หรือ wasapi/{GUID} สำหรับ virtual cable
 
@@ -733,6 +740,23 @@ youtube_cookies_browser = ""     # เช่น "chrome", "firefox", "edge"
 youtube_ca_bundle = ""           # Custom CA bundle สำหรับ verify certificate
 ```
 
+### การปรับสตรีม YouTube (ลดอาการกระตุก)
+
+```toml
+# รูปแบบ yt-dlp ที่ต้องการ: m4a ก่อน (รองรับสตรีมได้ดีที่สุด), แล้วค่อยเสียงที่ดีที่สุด
+yt_format = "bestaudio[ext=m4a]/bestaudio/best"
+# วินาทีของสตรีมเครือข่ายที่แคชไว้ล่วงหน้าใน mpv (0 = ปิดแคช)
+yt_cache_secs = 10.0
+# วินาทีก่อนที่ mpv จะเลิกพยายามอ่านเครือข่าย (5-300)
+yt_network_timeout = 30.0
+# yt-dlp ลองใหม่สำหรับสตรีม YouTube (1-100)
+yt_retries = 10
+# yt-dlp ลองใหม่เฟร็กเมนต์ (1-100)
+yt_fragment_retries = 10
+```
+
+**เหตุผลที่ช่วยได้:** YouTube ส่งเสียงเป็นสตรีม DASH แบบเฟร็กเมนต์ ถ้าไม่มีการตั้งค่าแคชและลองใหม่ ปัญหาเครือข่ายเล็กน้อยจะทำให้ mpv ค้าง (อาการ "กระตุก") การแคช 10 วินาทีไว้ล่วงหน้าเปิดโอกาสให้ mpv ดักจับความขัดข้องสั้นๆ หมดเวลาเครือข่ายป้องกันการค้างบนสตรีมที่ตาย และการลองใหม่ของ yt-dlp ช่วยกู้คืนจากความล้มเหลวของเฟร็กเมนต์ชั่วคราว
+
 ### วิศวกรรมเสียง
 
 ```toml
@@ -755,6 +779,30 @@ voteskip_dynamic_pct = 30        # % ของผู้เข้าร่วม�
 user_request_limit = 5           # สูงสุดคำขอ
 rate_limit_window = 300.0        # sliding window (วินาที)
 ```
+
+### IM Viewer และตอบกลับอัตโนมัติ
+
+```toml
+# แสดงแท็บผู้ดูข้อความส่วนตัว (IM) ใน GUI
+im_viewer_enabled = true
+# ตอบกลับข้อความส่วนตัว/ข้อความด่วนอัตโนมัติ
+im_auto_reply_enabled = true
+im_auto_reply_message = "ขอบคุณสำหรับข้อความ! ผมเป็นบอทจะตอบเมื่อสามารถ ใช้ !help ดูคำสั่งได้ครับ"
+im_auto_reply_cooldown = 60.0      # วินาทีระหว่างการตอบกลับอัตโนมัติถึงผู้ใช้คนเดิม (กันสแปม)
+# รับ IM เฉพาะผู้ใช้ที่เคยพิมพ์ในห้องแชท; คนอื่นได้รับ IM ส่วนตัวแจ้งให้เข้าห้องก่อน
+im_require_room_presence = true
+# IM ส่วนตัวที่ส่งถึงคนที่ไม่อยู่ในห้อง
+im_join_room_message = "กรุณาเข้าห้อง camfrog:join:{room} ก่อนขอเพลงครับ"
+# อนุญาตให้ขอเพลงในแชทห้อง (false = IM เท่านั้น)
+allow_play_in_room = true
+```
+
+**ขอเพลงผ่าน IM ทำงานอย่างไร:**
+1. ผู้ใช้ส่งข้อความส่วนตัว (IM/DM) ไปหาบอท เช่น `เล่น <เพลง>` หรือ `ขอเพลง <เพลง>`
+2. ถ้า `im_require_room_presence = true` (ค่าเริ่มต้น) บอทจะปฏิบัติตามเฉพาะ IM จากผู้ใช้ที่เคยพิมพ์ในห้องแชท คนอื่นจะได้รับ IM ส่วนตัวแจ้ง "กรุณาเข้าห้องก่อน"
+3. IM จะถูกบันทึกในแท็บ IM Viewer ของ GUI (เมื่อ `im_viewer_enabled = true`)
+4. การตอบกลับ IM อัตโนมัติจะส่ง IM ส่วนตัวกลับ (จำกัด cooldown) เมื่อเปิดใช้งาน
+5. คำสั่ง IM จะถูกส่งผ่านเราเตอร์คำสั่งเดียวกับข้อความในห้อง (ไม่ต้องใช้ prefix `!` ใน IM)
 
 ---
 
